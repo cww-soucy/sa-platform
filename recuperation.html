@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SA Platform — Récupération données</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,Arial,sans-serif}
+  body{background:#0B2E52;color:#fff;padding:20px;min-height:100vh}
+  h1{font-size:20px;margin-bottom:6px}
+  .sub{font-size:13px;color:rgba(255,255,255,.6);margin-bottom:20px}
+  .card{background:rgba(255,255,255,.08);border-radius:12px;padding:16px;margin-bottom:14px}
+  .card h2{font-size:15px;margin-bottom:10px;color:#5DD9B3}
+  .key{font-size:12px;padding:8px 10px;background:rgba(255,255,255,.05);border-radius:8px;margin-bottom:6px;word-break:break-all}
+  .key b{color:#5DD9B3}
+  .empty{color:rgba(255,255,255,.4);font-size:13px;font-style:italic}
+  button{width:100%;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;margin-top:10px}
+  .btn-primary{background:#5DD9B3;color:#0B2E52}
+  .btn-secondary{background:rgba(255,255,255,.15);color:#fff}
+  pre{font-size:11px;background:#000;color:#5DD9B3;padding:12px;border-radius:8px;overflow:auto;max-height:300px;white-space:pre-wrap;word-break:break-all;margin-top:10px}
+  .status{font-size:13px;padding:10px;border-radius:8px;margin-top:10px;text-align:center}
+  .ok{background:rgba(93,217,179,.2);color:#5DD9B3}
+  .err{background:rgba(229,57,53,.2);color:#FF9090}
+</style>
+</head>
+<body>
+  <h1>🔧 Récupération des données</h1>
+  <div class="sub">SA Platform — Outil de diagnostic et restauration</div>
+
+  <div class="card">
+    <h2>📦 Données trouvées sur cet appareil</h2>
+    <div id="keysList"><div class="empty">Analyse en cours…</div></div>
+  </div>
+
+  <div class="card">
+    <h2>☁️ Restauration vers le cloud</h2>
+    <p class="sub">Envoie toutes les données locales trouvées vers Supabase.</p>
+    <button class="btn-primary" id="pushBtn">⬆️ Envoyer mes données vers Supabase</button>
+    <div id="pushStatus"></div>
+  </div>
+
+  <div class="card">
+    <h2>💾 Sauvegarde de secours</h2>
+    <p class="sub">Affiche tout en texte — copie-le quelque part en sécurité.</p>
+    <button class="btn-secondary" id="dumpBtn">📋 Afficher toutes les données brutes</button>
+    <pre id="dump" style="display:none"></pre>
+  </div>
+
+<script>
+var SB_URL='https://ldqvdiaewvhnukuaxdmc.supabase.co';
+var SB_KEY='sb_publishable_qVd_6eoAvwrDGs9u81woAg_RrMpTJxn';
+var LS='sa_plat_';
+var sb=null;
+try{ if(typeof supabase!=='undefined') sb=supabase.createClient(SB_URL,SB_KEY); }catch(e){}
+
+function allKeys(){
+  var k=[];
+  for(var i=0;i<localStorage.length;i++){
+    var key=localStorage.key(i);
+    if(key&&key.indexOf(LS)===0)k.push(key);
+  }
+  return k;
+}
+
+function renderKeys(){
+  var keys=allKeys();
+  var el=document.getElementById('keysList');
+  if(keys.length===0){
+    el.innerHTML='<div class="empty">⚠️ Aucune donnée locale trouvée sur cet appareil pour cette adresse.</div>';
+    return;
+  }
+  el.innerHTML='';
+  keys.forEach(function(key){
+    var v=localStorage.getItem(key);
+    var label=key.replace(LS,'');
+    var size=v?v.length:0;
+    var info='';
+    try{
+      var parsed=JSON.parse(v);
+      if(Array.isArray(parsed))info=parsed.length+' éléments';
+      else if(parsed&&parsed.days)info='feuille de temps';
+      else info=size+' caractères';
+    }catch(e){info=size+' car.';}
+    var div=document.createElement('div');
+    div.className='key';
+    div.innerHTML='<b>'+label+'</b> — '+info;
+    el.appendChild(div);
+  });
+}
+
+document.getElementById('dumpBtn').addEventListener('click',function(){
+  var keys=allKeys();
+  var out={};
+  keys.forEach(function(k){out[k]=localStorage.getItem(k);});
+  var pre=document.getElementById('dump');
+  pre.style.display='block';
+  pre.textContent=JSON.stringify(out,null,2);
+});
+
+document.getElementById('pushBtn').addEventListener('click',function(){
+  var status=document.getElementById('pushStatus');
+  if(!sb){status.className='status err';status.textContent='❌ Connexion Supabase impossible (vérifie internet).';return;}
+  status.className='status';status.textContent='⏳ Envoi en cours…';
+
+  var keys=allKeys();
+  var tables={workorders:'workorders',sites:'sites',plan:'plan',flotte:'flotte',inventaire:'inventaire',comptes:'comptes'};
+  var jobs=[];
+  var report=[];
+
+  // Tables simples
+  Object.keys(tables).forEach(function(localKey){
+    var raw=localStorage.getItem(LS+localKey);
+    if(!raw)return;
+    try{
+      var list=JSON.parse(raw);
+      if(Array.isArray(list)&&list.length){
+        var rows=list.map(function(r){
+          var row=JSON.parse(JSON.stringify(r));
+          if(row.desc!==undefined){row.descr=row.desc;delete row.desc;}
+          row.updated_at=new Date().toISOString();
+          return row;
+        });
+        jobs.push(sb.from(tables[localKey]).upsert(rows).then(function(res){
+          report.push(localKey+': '+(res.error?'ERREUR '+res.error.message:list.length+' ✓'));
+        }));
+      }
+    }catch(e){report.push(localKey+': illisible');}
+  });
+
+  // Feuilles de temps
+  keys.forEach(function(key){
+    if(key.indexOf(LS+'ft_week_')!==0)return;
+    try{
+      var ft=JSON.parse(localStorage.getItem(key));
+      var id=key.replace(LS+'ft_week_','');
+      var totalH=0;
+      if(ft.days)ft.days.forEach(function(d){(d.tasks||[]).forEach(function(t){totalH+=(t.hrs||0);});});
+      var row={id:id,uid:ft.uid||id.split('_')[0],emp:ft.emp,email:ft.email,week:ft.week||id.split('_').slice(1).join('_'),
+        days:ft.days,total_h:totalH,saved_at:ft.savedAt||new Date().toISOString(),updated_at:new Date().toISOString()};
+      jobs.push(sb.from('feuilles_temps').upsert(row).then(function(res){
+        report.push('FT '+id+': '+(res.error?'ERREUR '+res.error.message:fmtTotal(totalH)+' ✓'));
+      }));
+    }catch(e){report.push(key+': illisible');}
+  });
+
+  if(jobs.length===0){
+    status.className='status err';status.textContent='⚠️ Aucune donnée à envoyer.';
+    return;
+  }
+
+  Promise.all(jobs).then(function(){
+    status.className='status ok';
+    status.innerHTML='✅ Terminé !<br/>'+report.join('<br/>');
+  }).catch(function(e){
+    status.className='status err';status.textContent='❌ Erreur : '+e.message;
+  });
+});
+
+function fmtTotal(h){var H=Math.floor(h);var M=Math.round((h-H)*60);return H+'h'+(M<10?'0':'')+M;}
+
+renderKeys();
+</script>
+</body>
+</html>
