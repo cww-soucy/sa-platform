@@ -11,6 +11,7 @@
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KPHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIHJ4PSIyMCIgZmlsbD0iIzFBNUM5QSIvPgo8dGV4dCB4PSI1MCIgeT0iNDIiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxOCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5Tb3VjeTwvdGV4dD4KPHRleHQgeD0iNTAiIHk9IjY4IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjIiIGZvbnQtd2VpZ2h0PSI5MDAiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5BcXVhdGlLPC90ZXh0Pgo8L3N2Zz4="/>
 <title>SA Platform</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 /* ══ DESIGN SYSTEM v2.0 ══ */
 :root{
@@ -523,6 +524,7 @@ input,select,textarea{font-size:16px!important}
       </div>
     </div>
     <div style="display:flex;gap:6px">
+      <span id="sbStatus" title="Hors-ligne" style="font-size:14px;margin-right:2px">🟡</span>
       <button class="tb-btn" id="dashBtn" style="display:none">📊</button>
       <button class="tb-btn" id="logoutBtn">↩ Quitter</button>
     </div>
@@ -536,6 +538,11 @@ input,select,textarea{font-size:16px!important}
 
   <!-- ── MODULE : FEUILLES DE TEMPS ── -->
   <div id="modFT" class="module" style="display:none">
+    <!-- Sélecteur employé (sup/admin) -->
+    <div id="ftEmpSelector" style="display:none;background:var(--dk);padding:8px 14px;align-items:center;gap:8px">
+      <span style="font-size:11px;color:rgba(255,255,255,.6);font-weight:700;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap">👁 Voir</span>
+      <select id="ftEmpSel" style="flex:1;border:none;outline:none;font-size:14px;font-weight:700;background:rgba(255,255,255,.12);color:#fff;border-radius:8px;padding:6px 10px"></select>
+    </div>
     <div style="background:#fff;border-bottom:1px solid var(--line);padding:8px 14px;display:flex;align-items:center;gap:10px">
       <label style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap">Semaine</label>
       <input type="date" id="weekDate" style="border:none;outline:none;font-size:13px;color:var(--blue);font-weight:700;background:transparent;flex:1"/>
@@ -565,6 +572,8 @@ input,select,textarea{font-size:16px!important}
         </div>
         <div id="taskLog"></div>
       </div>
+      <!-- Bouton ajout manuel (sup/admin) -->
+      <button id="addPunchManualBtn" class="btn btn-ghost btn-full" style="display:none;margin-bottom:10px">➕ Ajouter un punch manuellement</button>
       <!-- cumul -->
       <div class="card">
         <div class="card-hd"><div class="card-hd-t">📊 Cumul semaine</div></div>
@@ -605,6 +614,11 @@ input,select,textarea{font-size:16px!important}
       <button id="ftClear" class="btn btn-ghost" style="flex:1">🗑 Effacer</button>
       <button id="ftSave" class="btn btn-primary" style="flex:2">💾 Enregistrer</button>
     </div>
+  </div>
+
+  <!-- ── MODULE : SUIVI OPÉRATIONS EN COURS (sup) ── -->
+  <div id="modSuivi" class="module" style="display:none">
+    <div class="main" id="suiviContent" style="padding-top:10px"></div>
   </div>
 
   <!-- ── MODULE : WORK ORDERS ── -->
@@ -774,7 +788,7 @@ input,select,textarea{font-size:16px!important}
     </div>
     <div class="m2">
       <div class="mfield"><label>Date prévue</label><input type="date" id="woDate"/></div>
-      <div class="mfield"><label>Assigné à</label><input type="text" id="woAssigne" placeholder="Nom employé"/></div>
+      <div class="mfield"><label>Assigné à</label><select id="woAssigne"><option value="">— Personne —</option></select></div>
     </div>
     <div class="mfield"><label>Description / Travaux à effectuer</label><textarea id="woDesc" placeholder="Décrivez les travaux…"></textarea></div>
     <div class="mfield">
@@ -984,13 +998,34 @@ input,select,textarea{font-size:16px!important}
   </div>
 </div>
 
+<!-- Modal: Édition Punch (sup/admin) -->
+<div class="modal-bg" id="punchEditModal">
+  <div class="modal-box">
+    <div class="modal-hd"><h3 id="peModalTitle">Corriger le punch</h3><button class="modal-close" id="punchEditClose">✕</button></div>
+    <div class="mfield"><label>Chantier / Lieu</label><input type="text" id="peLieu" placeholder="Quai Paquet"/></div>
+    <div class="mfield"><label>Détail</label><input type="text" id="peDetail" placeholder="Travaux chantier"/></div>
+    <div class="m2">
+      <div class="mfield"><label>Début</label><input type="time" id="peStart"/></div>
+      <div class="mfield"><label>Fin</label><input type="time" id="peEnd"/></div>
+    </div>
+    <div class="m2">
+      <div class="mfield"><label>Km départ</label><input type="number" id="peKmDep" placeholder="0" min="0"/></div>
+      <div class="mfield"><label>Km arrivée</label><input type="number" id="peKmArr" placeholder="0" min="0"/></div>
+    </div>
+    <div style="background:var(--lt);border-radius:var(--rs);padding:10px;font-size:11px;color:var(--blue);margin-bottom:4px">ℹ️ Les heures seront recalculées automatiquement.</div>
+    <button class="btn btn-primary btn-full" id="peSaveBtn" style="margin-top:4px">💾 Enregistrer la correction</button>
+    <button id="peDeleteBtn" class="btn btn-danger btn-full" style="margin-top:8px">🗑 Supprimer ce punch</button>
+    <button class="btn btn-ghost btn-full" id="peCancel" style="margin-top:8px">Annuler</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <!-- ════════════════════════════════════════════════════════════ -->
 <script>
 // ═══════════════════════════════════════════════════════
 // ═══ DONNÉES PRÉCHARGÉES ═══
-var PRELOAD_DATA={"gmorin_2026-06-15": {"week": "2026-06-15", "emp": "Gabriel Morin", "email": "gmorin@soucyaquatik.com", "savedAt": "2026-06-19T20:00:00.000Z", "days": [{"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Bureau", "odt": "", "detail": "Travaux bureau", "start": "07:15", "end": "11:45", "hrs": 4.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Quai Paquet", "odt": "", "detail": "Intervention chantier", "start": "12:15", "end": "14:00", "hrs": 1.75, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Cité M + 7 Éléments", "odt": "", "detail": "Travaux chantier", "start": "14:00", "end": "21:00", "hrs": 7.0, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Avec Maxime L'Heureux", "odt": "", "detail": "Chantier MTL", "start": "07:00", "end": "20:00", "hrs": 13.0, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Avec Maxime L'Heureux", "odt": "", "detail": "Chantier MTL", "start": "07:00", "end": "20:00", "hrs": 13.0, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Avec Maxime L'Heureux", "odt": "", "detail": "Chantier MTL", "start": "07:00", "end": "17:00", "hrs": 10.0, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "SDC3", "odt": "", "detail": "Travaux chantier", "start": "07:00", "end": "09:30", "hrs": 2.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Diplomates", "odt": "", "detail": "Intervention", "start": "09:30", "end": "11:45", "hrs": 2.25, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Livraison Mérici", "odt": "", "detail": "Livraison matériel", "start": "11:45", "end": "13:15", "hrs": 1.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Diplomates", "odt": "", "detail": "Retour chantier", "start": "13:15", "end": "15:30", "hrs": 2.25, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "idle", "activeTask": null, "tasks": [], "saved": false, "kmArr": "", "stopFiles": []}, {"status": "idle", "activeTask": null, "tasks": [], "saved": false, "kmArr": "", "stopFiles": []}]}, "mbedard_2026-06-15": {"week": "2026-06-15", "emp": "Mathis Bédard", "email": "mbedard@soucyaquatik.com", "savedAt": "2026-06-19T20:00:00.000Z", "days": [{"status": "idle", "activeTask": null, "tasks": [], "saved": false, "kmArr": "", "stopFiles": []}, {"status": "idle", "activeTask": null, "tasks": [], "saved": false, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Quai des Flots", "odt": "", "detail": "Nettoyage piscine", "start": "07:00", "end": "09:30", "hrs": 2.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Quai Paquet", "odt": "", "detail": "Nettoyage piscine", "start": "09:30", "end": "14:00", "hrs": 4.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Champlain", "odt": "", "detail": "Test d'eau", "start": "14:00", "end": "17:45", "hrs": 3.75, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Cité M", "odt": "", "detail": "Travaux chantier", "start": "07:00", "end": "09:00", "hrs": 2.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "St-Augustin", "odt": "", "detail": "Nettoyage piscine", "start": "09:00", "end": "11:30", "hrs": 2.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Robert Lepage", "odt": "", "detail": "Test d'eau", "start": "11:30", "end": "13:00", "hrs": 1.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Aventura", "odt": "", "detail": "Test d'eau", "start": "13:00", "end": "15:00", "hrs": 2.0, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "idle", "activeTask": null, "tasks": [], "saved": false, "kmArr": "", "stopFiles": []}, {"status": "idle", "activeTask": null, "tasks": [], "saved": false, "kmArr": "", "stopFiles": []}, {"status": "idle", "activeTask": null, "tasks": [], "saved": false, "kmArr": "", "stopFiles": []}]}, "spomerleau_2026-06-15": {"week": "2026-06-15", "emp": "Samuel Pomerleau", "email": "spomerleau@soucyaquatik.com", "savedAt": "2026-06-19T20:00:00.000Z", "days": [{"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Canotier", "odt": "", "detail": "Travaux chantier", "start": "07:00", "end": "08:00", "hrs": 1.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Dion", "odt": "", "detail": "Travaux chantier", "start": "08:00", "end": "12:00", "hrs": 4.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Test midi", "odt": "", "detail": "Tests d'eau", "start": "12:00", "end": "14:00", "hrs": 2.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Dion", "odt": "", "detail": "Travaux chantier", "start": "14:00", "end": "16:45", "hrs": 2.75, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Test", "odt": "", "detail": "Tests d'eau", "start": "16:45", "end": "19:00", "hrs": 2.25, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Test Champlain", "odt": "", "detail": "Test d'eau", "start": "07:00", "end": "08:00", "hrs": 1.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Dion", "odt": "", "detail": "Travaux chantier", "start": "08:00", "end": "08:30", "hrs": 0.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Quai des Flots", "odt": "", "detail": "Remplissage", "start": "08:30", "end": "09:00", "hrs": 0.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Robert Lepage", "odt": "", "detail": "Travaux chantier", "start": "09:00", "end": "11:45", "hrs": 2.75, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Test Champlain", "odt": "", "detail": "Test d'eau", "start": "11:45", "end": "15:00", "hrs": 3.25, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Test Paquet", "odt": "", "detail": "Test d'eau", "start": "15:00", "end": "16:00", "hrs": 1.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Test Champlain", "odt": "", "detail": "Test d'eau", "start": "16:00", "end": "19:00", "hrs": 3.0, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "37283", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Test Champlain", "odt": "", "detail": "Test d'eau", "start": "06:30", "end": "09:00", "hrs": 2.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Quai des Flots", "odt": "", "detail": "Travaux chantier", "start": "09:00", "end": "11:45", "hrs": 2.75, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "SDC3", "odt": "", "detail": "Travaux chantier", "start": "11:45", "end": "12:15", "hrs": 0.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Test Canotier", "odt": "", "detail": "Test d'eau", "start": "12:15", "end": "12:45", "hrs": 0.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Quai Paquet", "odt": "", "detail": "Travaux chantier", "start": "12:45", "end": "16:00", "hrs": 3.25, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Test Champlain", "odt": "", "detail": "Test d'eau", "start": "16:00", "end": "17:45", "hrs": 1.75, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "7 Éléments + Cité M", "odt": "", "detail": "Travaux chantier", "start": "07:00", "end": "09:00", "hrs": 2.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Consolata", "odt": "", "detail": "Travaux chantier", "start": "09:00", "end": "13:00", "hrs": 4.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Robert Lepage", "odt": "", "detail": "Travaux chantier", "start": "13:00", "end": "14:00", "hrs": 1.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Aventura", "odt": "", "detail": "Travaux chantier", "start": "14:00", "end": "15:00", "hrs": 1.0, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Dégât eau SDC3", "odt": "", "detail": "Intervention urgente", "start": "07:00", "end": "09:00", "hrs": 2.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Diplomate", "odt": "", "detail": "Travaux chantier", "start": "09:00", "end": "12:00", "hrs": 3.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Livraison Mérici", "odt": "", "detail": "Livraison matériel", "start": "12:00", "end": "13:30", "hrs": 1.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Diplomate", "odt": "", "detail": "Travaux chantier", "start": "13:30", "end": "15:15", "hrs": 1.75, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Test Champlain", "odt": "", "detail": "Test d'eau", "start": "15:15", "end": "17:15", "hrs": 2.0, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": [{"name": "recu-sem26.jpeg", "size": 150000, "type": "image/jpeg"}]}, {"status": "idle", "activeTask": null, "tasks": [], "saved": false, "kmArr": "", "stopFiles": []}, {"status": "idle", "activeTask": null, "tasks": [], "saved": false, "kmArr": "", "stopFiles": []}]}, "ft_index": [{"week": "2026-06-15", "uid": "gmorin", "emp": "Gabriel Morin", "savedAt": "2026-06-19T20:00:00.000Z", "totalH": 57.75}, {"week": "2026-06-15", "uid": "mbedard", "emp": "Mathis Bédard", "savedAt": "2026-06-19T20:00:00.000Z", "totalH": 18.75}, {"week": "2026-06-15", "uid": "spomerleau", "emp": "Samuel Pomerleau", "savedAt": "2026-06-19T20:00:00.000Z", "totalH": 53.5}, {"week": "2026-06-15", "uid": "cndiaye", "emp": "Cheikh Ndiaye", "savedAt": "2026-06-21T18:00:00.000Z", "totalH": 57.0}, {"week": "2026-06-15", "uid": "cwweil", "emp": "Charles-William Weil", "savedAt": "2026-06-21T18:00:00.000Z", "totalH": 58.25}], "cndiaye_2026-06-15": {"week": "2026-06-15", "emp": "Cheikh Ndiaye", "email": "cndiaye@soucyaquatik.com", "savedAt": "2026-06-21T18:00:00.000Z", "days": [{"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Desjardins", "odt": "", "detail": "Travaux chantier", "start": "07:00", "end": "09:00", "hrs": 2.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Champlain", "odt": "", "detail": "Tournée / tests", "start": "09:00", "end": "18:30", "hrs": 9.5, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Desjardins", "odt": "", "detail": "Travaux chantier", "start": "07:00", "end": "09:00", "hrs": 2.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Champlain", "odt": "", "detail": "Tournée / tests", "start": "09:00", "end": "14:30", "hrs": 5.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Mérici", "odt": "", "detail": "Travaux chantier", "start": "14:30", "end": "18:30", "hrs": 4.0, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Champlain", "odt": "", "detail": "Tournée / tests", "start": "07:00", "end": "10:30", "hrs": 3.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Quai Paquet", "odt": "", "detail": "Travaux chantier", "start": "10:30", "end": "14:30", "hrs": 4.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "7 Éléments", "odt": "", "detail": "Travaux chantier", "start": "14:30", "end": "18:00", "hrs": 3.5, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Champlain", "odt": "", "detail": "Tournée / tests", "start": "07:00", "end": "09:00", "hrs": 2.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Quai Paquet", "odt": "", "detail": "Travaux chantier", "start": "09:00", "end": "11:00", "hrs": 2.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Benson", "odt": "", "detail": "Travaux chantier", "start": "11:00", "end": "15:00", "hrs": 4.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Champlain", "odt": "", "detail": "Fin de tournée", "start": "15:00", "end": "17:30", "hrs": 2.5, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Champlain", "odt": "", "detail": "Tournée / tests", "start": "07:00", "end": "10:30", "hrs": 3.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Diplomate", "odt": "", "detail": "Travaux chantier", "start": "10:30", "end": "13:30", "hrs": 3.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Desjardins", "odt": "", "detail": "Travaux chantier", "start": "13:30", "end": "15:30", "hrs": 2.0, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "idle", "activeTask": null, "tasks": [], "saved": false, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Cité M", "odt": "", "detail": "Travaux chantier", "start": "07:00", "end": "11:00", "hrs": 4.0, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}]}, "cwweil_2026-06-15": {"week": "2026-06-15", "emp": "Charles-William Weil", "email": "cwweil@soucyaquatik.com", "savedAt": "2026-06-21T18:00:00.000Z", "days": [{"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Quai Paquet", "odt": "", "detail": "Travaux chantier", "start": "08:00", "end": "10:00", "hrs": 2.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Bureau / Entrepôt", "odt": "", "detail": "Admin / matériel", "start": "10:00", "end": "11:00", "hrs": 1.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Dion", "odt": "", "detail": "Travaux chantier", "start": "11:00", "end": "17:30", "hrs": 6.5, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Quai Paquet", "odt": "", "detail": "Travaux chantier", "start": "06:30", "end": "08:00", "hrs": 1.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Bureau / Entrepôt", "odt": "", "detail": "Admin / réception", "start": "08:00", "end": "09:30", "hrs": 1.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "CTM / 7 Éléments", "odt": "", "detail": "Travaux chantier", "start": "09:30", "end": "13:30", "hrs": 4.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "CCNQ", "odt": "", "detail": "Travaux chantier", "start": "13:30", "end": "15:30", "hrs": 2.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Jardin Mérici", "odt": "", "detail": "Travaux chantier", "start": "15:30", "end": "19:00", "hrs": 3.5, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Quai Paquet", "odt": "", "detail": "Travaux chantier", "start": "06:15", "end": "08:00", "hrs": 1.75, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Bureau / Entrepôt", "odt": "", "detail": "Admin / réception", "start": "08:00", "end": "09:30", "hrs": 1.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "CCNQ", "odt": "", "detail": "Travaux chantier", "start": "09:30", "end": "16:00", "hrs": 6.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Quai Paquet", "odt": "", "detail": "Retour / finition", "start": "16:00", "end": "17:30", "hrs": 1.5, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "CCNQ", "odt": "", "detail": "Travaux chantier", "start": "06:15", "end": "08:00", "hrs": 1.75, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Bureau / Entrepôt", "odt": "", "detail": "Admin / matériel", "start": "08:00", "end": "09:00", "hrs": 1.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "CTM / 7 Éléments / Consolata", "odt": "", "detail": "Travaux chantier", "start": "09:00", "end": "16:00", "hrs": 7.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "CCNQ", "odt": "", "detail": "Travaux chantier", "start": "16:00", "end": "17:45", "hrs": 1.75, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Bureau / Entrepôt", "odt": "", "detail": "Admin / réception", "start": "06:30", "end": "08:00", "hrs": 1.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Consolata", "odt": "", "detail": "Travaux chantier", "start": "08:00", "end": "10:45", "hrs": 2.75, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Diplomate", "odt": "", "detail": "Travaux chantier", "start": "10:45", "end": "13:15", "hrs": 2.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Consolata", "odt": "", "detail": "Retour chantier", "start": "13:15", "end": "15:00", "hrs": 1.75, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Quai Paquet", "odt": "", "detail": "Fin de journée", "start": "15:00", "end": "17:00", "hrs": 2.0, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "idle", "activeTask": null, "tasks": [], "saved": false, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Consolata", "odt": "", "detail": "Travaux chantier", "start": "09:00", "end": "10:00", "hrs": 1.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "CCNQ", "odt": "", "detail": "Travaux chantier", "start": "10:00", "end": "11:00", "hrs": 1.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Bureau", "odt": "", "detail": "Admin / rapports", "start": "11:00", "end": "12:00", "hrs": 1.0, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}]}};
+var PRELOAD_DATA={"gmorin_2026-06-15": {"week": "2026-06-15", "emp": "Gabriel Morin", "email": "gmorin@soucyaquatik.com", "savedAt": "2026-06-19T20:00:00.000Z", "days": [{"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Bureau", "odt": "", "detail": "Travaux bureau", "start": "07:15", "end": "11:45", "hrs": 4.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Quai Paquet", "odt": "", "detail": "Intervention chantier", "start": "12:15", "end": "14:00", "hrs": 1.75, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Cité M + 7 Éléments", "odt": "", "detail": "Travaux chantier", "start": "14:00", "end": "21:00", "hrs": 7.0, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Avec Maxime L'Heureux", "odt": "", "detail": "Chantier MTL", "start": "07:00", "end": "20:00", "hrs": 13.0, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Avec Maxime L'Heureux", "odt": "", "detail": "Chantier MTL", "start": "07:00", "end": "20:00", "hrs": 13.0, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Avec Maxime L'Heureux", "odt": "", "detail": "Chantier MTL", "start": "07:00", "end": "17:00", "hrs": 10.0, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "SDC3", "odt": "", "detail": "Travaux chantier", "start": "07:00", "end": "09:30", "hrs": 2.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Diplomates", "odt": "", "detail": "Intervention", "start": "09:30", "end": "11:45", "hrs": 2.25, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Livraison Mérici", "odt": "", "detail": "Livraison matériel", "start": "11:45", "end": "13:15", "hrs": 1.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Diplomates", "odt": "", "detail": "Retour chantier", "start": "13:15", "end": "15:30", "hrs": 2.25, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "idle", "activeTask": null, "tasks": [], "saved": false, "kmArr": "", "stopFiles": []}, {"status": "idle", "activeTask": null, "tasks": [], "saved": false, "kmArr": "", "stopFiles": []}]}, "mbedard_2026-06-15": {"week": "2026-06-15", "emp": "Mathis Bédard", "email": "mbedard@soucyaquatik.com", "savedAt": "2026-06-19T20:00:00.000Z", "days": [{"status": "idle", "activeTask": null, "tasks": [], "saved": false, "kmArr": "", "stopFiles": []}, {"status": "idle", "activeTask": null, "tasks": [], "saved": false, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Quai des Flots", "odt": "", "detail": "Nettoyage piscine", "start": "07:00", "end": "09:30", "hrs": 2.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Quai Paquet", "odt": "", "detail": "Nettoyage piscine", "start": "09:30", "end": "14:00", "hrs": 4.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Champlain", "odt": "", "detail": "Test d'eau", "start": "14:00", "end": "17:45", "hrs": 3.75, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Cité M", "odt": "", "detail": "Travaux chantier", "start": "07:00", "end": "09:00", "hrs": 2.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "St-Augustin", "odt": "", "detail": "Nettoyage piscine", "start": "09:00", "end": "11:30", "hrs": 2.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Robert Lepage", "odt": "", "detail": "Test d'eau", "start": "11:30", "end": "13:00", "hrs": 1.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Aventura", "odt": "", "detail": "Test d'eau", "start": "13:00", "end": "15:00", "hrs": 2.0, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "idle", "activeTask": null, "tasks": [], "saved": false, "kmArr": "", "stopFiles": []}, {"status": "idle", "activeTask": null, "tasks": [], "saved": false, "kmArr": "", "stopFiles": []}, {"status": "idle", "activeTask": null, "tasks": [], "saved": false, "kmArr": "", "stopFiles": []}]}, "spomerleau_2026-06-15": {"week": "2026-06-15", "emp": "Samuel Pomerleau", "email": "spomerleau@soucyaquatik.com", "savedAt": "2026-06-19T20:00:00.000Z", "days": [{"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Canotier", "odt": "", "detail": "Travaux chantier", "start": "07:00", "end": "08:00", "hrs": 1.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Dion", "odt": "", "detail": "Travaux chantier", "start": "08:00", "end": "12:00", "hrs": 4.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Test midi", "odt": "", "detail": "Tests d'eau", "start": "12:00", "end": "14:00", "hrs": 2.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Dion", "odt": "", "detail": "Travaux chantier", "start": "14:00", "end": "16:45", "hrs": 2.75, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Test", "odt": "", "detail": "Tests d'eau", "start": "16:45", "end": "19:00", "hrs": 2.25, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Test Champlain", "odt": "", "detail": "Test d'eau", "start": "07:00", "end": "08:00", "hrs": 1.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Dion", "odt": "", "detail": "Travaux chantier", "start": "08:00", "end": "08:30", "hrs": 0.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Quai des Flots", "odt": "", "detail": "Remplissage", "start": "08:30", "end": "09:00", "hrs": 0.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Robert Lepage", "odt": "", "detail": "Travaux chantier", "start": "09:00", "end": "11:45", "hrs": 2.75, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Test Champlain", "odt": "", "detail": "Test d'eau", "start": "11:45", "end": "15:00", "hrs": 3.25, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Test Paquet", "odt": "", "detail": "Test d'eau", "start": "15:00", "end": "16:00", "hrs": 1.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Test Champlain", "odt": "", "detail": "Test d'eau", "start": "16:00", "end": "19:00", "hrs": 3.0, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "37283", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Test Champlain", "odt": "", "detail": "Test d'eau", "start": "06:30", "end": "09:00", "hrs": 2.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Quai des Flots", "odt": "", "detail": "Travaux chantier", "start": "09:00", "end": "11:45", "hrs": 2.75, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "SDC3", "odt": "", "detail": "Travaux chantier", "start": "11:45", "end": "12:15", "hrs": 0.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Test Canotier", "odt": "", "detail": "Test d'eau", "start": "12:15", "end": "12:45", "hrs": 0.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Quai Paquet", "odt": "", "detail": "Travaux chantier", "start": "12:45", "end": "16:00", "hrs": 3.25, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Test Champlain", "odt": "", "detail": "Test d'eau", "start": "16:00", "end": "17:45", "hrs": 1.75, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "7 Éléments + Cité M", "odt": "", "detail": "Travaux chantier", "start": "07:00", "end": "09:00", "hrs": 2.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Consolata", "odt": "", "detail": "Travaux chantier", "start": "09:00", "end": "13:00", "hrs": 4.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Robert Lepage", "odt": "", "detail": "Travaux chantier", "start": "13:00", "end": "14:00", "hrs": 1.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Aventura", "odt": "", "detail": "Travaux chantier", "start": "14:00", "end": "15:00", "hrs": 1.0, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Dégât eau SDC3", "odt": "", "detail": "Intervention urgente", "start": "07:00", "end": "09:00", "hrs": 2.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Diplomate", "odt": "", "detail": "Travaux chantier", "start": "09:00", "end": "12:00", "hrs": 3.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Livraison Mérici", "odt": "", "detail": "Livraison matériel", "start": "12:00", "end": "13:30", "hrs": 1.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Diplomate", "odt": "", "detail": "Travaux chantier", "start": "13:30", "end": "15:15", "hrs": 1.75, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Test Champlain", "odt": "", "detail": "Test d'eau", "start": "15:15", "end": "17:15", "hrs": 2.0, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": [{"name": "recu-sem26.jpeg", "size": 150000, "type": "image/jpeg"}]}, {"status": "idle", "activeTask": null, "tasks": [], "saved": false, "kmArr": "", "stopFiles": []}, {"status": "idle", "activeTask": null, "tasks": [], "saved": false, "kmArr": "", "stopFiles": []}]}, "ft_index": [{"week": "2026-06-15", "uid": "gmorin", "emp": "Gabriel Morin", "savedAt": "2026-06-19T20:00:00.000Z", "totalH": 57.75}, {"week": "2026-06-15", "uid": "mbedard", "emp": "Mathis Bédard", "savedAt": "2026-06-19T20:00:00.000Z", "totalH": 18.75}, {"week": "2026-06-15", "uid": "spomerleau", "emp": "Samuel Pomerleau", "savedAt": "2026-06-19T20:00:00.000Z", "totalH": 53.5}, {"week": "2026-06-15", "uid": "cndiaye", "emp": "Cheikh Ndiaye", "savedAt": "2026-06-21T18:00:00.000Z", "totalH": 57.0}, {"week": "2026-06-15", "uid": "cwweil", "emp": "Charles-William Weil", "savedAt": "2026-06-21T18:00:00.000Z", "totalH": 58.25}], "cndiaye_2026-06-15": {"week": "2026-06-15", "emp": "Cheikh Ndiaye", "email": "cndiaye@soucyaquatik.com", "savedAt": "2026-06-21T18:00:00.000Z", "days": [{"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Desjardins", "odt": "", "detail": "Travaux chantier", "start": "07:00", "end": "09:00", "hrs": 2.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Champlain", "odt": "", "detail": "Tournée / tests", "start": "09:00", "end": "18:30", "hrs": 9.5, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Desjardins", "odt": "", "detail": "Travaux chantier", "start": "07:00", "end": "09:00", "hrs": 2.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Champlain", "odt": "", "detail": "Tournée / tests", "start": "09:00", "end": "14:30", "hrs": 5.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Mérici", "odt": "", "detail": "Travaux chantier", "start": "14:30", "end": "18:30", "hrs": 4.0, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Champlain", "odt": "", "detail": "Tournée / tests", "start": "07:00", "end": "10:30", "hrs": 3.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Quai Paquet", "odt": "", "detail": "Travaux chantier", "start": "10:30", "end": "14:30", "hrs": 4.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "7 Éléments", "odt": "", "detail": "Travaux chantier", "start": "14:30", "end": "18:00", "hrs": 3.5, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Champlain", "odt": "", "detail": "Tournée / tests", "start": "07:00", "end": "09:00", "hrs": 2.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Quai Paquet", "odt": "", "detail": "Travaux chantier", "start": "09:00", "end": "11:00", "hrs": 2.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Benson", "odt": "", "detail": "Travaux chantier", "start": "11:00", "end": "15:00", "hrs": 4.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Champlain", "odt": "", "detail": "Fin de tournée", "start": "15:00", "end": "17:30", "hrs": 2.5, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Champlain", "odt": "", "detail": "Tournée / tests", "start": "07:00", "end": "10:30", "hrs": 3.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Diplomate", "odt": "", "detail": "Travaux chantier", "start": "10:30", "end": "13:30", "hrs": 3.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Desjardins", "odt": "", "detail": "Travaux chantier", "start": "13:30", "end": "15:30", "hrs": 2.0, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Cité M", "odt": "", "detail": "Travaux chantier", "start": "07:00", "end": "11:00", "hrs": 4.0, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "idle", "activeTask": null, "tasks": [], "saved": false, "kmArr": "", "stopFiles": []}]}, "cwweil_2026-06-15": {"week": "2026-06-15", "emp": "Charles-William Weil", "email": "cwweil@soucyaquatik.com", "savedAt": "2026-06-21T18:00:00.000Z", "days": [{"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Quai Paquet", "odt": "", "detail": "Travaux chantier", "start": "08:00", "end": "10:00", "hrs": 2.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Bureau / Entrepôt", "odt": "", "detail": "Admin / matériel", "start": "10:00", "end": "11:00", "hrs": 1.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Dion", "odt": "", "detail": "Travaux chantier", "start": "11:00", "end": "17:30", "hrs": 6.5, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Quai Paquet", "odt": "", "detail": "Travaux chantier", "start": "06:30", "end": "08:00", "hrs": 1.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Bureau / Entrepôt", "odt": "", "detail": "Admin / réception", "start": "08:00", "end": "09:30", "hrs": 1.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "CTM / 7 Éléments", "odt": "", "detail": "Travaux chantier", "start": "09:30", "end": "13:30", "hrs": 4.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "CCNQ", "odt": "", "detail": "Travaux chantier", "start": "13:30", "end": "15:30", "hrs": 2.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Jardin Mérici", "odt": "", "detail": "Travaux chantier", "start": "15:30", "end": "19:00", "hrs": 3.5, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Quai Paquet", "odt": "", "detail": "Travaux chantier", "start": "06:15", "end": "08:00", "hrs": 1.75, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Bureau / Entrepôt", "odt": "", "detail": "Admin / réception", "start": "08:00", "end": "09:30", "hrs": 1.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "CCNQ", "odt": "", "detail": "Travaux chantier", "start": "09:30", "end": "16:00", "hrs": 6.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Quai Paquet", "odt": "", "detail": "Retour / finition", "start": "16:00", "end": "17:30", "hrs": 1.5, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "CCNQ", "odt": "", "detail": "Travaux chantier", "start": "06:15", "end": "08:00", "hrs": 1.75, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Bureau / Entrepôt", "odt": "", "detail": "Admin / matériel", "start": "08:00", "end": "09:00", "hrs": 1.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "CTM / 7 Éléments / Consolata", "odt": "", "detail": "Travaux chantier", "start": "09:00", "end": "16:00", "hrs": 7.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "CCNQ", "odt": "", "detail": "Travaux chantier", "start": "16:00", "end": "17:45", "hrs": 1.75, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Bureau / Entrepôt", "odt": "", "detail": "Admin / réception", "start": "06:30", "end": "08:00", "hrs": 1.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Consolata", "odt": "", "detail": "Travaux chantier", "start": "08:00", "end": "10:45", "hrs": 2.75, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Diplomate", "odt": "", "detail": "Travaux chantier", "start": "10:45", "end": "13:15", "hrs": 2.5, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Consolata", "odt": "", "detail": "Retour chantier", "start": "13:15", "end": "15:00", "hrs": 1.75, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Quai Paquet", "odt": "", "detail": "Fin de journée", "start": "15:00", "end": "17:00", "hrs": 2.0, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "done", "activeTask": null, "tasks": [{"id": 0, "lieu": "Consolata", "odt": "", "detail": "Travaux chantier", "start": "09:00", "end": "10:00", "hrs": 1.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "CCNQ", "odt": "", "detail": "Travaux chantier", "start": "10:00", "end": "11:00", "hrs": 1.0, "active": false, "kmDep": "", "kmArr": "", "files": []}, {"id": 0, "lieu": "Bureau", "odt": "", "detail": "Admin / rapports", "start": "11:00", "end": "12:00", "hrs": 1.0, "active": false, "kmDep": "", "kmArr": "", "files": []}], "saved": true, "kmArr": "", "stopFiles": []}, {"status": "idle", "activeTask": null, "tasks": [], "saved": false, "kmArr": "", "stopFiles": []}]}};
 function preloadFTData(){
   var LS='sa_plat_';
   var keys=Object.keys(PRELOAD_DATA);
@@ -1063,44 +1098,249 @@ for(var _i=0;_i<7;_i++) chronoState.push(makeDay());
 function lsGet(k){try{var r=localStorage.getItem(LS+k);return r?JSON.parse(r):null;}catch(e){return null;}}
 function lsSet(k,v){try{localStorage.setItem(LS+k,JSON.stringify(v));}catch(e){}}
 
+// ═══════════════════════════════════════════════════════
+// SYNCHRONISATION SUPABASE (offline-first hybride)
+// ═══════════════════════════════════════════════════════
+var SB_URL='https://ldqvdiaewvhnukuaxdmc.supabase.co';
+var SB_KEY='sb_publishable_qVd_6eoAvwrDGs9u81woAg_RrMpTJxn';
+var sb=null;
+var sbReady=false;
+var sbStatus='offline'; // offline | syncing | online
+var SB_TABLES={workorders:'workorders',sites:'sites',plan:'plan',flotte:'flotte',inventaire:'inventaire',comptes:'comptes'};
+
+function initSupabase(){
+  try{
+    if(typeof supabase==='undefined'){setSbStatus('offline');return;}
+    sb=supabase.createClient(SB_URL,SB_KEY);
+    sbReady=true;
+    setSbStatus('syncing');
+    syncPullAll(function(){
+      setSbStatus('online');
+      subscribeRealtime();
+    });
+  }catch(e){setSbStatus('offline');}
+}
+
+function setSbStatus(s){
+  sbStatus=s;
+  var el=document.getElementById('sbStatus');
+  if(!el)return;
+  if(s==='online'){el.textContent='🟢';el.title='Synchronisé';}
+  else if(s==='syncing'){el.textContent='🔄';el.title='Synchronisation…';}
+  else{el.textContent='🟡';el.title='Hors-ligne (données locales)';}
+}
+
+// Mapping clé locale → table Supabase
+function sbTableFor(localKey){return SB_TABLES[localKey]||null;}
+
+// PULL : récupère une table depuis Supabase → localStorage
+function syncPull(localKey, cb){
+  var table=sbTableFor(localKey);
+  if(!sb||!table){if(cb)cb();return;}
+  sb.from(table).select('*').then(function(res){
+    if(res.error){if(cb)cb();return;}
+    var rows=res.data||[];
+    // Convertir descr→desc et nettoyer colonnes Supabase
+    rows.forEach(function(r){
+      if(r.descr!==undefined){r.desc=r.descr;delete r.descr;}
+      delete r.updated_at;delete r.created_at;
+    });
+    lsSet(localKey,rows);
+    if(cb)cb();
+  });
+}
+
+// PULL feuilles de temps (structure spéciale)
+function syncPullFT(cb){
+  if(!sb){if(cb)cb();return;}
+  sb.from('feuilles_temps').select('*').then(function(res){
+    if(res.error){if(cb)cb();return;}
+    var rows=res.data||[];
+    var idx=[];
+    rows.forEach(function(r){
+      lsSet('ft_week_'+r.id,{week:r.week,emp:r.emp,email:r.email,savedAt:r.saved_at,days:r.days,uid:r.uid});
+      idx.push({week:r.week,uid:r.uid,emp:r.emp,savedAt:r.saved_at,totalH:r.total_h});
+    });
+    if(idx.length)lsSet('ft_index',idx);
+    if(cb)cb();
+  });
+}
+
+// PULL toutes les tables
+function syncPullAll(cb){
+  var keys=Object.keys(SB_TABLES);
+  var done=0,total=keys.length+1;
+  function tick(){done++;if(done>=total&&cb)cb();}
+  keys.forEach(function(k){syncPull(k,tick);});
+  syncPullFT(tick);
+}
+
+// PUSH : envoie un enregistrement vers Supabase (upsert)
+function sbPush(localKey, record){
+  var table=sbTableFor(localKey);
+  if(!sb||!table||!record)return;
+  var row=JSON.parse(JSON.stringify(record));
+  // desc est réservé en SQL → descr
+  if(row.desc!==undefined){row.descr=row.desc;delete row.desc;}
+  row.updated_at=new Date().toISOString();
+  setSbStatus('syncing');
+  sb.from(table).upsert(row).then(function(res){
+    setSbStatus(res.error?'offline':'online');
+  });
+}
+
+// PUSH suppression
+function sbDelete(localKey, id){
+  var table=sbTableFor(localKey);
+  if(!sb||!table)return;
+  sb.from(table).delete().eq('id',id).then(function(){});
+}
+
+// PUSH liste complète (diff: upsert tout)
+function sbPushAll(localKey, list){
+  var table=sbTableFor(localKey);
+  if(!sb||!table||!Array.isArray(list))return;
+  var rows=list.map(function(r){
+    var row=JSON.parse(JSON.stringify(r));
+    if(row.desc!==undefined){row.descr=row.desc;delete row.desc;}
+    row.updated_at=new Date().toISOString();
+    return row;
+  });
+  if(!rows.length)return;
+  setSbStatus('syncing');
+  sb.from(table).upsert(rows).then(function(res){
+    setSbStatus(res.error?'offline':'online');
+  });
+}
+
+// PUSH feuille de temps
+function sbPushFT(uid, week, payload, totalH){
+  if(!sb)return;
+  var row={id:uid+'_'+week,uid:uid,emp:payload.emp,email:payload.email,week:week,
+    days:payload.days,total_h:totalH,saved_at:payload.savedAt||new Date().toISOString(),
+    updated_at:new Date().toISOString()};
+  setSbStatus('syncing');
+  sb.from('feuilles_temps').upsert(row).then(function(res){
+    setSbStatus(res.error?'offline':'online');
+  });
+}
+
+// REALTIME : écoute les changements des autres appareils
+function subscribeRealtime(){
+  if(!sb)return;
+  Object.keys(SB_TABLES).forEach(function(localKey){
+    var table=SB_TABLES[localKey];
+    sb.channel('rt_'+table).on('postgres_changes',{event:'*',schema:'public',table:table},function(payload){
+      // Re-pull la table et rafraîchir le module actif si concerné
+      syncPull(localKey,function(){
+        if((localKey==='workorders'&&curMod==='wo')||
+           (localKey==='sites'&&curMod==='sites')||
+           (localKey==='plan'&&curMod==='plan')||
+           (localKey==='flotte'&&curMod==='flotte')||
+           (localKey==='inventaire'&&curMod==='inventaire')||
+           (localKey==='comptes'&&curMod==='comptes')){
+          refreshCurrentMod();
+        }
+      });
+    }).subscribe();
+  });
+}
+
+function refreshCurrentMod(){
+  if(curMod==='wo')renderWOList();
+  else if(curMod==='sites')renderSiteList();
+  else if(curMod==='plan')renderPlan();
+  else if(curMod==='flotte')renderFlotteList();
+  else if(curMod==='inventaire')renderInvList();
+  else if(curMod==='comptes')renderComptesList();
+  else if(curMod==='stats')renderStats();
+}
+
 function getWOs(){return lsGet('workorders')||[];}
-function setWOs(d){lsSet('workorders',d);}
+function setWOs(d){lsSet('workorders',d);sbPushAll('workorders',d);}
 function getSites(){return lsGet('sites')||[];}
-function setSites(d){lsSet('sites',d);}
+function setSites(d){lsSet('sites',d);sbPushAll('sites',d);}
 function getPlan(){return lsGet('plan')||[];}
-function setPlan(d){lsSet('plan',d);}
+function setPlan(d){lsSet('plan',d);sbPushAll('plan',d);}
 function getFlotte(){return lsGet('flotte')||[];}
-function setFlotte(d){lsSet('flotte',d);}
+function setFlotte(d){lsSet('flotte',d);sbPushAll('flotte',d);}
 function getInv(){return lsGet('inventaire')||[];}
-function setInv(d){lsSet('inventaire',d);}
+function setInv(d){lsSet('inventaire',d);sbPushAll('inventaire',d);}
 function getComptes(){return lsGet('comptes')||COMPTES;}
-function setComptes(d){lsSet('comptes',d);}
+function setComptes(d){lsSet('comptes',d);sbPushAll('comptes',d);}
 function getFTIndex(){return lsGet('ft_index')||[];}
 function setFTIndex(d){lsSet('ft_index',d);}
 function getFTWeek(w){return lsGet('ft_week_'+w);}
 function setFTWeek(w,d){lsSet('ft_week_'+w,d);}
 
+// Quand un superviseur consulte la FT d'un autre employé, viewingUid est défini
+var viewingUid=null;
+function activeUid(){return viewingUid||(currentUser?currentUser.id:null);}
+function activeName(){
+  if(viewingUid){var c=getComptes().find(function(x){return x.id===viewingUid;});return c?(c.prenom+' '+c.nom).trim():viewingUid;}
+  return fullName();
+}
+function activeEmail(){
+  if(viewingUid){var c=getComptes().find(function(x){return x.id===viewingUid;});return c?c.email:'';}
+  return currentUser?currentUser.email:'';
+}
 function saveFT(){
   var week=document.getElementById('weekDate').value;
   if(!week||!currentUser)return;
-  var payload={week:week,emp:fullName(),email:currentUser.email,savedAt:new Date().toISOString(),
+  var uid2=activeUid();
+  var payload={week:week,emp:activeName(),email:activeEmail(),savedAt:new Date().toISOString(),
     days:chronoState.map(function(d){return{status:d.status,tasks:d.tasks,saved:d.saved,kmArr:d.kmArr,stopFiles:d.stopFiles};})};
-  setFTWeek(currentUser.id+'_'+week,payload);
+  setFTWeek(uid2+'_'+week,payload);
   var idx=getFTIndex();
   var found=false;
   var totalH=weekTotal();
-  for(var i=0;i<idx.length;i++){if(idx[i].week===week&&idx[i].uid===currentUser.id){idx[i].savedAt=payload.savedAt;idx[i].totalH=totalH;found=true;break;}}
-  if(!found)idx.unshift({week:week,uid:currentUser.id,emp:fullName(),savedAt:payload.savedAt,totalH:totalH});
+  for(var i=0;i<idx.length;i++){if(idx[i].week===week&&idx[i].uid===uid2){idx[i].savedAt=payload.savedAt;idx[i].totalH=totalH;found=true;break;}}
+  if(!found)idx.unshift({week:week,uid:uid2,emp:activeName(),savedAt:payload.savedAt,totalH:totalH});
   setFTIndex(idx);
+  sbPushFT(uid2,week,payload,totalH);
 }
 function loadFT(week){
   if(!currentUser)return null;
-  return getFTWeek(currentUser.id+'_'+week);
+  return getFTWeek(activeUid()+'_'+week);
 }
 function applyFT(data){
   if(!data)return;
   for(var i=0;i<7;i++){
-    if(data.days&&data.days[i])chronoState[i]={status:data.days[i].status||'idle',activeTask:null,tasks:data.days[i].tasks||[],saved:data.days[i].saved||false,kmArr:data.days[i].kmArr||'',stopFiles:data.days[i].stopFiles||[]};
+    if(data.days&&data.days[i]){
+      var tasks=data.days[i].tasks||[];
+      var status=data.days[i].status||'idle';
+      // Réparer les punchs actifs orphelins : une seule tâche peut être active
+      var activeTask=null;
+      var activeCount=0;
+      tasks.forEach(function(t){if(t.active){activeCount++;}});
+      if(activeCount>0){
+        // Garder seulement la DERNIÈRE active, fermer les autres
+        for(var j=tasks.length-1;j>=0;j--){
+          if(tasks[j].active){
+            if(!activeTask){activeTask=tasks[j];}
+            else{
+              // Fermer cette tâche orpheline : end = start de la suivante ou ses heures actuelles
+              tasks[j].active=false;
+              if(!tasks[j].end){
+                var nextStart=tasks[j+1]?tasks[j+1].start:tasks[j].start;
+                tasks[j].end=nextStart;
+                tasks[j].hrs=hrsFrom(tasks[j].start,nextStart);
+              }
+            }
+          }
+        }
+      }
+      // Si la tâche active n'a pas de startTs (vieux data), le reconstituer
+      if(activeTask&&!activeTask.startTs){
+        var sp=(activeTask.start||'00:00').split(':');
+        var d=new Date();d.setHours(parseInt(sp[0]),parseInt(sp[1]),0,0);
+        activeTask.startTs=d.getTime();
+      }
+      // Statut cohérent
+      if(activeTask){status='running';}
+      else if(status==='running'){status=tasks.length>0?'done':'idle';}
+      chronoState[i]={status:status,activeTask:activeTask,tasks:tasks,saved:data.days[i].saved||false,kmArr:data.days[i].kmArr||'',stopFiles:data.days[i].stopFiles||[]};
+    }
   }
 }
 
@@ -1109,8 +1349,10 @@ function applyFT(data){
 // ═══════════════════════════════════════════════════════
 function pad(n){return String(n).padStart(2,'0');}
 function nowHHMM(){var n=new Date();return pad(n.getHours())+':'+pad(n.getMinutes());}
-function fmtH(h){if(!h||h<=0)return '0h00';var hh=Math.floor(h),mm=Math.round((h-hh)*60);return hh+'h'+pad(mm);}
-function hrsFrom(s,e){if(!s||!e)return 0;var sp=s.split(':'),ep=e.split(':');return Math.max(0,Math.round(((parseInt(ep[0])*60+parseInt(ep[1]))-(parseInt(sp[0])*60+parseInt(sp[1])))/60*100)/100);}
+function nowHHMMSS(){var n=new Date();return pad(n.getHours())+':'+pad(n.getMinutes())+':'+pad(n.getSeconds());}
+function fmtH(h){if(!h||h<=0)return '0h00';var totalMin=Math.round(h*60);var hh=Math.floor(totalMin/60),mm=totalMin%60;return hh+'h'+pad(mm);}
+function minsFrom(s,e){if(!s||!e)return 0;var sp=s.split(':'),ep=e.split(':');var sm=parseInt(sp[0])*60+parseInt(sp[1]),em=parseInt(ep[0])*60+parseInt(ep[1]);if(em<sm)em+=1440;return Math.max(0,em-sm);}
+function hrsFrom(s,e){return minsFrom(s,e)/60;}
 function dayTotal(i){return(chronoState[i].tasks||[]).reduce(function(s,t){return s+(t.hrs||0);},0);}
 function weekTotal(){var t=0;for(var i=0;i<7;i++)t+=dayTotal(i);return t;}
 function fmtDate(str){if(!str)return '';var p=str.split('-');return p[2]+'/'+p[1]+'/'+p[0];}
@@ -1122,9 +1364,12 @@ function hasDroit(d){
   if(!currentUser)return false;
   if(isAdmin())return true;
   if(d==='comptes')return false;
+  // Suivi des opérations : superviseurs seulement
+  if(d==='suivi')return isSup();
   return true;
 }
 function canEdit(){return isSup();}
+function empName(id){if(!id)return '';var c=getComptes().find(function(x){return x.id===id;});return c?(c.prenom+' '+c.nom).trim():id;}
 function invCatIcon(c){var m={chimique:'🧪',equipement:'🔧',piece:'⚙️',consommable:'📦',autre:'📋'};return m[c]||'📦';}
 function roleBadge(r){var m={admin:'<span class="role-pill role-admin">Admin</span>',superviseur:'<span class="role-pill role-sup">Superviseur</span>',employe:'<span class="role-pill role-emp">Employé</span>'};return m[r]||'';}
 var DROITS_LABELS={plan:'Plan journalier',ft:'Feuilles de temps',wo:'Work Orders',sites:'Sites & Clients',flotte:'Flotte véhicules',inventaire:'Inventaire / Stock',comptes:'Gestion des comptes',stats:'Statistiques',map:'Carte GPS'};
@@ -1147,6 +1392,9 @@ document.addEventListener('DOMContentLoaded', function(){
 
   // Précharger les fiches de temps existantes
   preloadFTData();
+
+  // Initialiser la synchronisation cloud Supabase
+  setTimeout(initSupabase, 500);
 
   // Week date
   var d=new Date(),diff=d.getDay()===0?-6:1-d.getDay();
@@ -1177,6 +1425,15 @@ document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('btnArr').addEventListener('click', actionArriver);
   document.getElementById('btnChg').addEventListener('click', function(){openJobModal(false);});
   document.getElementById('btnStop').addEventListener('click', openStopModal);
+
+  // ── ÉDITION PUNCH (sup/admin) ──
+  document.getElementById('punchEditClose').addEventListener('click', function(){closeModal('punchEditModal');});
+  document.getElementById('peCancel').addEventListener('click', function(){closeModal('punchEditModal');});
+  document.getElementById('peSaveBtn').addEventListener('click', savePunchEdit);
+  document.getElementById('peDeleteBtn').addEventListener('click', deletePunch);
+  document.getElementById('punchEditModal').addEventListener('click', function(e){if(e.target===this)closeModal('punchEditModal');});
+  document.getElementById('addPunchManualBtn').addEventListener('click', openPunchAdd);
+  document.getElementById('ftEmpSel').addEventListener('change', onFTEmpChange);
 
   // NAV — dynamique, construit après login
   // (buildNavbar() appelé dans doLogin)
@@ -1277,6 +1534,7 @@ document.addEventListener('DOMContentLoaded', function(){
 var NAV_CONFIG=[
   {mod:'plan',  icon:'📅', lbl:'Plan'},
   {mod:'ft',    icon:'⏱',  lbl:'Temps'},
+  {mod:'suivi', icon:'🔴', lbl:'Suivi'},
   {mod:'wo',    icon:'📝', lbl:'WO'},
   {mod:'sites', icon:'🏗',  lbl:'Sites'},
   {mod:'flotte',icon:'🚗', lbl:'Flotte'},
@@ -1306,11 +1564,20 @@ function buildNavbar(){
 function doLogin(){
   var user=document.getElementById('loginUser').value.trim().toLowerCase();
   var pass=document.getElementById('loginPass').value;
+  // Tenter un refresh des comptes depuis Supabase avant de valider (pour comptes créés ailleurs)
+  if(sb&&sbReady){
+    syncPull('comptes',function(){doLoginCheck(user,pass);});
+  }else{
+    doLoginCheck(user,pass);
+  }
+}
+function doLoginCheck(user,pass){
   var comptes=getComptes();
   var compte=null;
   for(var i=0;i<comptes.length;i++){if(comptes[i].id===user&&comptes[i].mdp===pass){compte=comptes[i];break;}}
   if(!compte){document.getElementById('loginErr').textContent='Identifiant ou mot de passe incorrect';return;}
   currentUser=compte;
+  viewingUid=null;
   document.getElementById('loginErr').textContent='';
   document.getElementById('screenLogin').classList.remove('active');
   document.getElementById('screenApp').classList.add('active');
@@ -1331,6 +1598,7 @@ function doLogout(){
   // Sauvegarder avant de partir
   if(currentUser) saveFT();
   // Réinitialiser l'état
+  viewingUid=null;
   currentUser=null;
   for(var _li=0;_li<7;_li++) chronoState[_li]=makeDay();
   tid=0;
@@ -1345,7 +1613,7 @@ function doLogout(){
 // ═══════════════════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════════════════
-var modMap={plan:'modPlan',ft:'modFT',wo:'modWO',sites:'modSites',flotte:'modFlotte',inventaire:'modInv',comptes:'modComptes',stats:'modStats',map:'modMap'};
+var modMap={plan:'modPlan',ft:'modFT',suivi:'modSuivi',wo:'modWO',sites:'modSites',flotte:'modFlotte',inventaire:'modInv',comptes:'modComptes',stats:'modStats',map:'modMap'};
 
 function switchMod(mod){
   if(!hasDroit(mod))return;
@@ -1361,7 +1629,8 @@ function switchMod(mod){
     el.style.display=show?'flex':'none';
   });
   if(mod==='plan')renderPlan();
-  else if(mod==='ft'){buildDayTabs();renderDay(curDay);refreshCumul();refreshWkStatus();}
+  else if(mod==='ft'){setupFTEmpSelector();buildDayTabs();renderDay(curDay);refreshCumul();refreshWkStatus();}
+  else if(mod==='suivi')renderSuivi();
   else if(mod==='wo')renderWOList();
   else if(mod==='sites')renderSiteList();
   else if(mod==='flotte')renderFlotteList();
@@ -1478,7 +1747,7 @@ function renderWOAsSlot(container,wo){
     '<span class="pm-slot-name">'+woTypeIcon(wo.type)+' '+wo.client+'</span>'+
     '<span class="badge '+woStatusClass(wo.status)+'">'+wo.status.replace('_',' ')+'</span></div>'+
     '<div class="pm-slot-meta">📍 '+wo.site+'</div>'+
-    (wo.assigne?'<div style="margin-top:5px"><span class="pm-emp-chip">👷 '+wo.assigne+'</span></div>':'')+
+    (wo.assigne?'<div style="margin-top:5px"><span class="pm-emp-chip">👷 '+empName(wo.assigne)+'</span></div>':'')+
     (wo.notes?'<div class="pm-slot-meta" style="margin-top:4px;font-style:italic">'+wo.notes+'</div>':'');
   if(isSup())div.addEventListener('click',function(){openWOModal(wo);});
   container.appendChild(div);
@@ -1582,7 +1851,7 @@ function renderWOList(){
       '<div class="wo-site">📍 '+wo.site+'</div></div>'+
       '<div class="wo-body">'+
         '<div class="wo-stat"><div class="ws-l">Date</div><div class="ws-v">'+(wo.date?fmtDate(wo.date):'—')+'</div></div>'+
-        '<div class="wo-stat"><div class="ws-l">Assigné</div><div class="ws-v">'+(wo.assigne||'—')+'</div></div>'+
+        '<div class="wo-stat"><div class="ws-l">Assigné</div><div class="ws-v">'+(wo.assigne?empName(wo.assigne):'—')+'</div></div>'+
         (totalTasks>0?'<div class="wo-stat"><div class="ws-l">Tâches</div><div class="ws-v">'+checkedCount+'/'+totalTasks+'</div></div>':'')+
       '</div>';
     card.addEventListener('click',function(){openWOModal(wo);});
@@ -1601,7 +1870,15 @@ function openWOModal(wo){
   document.getElementById('woPriorite').value=wo?wo.priorite:'normal';
   document.getElementById('woStatus').value=wo?wo.status:'ouvert';
   document.getElementById('woDate').value=wo?wo.date:'';
-  document.getElementById('woAssigne').value=wo?wo.assigne:'';
+  // Remplir le menu déroulant des employés
+  var asel=document.getElementById('woAssigne');
+  asel.innerHTML='<option value="">— Personne —</option>';
+  getComptes().filter(function(c){return c.role!=='admin';}).forEach(function(c){
+    var opt=document.createElement('option');opt.value=c.id;
+    opt.textContent=(c.prenom+' '+c.nom).trim();
+    asel.appendChild(opt);
+  });
+  document.getElementById('woAssigne').value=wo?(wo.assigne||''):'';
   document.getElementById('woDesc').value=wo?wo.desc:'';
   document.getElementById('woNotes').value=wo?wo.notes:'';
   document.getElementById('woDeleteBtn').style.display=wo&&canEdit()?'flex':'none';
@@ -1736,7 +2013,55 @@ function buildDayTabs(){
 function renderDay(i){
   curDay=i;renderChrono();renderTaskLog();
   document.getElementById('daySaved').style.display=chronoState[i].saved?'block':'none';
+  // Bouton ajout manuel visible pour sup/admin
+  var addBtn=document.getElementById('addPunchManualBtn');
+  if(addBtn)addBtn.style.display=canEdit()?'block':'none';
   refreshWkStatus();
+}
+
+// Sélecteur d'employé pour superviseur (voir/éditer la FT d'un autre)
+function setupFTEmpSelector(){
+  var bar=document.getElementById('ftEmpSelector');
+  var sel=document.getElementById('ftEmpSel');
+  if(!bar||!sel)return;
+  if(!canEdit()){bar.style.display='none';viewingUid=null;return;}
+  bar.style.display='flex';
+  if(sb&&sbReady){syncPullFT(function(){fillFTEmpSelect();});}
+  fillFTEmpSelect();
+}
+function fillFTEmpSelect(){
+  var sel=document.getElementById('ftEmpSel');if(!sel)return;
+  sel.innerHTML='';
+  var meOpt=document.createElement('option');meOpt.value='';meOpt.textContent='👤 Moi ('+fullName()+')';sel.appendChild(meOpt);
+  getComptes().filter(function(c){return c.id!==currentUser.id&&c.role!=='admin';}).forEach(function(c){
+    var opt=document.createElement('option');opt.value=c.id;opt.textContent=(c.prenom+' '+c.nom).trim();
+    if(c.id===viewingUid)opt.selected=true;
+    sel.appendChild(opt);
+  });
+  sel.value=viewingUid||'';
+}
+function onFTEmpChange(){
+  var sel=document.getElementById('ftEmpSel');
+  // Sauvegarder l'employé courant avant de switcher
+  saveFT();
+  viewingUid=sel.value||null;
+  // Recharger la FT de l'employé sélectionné
+  for(var i=0;i<7;i++)chronoState[i]=makeDay();tid=0;
+  var stored=loadFT(document.getElementById('weekDate').value);
+  if(stored)applyFT(stored);
+  buildDayTabs();renderDay(curDay);refreshCumul();refreshWkStatus();
+  var who=viewingUid?activeName():'vous-même';
+  toast('👁 Feuille de '+who);
+}
+// Accès rapide depuis le Suivi → FT d'un employé
+function gotoEmpFT(uid2){
+  if(currentUser)saveFT();
+  viewingUid=uid2;
+  for(var i=0;i<7;i++)chronoState[i]=makeDay();tid=0;
+  var stored=loadFT(document.getElementById('weekDate').value);
+  if(stored)applyFT(stored);
+  switchMod('ft');
+  toast('👁 Feuille de '+activeName());
 }
 function renderChrono(){
   var st=chronoState[curDay];
@@ -1747,15 +2072,44 @@ function renderChrono(){
   box.className='chrono-box '+st.status;
   if(st.status==='idle'){icon.textContent='⏱';txt.textContent='Prêt à commencer';sub.textContent='Appuie sur Arriver pour démarrer';clk.style.display='none';bA.disabled=false;bC.disabled=true;bS.disabled=true;}
   else if(st.status==='running'){icon.textContent='🟢';txt.textContent=st.activeTask?st.activeTask.lieu||'En cours':'En cours';sub.textContent=st.activeTask?(st.activeTask.detail||'')+(st.activeTask.odt?' • '+st.activeTask.odt:''):'';clk.style.display='block';
-    function tick(){if(st.activeTask)clk.textContent=fmtH(hrsFrom(st.activeTask.start,nowHHMM()));}
-    tick();clockTimer=setInterval(tick,30000);bA.disabled=true;bC.disabled=false;bS.disabled=false;}
+    function tick(){
+      if(!st.activeTask){return;}
+      var secs;
+      if(st.activeTask.startTs){secs=Math.floor((Date.now()-st.activeTask.startTs)/1000);}
+      else{secs=minsFrom(st.activeTask.start,nowHHMM())*60;}
+      if(secs<0)secs=0;
+      var hh=Math.floor(secs/3600),mm=Math.floor((secs%3600)/60),ss=secs%60;
+      clk.textContent=hh+'h'+pad(mm)+'m'+pad(ss)+'s';
+    }
+    tick();clockTimer=setInterval(tick,1000);bA.disabled=true;bC.disabled=false;bS.disabled=false;}
   else{icon.textContent='✅';txt.textContent='Journée terminée';sub.textContent='Total : '+fmtH(dayTotal(curDay));clk.style.display='none';bA.disabled=true;bC.disabled=true;bS.disabled=true;}
+}
+function repairActivePunches(st){
+  // Sécurité : si plusieurs punchs actifs, fermer tous sauf le dernier
+  var actives=[];
+  st.tasks.forEach(function(t,i){if(t.active)actives.push(i);});
+  if(actives.length<=1){
+    // Synchroniser activeTask avec la tâche active réelle
+    if(actives.length===1){st.activeTask=st.tasks[actives[0]];st.status='running';}
+    return false;
+  }
+  // Garder le dernier, fermer les autres
+  for(var k=0;k<actives.length-1;k++){
+    var idx=actives[k];var t=st.tasks[idx];
+    var nextStart=st.tasks[idx+1]?st.tasks[idx+1].start:t.start;
+    t.active=false;t.end=t.end||nextStart;t.hrs=hrsFrom(t.start,t.end);
+  }
+  st.activeTask=st.tasks[actives[actives.length-1]];
+  st.status='running';
+  return true;
 }
 function renderTaskLog(){
   var st=chronoState[curDay];var log=document.getElementById('taskLog');var card=document.getElementById('taskLogCard');
+  // Réparer les punchs corrompus (multiples actifs) avant affichage
+  if(repairActivePunches(st)){saveFT();refreshCumul();}
   if(st.tasks.length===0){card.style.display='none';return;}
   card.style.display='block';log.innerHTML='';
-  st.tasks.forEach(function(t){
+  st.tasks.forEach(function(t,ti){
     var row=document.createElement('div');row.style.cssText='display:flex;align-items:center;gap:10px;padding:11px 13px;border-bottom:1px solid var(--line)';
     var dot=document.createElement('div');dot.style.cssText='width:10px;height:10px;border-radius:50%;flex-shrink:0;background:'+(t.active?'var(--orange)':'var(--green)');
     var body=document.createElement('div');body.style.cssText='flex:1;min-width:0';
@@ -1764,8 +2118,91 @@ function renderTaskLog(){
       (t.kmDep?'<div style="font-size:11px;color:var(--orange);margin-top:1px">🚗 '+t.kmDep+(t.kmArr?' → '+t.kmArr+' km':'')+'</div>':'')+
       (t.files&&t.files.length?'<div style="font-size:11px;color:var(--blue);margin-top:1px">📎 '+t.files.length+' fichier'+(t.files.length>1?'s':'')+'</div>':'');
     var hrs=document.createElement('div');hrs.style.cssText='font-size:13px;font-weight:800;color:var(--blue);flex-shrink:0';hrs.textContent=t.active?'⏳':fmtH(t.hrs||0);
-    row.appendChild(dot);row.appendChild(body);row.appendChild(hrs);log.appendChild(row);
+    row.appendChild(dot);row.appendChild(body);row.appendChild(hrs);
+    // Bouton édition pour superviseur/admin
+    if(canEdit()){
+      var edit=document.createElement('button');
+      edit.style.cssText='border:none;background:var(--lt);border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:14px;flex-shrink:0;margin-left:4px';
+      edit.textContent='✏️';
+      (function(idx){edit.addEventListener('click',function(e){e.stopPropagation();openPunchEdit(idx);});})(ti);
+      row.appendChild(edit);
+    }
+    log.appendChild(row);
   });
+}
+
+// ── ÉDITION D'UN PUNCH (superviseur/admin) ──
+var punchEditIdx=null;
+function openPunchEdit(idx){
+  punchEditIdx=idx;
+  var t=chronoState[curDay].tasks[idx];
+  if(!t)return;
+  document.getElementById('peLieu').value=t.lieu||'';
+  document.getElementById('peDetail').value=t.detail||'';
+  document.getElementById('peStart').value=t.start||'';
+  document.getElementById('peEnd').value=t.end||'';
+  document.getElementById('peKmDep').value=t.kmDep||'';
+  document.getElementById('peKmArr').value=t.kmArr||'';
+  document.getElementById('peModalTitle').textContent='Corriger — '+(t.lieu||'Tâche');
+  document.getElementById('peDeleteBtn').style.display='block';
+  openModal('punchEditModal');
+}
+// Ajout manuel d'un punch (mode création)
+function openPunchAdd(){
+  punchEditIdx=null; // null = mode ajout
+  document.getElementById('peLieu').value='';
+  document.getElementById('peDetail').value='';
+  document.getElementById('peStart').value='';
+  document.getElementById('peEnd').value='';
+  document.getElementById('peKmDep').value='';
+  document.getElementById('peKmArr').value='';
+  document.getElementById('peModalTitle').textContent='Ajouter un punch — '+DL[curDay];
+  document.getElementById('peDeleteBtn').style.display='none';
+  openModal('punchEditModal');
+  setTimeout(function(){document.getElementById('peLieu').focus();},300);
+}
+function savePunchEdit(){
+  var lieu=document.getElementById('peLieu').value.trim();
+  var detail=document.getElementById('peDetail').value.trim();
+  var start=document.getElementById('peStart').value;
+  var end=document.getElementById('peEnd').value;
+  var kmDep=document.getElementById('peKmDep').value.trim();
+  var kmArr=document.getElementById('peKmArr').value.trim();
+  if(!lieu){document.getElementById('peLieu').focus();return;}
+
+  if(punchEditIdx===null){
+    // ── MODE AJOUT ──
+    var hrs=(start&&end)?hrsFrom(start,end):0;
+    var newTask={id:++tid,lieu:lieu,detail:detail,start:start||'00:00',end:end||'',hrs:hrs,
+      active:false,kmDep:kmDep,kmArr:kmArr,files:[],
+      addedBy:currentUser.id,addedAt:new Date().toISOString()};
+    chronoState[curDay].tasks.push(newTask);
+    // Trier par heure de début
+    chronoState[curDay].tasks.sort(function(a,b){return (a.start||'').localeCompare(b.start||'');});
+    if(chronoState[curDay].status==='idle')chronoState[curDay].status='done';
+    saveFT();closeModal('punchEditModal');
+    renderTaskLog();refreshCumul();buildDayTabs();refreshWkStatus();
+    toast('✅ Punch ajouté');
+    return;
+  }
+
+  // ── MODE CORRECTION ──
+  var t=chronoState[curDay].tasks[punchEditIdx];
+  if(!t)return;
+  t.lieu=lieu;t.detail=detail;t.start=start;t.end=end;t.kmDep=kmDep;t.kmArr=kmArr;
+  if(t.start&&t.end){t.hrs=hrsFrom(t.start,t.end);t.active=false;}
+  t.correctedBy=currentUser.id;t.correctedAt=new Date().toISOString();
+  saveFT();closeModal('punchEditModal');
+  renderTaskLog();refreshCumul();buildDayTabs();refreshWkStatus();
+  toast('✅ Punch corrigé');
+}
+function deletePunch(){
+  if(punchEditIdx===null)return;
+  if(!confirm('Supprimer ce punch ?'))return;
+  chronoState[curDay].tasks.splice(punchEditIdx,1);
+  saveFT();closeModal('punchEditModal');
+  renderTaskLog();refreshCumul();buildDayTabs();refreshWkStatus();
+  toast('🗑 Punch supprimé');
 }
 function refreshCumul(){
   var wt=weekTotal(),lt=dayTotal(curDay),reg=Math.min(wt,40),supp=Math.max(0,wt-40);
@@ -1798,9 +2235,12 @@ function openJobModal(isFirst){
 function confirmJob(){
   var lieu=document.getElementById('mLieu').value.trim();if(!lieu){document.getElementById('mLieu').focus();return;}
   var st=chronoState[curDay];var now=nowHHMM();
-  if(st.activeTask){st.activeTask.end=now;st.activeTask.hrs=hrsFrom(st.activeTask.start,now);st.activeTask.active=false;}
+  // Fermer TOUTES les tâches actives (sécurité anti-doublons)
+  st.tasks.forEach(function(t){
+    if(t.active){t.end=now;t.hrs=hrsFrom(t.start,now);t.active=false;}
+  });
   var task={id:++tid,lieu:lieu,odt:document.getElementById('mOdt').value.trim(),detail:document.getElementById('mDetail').value.trim(),
-    start:now,end:'',hrs:0,active:true,kmDep:document.getElementById('mKmDep').value.trim(),kmArr:'',files:mPjFiles.slice()};
+    start:now,startTs:Date.now(),end:'',hrs:0,active:true,kmDep:document.getElementById('mKmDep').value.trim(),kmArr:'',files:mPjFiles.slice()};
   st.tasks.push(task);st.activeTask=task;st.status='running';
   closeModal('jobModal');renderChrono();renderTaskLog();refreshCumul();buildDayTabs();saveFT();
   toast('🟢 Démarré : '+lieu);
@@ -1811,7 +2251,10 @@ function openStopModal(){
 function confirmStop(){
   var st=chronoState[curDay];if(st.status!=='running')return;
   var now=nowHHMM();var kmArr=document.getElementById('sKmArr').value.trim();
-  if(st.activeTask){st.activeTask.end=now;st.activeTask.hrs=hrsFrom(st.activeTask.start,now);st.activeTask.kmArr=kmArr;st.activeTask.active=false;}
+  // Fermer toutes les tâches actives
+  st.tasks.forEach(function(t){
+    if(t.active){t.end=now;t.hrs=hrsFrom(t.start,now);t.kmArr=kmArr;t.active=false;}
+  });
   st.kmArr=kmArr;st.stopFiles=stopPjFiles.slice();st.status='done';st.activeTask=null;
   if(clockTimer){clearInterval(clockTimer);clockTimer=null;}
   closeModal('stopModal');renderChrono();renderTaskLog();refreshCumul();buildDayTabs();saveFT();
@@ -2169,6 +2612,93 @@ function deleteCompte(){
 // ═══════════════════════════════════════════════════════
 // STATISTIQUES
 // ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+// SUIVI DES OPÉRATIONS EN COURS (superviseur)
+// ═══════════════════════════════════════════════════════
+var suiviTimer=null;
+function renderSuivi(){
+  var el=document.getElementById('suiviContent');
+  if(!el)return;
+  if(suiviTimer){clearInterval(suiviTimer);suiviTimer=null;}
+  if(curMod==='suivi'){suiviTimer=setInterval(function(){if(curMod==='suivi')renderSuivi();else{clearInterval(suiviTimer);suiviTimer=null;}},30000);}
+  el.innerHTML='';
+  var week=document.getElementById('weekDate').value;
+  var comptes=getComptes().filter(function(c){return c.role!=='admin';});
+  var actifs=[],termines=[],inactifs=[];
+  comptes.forEach(function(c){
+    var ft=getFTWeek(c.id+'_'+week);
+    var dayData=ft&&ft.days&&ft.days[curDay]?ft.days[curDay]:null;
+    var info={nom:(c.prenom+' '+c.nom).trim(),id:c.id,dept:c.dept};
+    if(dayData&&dayData.status==='running'){
+      var act=null;(dayData.tasks||[]).forEach(function(t){if(t.active)act=t;});
+      info.task=act;info.dayTotal=(dayData.tasks||[]).reduce(function(s,t){return s+(t.hrs||0);},0);
+      actifs.push(info);
+    }else if(dayData&&dayData.tasks&&dayData.tasks.length>0){
+      info.dayTotal=dayData.tasks.reduce(function(s,t){return s+(t.hrs||0);},0);
+      info.lastTask=dayData.tasks[dayData.tasks.length-1];
+      termines.push(info);
+    }else{inactifs.push(info);}
+  });
+  var hdr=document.createElement('div');hdr.style.cssText='padding:0 2px 12px';
+  hdr.innerHTML='<div style="font-size:18px;font-weight:800;color:var(--dk)">Opérations en cours</div>'+
+    '<div style="font-size:12px;color:var(--muted);margin-top:2px">'+DL[curDay]+' · mise à jour auto · '+actifs.length+' actif'+(actifs.length>1?'s':'')+'</div>';
+  el.appendChild(hdr);
+  if(actifs.length>0){
+    var s1=document.createElement('div');s1.style.cssText='font-size:12px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.5px;padding:6px 2px';
+    s1.textContent='🟢 En activité ('+actifs.length+')';el.appendChild(s1);
+    actifs.forEach(function(info){
+      var card=document.createElement('div');
+      card.style.cssText='background:var(--card);border:1px solid var(--green);border-left:4px solid var(--green);border-radius:var(--r);padding:13px;margin-bottom:8px';
+      var dur=info.task?hrsFrom(info.task.start,nowHHMM()):0;
+      card.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between">'+
+        '<div style="display:flex;align-items:center;gap:10px">'+
+        '<div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--green),#0F6E56);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px">'+(info.nom[0]||'?')+'</div>'+
+        '<div><div style="font-size:14px;font-weight:700;color:var(--dk)">'+info.nom+'</div>'+
+        '<div style="font-size:11px;color:var(--muted)">'+info.dept+'</div></div></div>'+
+        '<div style="text-align:right"><div style="font-size:11px;color:var(--green);font-weight:700">⏱ '+fmtH(dur)+'</div>'+
+        '<div style="font-size:10px;color:var(--muted);margin-top:1px">depuis '+(info.task?info.task.start:'—')+'</div></div></div>'+
+        (info.task?'<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)">'+
+        '<div style="font-size:13px;font-weight:600;color:var(--blue)">📍 '+(info.task.lieu||'—')+'</div>'+
+        (info.task.detail?'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+info.task.detail+'</div>':'')+'</div>':'')+
+        '<div style="margin-top:8px;font-size:11px;color:var(--muted)">Total jour : <b style="color:var(--dk)">'+fmtH(info.dayTotal)+'</b></div>';
+      // Bouton accès rapide à la FT de l'employé
+      var btn=document.createElement('button');
+      btn.style.cssText='margin-top:10px;width:100%;background:var(--lt);color:var(--blue);border:none;border-radius:8px;padding:8px;font-size:12px;font-weight:700;cursor:pointer';
+      btn.textContent='✏️ Voir / corriger ses heures';
+      (function(uid2){btn.addEventListener('click',function(){gotoEmpFT(uid2);});})(info.id);
+      card.appendChild(btn);
+      el.appendChild(card);
+    });
+  }
+  if(termines.length>0){
+    var s2=document.createElement('div');s2.style.cssText='font-size:12px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;padding:14px 2px 6px';
+    s2.textContent='✅ Journée terminée ('+termines.length+')';el.appendChild(s2);
+    termines.forEach(function(info){
+      var card=document.createElement('div');
+      card.style.cssText='background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:11px 13px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between';
+      card.innerHTML='<div style="display:flex;align-items:center;gap:10px">'+
+        '<div style="width:34px;height:34px;border-radius:50%;background:var(--lt);display:flex;align-items:center;justify-content:center;color:var(--blue);font-weight:700;font-size:12px">'+(info.nom[0]||'?')+'</div>'+
+        '<div><div style="font-size:13px;font-weight:700;color:var(--dk)">'+info.nom+'</div>'+
+        '<div style="font-size:10px;color:var(--muted)">Dernier : '+(info.lastTask?info.lastTask.lieu:'—')+'</div></div></div>'+
+        '<div style="font-size:14px;font-weight:800;color:var(--blue)">'+fmtH(info.dayTotal)+'</div>';
+      el.appendChild(card);
+    });
+  }
+  if(inactifs.length>0){
+    var s3=document.createElement('div');s3.style.cssText='font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:14px 2px 6px';
+    s3.textContent='⚪ Pas commencé ('+inactifs.length+')';el.appendChild(s3);
+    var wrap=document.createElement('div');wrap.style.cssText='display:flex;flex-wrap:wrap;gap:6px';
+    inactifs.forEach(function(info){
+      var chip=document.createElement('div');chip.style.cssText='background:var(--gray);border-radius:20px;padding:6px 12px;font-size:12px;color:var(--muted);font-weight:600';
+      chip.textContent=info.nom;wrap.appendChild(chip);
+    });
+    el.appendChild(wrap);
+  }
+  if(actifs.length===0&&termines.length===0&&inactifs.length===0){
+    el.innerHTML='<div class="empty"><div class="ei">🔴</div><h3>Aucune donnée</h3><p>Aucune activité enregistrée pour ce jour.</p></div>';
+  }
+}
+
 function renderStats(){
   var el=document.getElementById('statsList');el.innerHTML='';
   var wos=getWOs();var ftIdx=getFTIndex();var week=document.getElementById('weekDate').value;
