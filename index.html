@@ -1089,6 +1089,12 @@ input,select,textarea{font-size:16px!important}
 <div class="modal-bg" id="punchEditModal">
   <div class="modal-box">
     <div class="modal-hd"><h3 id="peModalTitle">Corriger le punch</h3><button class="modal-close" id="punchEditClose">✕</button></div>
+    <div class="mfield" id="peDayField"><label>📅 Jour</label>
+      <select id="peDay" style="width:100%;font-size:16px;padding:11px;border:1.5px solid var(--line);border-radius:var(--rs);background:#fff;color:var(--text)">
+        <option value="0">Lundi</option><option value="1">Mardi</option><option value="2">Mercredi</option>
+        <option value="3">Jeudi</option><option value="4">Vendredi</option><option value="5">Samedi</option><option value="6">Dimanche</option>
+      </select>
+    </div>
     <div class="mfield"><label>Chantier / Lieu</label><input type="text" id="peLieu" placeholder="Quai Paquet"/></div>
     <div class="mfield"><label>Détail</label><input type="text" id="peDetail" placeholder="Travaux chantier"/></div>
     <div class="m2">
@@ -2631,6 +2637,7 @@ function openPunchEdit(idx){
   document.getElementById('peKmDep').value=t.kmDep||'';
   document.getElementById('peKmArr').value=t.kmArr||'';
   document.getElementById('peNotes').value=t.notes||'';
+  document.getElementById('peDay').value=String(curDay);
   pePjFiles=t.files?t.files.slice():[];renderPePj();
   document.getElementById('peModalTitle').textContent=(t.active?'✏️ Modifier (en cours) — ':'Corriger — ')+(t.lieu||'Tâche');
   document.getElementById('peDeleteBtn').style.display='block';
@@ -2646,6 +2653,7 @@ function openPunchAdd(){
   document.getElementById('peKmDep').value='';
   document.getElementById('peKmArr').value='';
   document.getElementById('peNotes').value='';
+  document.getElementById('peDay').value=String(curDay);
   pePjFiles=[];renderPePj();
   document.getElementById('peModalTitle').textContent='Ajouter un punch — '+DL[curDay];
   document.getElementById('peDeleteBtn').style.display='none';
@@ -2671,19 +2679,23 @@ function savePunchEdit(){
   if(kmArr && (isNaN(parseFloat(kmArr))||parseFloat(kmArr)<0)){toast('⚠️ Km arrivée invalide');return;}
   if(kmDep && kmArr && parseFloat(kmArr)<parseFloat(kmDep)){toast('⚠️ Km arrivée < km départ');return;}
 
+  // Jour cible (sélecteur) — permet de déplacer un punch vers un autre jour
+  var targetDay=parseInt(document.getElementById('peDay').value);
+  if(isNaN(targetDay)||targetDay<0||targetDay>6)targetDay=curDay;
+
   if(punchEditIdx===null){
     // ── MODE AJOUT ──
     var hrs=(start&&end)?hrsFrom(start,end):0;
     var newTask={id:++tid,lieu:lieu,detail:detail,start:start||'00:00',end:end||'',hrs:hrs,
       active:false,kmDep:kmDep,kmArr:kmArr,files:pePjFiles.slice(),notes:document.getElementById('peNotes').value.trim(),
       addedBy:currentUser.id,addedAt:new Date().toISOString()};
-    chronoState[curDay].tasks.push(newTask);
-    // Trier par heure de début
-    chronoState[curDay].tasks.sort(function(a,b){return (a.start||'').localeCompare(b.start||'');});
-    if(chronoState[curDay].status==='idle')chronoState[curDay].status='done';
+    chronoState[targetDay].tasks.push(newTask);
+    chronoState[targetDay].tasks.sort(function(a,b){return (a.start||'').localeCompare(b.start||'');});
+    if(chronoState[targetDay].status==='idle')chronoState[targetDay].status='done';
     saveFT();closeModal('punchEditModal');
+    if(targetDay!==curDay)renderDay(targetDay);
     renderTaskLog();refreshCumul();buildDayTabs();refreshWkStatus();
-    toast('✅ Punch ajouté');
+    toast('✅ Punch ajouté'+(targetDay!==curDay?' ('+DL[targetDay]+')':''));
     return;
   }
 
@@ -2693,9 +2705,23 @@ function savePunchEdit(){
   t.lieu=lieu;t.detail=detail;t.start=start;t.end=end;t.kmDep=kmDep;t.kmArr=kmArr;
   t.notes=document.getElementById('peNotes').value.trim();
   t.files=pePjFiles.slice();
-  // Ne pas écraser le statut actif si la tâche tourne encore et qu'on n'a pas mis de fin
   if(t.start&&t.end){t.hrs=hrsFrom(t.start,t.end);t.active=false;}
   t.correctedBy=currentUser.id;t.correctedAt=new Date().toISOString();
+
+  // ── DÉPLACEMENT vers un autre jour ──
+  if(targetDay!==curDay){
+    chronoState[curDay].tasks.splice(punchEditIdx,1); // retirer du jour actuel
+    chronoState[targetDay].tasks.push(t);             // ajouter au jour cible
+    chronoState[targetDay].tasks.sort(function(a,b){return (a.start||'').localeCompare(b.start||'');});
+    if(chronoState[targetDay].status==='idle')chronoState[targetDay].status='done';
+    // Si le jour source n'a plus de tâches, repasser en idle
+    if(chronoState[curDay].tasks.length===0)chronoState[curDay].status='idle';
+    saveFT();closeModal('punchEditModal');
+    renderDay(targetDay);refreshCumul();buildDayTabs();refreshWkStatus();
+    toast('✅ Punch déplacé vers '+DL[targetDay]);
+    return;
+  }
+
   saveFT();closeModal('punchEditModal');
   renderTaskLog();refreshCumul();buildDayTabs();refreshWkStatus();
   toast('✅ Punch mis à jour');
