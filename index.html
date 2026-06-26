@@ -1615,9 +1615,10 @@ document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('comptesAddBtn').addEventListener('click', function(){openCompteModal(null);});
 
   // ── CHRONO ──
-  document.getElementById('btnArr').addEventListener('click', actionArriver);
-  document.getElementById('btnChg').addEventListener('click', function(){openJobModal(false);});
-  document.getElementById('btnStop').addEventListener('click', openStopModal);
+  // ── CHRONO (boutons gérés dynamiquement dans renderFieldView) ──
+  var _bA=document.getElementById('btnArr');if(_bA)_bA.addEventListener('click', actionArriver);
+  var _bC=document.getElementById('btnChg');if(_bC)_bC.addEventListener('click', function(){openJobModal(false);});
+  var _bS=document.getElementById('btnStop');if(_bS)_bS.addEventListener('click', openStopModal);
 
   // ── MODAL CONFIRMATION universel ──
   document.getElementById('confirmOk').addEventListener('click', function(){
