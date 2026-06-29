@@ -1194,38 +1194,22 @@ function lsSet(k,v){try{localStorage.setItem(LS+k,JSON.stringify(v));}catch(e){}
 // ═══════════════════════════════════════════════════════
 var notifReady=false;
 function initNotifications(){
-  // Enregistrer le service worker
+  // NOTIFICATIONS DÉSACTIVÉES (à la demande — elles étaient intermittentes/stressantes)
+  // Le service worker reste enregistré pour le cache hors-ligne, mais aucune
+  // notification n'est demandée ni envoyée.
   if('serviceWorker' in navigator){
     navigator.serviceWorker.register('sw.js').then(function(){}).catch(function(){});
   }
-  // Demander la permission (au login)
-  if('Notification' in window && Notification.permission==='default'){
-    // Ne pas demander tout de suite — attendre une action utilisateur
-  }
-  notifReady=('Notification' in window && Notification.permission==='granted');
+  notifReady=false;
 }
 
 function askNotifPermission(){
-  if(!('Notification' in window)){toast('Notifications non supportées sur cet appareil');return;}
-  Notification.requestPermission().then(function(perm){
-    notifReady=(perm==='granted');
-    if(notifReady)toast('🔔 Notifications activées');
-    else toast('Notifications refusées');
-  });
+  toast('🔕 Notifications désactivées pour le moment');
 }
 
-// Notification locale (app ouverte ou récemment fermée)
+// Notification locale — DÉSACTIVÉE (no-op)
 function notifyLocal(title, body, url){
-  if(!('Notification' in window) || Notification.permission!=='granted')return;
-  try{
-    if(navigator.serviceWorker && navigator.serviceWorker.ready){
-      navigator.serviceWorker.ready.then(function(reg){
-        reg.showNotification(title,{body:body,icon:'icon-192.png',tag:'sa-'+Date.now(),data:url||'/',vibrate:[100,50,100]});
-      });
-    }else{
-      new Notification(title,{body:body});
-    }
-  }catch(e){}
+  return; // notifications désactivées
 }
 
 
@@ -1593,13 +1577,12 @@ document.addEventListener('DOMContentLoaded', function(){
   // Vérifier la limite de 20h toutes les minutes
   setInterval(checkEndOfDay, 60000);
 
-  // Week date — weekDate = lundi de la semaine (clé), curDay = jour actuel
+  // Week date — le CHAMP affiche AUJOURD'HUI (le lundi sert de clé en interne via mondayOf)
   var today=new Date();
   var curDayIdx=today.getDay()===0?6:today.getDay()-1; // jour réel d'aujourd'hui
-  var d=new Date(),diff=d.getDay()===0?-6:1-d.getDay();
-  d.setDate(d.getDate()+diff);
-  document.getElementById('weekDate').value=d.toISOString().slice(0,10);
-  curDay=curDayIdx; // ouvrir sur AUJOURD'HUI, pas sur lundi
+  document.getElementById('weekDate').value=todayISO(); // afficher AUJOURD'HUI
+  curDay=curDayIdx; // ouvrir sur AUJOURD'HUI
+  _loadedWeekKey=mondayOf(todayISO());
 
   // LOGIN
   document.getElementById('loginBtn').addEventListener('click', doLogin);
@@ -1855,7 +1838,7 @@ function switchMod(mod){
   });
   if(mod==='accueil')renderAccueil();
   else if(mod==='plan')renderPlan();
-  else if(mod==='ft'){setupFTEmpSelector();buildDayTabs();renderDay(curDay);refreshCumul();refreshWkStatus();}
+  else if(mod==='ft'){setupFTEmpSelector();_loadedWeekKey=mondayOf(document.getElementById('weekDate').value);buildDayTabs();renderDay(curDay);refreshCumul();refreshWkStatus();}
   else if(mod==='suivi')renderSuivi();
   else if(mod==='wo')renderWOList();
   else if(mod==='sites')renderSiteList();
@@ -2219,8 +2202,12 @@ function renderSEquips(){
 // FEUILLES DE TEMPS
 // ═══════════════════════════════════════════════════════
 function onWeekChange(){
-  // Sauvegarder la semaine courante avant de changer
-  if(currentUser) saveFT();
+  // Sauvegarder la semaine PRÉCÉDENTE sous SA propre clé (pas la nouvelle !)
+  // Bug corrigé : avant, saveFT() sauvait l'ancien chronoState sous la nouvelle
+  // clé de semaine → les semaines s'écrasaient mutuellement.
+  if(currentUser && _loadedWeekKey){
+    saveFTUnder(_loadedWeekKey);
+  }
   var picked=document.getElementById('weekDate').value;
   // EMPLOYÉS : date verrouillée sur aujourd'hui — interdiction de changer
   if(currentUser && !canEdit()){
@@ -2231,17 +2218,35 @@ function onWeekChange(){
       toast('📅 Les employés ne peuvent puncher que pour aujourd\'hui');
     }
   }
-  // Verrouiller la date sur le LUNDI de la semaine choisie + positionner le bon jour
+  // Positionner le bon jour de la semaine (le champ GARDE la date choisie)
   var dObj=picked?new Date(picked+'T12:00:00'):new Date();
   if(!isNaN(dObj.getTime())){
     curDay=Math.min(Math.max(dObj.getDay()===0?6:dObj.getDay()-1,0),6);
   }
-  document.getElementById('weekDate').value=mondayOf(picked);
+  // NE PAS forcer l'affichage au lundi — la date choisie reste visible.
+  // Le lundi est calculé en interne pour la clé de stockage uniquement.
   for(var i=0;i<7;i++)chronoState[i]=makeDay();
   tid=0;
-  var stored=loadFT(document.getElementById('weekDate').value);
+  var newKey=mondayOf(picked);
+  var stored=loadFT(picked);
   if(stored) applyFT(stored);
+  _loadedWeekKey=newKey; // mémoriser la semaine actuellement chargée
   buildDayTabs();renderDay(curDay);refreshCumul();refreshWkStatus();
+}
+// Clé de la semaine actuellement chargée dans chronoState (pour sauver au bon endroit)
+var _loadedWeekKey=null;
+// Sauvegarde explicite sous une clé de semaine donnée (uid_lundi)
+function saveFTUnder(weekMonday){
+  if(!weekMonday||!currentUser)return;
+  var uid2=activeUid();
+  var payload={week:weekMonday,emp:activeName(),email:activeEmail(),savedAt:new Date().toISOString(),
+    days:chronoState.map(function(d){return{status:d.status,tasks:d.tasks,saved:d.saved,kmArr:d.kmArr,stopFiles:d.stopFiles};})};
+  setFTWeek(uid2+'_'+weekMonday,payload);
+  var idx=getFTIndex();var found=false;var totalH=weekTotal();
+  for(var i=0;i<idx.length;i++){if(idx[i].week===weekMonday&&idx[i].uid===uid2){idx[i].savedAt=payload.savedAt;idx[i].totalH=totalH;found=true;break;}}
+  if(!found)idx.unshift({week:weekMonday,uid:uid2,emp:activeName(),savedAt:payload.savedAt,totalH:totalH});
+  setFTIndex(idx);
+  sbPushFT(uid2,weekMonday,payload,totalH);
 }
 function buildDayTabs(){
   var el=document.getElementById('dtabs');el.innerHTML='';
@@ -2293,24 +2298,28 @@ function fillFTEmpSelect(){
 }
 function onFTEmpChange(){
   var sel=document.getElementById('ftEmpSel');
-  // Sauvegarder l'employé courant avant de switcher
-  saveFT();
+  // Sauvegarder l'employé courant sous SA clé de semaine avant de switcher
+  if(_loadedWeekKey)saveFTUnder(_loadedWeekKey);
   viewingUid=sel.value||null;
   // Recharger la FT de l'employé sélectionné
   for(var i=0;i<7;i++)chronoState[i]=makeDay();tid=0;
+  var wk=mondayOf(document.getElementById('weekDate').value);
   var stored=loadFT(document.getElementById('weekDate').value);
   if(stored)applyFT(stored);
+  _loadedWeekKey=wk;
   buildDayTabs();renderDay(curDay);refreshCumul();refreshWkStatus();
   var who=viewingUid?activeName():'vous-même';
   toast('👁 Feuille de '+who);
 }
 // Accès rapide depuis le Suivi → FT d'un employé
 function gotoEmpFT(uid2){
-  if(currentUser)saveFT();
+  if(currentUser && _loadedWeekKey)saveFTUnder(_loadedWeekKey);
   viewingUid=uid2;
   for(var i=0;i<7;i++)chronoState[i]=makeDay();tid=0;
+  var wk=mondayOf(document.getElementById('weekDate').value);
   var stored=loadFT(document.getElementById('weekDate').value);
   if(stored)applyFT(stored);
+  _loadedWeekKey=wk;
   switchMod('ft');
   toast('👁 Feuille de '+activeName());
 }
