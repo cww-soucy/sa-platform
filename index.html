@@ -1377,11 +1377,7 @@ function refreshCurrentMod(){
 function subscribeFTRealtime(){
   if(!sb)return;
   sb.channel('rt_ft').on('postgres_changes',{event:'*',schema:'public',table:'feuilles_temps'},function(payload){
-    // Notifier le superviseur si un employé vient de puncher
-    if(isSup() && payload.new && payload.new.uid && payload.new.uid!==currentUser.id){
-      var empNom=empName(payload.new.uid)||payload.new.emp||'Un employé';
-      notifyLocal('🔴 Activité terrain', empNom+' vient de mettre à jour sa feuille de temps', '/');
-    }
+    // (Notification retirée — désactivées à la demande)
     // Mettre à jour le cache local de la feuille modifiée
     syncPullFT(function(){
       if(curMod==='suivi')renderSuivi();
@@ -1404,7 +1400,38 @@ function setComptes(d){lsSet('comptes',d);sbPushAll('comptes',d);}
 function getFTIndex(){return lsGet('ft_index')||[];}
 function setFTIndex(d){lsSet('ft_index',d);}
 function getFTWeek(w){return lsGet('ft_week_'+w);}
-function setFTWeek(w,d){lsSet('ft_week_'+w,d);}
+// Compte les tâches réelles dans un payload de semaine
+function _countTasks(payload){
+  if(!payload||!payload.days)return 0;
+  var n=0;for(var i=0;i<payload.days.length;i++){var t=payload.days[i]&&payload.days[i].tasks;if(t)n+=t.length;}
+  return n;
+}
+function setFTWeek(w,d){
+  // ⛡ PROTECTION ANTI-ÉCRASEMENT (corrige le bug de perte d'heures) :
+  // refuse d'écraser une semaine qui contient des tâches par une semaine VIDE,
+  // sauf si l'effacement est explicitement autorisé (_allowEmptyOverwrite).
+  if(!_allowEmptyOverwrite){
+    var newCount=_countTasks(d);
+    if(newCount===0){
+      var existing=lsGet('ft_week_'+w);
+      if(existing && _countTasks(existing)>0){
+        // On allait écraser des vraies données par du vide → on bloque + on garde un backup
+        try{lsSet('ft_backup_'+w+'_'+Date.now(), existing);}catch(e){}
+        if(typeof toast==='function')toast('🛡️ Sauvegarde protégée — données existantes préservées');
+        return; // NE PAS écraser
+      }
+    }
+  }
+  // Backup automatique de la version précédente avant tout remplacement
+  try{
+    var prev=lsGet('ft_week_'+w);
+    if(prev && _countTasks(prev)>0 && JSON.stringify(prev)!==JSON.stringify(d)){
+      lsSet('ft_lastgood_'+w, prev);
+    }
+  }catch(e){}
+  lsSet('ft_week_'+w,d);
+}
+var _allowEmptyOverwrite=false; // mis à true uniquement lors d'un effacement volontaire
 
 // Quand un superviseur consulte la FT d'un autre employé, viewingUid est défini
 var viewingUid=null;
@@ -2930,7 +2957,11 @@ function clearDayFT(){
 }
 function _clearDayDo(){
   if(clockTimer){clearInterval(clockTimer);clockTimer=null;}
-  chronoState[curDay]=makeDay();renderDay(curDay);refreshCumul();buildDayTabs();
+  chronoState[curDay]=makeDay();
+  _allowEmptyOverwrite=true; // effacement volontaire autorisé
+  saveFT();
+  _allowEmptyOverwrite=false;
+  renderDay(curDay);refreshCumul();buildDayTabs();
 }
 function setEmailType(t){
   EMAIL_TYPE=t;
@@ -3209,6 +3240,13 @@ function renderComptesList(){
   var list=document.getElementById('comptesList');list.innerHTML='';
   var comptes=getComptes();
   var wrap=document.createElement('div');wrap.style.padding='12px';
+  // ── CARTE SAUVEGARDE/EXPORT (sécurité anti-perte) ──
+  var bkCard=document.createElement('div');bkCard.className='card';bkCard.style.marginBottom='12px';
+  bkCard.innerHTML='<div class="card-hd"><div class="card-hd-t">🛡️ Sauvegarde des données</div></div>'+
+    '<div style="padding:12px"><p style="font-size:12px;color:var(--muted);margin-bottom:10px">Télécharge une copie complète de toutes les feuilles de temps et données (sécurité). Garde ce fichier en lieu sûr.</p>'+
+    '<button id="exportAllBtn" class="btn btn-primary btn-full" style="margin-bottom:8px">💾 Exporter toutes les données</button>'+
+    '<button id="exportExcelBtn" class="btn btn-ghost btn-full">📊 Exporter les heures en Excel (CSV)</button></div>';
+  wrap.appendChild(bkCard);
   var card=document.createElement('div');card.className='card';
   comptes.forEach(function(c){
     var row=document.createElement('div');row.className='ac-row';
@@ -3223,6 +3261,53 @@ function renderComptesList(){
     row.appendChild(editBtn);card.appendChild(row);
   });
   wrap.appendChild(card);list.appendChild(wrap);
+  // Listeners export (sécurité)
+  var eab=document.getElementById('exportAllBtn');
+  if(eab)eab.addEventListener('click',exportAllData);
+  var eeb=document.getElementById('exportExcelBtn');
+  if(eeb)eeb.addEventListener('click',exportHoursCSV);
+}
+// Export complet de toutes les données (JSON téléchargeable)
+function exportAllData(){
+  try{
+    var dump={};
+    for(var i=0;i<localStorage.length;i++){
+      var k=localStorage.key(i);
+      if(k&&k.indexOf('sa_plat_')===0)dump[k]=localStorage.getItem(k);
+    }
+    var blob=new Blob([JSON.stringify(dump,null,2)],{type:'application/json'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url;a.download='SA_sauvegarde_'+todayISO()+'.json';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('💾 Sauvegarde téléchargée');
+  }catch(e){toast('⚠️ Erreur export : '+e.message);}
+}
+// Export des heures en CSV (lisible Excel)
+function exportHoursCSV(){
+  try{
+    var rows=[['Employé','Semaine','Jour','Lieu','Début','Fin','Heures']];
+    var jours=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+    var idx=getFTIndex();
+    idx.forEach(function(e){
+      var wk=getFTWeek(e.uid+'_'+e.week);
+      if(!wk||!wk.days)return;
+      wk.days.forEach(function(day,di){
+        (day.tasks||[]).forEach(function(t){
+          rows.push([wk.emp||e.uid,e.week,jours[di],t.lieu||'',t.start||'',t.end||'',t.hrs||0]);
+        });
+      });
+    });
+    var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
+    var blob=new Blob(['\ufeff'+csv],{type:'text/csv'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url;a.download='SA_heures_'+todayISO()+'.csv';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('📊 Heures exportées (CSV)');
+  }catch(e){toast('⚠️ Erreur export : '+e.message);}
 }
 function openCompteModal(c){
   cEditId=c?c.id:null;
