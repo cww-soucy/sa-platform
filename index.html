@@ -1233,6 +1233,22 @@ function initSupabase(){
       setSbStatus('online');
       subscribeRealtime();
       subscribeFTRealtime();
+      // Rafraîchir l'écran courant avec les données fraîches de Supabase
+      // (corrige l'affichage d'un ancien cache local après nettoyage/MAJ)
+      try{
+        if(currentUser){
+          var wd=document.getElementById('weekDate');
+          if(wd){
+            for(var i=0;i<7;i++)chronoState[i]=makeDay();
+            var fresh=loadFT(wd.value);
+            if(fresh)applyFT(fresh);
+            _loadedWeekKey=mondayOf(wd.value);
+          }
+          if(curMod==='accueil')renderAccueil();
+          else if(curMod==='ft'){buildDayTabs();renderDay(curDay);refreshCumul();refreshWkStatus();}
+          else if(curMod==='suivi')renderSuivi();
+        }
+      }catch(e){}
     });
   }catch(e){setSbStatus('offline');}
 }
