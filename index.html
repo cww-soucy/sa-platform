@@ -3687,25 +3687,43 @@ function exportExcel(){
     ws['G5']={v:weekFmt,t:'s'};
     ws['I5']={v:'Superviseur',t:'s'};
 
-    // Tâches lignes 8-22 (max 15)
-    for(var ti=0;ti<Math.min(allTasks.length,15);ti++){
-      var r=8+ti;
-      var e=allTasks[ti];
-      var t=e.task;
-      var kmTotal='';
-      if(t.kmDep&&t.kmArr) kmTotal=Math.round(Math.abs(parseFloat(t.kmArr)-parseFloat(t.kmDep)))+' km';
-      var pjStr=t.files&&t.files.length?t.files.map(function(f){return f.name;}).join(', '):'—';
-
-      ws['B'+r]={v:e.jour,t:'s'};
+    // ── Remplir par JOUR (une ligne par jour) pour couvrir TOUTE la semaine ──
+    // (le modèle a 15 lignes de tâches 8-22 ; grouper par jour tient toujours en 7 lignes
+    //  et garantit que TOUS les jours sont inclus dans le calcul, pas seulement les premiers)
+    var rowIdx=8;
+    var cumul=0;
+    var grandTotal=0;
+    for(var dj=0;dj<7;dj++){
+      var day=chronoState[dj];
+      if(!day.tasks.length)continue;
+      var dTotal=dayTotal(dj);
+      grandTotal+=dTotal;
+      cumul+=dTotal;
+      // Regrouper les lieux + plage horaire du jour
+      var lieux=day.tasks.map(function(t){return t.lieu||'—';}).join(' → ');
+      var premier=day.tasks[0];var dernier=day.tasks[day.tasks.length-1];
+      var kmJour=0;
+      day.tasks.forEach(function(t){ if(t.kmDep&&t.kmArr)kmJour+=Math.abs(parseFloat(t.kmArr)-parseFloat(t.kmDep)); });
+      var r=rowIdx;
+      ws['B'+r]={v:DL[dj],t:'s'};
       ws['C'+r]={v:weekFmt,t:'s'};
-      ws['D'+r]={v:t.odt||'',t:'s'};
-      ws['E'+r]={v:(t.lieu||'')+(t.detail?' — '+t.detail:''),t:'s'};
-      ws['F'+r]={v:t.start||'',t:'s'};
-      ws['G'+r]={v:t.end||'',t:'s'};
-      ws['H'+r]={v:t.hrs||0,t:'n'};
-      // Col I = cumul (formule déjà dans le modèle, on ne touche pas)
-      ws['J'+r]={v:(kmTotal?'🚗 '+kmTotal+' | ':'')+pjStr,t:'s'};
+      ws['D'+r]={v:'',t:'s'};
+      ws['E'+r]={v:lieux,t:'s'};
+      ws['F'+r]={v:premier.start||'',t:'s'};
+      ws['G'+r]={v:dernier.end||'',t:'s'};
+      ws['H'+r]={v:Math.round(dTotal*100)/100,t:'n'};
+      ws['I'+r]={v:Math.round(cumul*100)/100,t:'n'}; // cumul écrit en dur (pas de formule limitée)
+      ws['J'+r]={v:(kmJour?'🚗 '+Math.round(kmJour)+' km':'—'),t:'s'};
+      rowIdx++;
     }
+    // Vider les lignes de tâches restantes du modèle (8..22) pour ne pas garder du vieux contenu
+    for(var rr=rowIdx;rr<=22;rr++){
+      ['B','C','D','E','F','G','H','I','J'].forEach(function(col){ if(ws[col+rr])ws[col+rr]={v:'',t:'s'}; });
+    }
+    // Écrire le TOTAL SEMAINE calculé sur TOUS les jours (ligne 23 du modèle)
+    var totalRound=Math.round(grandTotal*100)/100;
+    ws['H23']={v:totalRound,t:'n'};
+    ws['I23']={v:totalRound,t:'n'};
 
     // Index PJ lignes 28-32
     var allPJ=[];
