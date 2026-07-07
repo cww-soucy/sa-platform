@@ -236,6 +236,101 @@ input,select,textarea{font-size:16px!important}
 .pm-emp-chip{display:inline-flex;align-items:center;gap:5px;background:#fff;border-radius:20px;
               padding:3px 8px;font-size:11px;font-weight:600;color:var(--dk);margin-top:5px;margin-right:4px}
 
+/* ── PLAN DE MATCH (checklist détaillée) ── */
+.pmm-head{background:var(--navy);border-radius:var(--r);padding:14px;color:#fff;margin-bottom:10px}
+.pmm-head h2{font-size:16px;font-weight:900;letter-spacing:.2px}
+.pmm-head .pmm-sub{font-size:11px;color:rgba(255,255,255,.65);margin-top:4px}
+.pmm-head .pmm-meta{display:flex;gap:14px;margin-top:10px;flex-wrap:wrap}
+.pmm-head .pmm-meta-item{font-size:11px}
+.pmm-head .pmm-meta-item b{display:block;font-size:13px;font-weight:800}
+.pmm-empty{background:#fff;border-radius:var(--r);padding:28px 16px;text-align:center;color:var(--muted)}
+.pmm-empty .e-ic{font-size:34px;margin-bottom:8px}
+.pmm-note{border-radius:var(--rs);padding:10px 12px;margin-bottom:10px;font-size:12.5px;line-height:1.5;display:flex;gap:8px}
+.pmm-note.rouge{background:var(--rbg);color:#8b1a1a;border:1.5px solid #d94f4f}
+.pmm-note.amber{background:var(--obg);color:#7a4e00;border:1.5px solid var(--orange)}
+.pmm-section{background:#fff;border-radius:var(--r);overflow:hidden;margin-bottom:10px;box-shadow:0 1px 4px rgba(13,59,110,.09)}
+.pmm-sec-hd{padding:9px 13px;font-size:12.5px;font-weight:800;color:#fff}
+.pmm-sec-hd.c-bleu{background:#1B4F8C}
+.pmm-sec-hd.c-vert{background:#1a7a4a}
+.pmm-sec-hd.c-orange{background:#b06800}
+.pmm-sec-hd.c-purple{background:var(--purple)}
+.pmm-task{display:flex;align-items:flex-start;gap:8px;padding:9px 12px;border-top:1px solid var(--line2)}
+.pmm-task:first-of-type{border-top:none}
+.pmm-task .pmm-cbx{width:18px;height:18px;margin-top:2px;flex-shrink:0;cursor:pointer}
+.pmm-task .pmm-t-main{flex:1;min-width:0}
+.pmm-task .pmm-t-label{font-size:12.5px;font-weight:700;color:var(--text)}
+.pmm-task .pmm-t-est{font-size:10px;color:var(--muted);margin-left:6px;font-weight:600}
+.pmm-task .pmm-t-notes{width:100%;border:1px solid var(--line);border-radius:8px;padding:6px 8px;
+  font-size:12px;margin-top:5px;outline:none;background:var(--surface);resize:none;min-height:32px}
+.pmm-task .pmm-t-status{margin-top:5px;border:1px solid var(--line);border-radius:8px;padding:5px 8px;
+  font-size:11px;font-weight:700;outline:none;background:#fff}
+.pmm-task.done{background:var(--gbg)}
+.pmm-task.done .pmm-t-label{text-decoration:line-through;color:var(--muted)}
+.pmm-freeform{background:#fff;border-radius:var(--r);padding:10px 12px;margin-bottom:10px}
+.pmm-freeform label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;display:block;margin-bottom:4px}
+.pmm-freeform input{width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-size:12.5px;outline:none;margin-bottom:6px}
+.pmm-progress{background:#fff;border-radius:var(--r);padding:10px 12px;margin-bottom:10px}
+.pmm-progress-bar{background:var(--line2);border-radius:20px;height:8px;overflow:hidden;margin-top:6px}
+.pmm-progress-fill{background:var(--green);height:100%;border-radius:20px;transition:width .3s}
+.pmm-actions{display:flex;gap:8px;margin-bottom:10px}
+.pmm-builder-sec{border:1.5px solid var(--line);border-radius:var(--rs);padding:10px}
+.pmm-builder-sec .pbs-top{display:flex;gap:8px;margin-bottom:8px}
+.pmm-builder-sec .pbs-top input[type=text]{flex:1;border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-size:12.5px;font-weight:700;outline:none}
+.pmm-builder-sec select{border:1px solid var(--line);border-radius:8px;padding:7px 6px;font-size:12px;outline:none}
+.pmm-builder-task{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.pmm-builder-task input[type=text]{flex:1;border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12px;outline:none}
+.pmm-builder-task input.pbt-est{width:56px;flex:none;text-align:center}
+.pmm-mini-x{background:var(--rbg);color:var(--red);border:none;border-radius:6px;width:26px;height:26px;
+  flex-shrink:0;cursor:pointer;font-weight:700}
+.pmm-mini-add{background:var(--lt);color:var(--blue);border:none;border-radius:8px;padding:6px 10px;
+  font-size:11.5px;font-weight:700;cursor:pointer;margin-top:2px}
+.pmm-sec-x{background:rgba(255,255,255,.25);color:#fff;border:none;border-radius:6px;width:26px;height:26px;cursor:pointer;font-weight:700;margin-left:auto}
+
+/* ── ZONE D'IMPRESSION DÉDIÉE (Plan de Match) ── */
+#pmmPrintArea{display:none}
+.pmm-print-doc{font-family:Arial,sans-serif;color:#222;font-size:12px}
+.pmm-print-hd{background:#1B4F8C;color:#fff;padding:12px 16px;border-radius:6px;margin-bottom:10px}
+.pmm-print-hd h1{font-size:16px;font-weight:900;letter-spacing:.3px;margin:0}
+.pmm-print-sub{font-size:11px;color:#cfe1f5;margin-top:3px}
+.pmm-print-meta{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:11px}
+.pmm-print-note{border-radius:5px;padding:8px 12px;margin-bottom:8px;font-size:11.5px;border:1.5px solid}
+.pmm-print-note.rouge{background:#fff0f0;color:#8b1a1a;border-color:#8b1a1a}
+.pmm-print-note.amber{background:#fff8e0;color:#7a4e00;border-color:#b06800}
+.pmm-print-sec{margin-bottom:10px;page-break-inside:avoid}
+.pmm-print-sec-hd{color:#fff;font-weight:700;font-size:11.5px;padding:6px 10px;border-radius:4px 4px 0 0}
+.pmm-print-sec-hd.c-bleu{background:#1B4F8C}
+.pmm-print-sec-hd.c-vert{background:#1a7a4a}
+.pmm-print-sec-hd.c-orange{background:#b06800}
+.pmm-print-sec-hd.c-purple{background:#7C3AED}
+.pmm-print-table{width:100%;border-collapse:collapse;border:1px solid #c5d8ec;border-top:none}
+.pmm-print-table th{background:#EAF4FB;font-size:9.5px;text-transform:uppercase;padding:5px 7px;border:1px solid #c5d8ec;text-align:left}
+.pmm-print-table td{padding:5px 7px;border:1px solid #c5d8ec;vertical-align:top;font-size:11px}
+.pmm-print-table td.ctr{text-align:center}
+.pmm-print-photos{display:flex;gap:6px;flex-wrap:wrap;padding:4px 0}
+.pmm-print-photos img{width:90px;height:90px;object-fit:cover;border-radius:4px;border:1px solid #c5d8ec}
+.pmm-print-ff{margin-top:10px;font-size:11.5px;display:flex;flex-direction:column;gap:5px}
+
+@media print{
+  body *{visibility:hidden!important}
+  #pmmPrintArea,#pmmPrintArea *{visibility:visible!important}
+  #pmmPrintArea{display:block!important;position:absolute;top:0;left:0;width:100%;padding:10px}
+  body{background:#fff!important}
+  @page{margin:10mm}
+}
+
+/* ── SORTIE D'INVENTAIRE ── */
+.sortie-ligne-row{border:1.5px solid var(--line);border-radius:var(--rs);padding:8px;display:grid;
+  grid-template-columns:1fr 1fr;gap:6px}
+.sortie-ligne-row input{border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12px;outline:none;width:100%}
+.sortie-ligne-row .sl-full{grid-column:1/-1}
+.sortie-ligne-row .sl-hd{grid-column:1/-1;display:flex;justify-content:flex-end}
+.sortie-card{background:#fff;border-radius:var(--r);box-shadow:0 1px 4px rgba(13,59,110,.09);
+  margin-bottom:10px;overflow:hidden;cursor:pointer}
+.sortie-card .sc-hd{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+.sortie-card .sc-bon{font-size:11px;font-weight:700;color:var(--muted)}
+.sortie-card .sc-nom{font-size:14px;font-weight:800;color:var(--dk)}
+.sortie-card .sc-body{padding:10px 14px;display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+
 /* ── WO ── */
 .wo-card{background:#fff;border-radius:var(--r);box-shadow:0 1px 4px rgba(13,59,110,.09);
           margin-bottom:10px;overflow:hidden;cursor:pointer}
@@ -640,6 +735,16 @@ input,select,textarea{font-size:16px!important}
     <div class="main" id="pmContent" style="padding-top:10px"></div>
   </div>
 
+  <!-- ── MODULE : PLAN DE MATCH (checklist détaillée par employé/jour) ── -->
+  <div id="modPlanMatch" class="module" style="display:none">
+    <div class="pm-date-strip" id="pmmDateStrip"></div>
+    <div id="pmmEmpSelector" style="display:none;background:var(--dk);padding:8px 14px;align-items:center;gap:8px">
+      <span style="font-size:11px;color:rgba(255,255,255,.6);font-weight:700;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap">👁 Voir</span>
+      <select id="pmmEmpSel" style="flex:1;border:none;outline:none;font-size:14px;font-weight:700;background:rgba(255,255,255,.12);color:#fff;border-radius:8px;padding:6px 10px"></select>
+    </div>
+    <div class="main" id="pmmContent" style="padding-top:10px"></div>
+  </div>
+
   <!-- ── MODULE : FEUILLES DE TEMPS ── -->
   <div id="modFT" class="module" style="display:none">
     <!-- Sélecteur employé (sup/admin) -->
@@ -723,6 +828,16 @@ input,select,textarea{font-size:16px!important}
     <div class="main" id="invList" style="padding-top:10px"></div>
   </div>
 
+  <!-- ── MODULE : SORTIE D'INVENTAIRE (entrepôt) ── -->
+  <div id="modSortie" class="module" style="display:none">
+    <div class="search-bar">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="sortieSearch" placeholder="Rechercher un bon, un nom, un projet…"/>
+    </div>
+    <div class="main" id="sortieList" style="padding-top:10px"></div>
+  </div>
+
+
   <!-- ── MODULE : COMPTES ── -->
   <div id="modComptes" class="module" style="display:none">
     <div class="main" id="comptesList" style="padding-top:10px"></div>
@@ -755,14 +870,19 @@ input,select,textarea{font-size:16px!important}
 
   <!-- FABs centralisés - hors des modules pour éviter pointer-events:none -->
   <button class="fab" id="pmAddBtn"      style="display:none">＋</button>
+  <button class="fab" id="pmmAddBtn"     style="display:none">＋</button>
   <button class="fab" id="woAddBtn"      style="display:none">＋</button>
   <button class="fab" id="siteAddBtn"    style="display:none">＋</button>
   <button class="fab" id="flotteAddBtn"  style="display:none">＋</button>
   <button class="fab" id="invAddBtn"     style="display:none">＋</button>
+  <button class="fab" id="sortieAddBtn"  style="display:none">＋</button>
   <button class="fab" id="comptesAddBtn" style="display:none">＋</button>
 
   <!-- NAVBAR dynamique -->
   <nav class="navbar" id="mainNavbar"></nav>
+
+  <!-- Zone d'impression dédiée (Plan de Match) — remplie dynamiquement avant window.print() -->
+  <div id="pmmPrintArea"></div>
 
 </div><!-- /screenApp -->
 
@@ -875,7 +995,9 @@ input,select,textarea{font-size:16px!important}
     </div>
     <div class="m2">
       <div class="mfield"><label>Date prévue</label><input type="date" id="woDate"/></div>
-      <div class="mfield"><label>Assigné à</label><select id="woAssigne"><option value="">— Personne —</option></select></div>
+    </div>
+    <div class="mfield"><label>Assigné(s) à</label>
+      <div id="woAssigneList" style="max-height:170px;overflow-y:auto;border:1.5px solid var(--line);border-radius:var(--rs);padding:4px 10px"></div>
     </div>
     <div class="mfield"><label>Description / Travaux à effectuer</label><textarea id="woDesc" placeholder="Décrivez les travaux…"></textarea></div>
     <div class="mfield">
@@ -965,10 +1087,35 @@ input,select,textarea{font-size:16px!important}
       <div class="mfield"><label>Date</label><input type="date" id="pmDate"/></div>
       <div class="mfield"><label>Heure prévue</label><input type="time" id="pmHeure"/></div>
     </div>
-    <div class="mfield"><label>Employé(s) assigné(s)</label><input type="text" id="pmEmp" placeholder="Nom ou identifiant"/></div>
+    <div class="mfield"><label>Employé(s) assigné(s)</label>
+      <div id="pmEmpList" style="max-height:170px;overflow-y:auto;border:1.5px solid var(--line);border-radius:var(--rs);padding:4px 10px"></div>
+    </div>
     <div class="mfield"><label>Notes</label><textarea id="pmNotes" placeholder="Instructions, adresse, matériel…" style="min-height:60px"></textarea></div>
     <button class="btn btn-success btn-full" id="pmSaveBtn" style="margin-top:4px">💾 Planifier</button>
     <button class="btn btn-ghost btn-full" id="pmCancel" style="margin-top:8px">Annuler</button>
+  </div>
+</div>
+
+<!-- Modal: Plan de Match (création/édition — admin/superviseur) -->
+<div class="modal-bg" id="pmmModal">
+  <div class="modal-box" style="max-width:640px">
+    <div class="modal-hd"><h3 id="pmmModalTitle">Créer un Plan de Match</h3><button class="modal-close" id="pmmModalClose">✕</button></div>
+    <div class="m2">
+      <div class="mfield"><label>Employé</label><select id="pmmEmp"></select></div>
+      <div class="mfield"><label>Date</label><input type="date" id="pmmDate"/></div>
+    </div>
+    <div class="m2">
+      <div class="mfield"><label>Véhicule</label><input type="text" id="pmmVehicule" placeholder="266"/></div>
+      <div class="mfield"><label>Superviseur</label><input type="text" id="pmmSuperviseur" placeholder="Nom du superviseur"/></div>
+    </div>
+    <div class="mfield"><label>Résumé / sous-titre</label><input type="text" id="pmmResume" placeholder="Ex : CCNQ : SDC3 (2h) · QDF (2h) · Canotier (1h)"/></div>
+
+    <div id="pmmSections" style="display:flex;flex-direction:column;gap:10px;margin-top:6px"></div>
+    <button class="btn btn-ghost btn-full" id="pmmAddSection" style="margin-top:8px">➕ Ajouter une section (site / arrêt)</button>
+
+    <button class="btn btn-success btn-full" id="pmmSaveBtn" style="margin-top:14px">💾 Enregistrer le Plan de Match</button>
+    <button class="btn btn-danger btn-full" id="pmmDeleteBtn" style="margin-top:8px;display:none">🗑 Supprimer</button>
+    <button class="btn btn-ghost btn-full" id="pmmCancel" style="margin-top:8px">Annuler</button>
   </div>
 </div>
 
@@ -1048,6 +1195,37 @@ input,select,textarea{font-size:16px!important}
     <button class="btn btn-primary btn-full" id="iSaveBtn" style="margin-top:4px">💾 Sauvegarder</button>
     <button id="iDeleteBtn" class="btn btn-danger btn-full" style="margin-top:8px;display:none">🗑 Supprimer</button>
     <button class="btn btn-ghost btn-full" id="iCancel" style="margin-top:8px">Annuler</button>
+  </div>
+</div>
+
+<!-- Modal: Sortie d'Inventaire (entrepôt) -->
+<div class="modal-bg" id="sortieModal">
+  <div class="modal-box" style="max-width:680px">
+    <div class="modal-hd"><h3 id="sortieModalTitle">Sortie d'inventaire</h3><button class="modal-close" id="sortieModalClose">✕</button></div>
+    <div style="background:var(--lt);color:var(--blue);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;margin-bottom:10px" id="sortieNoBon">N° de bon : —</div>
+    <div class="m2">
+      <div class="mfield"><label>Nom et prénom</label><input type="text" id="sorNom" placeholder="Ex. Charles-William Weil"/></div>
+      <div class="mfield"><label>N° d'employé</label><input type="text" id="sorNoEmploye" placeholder="Ex. 1021 ou N/A"/></div>
+    </div>
+    <div class="m2">
+      <div class="mfield"><label>Département</label><input type="text" id="sorDept" placeholder="Ex. Piscines, CCNQ, Entretien"/></div>
+      <div class="mfield"><label>Date</label><input type="date" id="sorDate"/></div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0 6px">
+      <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">Items</label>
+      <button class="pmm-mini-add" id="sortieAddLigne" type="button">➕ Ajouter une ligne</button>
+    </div>
+    <div id="sortieLignesWrap" style="display:flex;flex-direction:column;gap:8px"></div>
+
+    <div class="mfield" style="margin-top:10px"><label>Statut</label>
+      <div id="sortieStatusBadge" style="font-size:12px;font-weight:700;color:var(--muted)">Brouillon (non envoyé)</div>
+    </div>
+
+    <button class="btn btn-ghost btn-full" id="sortieSaveBtn" style="margin-top:10px">💾 Enregistrer le brouillon</button>
+    <button class="btn btn-success btn-full" id="sortieSendBtn" style="margin-top:8px">📤🖨 Envoyer au superviseur (+ impression)</button>
+    <button class="btn btn-danger btn-full" id="sortieDeleteBtn" style="margin-top:8px;display:none">🗑 Supprimer</button>
+    <button class="btn btn-ghost btn-full" id="sortieCancel" style="margin-top:8px">Fermer</button>
   </div>
 </div>
 
@@ -1221,7 +1399,7 @@ var SB_KEY='sb_publishable_qVd_6eoAvwrDGs9u81woAg_RrMpTJxn';
 var sb=null;
 var sbReady=false;
 var sbStatus='offline'; // offline | syncing | online
-var SB_TABLES={workorders:'workorders',sites:'sites',plan:'plan',flotte:'flotte',inventaire:'inventaire',comptes:'comptes'};
+var SB_TABLES={workorders:'workorders',sites:'sites',plan:'plan',planmatch:'plan_match',flotte:'flotte',inventaire:'inventaire',comptes:'comptes',sortie:'sorties_inventaire'};
 
 function initSupabase(){
   try{
@@ -1368,8 +1546,10 @@ function subscribeRealtime(){
         if((localKey==='workorders'&&curMod==='wo')||
            (localKey==='sites'&&curMod==='sites')||
            (localKey==='plan'&&curMod==='plan')||
+           (localKey==='planmatch'&&curMod==='planmatch')||
            (localKey==='flotte'&&curMod==='flotte')||
            (localKey==='inventaire'&&curMod==='inventaire')||
+           (localKey==='sortie'&&curMod==='sortie')||
            (localKey==='comptes'&&curMod==='comptes')){
           refreshCurrentMod();
         }
@@ -1382,8 +1562,10 @@ function refreshCurrentMod(){
   if(curMod==='wo')renderWOList();
   else if(curMod==='sites')renderSiteList();
   else if(curMod==='plan')renderPlan();
+  else if(curMod==='planmatch')renderPlanMatch();
   else if(curMod==='flotte')renderFlotteList();
   else if(curMod==='inventaire')renderInvList();
+  else if(curMod==='sortie')renderSortieList();
   else if(curMod==='comptes')renderComptesList();
   else if(curMod==='stats')renderStats();
   else if(curMod==='suivi')renderSuivi();
@@ -1407,10 +1589,14 @@ function getSites(){return lsGet('sites')||[];}
 function setSites(d){lsSet('sites',d);sbPushAll('sites',d);}
 function getPlan(){return lsGet('plan')||[];}
 function setPlan(d){lsSet('plan',d);sbPushAll('plan',d);}
+function getPlanMatches(){return lsGet('planmatch')||[];}
+function setPlanMatches(d){lsSet('planmatch',d);sbPushAll('planmatch',d);}
 function getFlotte(){return lsGet('flotte')||[];}
 function setFlotte(d){lsSet('flotte',d);sbPushAll('flotte',d);}
 function getInv(){return lsGet('inventaire')||[];}
 function setInv(d){lsSet('inventaire',d);sbPushAll('inventaire',d);}
+function getSorties(){return lsGet('sortie')||[];}
+function setSorties(d){lsSet('sortie',d);sbPushAll('sortie',d);}
 function getComptes(){return lsGet('comptes')||COMPTES;}
 function setComptes(d){lsSet('comptes',d);sbPushAll('comptes',d);}
 function getFTIndex(){return lsGet('ft_index')||[];}
@@ -1565,6 +1751,43 @@ function hasDroit(d){
 }
 function canEdit(){return isSup();}
 function empName(id){if(!id)return '';var c=getComptes().find(function(x){return x.id===id;});return c?(c.prenom+' '+c.nom).trim():id;}
+
+// ═══════════════════════════════════════════════════════
+// ASSIGNATION MULTI-EMPLOYÉS (WO + Plan)
+// ═══════════════════════════════════════════════════════
+// Renvoie la liste des ids assignés, compatible avec les anciens enregistrements (champ texte simple)
+function woAssignees(wo){
+  if(!wo)return [];
+  if(Array.isArray(wo.assignes))return wo.assignes;
+  return wo.assigne?[wo.assigne]:[];
+}
+function planAssignees(slot){
+  if(!slot)return [];
+  if(Array.isArray(slot.emps))return slot.emps;
+  return slot.emp?[slot.emp]:[];
+}
+function empNames(ids){return (ids||[]).map(empName).filter(Boolean).join(', ');}
+
+// Construit une liste de cases à cocher pour choisir un ou plusieurs employés
+function buildEmpChecklist(containerId,selectedIds,excludeAdmin){
+  var el=document.getElementById(containerId);
+  if(!el)return;
+  el.innerHTML='';
+  selectedIds=selectedIds||[];
+  getComptes().slice().filter(function(c){return !excludeAdmin||c.role!=='admin'||selectedIds.indexOf(c.id)>=0;}).sort(function(a,b){return (a.prenom+a.nom).localeCompare(b.prenom+b.nom);}).forEach(function(c){
+    var row=document.createElement('label');
+    row.style.cssText='display:flex;align-items:center;gap:8px;padding:7px 2px;font-size:13px;color:var(--text);cursor:pointer;border-bottom:.5px solid var(--line2)';
+    var inp=document.createElement('input');
+    inp.type='checkbox';inp.value=c.id;inp.checked=selectedIds.indexOf(c.id)>=0;
+    inp.style.cssText='width:17px;height:17px;flex-shrink:0';
+    var span=document.createElement('span');span.textContent=(c.prenom+' '+c.nom).trim();
+    row.appendChild(inp);row.appendChild(span);
+    el.appendChild(row);
+  });
+}
+function getCheckedEmp(containerId){
+  return Array.prototype.slice.call(document.querySelectorAll('#'+containerId+' input[type=checkbox]:checked')).map(function(i){return i.value;});
+}
 // Trouve l'adresse d'un WO via sa fiche site/client
 function woSiteAddr(wo){
   if(!wo)return '';
@@ -1640,10 +1863,12 @@ document.addEventListener('DOMContentLoaded', function(){
 
   // ── FABs ──
   document.getElementById('pmAddBtn').addEventListener('click', function(){openPmModal(null);});
+  document.getElementById('pmmAddBtn').addEventListener('click', function(){openPmmModal(null);});
   document.getElementById('woAddBtn').addEventListener('click', function(){openWOModal(null);});
   document.getElementById('siteAddBtn').addEventListener('click', function(){openSiteModal(null);});
   document.getElementById('flotteAddBtn').addEventListener('click', function(){openVehiculeModal(null);});
   document.getElementById('invAddBtn').addEventListener('click', function(){openInvModal(null);});
+  document.getElementById('sortieAddBtn').addEventListener('click', function(){openSortieModal(null);});
   document.getElementById('comptesAddBtn').addEventListener('click', function(){openCompteModal(null);});
 
   // ── CHRONO ──
@@ -1719,6 +1944,13 @@ document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('pmCancel').addEventListener('click', function(){closeModal('pmModal');});
   document.getElementById('pmSaveBtn').addEventListener('click', savePlan);
 
+  document.getElementById('pmmModalClose').addEventListener('click', function(){closeModal('pmmModal');});
+  document.getElementById('pmmCancel').addEventListener('click', function(){closeModal('pmmModal');});
+  document.getElementById('pmmAddSection').addEventListener('click', function(){pmmAddSectionBlock(null);});
+  document.getElementById('pmmSaveBtn').addEventListener('click', savePmm);
+  document.getElementById('pmmDeleteBtn').addEventListener('click', deletePmm);
+  document.getElementById('pmmEmpSel').addEventListener('change', function(){renderPlanMatch();});
+
   // Nouveaux modals
   document.getElementById('flotteModalClose').addEventListener('click', function(){closeModal('flotteModal');});
   document.getElementById('vCancel').addEventListener('click', function(){closeModal('flotteModal');});
@@ -1727,6 +1959,13 @@ document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('invModalClose').addEventListener('click', function(){closeModal('invModal');});
   document.getElementById('iCancel').addEventListener('click', function(){closeModal('invModal');});
   document.getElementById('iSaveBtn').addEventListener('click', saveInv);
+
+  document.getElementById('sortieModalClose').addEventListener('click', function(){closeModal('sortieModal');});
+  document.getElementById('sortieCancel').addEventListener('click', function(){closeModal('sortieModal');});
+  document.getElementById('sortieAddLigne').addEventListener('click', function(){sortieAddLigne(null);});
+  document.getElementById('sortieSaveBtn').addEventListener('click', function(){saveSortie(false);});
+  document.getElementById('sortieSendBtn').addEventListener('click', function(){saveSortie(true);});
+  document.getElementById('sortieDeleteBtn').addEventListener('click', deleteSortie);
   document.getElementById('iDeleteBtn').addEventListener('click', deleteInv);
   document.getElementById('compteModalClose').addEventListener('click', function(){closeModal('compteModal');});
   document.getElementById('cCancel').addEventListener('click', function(){closeModal('compteModal');});
@@ -1760,19 +1999,21 @@ document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('woSearch').addEventListener('input', renderWOList);
   document.getElementById('siteSearch').addEventListener('input', renderSiteList);
   document.getElementById('invSearch').addEventListener('input', renderInvList);
+  document.getElementById('sortieSearch').addEventListener('input', renderSortieList);
 
   // PIN
   document.querySelectorAll('.pkey').forEach(function(btn){btn.addEventListener('click',function(){pinKey(this.dataset.k);});});
   document.getElementById('pinModal').addEventListener('click', function(e){if(e.target===this)closeModal('pinModal');});
 
   // Backdrop close pour tous les modals
-  ['jobModal','stopModal','woModal','siteModal','flotteModal','invModal','compteModal','pmModal'].forEach(function(id){
+  ['jobModal','stopModal','woModal','siteModal','flotteModal','invModal','compteModal','pmModal','pmmModal','sortieModal'].forEach(function(id){
     var el=document.getElementById(id);
     if(el)el.addEventListener('click',function(e){if(e.target===this)closeModal(id);});
   });
 
   initCanvas();
   buildPMDateStrip();
+  buildPMMDateStrip();
 
   // Auto-save 60s
   setInterval(function(){if(currentUser)saveFT();},60000);
@@ -1784,12 +2025,14 @@ document.addEventListener('DOMContentLoaded', function(){
 var NAV_CONFIG=[
   {mod:'accueil',icon:'🏠', lbl:'Accueil'},
   {mod:'plan',  icon:'📅', lbl:'Plan'},
+  {mod:'planmatch',icon:'📋',lbl:'Plan Match'},
   {mod:'ft',    icon:'⏱',  lbl:'Temps'},
   {mod:'suivi', icon:'🔴', lbl:'Suivi'},
   {mod:'wo',    icon:'📝', lbl:'WO'},
   {mod:'sites', icon:'🏗',  lbl:'Sites'},
   {mod:'flotte',icon:'🚗', lbl:'Flotte'},
   {mod:'inventaire',icon:'📦',lbl:'Stock'},
+  {mod:'sortie',icon:'📤',lbl:'Sortie Inv.'},
   {mod:'comptes',icon:'👥',lbl:'Comptes'},
   {mod:'stats', icon:'📊', lbl:'Stats'},
   {mod:'map',   icon:'🗺',  lbl:'Carte'},
@@ -1864,7 +2107,7 @@ function doLogout(){
 // ═══════════════════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════════════════
-var modMap={accueil:'modAccueil',plan:'modPlan',ft:'modFT',suivi:'modSuivi',wo:'modWO',sites:'modSites',flotte:'modFlotte',inventaire:'modInv',comptes:'modComptes',stats:'modStats',map:'modMap'};
+var modMap={accueil:'modAccueil',plan:'modPlan',planmatch:'modPlanMatch',ft:'modFT',suivi:'modSuivi',wo:'modWO',sites:'modSites',flotte:'modFlotte',inventaire:'modInv',sortie:'modSortie',comptes:'modComptes',stats:'modStats',map:'modMap'};
 
 function switchMod(mod){
   if(!hasDroit(mod))return;
@@ -1873,20 +2116,23 @@ function switchMod(mod){
   if(modMap[mod]){var el=document.getElementById(modMap[mod]);if(el)el.style.display='block';}
   document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.toggle('on',b.dataset.mod===mod);});
   // Afficher le bon FAB selon le module
-  var fabMap={plan:'pmAddBtn',wo:'woAddBtn',sites:'siteAddBtn',flotte:'flotteAddBtn',inventaire:'invAddBtn',comptes:'comptesAddBtn'};
-  ['pmAddBtn','woAddBtn','siteAddBtn','flotteAddBtn','invAddBtn','comptesAddBtn'].forEach(function(id){
+  var fabMap={plan:'pmAddBtn',planmatch:'pmmAddBtn',wo:'woAddBtn',sites:'siteAddBtn',flotte:'flotteAddBtn',inventaire:'invAddBtn',comptes:'comptesAddBtn',sortie:'sortieAddBtn'};
+  ['pmAddBtn','pmmAddBtn','woAddBtn','siteAddBtn','flotteAddBtn','invAddBtn','comptesAddBtn','sortieAddBtn'].forEach(function(id){
     var el=document.getElementById(id);if(!el)return;
-    var show=fabMap[mod]===id&&canEdit()&&(id!=='comptesAddBtn'||isAdmin());
+    var openToAll=(id==='sortieAddBtn'); // tous les employés peuvent créer une sortie d'inventaire
+    var show=fabMap[mod]===id&&(openToAll||canEdit())&&(id!=='comptesAddBtn'||isAdmin());
     el.style.display=show?'flex':'none';
   });
   if(mod==='accueil')renderAccueil();
   else if(mod==='plan')renderPlan();
+  else if(mod==='planmatch')renderPlanMatch();
   else if(mod==='ft'){setupFTEmpSelector();_loadedWeekKey=mondayOf(document.getElementById('weekDate').value);buildDayTabs();renderDay(curDay);refreshCumul();refreshWkStatus();}
   else if(mod==='suivi')renderSuivi();
   else if(mod==='wo')renderWOList();
   else if(mod==='sites')renderSiteList();
   else if(mod==='flotte')renderFlotteList();
   else if(mod==='inventaire')renderInvList();
+  else if(mod==='sortie')renderSortieList();
   else if(mod==='comptes')renderComptesList();
   else if(mod==='stats')renderStats();
   else if(mod==='map')initMap();
@@ -1934,10 +2180,10 @@ function renderPlan(){
   if(!isSup()){
     // Vue employé : mes assignations (slots plan + WO assignés à moi)
     var mine=daySlots.filter(function(s){
-      return s.emp&&(s.emp.toLowerCase().indexOf(currentUser.id)>=0||s.emp.toLowerCase().indexOf(fullName().toLowerCase())>=0);
+      return planAssignees(s).indexOf(currentUser.id)>=0;
     });
     var myWOs=dayWOs.filter(function(wo){
-      return wo.assigne&&(wo.assigne.toLowerCase().indexOf(currentUser.id)>=0||wo.assigne.toLowerCase().indexOf(fullName().toLowerCase())>=0);
+      return woAssignees(wo).indexOf(currentUser.id)>=0;
     });
     if(mine.length===0&&myWOs.length===0){
       content.innerHTML='<div class="empty"><div class="ei">📅</div><h3>Aucun assignment</h3><p>Aucun travail planifié pour ce jour.</p></div>';
@@ -1999,7 +2245,7 @@ function renderWOAsSlot(container,wo){
     '<span class="pm-slot-name">'+woTypeIcon(wo.type)+' '+wo.client+'</span>'+
     '<span class="badge '+woStatusClass(wo.status)+'">'+wo.status.replace('_',' ')+'</span></div>'+
     '<div class="pm-slot-meta">📍 '+wo.site+'</div>'+
-    (wo.assigne?'<div style="margin-top:5px"><span class="pm-emp-chip">👷 '+empName(wo.assigne)+'</span></div>':'')+
+    (woAssignees(wo).length?'<div style="margin-top:5px">'+woAssignees(wo).map(function(id){return '<span class="pm-emp-chip">👷 '+empName(id)+'</span>';}).join('')+'</div>':'')+
     (wo.notes?'<div class="pm-slot-meta" style="margin-top:4px;font-style:italic">'+wo.notes+'</div>':'');
   if(isSup())div.addEventListener('click',function(){openWOModal(wo);});
   container.appendChild(div);
@@ -2014,8 +2260,8 @@ function renderPMSlot(container,slot){
   div.innerHTML='<div class="pm-slot-top">'+
     '<span class="pm-slot-name">'+(wo?woTypeIcon(wo.type)+' '+wo.client:'Intervention')+'</span>'+
     '<span class="pm-slot-time">'+(slot.heure||'')+'</span></div>'+
-    '<div class="pm-slot-meta">'+(wo?wo.site:'')+(slot.emp?'<br/>':'')+'</div>'+
-    (slot.emp?'<div style="margin-top:6px"><span class="pm-emp-chip">👷 '+slot.emp+'</span></div>':'')+
+    '<div class="pm-slot-meta">'+(wo?wo.site:'')+(planAssignees(slot).length?'<br/>':'')+'</div>'+
+    (planAssignees(slot).length?'<div style="margin-top:6px">'+planAssignees(slot).map(function(id){return '<span class="pm-emp-chip">👷 '+empName(id)+'</span>';}).join('')+'</div>':'')+
     (slot.notes?'<div class="pm-slot-meta" style="margin-top:4px;font-style:italic">'+slot.notes+'</div>':'');
   if(isAdmin()){div.addEventListener('click',function(){openPmModal(slot.woId,slot.id);});}
   container.appendChild(div);
@@ -2034,12 +2280,13 @@ function openPmModal(woId, slotId){
   });
   document.getElementById('pmDate').value=pmDay||'';
   document.getElementById('pmHeure').value='';
-  document.getElementById('pmEmp').value='';
   document.getElementById('pmNotes').value='';
+  var preSelected=[];
   if(slotId){
     var plan=getPlan();var slot=plan.find(function(p){return p.id===slotId;});
-    if(slot){document.getElementById('pmHeure').value=slot.heure||'';document.getElementById('pmEmp').value=slot.emp||'';document.getElementById('pmNotes').value=slot.notes||'';}
+    if(slot){document.getElementById('pmHeure').value=slot.heure||'';document.getElementById('pmNotes').value=slot.notes||'';preSelected=planAssignees(slot);}
   }
+  buildEmpChecklist('pmEmpList',preSelected);
   document.getElementById('pmSaveBtn').dataset.slotId=slotId||'';
   openModal('pmModal');
 }
@@ -2048,13 +2295,470 @@ function savePlan(){
   if(!woId){toast('⚠️ Choisissez un WO');return;}
   var plan=getPlan();
   var slotId=document.getElementById('pmSaveBtn').dataset.slotId;
+  var emps=getCheckedEmp('pmEmpList');
   var slot={id:slotId||uid(),woId:woId,date:document.getElementById('pmDate').value,
-    heure:document.getElementById('pmHeure').value,emp:document.getElementById('pmEmp').value,
+    heure:document.getElementById('pmHeure').value,emps:emps,emp:emps.join(', '),
     notes:document.getElementById('pmNotes').value,status:'assigned'};
   if(slotId){var idx2=plan.findIndex(function(p){return p.id===slotId;});if(idx2>=0)plan[idx2]=slot;else plan.push(slot);}
   else plan.push(slot);
   setPlan(plan);
   closeModal('pmModal');renderPlan();toast('✅ Intervention planifiée !');
+}
+
+// ═══════════════════════════════════════════════════════
+// PLAN DE MATCH (checklist détaillée par employé/jour)
+// ═══════════════════════════════════════════════════════
+var pmmDay=null;
+var pmmSaveTimer=null;
+var PMM_COLORS=[{v:'bleu',lbl:'Bleu'},{v:'vert',lbl:'Vert'},{v:'orange',lbl:'Orange'},{v:'purple',lbl:'Violet'}];
+
+// ── Photos (compression côté client → base64, utilisable à la création ET pendant les opérations) ──
+function pmmProcessImageFile(file,cb){
+  if(!file||file.type.indexOf('image/')!==0){return;}
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var img=new Image();
+    img.onload=function(){
+      var maxDim=1280,w=img.width,h=img.height;
+      if(w>maxDim||h>maxDim){
+        if(w>h){h=Math.round(h*maxDim/w);w=maxDim;}else{w=Math.round(w*maxDim/h);h=maxDim;}
+      }
+      var cv=document.createElement('canvas');cv.width=w;cv.height=h;
+      cv.getContext('2d').drawImage(img,0,0,w,h);
+      cb(cv.toDataURL('image/jpeg',0.72));
+    };
+    img.onerror=function(){cb(null);};
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function pmmOpenLightbox(src){
+  var ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  var img=document.createElement('img');
+  img.src=src;img.style.cssText='max-width:100%;max-height:100%;border-radius:8px;box-shadow:0 10px 40px rgba(0,0,0,.5)';
+  ov.appendChild(img);
+  ov.addEventListener('click',function(){document.body.removeChild(ov);});
+  document.body.appendChild(ov);
+}
+
+// container: élément DOM ; photos: tableau [{data,name}] ; onDelete(i) ; onAdd(dataUrl) appelé après capture/sélection
+function pmmRenderPhotos(container,photos,onDelete,onAdd){
+  container.innerHTML='';
+  container.style.cssText='display:flex;flex-wrap:wrap;gap:6px;margin-top:6px';
+  (photos||[]).forEach(function(p,i){
+    var thumb=document.createElement('div');
+    thumb.style.cssText='position:relative;width:52px;height:52px;border-radius:8px;overflow:hidden;border:1px solid var(--line);flex-shrink:0';
+    var img=document.createElement('img');
+    img.src=p.data;img.style.cssText='width:100%;height:100%;object-fit:cover;cursor:pointer;display:block';
+    img.addEventListener('click',function(){pmmOpenLightbox(p.data);});
+    var x=document.createElement('button');
+    x.type='button';x.textContent='✕';
+    x.style.cssText='position:absolute;top:1px;right:1px;background:rgba(0,0,0,.65);color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:9px;line-height:1;cursor:pointer;padding:0';
+    x.addEventListener('click',function(e){e.stopPropagation();onDelete(i);});
+    thumb.appendChild(img);thumb.appendChild(x);
+    container.appendChild(thumb);
+  });
+  var addBtn=document.createElement('button');
+  addBtn.type='button';addBtn.textContent='📷';
+  addBtn.style.cssText='width:52px;height:52px;border-radius:8px;border:1.5px dashed var(--line);background:var(--surface);cursor:pointer;font-size:18px;color:var(--muted);flex-shrink:0';
+  var fileInp=document.createElement('input');
+  fileInp.type='file';fileInp.accept='image/*';fileInp.capture='environment';fileInp.style.display='none';
+  fileInp.addEventListener('change',function(){
+    var f=this.files[0];this.value='';
+    if(!f)return;
+    pmmProcessImageFile(f,function(dataUrl){if(dataUrl)onAdd(dataUrl);});
+  });
+  addBtn.addEventListener('click',function(){fileInp.click();});
+  container.appendChild(addBtn);
+  container.appendChild(fileInp);
+}
+
+// Redessine la zone photo d'une tâche (vue employé/remplissage) et branche sauvegarde auto
+function pmmDrawTaskPhotos(zone,t,plan){
+  pmmRenderPhotos(zone,t.photos,
+    function(i){t.photos.splice(i,1);pmmDrawTaskPhotos(zone,t,plan);pmmScheduleSave(plan);},
+    function(dataUrl){t.photos.push({data:dataUrl,name:'photo',addedBy:currentUser?currentUser.id:'',addedAt:new Date().toISOString()});pmmDrawTaskPhotos(zone,t,plan);pmmScheduleSave(plan);}
+  );
+}
+
+// Redessine la zone photo d'une tâche dans l'éditeur (création/modification par admin/superviseur — sauvé au clic "Enregistrer")
+function pmmDrawBuilderTaskPhotos(zone,t){
+  pmmRenderPhotos(zone,t.photos,
+    function(i){t.photos.splice(i,1);pmmDrawBuilderTaskPhotos(zone,t);},
+    function(dataUrl){t.photos.push({data:dataUrl,name:'photo',addedBy:currentUser?currentUser.id:'',addedAt:new Date().toISOString()});pmmDrawBuilderTaskPhotos(zone,t);}
+  );
+}
+
+function buildPMMDateStrip(){
+  var strip=document.getElementById('pmmDateStrip');
+  if(!strip)return;
+  strip.innerHTML='';
+  var today=new Date();
+  for(var i=-1;i<10;i++){
+    var d=new Date(today);d.setDate(today.getDate()+i);
+    var iso=d.toISOString().slice(0,10);
+    var isToday=(i===0);
+    var b=document.createElement('button');
+    b.className='pm-day-btn'+(isToday?' on':'');
+    b.dataset.date=iso;
+    b.innerHTML='<span class="pd-d">'+['dim','lun','mar','mer','jeu','ven','sam'][d.getDay()]+'</span>'+
+      '<span class="pd-n">'+d.getDate()+'</span>'+(isToday?'<span class="pd-dot"></span>':'');
+    (function(dt,btn){b.addEventListener('click',function(){
+      document.querySelectorAll('#pmmDateStrip .pm-day-btn').forEach(function(x){x.classList.remove('on');});
+      btn.classList.add('on');pmmDay=dt;renderPlanMatch();
+    });})(iso,b);
+    strip.appendChild(b);
+  }
+  pmmDay=today.toISOString().slice(0,10);
+}
+
+function pmmTargetUid(){
+  // Sup/admin peuvent consulter/remplir le plan d'un autre employé via le sélecteur
+  if(isSup()){
+    var sel=document.getElementById('pmmEmpSel');
+    if(sel&&sel.value)return sel.value;
+  }
+  return currentUser?currentUser.id:null;
+}
+
+// Construit un document propre (texte figé, pas d'inputs) pour l'impression
+function pmmBuildPrintHTML(plan){
+  var h='<div class="pmm-print-doc">';
+  h+='<div class="pmm-print-hd"><h1>📋 PLAN DE MATCH</h1>';
+  if(plan.resume)h+='<div class="pmm-print-sub">'+esc(plan.resume)+'</div>';
+  h+='<div class="pmm-print-meta"><span><b>Employé:</b> '+esc(empName(plan.emp))+'</span>';
+  if(plan.vehicule)h+='<span><b>Véhicule:</b> '+esc(plan.vehicule)+'</span>';
+  if(plan.superviseur)h+='<span><b>Superviseur:</b> '+esc(plan.superviseur)+'</span>';
+  h+='<span><b>Date:</b> '+fmtDate(plan.date)+'</span></div></div>';
+
+  (plan.sections||[]).forEach(function(sec){
+    if(sec.note){
+      h+='<div class="pmm-print-note '+(sec.noteColor==='amber'?'amber':'rouge')+'">'+(sec.noteColor==='amber'?'⚠️':'🚨')+' '+esc(sec.note)+'</div>';
+    }
+    h+='<div class="pmm-print-sec"><div class="pmm-print-sec-hd c-'+(sec.color||'bleu')+'">'+esc(sec.title||'')+'</div>';
+    h+='<table class="pmm-print-table"><thead><tr><th style="width:22px">✓</th><th>Tâche</th><th style="width:55px">Temps</th><th>Notes</th><th style="width:65px">Statut</th></tr></thead><tbody>';
+    (sec.tasks||[]).forEach(function(t){
+      h+='<tr><td class="ctr">'+(t.done?'☑':'☐')+'</td><td>'+esc(t.label)+'</td><td class="ctr">'+esc(t.est||'')+'</td><td>'+esc(t.notes||'')+'</td><td>'+esc(t.status||'À faire')+'</td></tr>';
+      if(t.photos&&t.photos.length){
+        h+='<tr><td></td><td colspan="4"><div class="pmm-print-photos">'+t.photos.map(function(p){return '<img src="'+p.data+'"/>';}).join('')+'</div></td></tr>';
+      }
+    });
+    h+='</tbody></table></div>';
+  });
+
+  if(plan.obstacles||plan.bonscoups){
+    h+='<div class="pmm-print-ff">';
+    h+='<div><b>🚧 Obstacles:</b> '+esc(plan.obstacles||'—')+'</div>';
+    h+='<div><b>🌟 Bons coups:</b> '+esc(plan.bonscoups||'—')+'</div>';
+    h+='</div>';
+  }
+  h+='</div>';
+  return h;
+}
+
+function renderPlanMatch(){
+  var selWrap=document.getElementById('pmmEmpSelector');
+  var sel=document.getElementById('pmmEmpSel');
+  if(isSup()){
+    selWrap.style.display='flex';
+    if(!sel.dataset.built){
+      sel.innerHTML='';
+      getComptes().forEach(function(c){
+        var o=document.createElement('option');o.value=c.id;o.textContent=(c.prenom+' '+c.nom).trim();
+        if(c.id===currentUser.id)o.selected=true;
+        sel.appendChild(o);
+      });
+      sel.dataset.built='1';
+    }
+  }else{
+    selWrap.style.display='none';
+  }
+
+  var content=document.getElementById('pmmContent');
+  content.innerHTML='';
+  var uidT=pmmTargetUid();
+  var list=getPlanMatches();
+  var plan=list.find(function(p){return p.date===pmmDay&&p.emp===uidT;});
+
+  if(!plan){
+    var d=document.createElement('div');
+    d.className='pmm-empty';
+    d.innerHTML='<div class="e-ic">📋</div><div style="font-weight:700;color:var(--text);margin-bottom:4px">Aucun Plan de Match pour cette journée</div>'+
+      '<div style="font-size:12px">'+(isSup()?'Créez-en un avec le bouton ＋':'Votre superviseur n\'a pas encore préparé de plan pour aujourd\'hui.')+'</div>';
+    content.appendChild(d);
+    return;
+  }
+
+  // Barre d'actions (impression + édition sup/admin)
+  var actions=document.createElement('div');
+  actions.className='pmm-actions';
+  var printBtn=document.createElement('button');
+  printBtn.className='btn btn-ghost';printBtn.style.flex='1';printBtn.innerHTML='🖨️ Imprimer';
+  printBtn.addEventListener('click',function(){
+    document.getElementById('pmmPrintArea').innerHTML=pmmBuildPrintHTML(plan);
+    window.print();
+  });
+  actions.appendChild(printBtn);
+  if(isSup()){
+    var editBtn=document.createElement('button');
+    editBtn.className='btn btn-ghost';editBtn.style.flex='1';editBtn.innerHTML='✏️ Modifier la structure';
+    editBtn.addEventListener('click',function(){openPmmModal(plan.id);});
+    actions.appendChild(editBtn);
+  }
+  content.appendChild(actions);
+
+  // En-tête
+  var head=document.createElement('div');
+  head.className='pmm-head';
+  head.innerHTML='<h2>📋 PLAN DE MATCH</h2>'+
+    (plan.resume?'<div class="pmm-sub">'+esc(plan.resume)+'</div>':'')+
+    '<div class="pmm-meta">'+
+      '<div class="pmm-meta-item">Employé<b>👷 '+esc(empName(plan.emp))+'</b></div>'+
+      (plan.vehicule?'<div class="pmm-meta-item">Véhicule<b>🚗 '+esc(plan.vehicule)+'</b></div>':'')+
+      (plan.superviseur?'<div class="pmm-meta-item">Superviseur<b>'+esc(plan.superviseur)+'</b></div>':'')+
+      '<div class="pmm-meta-item">Date<b>'+fmtDate(plan.date)+'</b></div>'+
+    '</div>';
+  content.appendChild(head);
+
+  // Progression
+  var allTasks=[];(plan.sections||[]).forEach(function(s){(s.tasks||[]).forEach(function(t){allTasks.push(t);});});
+  var doneCount=allTasks.filter(function(t){return t.done;}).length;
+  var pct=allTasks.length?Math.round(doneCount/allTasks.length*100):0;
+  var prog=document.createElement('div');
+  prog.className='pmm-progress';
+  prog.innerHTML='<div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:var(--muted)">'+
+    '<span>PROGRESSION</span><span>'+doneCount+' / '+allTasks.length+' tâches ('+pct+'%)</span></div>'+
+    '<div class="pmm-progress-bar"><div class="pmm-progress-fill" style="width:'+pct+'%"></div></div>';
+  content.appendChild(prog);
+
+  // Sections
+  (plan.sections||[]).forEach(function(sec,sIdx){
+    if(sec.note){
+      var noteDiv=document.createElement('div');
+      noteDiv.className='pmm-note '+(sec.noteColor==='amber'?'amber':'rouge');
+      noteDiv.innerHTML=(sec.noteColor==='amber'?'⚠️':'🚨')+' <div>'+esc(sec.note)+'</div>';
+      content.appendChild(noteDiv);
+    }
+    var box=document.createElement('div');
+    box.className='pmm-section';
+    var hd=document.createElement('div');
+    hd.className='pmm-sec-hd c-'+(sec.color||'bleu');
+    hd.style.display='flex';hd.style.alignItems='center';
+    hd.innerHTML='<span>'+esc(sec.title||('Section '+(sIdx+1)))+'</span>';
+    box.appendChild(hd);
+    (sec.tasks||[]).forEach(function(t,tIdx){
+      var row=document.createElement('div');
+      row.className='pmm-task'+(t.done?' done':'');
+      var cb=document.createElement('input');
+      cb.type='checkbox';cb.className='pmm-cbx';cb.checked=!!t.done;
+      cb.addEventListener('change',function(){t.done=cb.checked;if(t.done&&!t.status)t.status='✅ Fait';row.classList.toggle('done',t.done);pmmScheduleSave(plan);renderPlanMatchProgressOnly(plan);});
+      row.appendChild(cb);
+      var main=document.createElement('div');
+      main.className='pmm-t-main';
+      main.innerHTML='<span class="pmm-t-label">'+esc(t.label||'')+'</span>'+(t.est?'<span class="pmm-t-est">('+esc(t.est)+')</span>':'');
+      var notes=document.createElement('textarea');
+      notes.className='pmm-t-notes';notes.placeholder='Notes / observations…';notes.value=t.notes||'';
+      notes.addEventListener('input',function(){t.notes=notes.value;pmmScheduleSave(plan);});
+      var status=document.createElement('select');
+      status.className='pmm-t-status';
+      ['À faire','En cours','✅ Fait'].forEach(function(opt){
+        var o=document.createElement('option');o.value=opt;o.textContent=opt;
+        if((t.status||'À faire')===opt)o.selected=true;
+        status.appendChild(o);
+      });
+      status.addEventListener('change',function(){t.status=status.value;t.done=(status.value==='✅ Fait');cb.checked=t.done;row.classList.toggle('done',t.done);pmmScheduleSave(plan);renderPlanMatchProgressOnly(plan);});
+      main.appendChild(notes);main.appendChild(status);
+      var photoZone=document.createElement('div');
+      t.photos=t.photos||[];
+      pmmDrawTaskPhotos(photoZone,t,plan);
+      main.appendChild(photoZone);
+      row.appendChild(main);
+      box.appendChild(row);
+    });
+    content.appendChild(box);
+  });
+
+  // Obstacles / bons coups
+  var ff=document.createElement('div');
+  ff.className='pmm-freeform';
+  ff.innerHTML='<label>🚧 Obstacles</label><input type="text" id="pmmObstacles" placeholder="Obstacles rencontrés…"/>'+
+    '<label>🌟 Bons coups</label><input type="text" id="pmmBonsCoups" placeholder="Bons coups de la journée…"/>';
+  content.appendChild(ff);
+  document.getElementById('pmmObstacles').value=plan.obstacles||'';
+  document.getElementById('pmmBonsCoups').value=plan.bonscoups||'';
+  document.getElementById('pmmObstacles').addEventListener('input',function(e){plan.obstacles=e.target.value;pmmScheduleSave(plan);});
+  document.getElementById('pmmBonsCoups').addEventListener('input',function(e){plan.bonscoups=e.target.value;pmmScheduleSave(plan);});
+}
+
+// Rafraîchit juste la barre de progression sans tout re-render (évite de perdre le focus des champs)
+function renderPlanMatchProgressOnly(plan){
+  var allTasks=[];(plan.sections||[]).forEach(function(s){(s.tasks||[]).forEach(function(t){allTasks.push(t);});});
+  var doneCount=allTasks.filter(function(t){return t.done;}).length;
+  var pct=allTasks.length?Math.round(doneCount/allTasks.length*100):0;
+  var bar=document.querySelector('.pmm-progress-fill');
+  var lbl=document.querySelector('.pmm-progress span:last-child');
+  if(bar)bar.style.width=pct+'%';
+  if(lbl)lbl.textContent=doneCount+' / '+allTasks.length+' tâches ('+pct+'%)';
+}
+
+// Sauvegarde différée (debounce) pour ne pas spammer Supabase à chaque frappe
+function pmmScheduleSave(plan){
+  plan.updatedAt=new Date().toISOString();
+  if(pmmSaveTimer)clearTimeout(pmmSaveTimer);
+  pmmSaveTimer=setTimeout(function(){
+    var list=getPlanMatches();
+    var idx=list.findIndex(function(p){return p.id===plan.id;});
+    if(idx>=0)list[idx]=plan;else list.push(plan);
+    setPlanMatches(list);
+  },700);
+}
+
+function esc(s){return (s===undefined||s===null)?'':String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+
+// ── Éditeur admin/superviseur (création/modification de la structure) ──
+var pmmEditingId=null;
+var pmmBuilderSections=[];
+
+function openPmmModal(planId){
+  pmmEditingId=planId;
+  var sel=document.getElementById('pmmEmp');
+  sel.innerHTML='';
+  getComptes().forEach(function(c){
+    var o=document.createElement('option');o.value=c.id;o.textContent=(c.prenom+' '+c.nom).trim();
+    sel.appendChild(o);
+  });
+  document.getElementById('pmmDeleteBtn').style.display=planId?'block':'none';
+  if(planId){
+    var plan=getPlanMatches().find(function(p){return p.id===planId;});
+    if(!plan){toast('Plan introuvable');return;}
+    document.getElementById('pmmModalTitle').textContent='Modifier le Plan de Match';
+    sel.value=plan.emp;
+    document.getElementById('pmmDate').value=plan.date;
+    document.getElementById('pmmVehicule').value=plan.vehicule||'';
+    document.getElementById('pmmSuperviseur').value=plan.superviseur||'';
+    document.getElementById('pmmResume').value=plan.resume||'';
+    pmmBuilderSections=JSON.parse(JSON.stringify(plan.sections||[]));
+  }else{
+    document.getElementById('pmmModalTitle').textContent='Créer un Plan de Match';
+    sel.value=currentUser.id;
+    document.getElementById('pmmDate').value=pmmDay||new Date().toISOString().slice(0,10);
+    document.getElementById('pmmVehicule').value='';
+    document.getElementById('pmmSuperviseur').value=isSup()?fullName():'';
+    document.getElementById('pmmResume').value='';
+    pmmBuilderSections=[];
+  }
+  pmmRenderBuilder();
+  openModal('pmmModal');
+}
+
+function pmmRenderBuilder(){
+  var wrap=document.getElementById('pmmSections');
+  wrap.innerHTML='';
+  pmmBuilderSections.forEach(function(sec,sIdx){
+    var box=document.createElement('div');
+    box.className='pmm-builder-sec';
+    var top=document.createElement('div');
+    top.className='pbs-top';
+    var titleInp=document.createElement('input');
+    titleInp.type='text';titleInp.placeholder='Titre de la section (ex: SDC3 — ~2h)';titleInp.value=sec.title||'';
+    titleInp.addEventListener('input',function(){sec.title=titleInp.value;});
+    var colorSel=document.createElement('select');
+    PMM_COLORS.forEach(function(c){var o=document.createElement('option');o.value=c.v;o.textContent=c.lbl;if((sec.color||'bleu')===c.v)o.selected=true;colorSel.appendChild(o);});
+    colorSel.addEventListener('change',function(){sec.color=colorSel.value;});
+    var xBtn=document.createElement('button');
+    xBtn.className='pmm-mini-x';xBtn.textContent='✕';xBtn.title='Supprimer la section';
+    xBtn.addEventListener('click',function(){pmmBuilderSections.splice(sIdx,1);pmmRenderBuilder();});
+    top.appendChild(titleInp);top.appendChild(colorSel);top.appendChild(xBtn);
+    box.appendChild(top);
+
+    var noteInp=document.createElement('input');
+    noteInp.type='text';noteInp.placeholder='⚠️ Note/alerte optionnelle pour cette section (ex: attention valve fermée)';
+    noteInp.value=sec.note||'';noteInp.style.marginBottom='8px';
+    noteInp.addEventListener('input',function(){sec.note=noteInp.value;if(!sec.noteColor)sec.noteColor='rouge';});
+    box.appendChild(noteInp);
+
+    var tasksWrap=document.createElement('div');
+    sec.tasks=sec.tasks||[];
+    sec.tasks.forEach(function(t,tIdx){
+      var tOuter=document.createElement('div');
+      tOuter.style.marginBottom='6px';
+      var tRow=document.createElement('div');
+      tRow.className='pmm-builder-task';
+      tRow.style.marginBottom='0';
+      var lblInp=document.createElement('input');
+      lblInp.type='text';lblInp.placeholder='Tâche…';lblInp.value=t.label||'';
+      lblInp.addEventListener('input',function(){t.label=lblInp.value;});
+      var estInp=document.createElement('input');
+      estInp.type='text';estInp.className='pbt-est';estInp.placeholder='min';estInp.value=t.est||'';
+      estInp.addEventListener('input',function(){t.est=estInp.value;});
+      var xT=document.createElement('button');
+      xT.className='pmm-mini-x';xT.textContent='✕';
+      xT.addEventListener('click',function(){sec.tasks.splice(tIdx,1);pmmRenderBuilder();});
+      tRow.appendChild(lblInp);tRow.appendChild(estInp);tRow.appendChild(xT);
+      tOuter.appendChild(tRow);
+      // Photos de référence (ajoutables dès la création par l'admin/superviseur)
+      t.photos=t.photos||[];
+      var photoZone=document.createElement('div');
+      pmmDrawBuilderTaskPhotos(photoZone,t);
+      tOuter.appendChild(photoZone);
+      tasksWrap.appendChild(tOuter);
+    });
+    box.appendChild(tasksWrap);
+
+    var addTaskBtn=document.createElement('button');
+    addTaskBtn.className='pmm-mini-add';addTaskBtn.textContent='➕ Ajouter une tâche';
+    addTaskBtn.addEventListener('click',function(){sec.tasks.push({id:uid(),label:'',est:'',notes:'',status:'À faire',done:false,photos:[]});pmmRenderBuilder();});
+    box.appendChild(addTaskBtn);
+
+    wrap.appendChild(box);
+  });
+}
+
+function pmmAddSectionBlock(){
+  pmmBuilderSections.push({id:uid(),title:'',color:'bleu',note:'',tasks:[]});
+  pmmRenderBuilder();
+}
+
+function savePmm(){
+  var emp=document.getElementById('pmmEmp').value;
+  var date=document.getElementById('pmmDate').value;
+  if(!emp||!date){toast('⚠️ Employé et date requis');return;}
+  var list=getPlanMatches();
+  var plan;
+  if(pmmEditingId){
+    plan=list.find(function(p){return p.id===pmmEditingId;})||{id:uid()};
+  }else{
+    plan={id:uid(),createdBy:currentUser.id,createdAt:new Date().toISOString()};
+  }
+  plan.emp=emp;
+  plan.date=date;
+  plan.vehicule=document.getElementById('pmmVehicule').value;
+  plan.superviseur=document.getElementById('pmmSuperviseur').value;
+  plan.resume=document.getElementById('pmmResume').value;
+  plan.sections=pmmBuilderSections;
+  plan.obstacles=plan.obstacles||'';
+  plan.bonscoups=plan.bonscoups||'';
+  plan.updatedAt=new Date().toISOString();
+  var idx=list.findIndex(function(p){return p.id===plan.id;});
+  if(idx>=0)list[idx]=plan;else list.push(plan);
+  setPlanMatches(list);
+  closeModal('pmmModal');
+  pmmDay=date;
+  renderPlanMatch();
+  toast('✅ Plan de Match enregistré !');
+}
+
+function deletePmm(){
+  if(!pmmEditingId)return;
+  if(!confirm('Supprimer ce Plan de Match ?'))return;
+  var list=getPlanMatches().filter(function(p){return p.id!==pmmEditingId;});
+  setPlanMatches(list);
+  sbDelete('planmatch',pmmEditingId);
+  closeModal('pmmModal');
+  renderPlanMatch();
+  toast('🗑 Plan de Match supprimé');
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2103,7 +2807,7 @@ function renderWOList(){
       '<div class="wo-site">📍 '+wo.site+(woSiteAddr(wo)?' <a href="https://maps.google.com/?q='+encodeURIComponent(woSiteAddr(wo))+'" target="_blank" onclick="event.stopPropagation()" style="color:var(--blue);font-weight:700;text-decoration:none">🗺</a>':'')+'</div></div>'+
       '<div class="wo-body">'+
         '<div class="wo-stat"><div class="ws-l">Date</div><div class="ws-v">'+(wo.date?fmtDate(wo.date):'—')+'</div></div>'+
-        '<div class="wo-stat"><div class="ws-l">Assigné</div><div class="ws-v">'+(wo.assigne?empName(wo.assigne):'—')+'</div></div>'+
+        '<div class="wo-stat"><div class="ws-l">Assigné</div><div class="ws-v">'+(woAssignees(wo).length?empNames(woAssignees(wo)):'—')+'</div></div>'+
         (totalTasks>0?'<div class="wo-stat"><div class="ws-l">Tâches</div><div class="ws-v">'+checkedCount+'/'+totalTasks+'</div></div>':'')+
       '</div>';
     card.addEventListener('click',function(){openWOModal(wo);});
@@ -2122,15 +2826,8 @@ function openWOModal(wo){
   document.getElementById('woPriorite').value=wo?wo.priorite:'normal';
   document.getElementById('woStatus').value=wo?wo.status:'ouvert';
   document.getElementById('woDate').value=wo?wo.date:'';
-  // Remplir le menu déroulant des employés
-  var asel=document.getElementById('woAssigne');
-  asel.innerHTML='<option value="">— Personne —</option>';
-  getComptes().filter(function(c){return c.role!=='admin';}).forEach(function(c){
-    var opt=document.createElement('option');opt.value=c.id;
-    opt.textContent=(c.prenom+' '+c.nom).trim();
-    asel.appendChild(opt);
-  });
-  document.getElementById('woAssigne').value=wo?(wo.assigne||''):'';
+  // Cases à cocher pour assigner un ou plusieurs employés
+  buildEmpChecklist('woAssigneList',woAssignees(wo),true);
   document.getElementById('woDesc').value=wo?wo.desc:'';
   document.getElementById('woNotes').value=wo?wo.notes:'';
   document.getElementById('woDeleteBtn').style.display=wo&&canEdit()?'flex':'none';
@@ -2141,10 +2838,11 @@ function saveWO(){
   var client=document.getElementById('woClient').value.trim();
   if(!client){document.getElementById('woClient').focus();return;}
   var wos=getWOs();
+  var assignes=getCheckedEmp('woAssigneList');
   var wo={id:woEditId||uid(),client:client,site:document.getElementById('woSite').value.trim(),
     type:document.getElementById('woType').value,priorite:document.getElementById('woPriorite').value,
     status:document.getElementById('woStatus').value,
-    date:document.getElementById('woDate').value,assigne:document.getElementById('woAssigne').value.trim(),
+    date:document.getElementById('woDate').value,assignes:assignes,assigne:assignes.join(', '),
     desc:document.getElementById('woDesc').value.trim(),notes:document.getElementById('woNotes').value.trim(),
     tasks:woTasks,files:woPjFiles,
     createdAt:woEditId?undefined:new Date().toISOString()};
@@ -2443,7 +3141,7 @@ function renderAccueil(){
   html+='<div class="acc-seclbl">'+(isSup()?'Gestion & terrain':'Mon travail')+'</div>';
   html+='<div class="acc-grid">';
   var wos=getWOs();
-  var myWO=isSup()?wos.length:wos.filter(function(w){return w.assigne===currentUser.id;}).length;
+  var myWO=isSup()?wos.length:wos.filter(function(w){return woAssignees(w).indexOf(currentUser.id)>=0;}).length;
   html+=accTile('wo','📝','Mes WO','ti-wo',myWO+' intervention'+(myWO>1?'s':''),myWO);
   html+=accTile('plan','📅','Plan du jour','ti-plan',DL[realIdx],0);
   html+=accTile('map','🗺','Carte','ti-map','Tournée',0);
@@ -3094,7 +3792,7 @@ function renderEmpDash(){
     '<div class="stat-card blue"><div class="sc-label">Semaines saisies</div><div class="sc-val">'+ftIdx.length+'</div></div>'+
     '<div class="stat-card green"><div class="sc-label">Heures ce mois</div><div class="sc-val">'+fmtH(monthH)+'</div></div>'+
     '<div class="stat-card"><div class="sc-label">Total heures</div><div class="sc-val">'+fmtH(totalH)+'</div></div>'+
-    '<div class="stat-card orange"><div class="sc-label">Plan du jour</div><div class="sc-val">'+(getPlan().filter(function(p){return p.emp&&p.emp.toLowerCase().indexOf(currentUser.id)>=0&&p.date===new Date().toISOString().slice(0,10);}).length)+' WO</div></div>';
+    '<div class="stat-card orange"><div class="sc-label">Plan du jour</div><div class="sc-val">'+(getPlan().filter(function(p){return planAssignees(p).indexOf(currentUser.id)>=0&&p.date===new Date().toISOString().slice(0,10);}).length)+' WO</div></div>';
   var histo=document.getElementById('edbHisto');histo.innerHTML='';
   if(ftIdx.length===0){histo.innerHTML='<div class="empty"><div class="ei">📋</div><h3>Aucune feuille</h3><p>Commence à saisir tes heures !</p></div>';return;}
   ftIdx.forEach(function(entry){
@@ -3246,6 +3944,198 @@ function deleteInv(){
 function _deleteInvDo(){
   setInv(getInv().filter(function(i){return i.id!==iEditId;}));
   closeModal('invModal');renderInvList();toast('Produit supprimé');
+}
+
+// ═══════════════════════════════════════════════════════
+// SORTIE D'INVENTAIRE (entrepôt) — accessible à tous les employés
+// ═══════════════════════════════════════════════════════
+var sortieEditId=null;
+var sortieLignes=[];
+
+function sortieGenerateNoBon(){
+  var now=new Date();
+  var y=now.getFullYear(),m=String(now.getMonth()+1).padStart(2,'0'),d=String(now.getDate()).padStart(2,'0');
+  var rand=String(Math.floor(Math.random()*900)+100);
+  return 'SA-INV-'+y+m+d+'-'+rand;
+}
+
+function renderSortieList(){
+  var list=document.getElementById('sortieList');
+  list.innerHTML='';
+  var sorties=getSorties().slice().sort(function(a,b){return (b.createdAt||'').localeCompare(a.createdAt||'');});
+  var search=(document.getElementById('sortieSearch').value||'').toLowerCase();
+  if(search){
+    sorties=sorties.filter(function(s){
+      var hay=(s.noBon+' '+s.nom+' '+s.departement+' '+(s.lignes||[]).map(function(l){return l.projet+' '+l.desc+' '+l.code;}).join(' ')).toLowerCase();
+      return hay.indexOf(search)>=0;
+    });
+  }
+  if(sorties.length===0){
+    list.innerHTML='<div class="empty"><div class="ei">📤</div><h3>Aucune sortie d\'inventaire</h3><p>Créez-en une avec le bouton ＋</p></div>';
+    return;
+  }
+  sorties.forEach(function(s){
+    var card=document.createElement('div');card.className='sortie-card';
+    var nbLignes=(s.lignes||[]).filter(function(l){return l.desc||l.code;}).length;
+    var envoye=s.status==='envoye';
+    card.innerHTML='<div class="sc-hd"><div><div class="sc-bon">'+esc(s.noBon)+'</div><div class="sc-nom">'+esc(s.nom||'—')+'</div></div>'+
+      '<span class="badge '+(envoye?'badge-green':'badge-orange')+'">'+(envoye?'✅ Envoyé':'📝 Brouillon')+'</span></div>'+
+      '<div class="sc-body">'+
+        '<span>📅 '+(s.date?fmtDate(s.date):'—')+'</span>'+
+        '<span>🏢 '+esc(s.departement||'—')+'</span>'+
+        '<span>📦 '+nbLignes+' item'+(nbLignes>1?'s':'')+'</span>'+
+      '</div>';
+    card.addEventListener('click',function(){openSortieModal(s.id);});
+    list.appendChild(card);
+  });
+}
+
+function sortieAddLigne(ligne){
+  sortieLignes.push(ligne||{code:'',loc:'',desc:'',qteSortie:'',qteRetour:'',projet:''});
+  sortieRenderLignes();
+}
+
+function sortieRenderLignes(){
+  var wrap=document.getElementById('sortieLignesWrap');
+  wrap.innerHTML='';
+  sortieLignes.forEach(function(l,i){
+    var row=document.createElement('div');
+    row.className='sortie-ligne-row';
+    row.innerHTML=
+      '<div class="sl-hd"><button type="button" class="pmm-mini-x">✕</button></div>'+
+      '<input type="text" placeholder="Code produit" data-k="code"/>'+
+      '<input type="text" placeholder="Localisation" data-k="loc"/>'+
+      '<input type="text" placeholder="Descriptif de l\'item" class="sl-full" data-k="desc"/>'+
+      '<input type="number" min="0" step="1" placeholder="Qté sortie" data-k="qteSortie"/>'+
+      '<input type="number" min="0" step="1" placeholder="Qté retour" data-k="qteRetour"/>'+
+      '<input type="text" placeholder="Client / projet / no de bon" class="sl-full" data-k="projet"/>';
+    row.querySelectorAll('input').forEach(function(inp){
+      inp.value=l[inp.dataset.k]||'';
+      inp.addEventListener('input',function(){l[inp.dataset.k]=inp.value;});
+    });
+    row.querySelector('.pmm-mini-x').addEventListener('click',function(){sortieLignes.splice(i,1);sortieRenderLignes();});
+    wrap.appendChild(row);
+  });
+}
+
+function openSortieModal(sortieId){
+  sortieEditId=sortieId;
+  if(sortieId){
+    var s=getSorties().find(function(x){return x.id===sortieId;});
+    if(!s){toast('Sortie introuvable');return;}
+    document.getElementById('sortieModalTitle').textContent='Sortie d\'inventaire';
+    document.getElementById('sortieNoBon').textContent='N° de bon : '+s.noBon;
+    document.getElementById('sorNom').value=s.nom||'';
+    document.getElementById('sorNoEmploye').value=s.noEmploye||'';
+    document.getElementById('sorDept').value=s.departement||'';
+    document.getElementById('sorDate').value=s.date||'';
+    sortieLignes=JSON.parse(JSON.stringify(s.lignes||[]));
+    document.getElementById('sortieStatusBadge').textContent=s.status==='envoye'?('✅ Envoyé au superviseur le '+(s.sentAt?new Date(s.sentAt).toLocaleString('fr-CA'):'')):'📝 Brouillon (non envoyé)';
+    var canDelete=isSup()||s.createdBy===currentUser.id;
+    document.getElementById('sortieDeleteBtn').style.display=canDelete?'block':'none';
+  }else{
+    document.getElementById('sortieModalTitle').textContent='Nouvelle sortie d\'inventaire';
+    document.getElementById('sortieNoBon').textContent='N° de bon : '+sortieGenerateNoBon();
+    document.getElementById('sorNom').value=fullName();
+    document.getElementById('sorNoEmploye').value=currentUser.id;
+    document.getElementById('sorDept').value=currentUser.dept||'';
+    document.getElementById('sorDate').value=new Date().toISOString().slice(0,10);
+    sortieLignes=[];
+    for(var i=0;i<3;i++)sortieLignes.push({code:'',loc:'',desc:'',qteSortie:'',qteRetour:'',projet:''});
+    document.getElementById('sortieStatusBadge').textContent='📝 Brouillon (non envoyé)';
+    document.getElementById('sortieDeleteBtn').style.display='none';
+  }
+  sortieRenderLignes();
+  openModal('sortieModal');
+}
+
+function saveSortie(send){
+  var nom=document.getElementById('sorNom').value.trim();
+  if(!nom){document.getElementById('sorNom').focus();toast('⚠️ Nom requis');return;}
+  var lignesUtiles=sortieLignes.filter(function(l){return l.code||l.desc||l.qteSortie||l.qteRetour;});
+  if(send&&lignesUtiles.length===0){toast('⚠️ Ajoutez au moins un item avant d\'envoyer');return;}
+  var list=getSorties();
+  var s;
+  if(sortieEditId){
+    s=list.find(function(x){return x.id===sortieEditId;})||{id:uid(),createdBy:currentUser.id,createdAt:new Date().toISOString()};
+  }else{
+    s={id:uid(),noBon:document.getElementById('sortieNoBon').textContent.replace('N° de bon : ',''),createdBy:currentUser.id,createdAt:new Date().toISOString()};
+  }
+  s.nom=nom;
+  s.noEmploye=document.getElementById('sorNoEmploye').value.trim();
+  s.departement=document.getElementById('sorDept').value.trim();
+  s.date=document.getElementById('sorDate').value;
+  s.lignes=lignesUtiles;
+  s.updatedAt=new Date().toISOString();
+  if(send){s.status='envoye';s.sentAt=new Date().toISOString();}
+  else if(!s.status)s.status='brouillon';
+  var idx=list.findIndex(function(x){return x.id===s.id;});
+  if(idx>=0)list[idx]=s;else list.push(s);
+  setSorties(list);
+
+  if(send){
+    // 1) Rapport imprimable / PDF
+    document.getElementById('pmmPrintArea').innerHTML=sortieBuildPrintHTML(s);
+    window.print();
+    // 2) Courriel au superviseur (webmail — Office365/Gmail selon préférence déjà choisie dans Temps)
+    var body='Sortie d\'inventaire — Entrepôt Soucy AquatiK\n\n';
+    body+='N° de bon : '+s.noBon+'\n';
+    body+='Nom : '+s.nom+'\n';
+    body+='N° d\'employé : '+(s.noEmploye||'—')+'\n';
+    body+='Département : '+(s.departement||'—')+'\n';
+    body+='Date : '+fmtDate(s.date)+'\n\n';
+    body+='Items :\n';
+    s.lignes.forEach(function(l){
+      body+='- '+(l.code||'Sans code')+' | '+(l.desc||'')+' | Loc: '+(l.loc||'-')+' | Sortie: '+(l.qteSortie||0)+' | Retour: '+(l.qteRetour||0)+' | '+(l.projet||'')+'\n';
+    });
+    body+='\n---\nEnvoyé depuis SA Platform — Soucy AquatiK\n(Le rapport imprimé/PDF doit être joint manuellement à ce courriel si requis.)';
+    var sub=encodeURIComponent('Sortie d\'inventaire '+s.noBon+' — '+s.nom);
+    var be=encodeURIComponent(body);var to=encodeURIComponent(SUP_EMAIL);
+    var url=(typeof EMAIL_TYPE!=='undefined'&&EMAIL_TYPE==='gmail')?
+      'https://mail.google.com/mail/?view=cm&to='+SUP_EMAIL+'&su='+sub+'&body='+be:
+      'https://outlook.office.com/mail/deeplink/compose?to='+to+'&subject='+sub+'&body='+be;
+    window.open(url,'_blank');
+    toast('📤 Envoyé au superviseur !');
+  }else{
+    toast('💾 Brouillon enregistré');
+  }
+  closeModal('sortieModal');
+  renderSortieList();
+}
+
+function deleteSortie(){
+  if(!sortieEditId)return;
+  askConfirm('Supprimer cette sortie d\'inventaire ?',_deleteSortieDo,'🗑 Supprimer','Supprimer la sortie');
+}
+function _deleteSortieDo(){
+  setSorties(getSorties().filter(function(s){return s.id!==sortieEditId;}));
+  sbDelete('sortie',sortieEditId);
+  closeModal('sortieModal');renderSortieList();toast('🗑 Sortie supprimée');
+}
+
+// Document imprimable propre pour une sortie d'inventaire
+function sortieBuildPrintHTML(s){
+  var h='<div class="pmm-print-doc">';
+  h+='<div class="pmm-print-hd"><h1>📤 SORTIE D\'INVENTAIRE — ENTREPÔT</h1>';
+  h+='<div class="pmm-print-sub">N° de bon : '+esc(s.noBon)+'</div>';
+  h+='<div class="pmm-print-meta"><span><b>Nom:</b> '+esc(s.nom)+'</span>';
+  h+='<span><b>N° employé:</b> '+esc(s.noEmploye||'—')+'</span>';
+  h+='<span><b>Département:</b> '+esc(s.departement||'—')+'</span>';
+  h+='<span><b>Date:</b> '+fmtDate(s.date)+'</span></div></div>';
+
+  h+='<div class="pmm-print-sec"><div class="pmm-print-sec-hd c-bleu">Items</div>';
+  h+='<table class="pmm-print-table"><thead><tr><th>Code</th><th>Localisation</th><th>Descriptif</th><th style="width:55px">Qté sortie</th><th style="width:55px">Qté retour</th><th>Projet / Bon</th></tr></thead><tbody>';
+  (s.lignes||[]).forEach(function(l){
+    h+='<tr><td>'+esc(l.code)+'</td><td>'+esc(l.loc)+'</td><td>'+esc(l.desc)+'</td><td class="ctr">'+esc(l.qteSortie||0)+'</td><td class="ctr">'+esc(l.qteRetour||0)+'</td><td>'+esc(l.projet)+'</td></tr>';
+  });
+  h+='</tbody></table></div>';
+
+  h+='<div class="pmm-print-ff">';
+  h+='<div style="margin-top:20px;border-bottom:1px solid #333;width:260px">&nbsp;</div><div style="font-size:10px;color:#666">Signature (nom et prénom)</div>';
+  h+='<div style="margin-top:16px;border-bottom:1px solid #333;width:140px">&nbsp;</div><div style="font-size:10px;color:#666">Date</div>';
+  h+='</div>';
+  h+='</div>';
+  return h;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -3687,19 +4577,16 @@ function exportExcel(){
     ws['G5']={v:weekFmt,t:'s'};
     ws['I5']={v:'Superviseur',t:'s'};
 
-    // ── Remplir par JOUR (une ligne par jour) pour couvrir TOUTE la semaine ──
-    // (le modèle a 15 lignes de tâches 8-22 ; grouper par jour tient toujours en 7 lignes
-    //  et garantit que TOUS les jours sont inclus dans le calcul, pas seulement les premiers)
+    // ── Remplir par JOUR (une ligne par jour) — max 7 lignes, tient dans 8-22 ──
+    // On NE touche PAS aux formules du modèle (cumul I, total H23, régulier/supp H24/I24) :
+    // le modèle calcule =SUM(H8:H22) tout seul. On remplit juste les heures par jour.
     var rowIdx=8;
-    var cumul=0;
     var grandTotal=0;
     for(var dj=0;dj<7;dj++){
       var day=chronoState[dj];
       if(!day.tasks.length)continue;
-      var dTotal=dayTotal(dj);
+      var dTotal=Math.round(dayTotal(dj)*100)/100;
       grandTotal+=dTotal;
-      cumul+=dTotal;
-      // Regrouper les lieux + plage horaire du jour
       var lieux=day.tasks.map(function(t){return t.lieu||'—';}).join(' → ');
       var premier=day.tasks[0];var dernier=day.tasks[day.tasks.length-1];
       var kmJour=0;
@@ -3711,19 +4598,31 @@ function exportExcel(){
       ws['E'+r]={v:lieux,t:'s'};
       ws['F'+r]={v:premier.start||'',t:'s'};
       ws['G'+r]={v:dernier.end||'',t:'s'};
-      ws['H'+r]={v:Math.round(dTotal*100)/100,t:'n'};
-      ws['I'+r]={v:Math.round(cumul*100)/100,t:'n'}; // cumul écrit en dur (pas de formule limitée)
+      ws['H'+r]={v:dTotal,t:'n'}; // heures du jour → alimente la formule =SUM(H8:H22)
       ws['J'+r]={v:(kmJour?'🚗 '+Math.round(kmJour)+' km':'—'),t:'s'};
+      // La colonne I (cumul) garde sa formule du modèle → recalcul auto
       rowIdx++;
     }
-    // Vider les lignes de tâches restantes du modèle (8..22) pour ne pas garder du vieux contenu
+    // Vider les lignes de tâches restantes
     for(var rr=rowIdx;rr<=22;rr++){
-      ['B','C','D','E','F','G','H','I','J'].forEach(function(col){ if(ws[col+rr])ws[col+rr]={v:'',t:'s'}; });
+      ['B','C','D','E','F','G','H','I','J'].forEach(function(col){ ws[col+rr]={v:'',t:'s'}; });
     }
-    // Écrire le TOTAL SEMAINE calculé sur TOUS les jours (ligne 23 du modèle)
+    // Écrire les CUMULS et TOTAUX en VALEURS (SheetJS ne préserve pas les formules du modèle)
+    var cumulRun=0;
+    for(var dk=0,rw=8;dk<7;dk++){
+      if(!chronoState[dk].tasks.length)continue;
+      cumulRun+=Math.round(dayTotal(dk)*100)/100;
+      ws['I'+rw]={v:Math.round(cumulRun*100)/100,t:'n'};
+      rw++;
+    }
     var totalRound=Math.round(grandTotal*100)/100;
-    ws['H23']={v:totalRound,t:'n'};
+    var regulier=Math.round(Math.min(totalRound,40)*100)/100;
+    var supp=Math.round(Math.max(totalRound-40,0)*100)/100;
+    ws['H23']={v:totalRound,t:'n'};   // TOTAL SEMAINE
     ws['I23']={v:totalRound,t:'n'};
+    ws['J23']={v:supp>0?('⚠ '+supp.toFixed(2)+'h supp.'):'✅ OK',t:'s'};
+    ws['H24']={v:regulier,t:'n'};      // Heures régulières ≤40h
+    ws['I24']={v:supp,t:'n'};          // Supplémentaires >40h
 
     // Index PJ lignes 28-32
     var allPJ=[];
