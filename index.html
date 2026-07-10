@@ -737,6 +737,12 @@ input,select,textarea{font-size:16px!important}
 
   <!-- ── MODULE : PLAN DE MATCH (checklist détaillée par employé/jour) ── -->
   <div id="modPlanMatch" class="module" style="display:none">
+    <div style="background:#fff;border-bottom:1px solid var(--line);padding:8px 14px;display:flex;align-items:center;gap:8px">
+      <button id="pmmPrevWeek" class="btn btn-ghost btn-sm" title="Semaine précédente">◀</button>
+      <button id="pmmTodayBtn" class="btn btn-ghost btn-sm" style="flex:1">📅 Aujourd'hui</button>
+      <button id="pmmNextWeek" class="btn btn-ghost btn-sm" title="Semaine suivante">▶</button>
+      <input type="date" id="pmmJumpDate" style="border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12px;outline:none" title="Aller à une date (navigation semaine/mois)"/>
+    </div>
     <div class="pm-date-strip" id="pmmDateStrip"></div>
     <div id="pmmEmpSelector" style="display:none;background:var(--dk);padding:8px 14px;align-items:center;gap:8px">
       <span style="font-size:11px;color:rgba(255,255,255,.6);font-weight:700;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap">👁 Voir</span>
@@ -761,6 +767,8 @@ input,select,textarea{font-size:16px!important}
     <div class="main" id="ftContent" style="padding-top:10px">
       <!-- VUE TERRAIN DYNAMIQUE (hero + action + timeline) -->
       <div id="fieldView"></div>
+      <!-- ➕ Ajout non-intrusif : résumé automatique des jobs assignés aujourd'hui (WO/Plan/Plan de Match) -->
+      <div id="ftAssignedToday" style="display:none"></div>
       <!-- Bouton ajout manuel (sup/admin) -->
       <button id="addPunchManualBtn" class="btn btn-ghost btn-full" style="display:none;margin-bottom:10px">➕ Ajouter un punch manuellement</button>
       <!-- cumul -->
@@ -925,6 +933,7 @@ input,select,textarea{font-size:16px!important}
 <div class="modal-bg" id="jobModal">
   <div class="modal-box">
     <div class="modal-hd"><h3 id="jobModalTitle">Chantier</h3><button class="modal-close" id="jobModalClose">✕</button></div>
+    <div id="mAssignedJobs" style="display:none;margin-bottom:12px"></div>
     <div class="mfield"><label>Chantier / Lieu</label>
       <input type="text" id="mLieu" placeholder="ex: Quai Paquet" list="sitesList" autocomplete="off"/>
       <datalist id="sitesList"></datalist>
@@ -1023,6 +1032,7 @@ input,select,textarea{font-size:16px!important}
     </div>
     <div class="mfield"><label>Notes techniques</label><textarea id="woNotes" placeholder="Notes, références équipements…"></textarea></div>
     <button class="btn btn-success btn-full" id="woSaveBtn" style="margin-top:4px">💾 Sauvegarder WO</button>
+    <button class="btn btn-ghost btn-full" id="woPrintBtn" style="margin-top:8px;display:none">🖨️ Imprimer ce WO</button>
     <button id="woDeleteBtn" class="btn btn-danger btn-full" style="margin-top:8px;display:none">🗑 Supprimer ce WO</button>
     <button class="btn btn-ghost btn-full" id="woCancel" style="margin-top:8px">Annuler</button>
   </div>
@@ -1933,6 +1943,7 @@ document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('woModalClose').addEventListener('click', function(){closeModal('woModal');});
   document.getElementById('woCancel').addEventListener('click', function(){closeModal('woModal');});
   document.getElementById('woSaveBtn').addEventListener('click', saveWO);
+  document.getElementById('woPrintBtn').addEventListener('click', printWO);
   document.getElementById('woDeleteBtn').addEventListener('click', deleteWO);
   document.getElementById('woTaskAdd').addEventListener('click', addWOTask);
   document.getElementById('woTaskInp').addEventListener('keydown', function(e){if(e.key==='Enter')addWOTask();});
@@ -2014,6 +2025,10 @@ document.addEventListener('DOMContentLoaded', function(){
   initCanvas();
   buildPMDateStrip();
   buildPMMDateStrip();
+  document.getElementById('pmmPrevWeek').addEventListener('click', function(){pmmWeekOffset--;buildPMMDateStrip();renderPlanMatch();});
+  document.getElementById('pmmNextWeek').addEventListener('click', function(){pmmWeekOffset++;buildPMMDateStrip();renderPlanMatch();});
+  document.getElementById('pmmTodayBtn').addEventListener('click', function(){pmmWeekOffset=0;pmmDay=new Date().toISOString().slice(0,10);buildPMMDateStrip();renderPlanMatch();});
+  document.getElementById('pmmJumpDate').addEventListener('change', function(){if(this.value)pmmGoToDate(this.value);});
 
   // Auto-save 60s
   setInterval(function(){if(currentUser)saveFT();},60000);
@@ -2126,7 +2141,7 @@ function switchMod(mod){
   if(mod==='accueil')renderAccueil();
   else if(mod==='plan')renderPlan();
   else if(mod==='planmatch')renderPlanMatch();
-  else if(mod==='ft'){setupFTEmpSelector();_loadedWeekKey=mondayOf(document.getElementById('weekDate').value);buildDayTabs();renderDay(curDay);refreshCumul();refreshWkStatus();}
+  else if(mod==='ft'){setupFTEmpSelector();_loadedWeekKey=mondayOf(document.getElementById('weekDate').value);buildDayTabs();renderDay(curDay);refreshCumul();refreshWkStatus();renderFtAssignedToday();}
   else if(mod==='suivi')renderSuivi();
   else if(mod==='wo')renderWOList();
   else if(mod==='sites')renderSiteList();
@@ -2391,27 +2406,57 @@ function pmmDrawBuilderTaskPhotos(zone,t){
   );
 }
 
+var pmmWeekOffset=0; // décalage en semaines par rapport à la semaine courante
+
+function pmmMondayOfWeek(offsetWeeks){
+  var d=new Date();
+  var dow=d.getDay()===0?7:d.getDay(); // lundi=1..dimanche=7
+  d.setDate(d.getDate()-dow+1+offsetWeeks*7);
+  d.setHours(0,0,0,0);
+  return d;
+}
+
 function buildPMMDateStrip(){
   var strip=document.getElementById('pmmDateStrip');
   if(!strip)return;
   strip.innerHTML='';
-  var today=new Date();
-  for(var i=-1;i<10;i++){
-    var d=new Date(today);d.setDate(today.getDate()+i);
+  var todayIso=new Date().toISOString().slice(0,10);
+  var monday=pmmMondayOfWeek(pmmWeekOffset);
+  var selectedStillVisible=false;
+  for(var i=0;i<7;i++){
+    var d=new Date(monday);d.setDate(monday.getDate()+i);
     var iso=d.toISOString().slice(0,10);
-    var isToday=(i===0);
+    var isToday=(iso===todayIso);
+    if(pmmDay===iso)selectedStillVisible=true;
     var b=document.createElement('button');
-    b.className='pm-day-btn'+(isToday?' on':'');
+    b.className='pm-day-btn'+(pmmDay===iso?' on':'');
     b.dataset.date=iso;
     b.innerHTML='<span class="pd-d">'+['dim','lun','mar','mer','jeu','ven','sam'][d.getDay()]+'</span>'+
       '<span class="pd-n">'+d.getDate()+'</span>'+(isToday?'<span class="pd-dot"></span>':'');
     (function(dt,btn){b.addEventListener('click',function(){
       document.querySelectorAll('#pmmDateStrip .pm-day-btn').forEach(function(x){x.classList.remove('on');});
-      btn.classList.add('on');pmmDay=dt;renderPlanMatch();
+      btn.classList.add('on');pmmDay=dt;document.getElementById('pmmJumpDate').value=dt;renderPlanMatch();
     });})(iso,b);
     strip.appendChild(b);
   }
-  pmmDay=today.toISOString().slice(0,10);
+  if(!selectedStillVisible){
+    pmmDay=(pmmWeekOffset===0)?todayIso:monday.toISOString().slice(0,10);
+    var match=strip.querySelector('[data-date="'+pmmDay+'"]');
+    if(match)match.classList.add('on');
+  }
+  document.getElementById('pmmJumpDate').value=pmmDay;
+}
+
+function pmmGoToDate(iso){
+  var target=new Date(iso+'T00:00:00');
+  var targetMonday=new Date(target);
+  var dow=target.getDay()===0?7:target.getDay();
+  targetMonday.setDate(target.getDate()-dow+1);
+  var curMonday=pmmMondayOfWeek(0);
+  pmmWeekOffset=Math.round((targetMonday-curMonday)/(7*24*3600*1000));
+  pmmDay=iso;
+  buildPMMDateStrip();
+  renderPlanMatch();
 }
 
 function pmmTargetUid(){
@@ -2831,8 +2876,54 @@ function openWOModal(wo){
   document.getElementById('woDesc').value=wo?wo.desc:'';
   document.getElementById('woNotes').value=wo?wo.notes:'';
   document.getElementById('woDeleteBtn').style.display=wo&&canEdit()?'flex':'none';
+  document.getElementById('woPrintBtn').style.display=wo?'block':'none';
   renderWOTaskList();renderWOPj();
   openModal('woModal');
+}
+function printWO(){
+  if(!woEditId)return;
+  var wo=getWOs().find(function(w){return w.id===woEditId;});
+  if(!wo)return;
+  document.getElementById('pmmPrintArea').innerHTML=woBuildPrintHTML(wo);
+  window.print();
+}
+// Document imprimable propre pour un Work Order
+function woBuildPrintHTML(wo){
+  var checkedCount=(wo.tasks||[]).filter(function(t){return t.done;}).length;
+  var totalTasks=(wo.tasks||[]).length;
+  var h='<div class="pmm-print-doc">';
+  h+='<div class="pmm-print-hd"><h1>📝 WORK ORDER — '+esc(wo.client)+'</h1>';
+  h+='<div class="pmm-print-sub">'+esc(woTypeIcon(wo.type))+' '+esc(wo.type)+' · Priorité '+esc(wo.priorite)+' · Statut '+esc((wo.status||'').replace('_',' '))+'</div>';
+  h+='<div class="pmm-print-meta">';
+  h+='<span><b>Site:</b> '+esc(wo.site||'—')+'</span>';
+  h+='<span><b>Date:</b> '+(wo.date?fmtDate(wo.date):'—')+'</span>';
+  h+='<span><b>Assigné(s):</b> '+(woAssignees(wo).length?esc(empNames(woAssignees(wo))):'—')+'</span>';
+  h+='</div></div>';
+
+  if(wo.desc){
+    h+='<div class="pmm-print-sec"><div class="pmm-print-sec-hd c-bleu">Description</div>';
+    h+='<div style="padding:10px;border:1px solid #c5d8ec;border-top:none;font-size:11.5px;white-space:pre-wrap">'+esc(wo.desc)+'</div></div>';
+  }
+
+  if(totalTasks>0){
+    h+='<div class="pmm-print-sec"><div class="pmm-print-sec-hd c-vert">Tâches ('+checkedCount+'/'+totalTasks+')</div>';
+    h+='<table class="pmm-print-table"><thead><tr><th style="width:22px">✓</th><th>Tâche</th></tr></thead><tbody>';
+    (wo.tasks||[]).forEach(function(t){
+      h+='<tr><td class="ctr">'+(t.done?'☑':'☐')+'</td><td>'+esc(t.label||t.name||'')+'</td></tr>';
+    });
+    h+='</tbody></table></div>';
+  }
+
+  if(wo.notes){
+    h+='<div class="pmm-print-sec"><div class="pmm-print-sec-hd c-orange">Notes</div>';
+    h+='<div style="padding:10px;border:1px solid #c5d8ec;border-top:none;font-size:11.5px;white-space:pre-wrap">'+esc(wo.notes)+'</div></div>';
+  }
+
+  h+='<div class="pmm-print-ff">';
+  h+='<div style="margin-top:20px;border-bottom:1px solid #333;width:260px">&nbsp;</div><div style="font-size:10px;color:#666">Signature (nom et prénom)</div>';
+  h+='<div style="margin-top:16px;border-bottom:1px solid #333;width:140px">&nbsp;</div><div style="font-size:10px;color:#666">Date</div>';
+  h+='</div></div>';
+  return h;
 }
 function saveWO(){
   var client=document.getElementById('woClient').value.trim();
@@ -3091,10 +3182,50 @@ function recentDetails(){
   }catch(e){}
   return out.slice(0,20);
 }
+// Source unique : jobs assignés à l'employé connecté pour AUJOURD'HUI (WO + Plan + Plan de Match)
+// Utilisé par le widget Accueil ET par le sélecteur rapide dans Temps (aucune donnée d'heures/cumul ici)
+function getTodayAssignedJobs(uid){
+  uid=uid||currentUser.id;
+  var today=new Date().toISOString().slice(0,10);
+  var items=[];
+  getWOs().filter(function(w){return w.date===today&&woAssignees(w).indexOf(uid)>=0;}).forEach(function(w){
+    items.push({mod:'wo',icon:'📝',label:w.client+(w.site?' — '+w.site:''),sub:'Work Order · '+(w.status||'').replace('_',' '),
+      lieu:w.site||w.client,odt:w.id.slice(0,6).toUpperCase(),detail:w.desc||'',addr:woSiteAddr?woSiteAddr(w):''});
+  });
+  getPlan().filter(function(p){return p.date===today&&planAssignees(p).indexOf(uid)>=0;}).forEach(function(p){
+    var wo=getWOs().find(function(x){return x.id===p.woId;});
+    items.push({mod:'plan',icon:'📅',label:wo?wo.client:'Intervention planifiée',sub:'Plan'+(p.heure?(' · '+p.heure):''),
+      lieu:wo?(wo.site||wo.client):'',odt:wo?wo.id.slice(0,6).toUpperCase():'',detail:p.notes||'',addr:wo&&woSiteAddr?woSiteAddr(wo):''});
+  });
+  var pm=getPlanMatches().find(function(p){return p.date===today&&p.emp===uid;});
+  if(pm){
+    var allTasks=[];(pm.sections||[]).forEach(function(s){(s.tasks||[]).forEach(function(t){allTasks.push(t);});});
+    var doneCount=allTasks.filter(function(t){return t.done;}).length;
+    items.push({mod:'planmatch',icon:'📋',label:'Plan de Match du jour',sub:doneCount+'/'+allTasks.length+' tâche'+(allTasks.length>1?'s':'')+' complétée'+(doneCount>1?'s':''),
+      lieu:pm.vehicule?('Plan de Match — '+pm.vehicule):'Plan de Match',odt:'',detail:pm.resume||''});
+  }
+  return items;
+}
+
 function accTile(mod,icon,nm,cls,meta,count){
   if(!hasDroit(mod))return '';
   return '<button class="acc-tile" data-mod="'+mod+'">'+(count>0?'<span class="tcount">'+count+'</span>':'')+
     '<div class="tic '+cls+'">'+icon+'</div><div><div class="tnm">'+nm+'</div><div class="tmeta">'+meta+'</div></div></button>';
+}
+// Widget "Assigné aujourd'hui" — WO / Plan / Plan de Match du jour pour l'employé connecté
+// (purement additif sur l'Accueil, aucun lien avec le module Temps/Suivi/Cumul)
+function accTodayJobsHTML(){
+  var items=getTodayAssignedJobs();
+  if(items.length===0)return '';
+  var h='<div class="acc-seclbl">📌 Assigné aujourd\'hui</div><div style="display:flex;flex-direction:column;gap:8px;margin-bottom:6px">';
+  items.forEach(function(it){
+    h+='<button class="acc-job-item" data-mod="'+it.mod+'" style="display:flex;align-items:center;gap:10px;background:#fff;border:none;border-radius:12px;padding:12px 14px;text-align:left;cursor:pointer;box-shadow:0 1px 4px rgba(13,59,110,.08);width:100%">'+
+      '<div style="font-size:20px;flex-shrink:0">'+it.icon+'</div>'+
+      '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px;color:var(--text)">'+esc(it.label)+'</div><div style="font-size:11px;color:var(--muted)">'+esc(it.sub)+'</div></div>'+
+      '<div style="color:var(--muted)">›</div></button>';
+  });
+  h+='</div>';
+  return h;
 }
 function renderAccueil(){
   var el=document.getElementById('accueilContent');
@@ -3138,6 +3269,8 @@ function renderAccueil(){
     '<div class="info"><div class="l">Cette semaine</div><div class="v">'+fmtH(weekH)+' <small>/ 40h</small></div></div>'+
     '<div class="arrow">›</div></div>';
 
+  html+=accTodayJobsHTML();
+
   html+='<div class="acc-seclbl">'+(isSup()?'Gestion & terrain':'Mon travail')+'</div>';
   html+='<div class="acc-grid">';
   var wos=getWOs();
@@ -3158,6 +3291,9 @@ function renderAccueil(){
   el.innerHTML=html;
 
   Array.prototype.forEach.call(el.querySelectorAll('.acc-tile'),function(b){
+    b.addEventListener('click',function(){switchMod(b.getAttribute('data-mod'));});
+  });
+  Array.prototype.forEach.call(el.querySelectorAll('.acc-job-item'),function(b){
     b.addEventListener('click',function(){switchMod(b.getAttribute('data-mod'));});
   });
   var accStripFT=document.getElementById('accStripFT');
@@ -3536,8 +3672,72 @@ function openJobModal(isFirst){
     });
   }
   if(!isFirst)document.getElementById('jobModalTitle').textContent='Changer de chantier';
+  renderJobPicker(); // ➕ ajout non-intrusif : liste des jobs assignés du jour (WO/Plan/Plan de Match), pré-remplit les champs ci-dessus au clic
   renderMPj();openModal('jobModal');
   setTimeout(function(){document.getElementById('mLieu').focus();},300);
+}
+// ➕ Sélecteur rapide "mes jobs assignés aujourd'hui" — remplit simplement les champs du formulaire existant,
+// ne touche à AUCUNE logique de calcul/sauvegarde d'heures (confirmJob() reste inchangée).
+// ➕ Résumé automatique et visible directement dans l'écran Temps (sans avoir à ouvrir un modal)
+// Purement additif : lecture seule, ne touche à aucun calcul/sauvegarde d'heures.
+function renderFtAssignedToday(){
+  var box=document.getElementById('ftAssignedToday');
+  if(!box)return;
+  var items=getTodayAssignedJobs();
+  if(items.length===0){box.innerHTML='';box.style.display='none';return;}
+  var h='<div class="card" style="margin-bottom:10px;border:1.5px solid var(--blue)">'+
+    '<div class="card-hd"><div class="card-hd-t">📌 Assigné aujourd\'hui</div></div>'+
+    '<div style="padding:10px;display:flex;flex-direction:column;gap:8px">';
+  items.forEach(function(it,i){
+    h+='<div class="ft-assigned-item" data-i="'+i+'" style="display:flex;align-items:center;gap:8px;background:var(--lt);border-radius:10px;padding:9px 10px;cursor:pointer">'+
+      '<span style="font-size:17px;flex-shrink:0">'+it.icon+'</span>'+
+      '<span style="flex:1;min-width:0"><span style="display:block;font-size:12.5px;font-weight:700;color:var(--text)">'+esc(it.label)+'</span><span style="display:block;font-size:10.5px;color:var(--muted)">'+esc(it.sub)+'</span></span>'+
+      '<span style="color:var(--blue);font-size:10.5px;font-weight:700;white-space:nowrap">Utiliser ›</span></div>';
+  });
+  h+='</div></div>';
+  box.innerHTML=h;box.style.display='block';
+  box.querySelectorAll('.ft-assigned-item').forEach(function(elm){
+    elm.addEventListener('click',function(){
+      var it=items[parseInt(elm.dataset.i,10)];
+      // Ouvre directement le formulaire de punch pré-rempli avec ce job (n'exécute jamais confirmJob() automatiquement)
+      if(chronoState[curDay].status==='idle')openJobModal(true);else openJobModal(false);
+      setTimeout(function(){
+        document.getElementById('mLieu').value=it.lieu||'';
+        document.getElementById('mOdt').value=it.odt||'';
+        document.getElementById('mDetail').value=it.detail||'';
+        onLieuChange();
+        if(it.addr){document.getElementById('mAddr').value=it.addr;document.getElementById('mAddrField').style.display='block';}
+      },50);
+    });
+  });
+}
+
+function renderJobPicker(){
+  var box=document.getElementById('mAssignedJobs');
+  if(!box)return;
+  var items=getTodayAssignedJobs();
+  if(items.length===0){box.style.display='none';box.innerHTML='';return;}
+  var h='<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:6px">📌 Assigné aujourd\'hui — cliquez pour pré-remplir</div>';
+  h+='<div style="display:flex;flex-direction:column;gap:6px">';
+  items.forEach(function(it,i){
+    h+='<button type="button" class="job-pick-item" data-i="'+i+'" style="display:flex;align-items:center;gap:8px;background:var(--lt);border:1.5px solid var(--line);border-radius:10px;padding:8px 10px;text-align:left;cursor:pointer;width:100%">'+
+      '<span style="font-size:16px">'+it.icon+'</span>'+
+      '<span style="flex:1;min-width:0"><span style="display:block;font-size:12.5px;font-weight:700;color:var(--text)">'+esc(it.label)+'</span><span style="display:block;font-size:10.5px;color:var(--muted)">'+esc(it.sub)+'</span></span>'+
+      '</button>';
+  });
+  h+='</div>';
+  box.innerHTML=h;box.style.display='block';
+  box.querySelectorAll('.job-pick-item').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var it=items[parseInt(btn.dataset.i,10)];
+      document.getElementById('mLieu').value=it.lieu||'';
+      document.getElementById('mOdt').value=it.odt||'';
+      document.getElementById('mDetail').value=it.detail||'';
+      onLieuChange();
+      if(it.addr){document.getElementById('mAddr').value=it.addr;document.getElementById('mAddrField').style.display='block';}
+      toast('✅ Champs pré-remplis avec : '+it.label);
+    });
+  });
 }
 // Auto-remplir l'adresse quand un site connu est choisi
 function onLieuChange(){
@@ -4327,6 +4527,14 @@ function renderSuivi(){
         (info.task.detail?'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+info.task.detail+'</div>':'')+
         (info.task.gps?'<a href="https://maps.google.com/?q='+info.task.gps.lat+','+info.task.gps.lng+'" target="_blank" style="display:inline-block;margin-top:6px;font-size:11px;color:var(--green);font-weight:700;text-decoration:none">🛰 Position GPS (±'+info.task.gps.acc+'m) ↗</a>':'')+'</div>':'')+
         '<div style="margin-top:8px;font-size:11px;color:var(--muted)">Total jour : <b style="color:var(--dk)">'+fmtH(info.dayTotal)+'</b></div>';
+      // ➕ Ajout non-intrusif : badge des jobs assignés aujourd'hui (WO/Plan/Plan de Match) — lecture seule, ne touche à aucun calcul d'heures
+      var assignedToday=getTodayAssignedJobs(info.id);
+      if(assignedToday.length>0){
+        var abadge=document.createElement('div');
+        abadge.style.cssText='margin-top:8px;font-size:11px;color:var(--blue);background:var(--lt);border-radius:8px;padding:6px 8px;font-weight:600';
+        abadge.textContent='📌 '+assignedToday.length+' job'+(assignedToday.length>1?'s':'')+' assigné'+(assignedToday.length>1?'s':'')+' aujourd\'hui : '+assignedToday.map(function(j){return j.label;}).join(', ');
+        card.appendChild(abadge);
+      }
       // Bouton accès rapide à la FT de l'employé
       var btn=document.createElement('button');
       btn.style.cssText='margin-top:10px;width:100%;background:var(--lt);color:var(--blue);border:none;border-radius:8px;padding:8px;font-size:12px;font-weight:700;cursor:pointer';
@@ -4355,8 +4563,17 @@ function renderSuivi(){
     s3.textContent='⚪ Pas commencé ('+inactifs.length+')';el.appendChild(s3);
     var wrap=document.createElement('div');wrap.style.cssText='display:flex;flex-wrap:wrap;gap:6px';
     inactifs.forEach(function(info){
-      var chip=document.createElement('div');chip.style.cssText='background:var(--gray);border-radius:20px;padding:6px 12px;font-size:12px;color:var(--muted);font-weight:600';
-      chip.textContent=info.nom;wrap.appendChild(chip);
+      var chip=document.createElement('div');chip.style.cssText='background:var(--gray);border-radius:20px;padding:6px 12px;font-size:12px;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:5px';
+      chip.textContent=info.nom;
+      // ➕ Ajout non-intrusif : pastille si des jobs lui sont assignés aujourd'hui (lecture seule)
+      var assignedToday=getTodayAssignedJobs(info.id);
+      if(assignedToday.length>0){
+        var dot=document.createElement('span');
+        dot.style.cssText='background:var(--blue);color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:800';
+        dot.textContent=assignedToday.length;dot.title=assignedToday.map(function(j){return j.label;}).join(', ');
+        chip.appendChild(dot);
+      }
+      wrap.appendChild(chip);
     });
     el.appendChild(wrap);
   }
