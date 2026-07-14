@@ -1490,6 +1490,15 @@ function syncPull(localKey, cb){
       if(r.descr!==undefined){r.desc=r.descr;delete r.descr;}
       delete r.updated_at;delete r.created_at;
     });
+    // ➕ GARDE-FOU CRITIQUE : si Supabase renvoie MOINS d'enregistrements que ce qu'on a déjà en local
+    // (ex: policy RLS trop restrictive, erreur silencieuse), on ne remplace PAS le cache local —
+    // ça évite de faire "disparaître" des Plans de Match / WO déjà créés à chaque rechargement.
+    var existing=lsGet(localKey)||[];
+    if(rows.length<existing.length){
+      console.warn('⚠️ syncPull('+localKey+') a reçu '+rows.length+' ligne(s) alors que '+existing.length+' étaient en cache local — cache local conservé (vérifier les policies RLS Supabase sur la table "'+table+'").');
+      if(cb)cb();
+      return;
+    }
     lsSet(localKey,rows);
     if(cb)cb();
   });
