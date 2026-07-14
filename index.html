@@ -1754,6 +1754,9 @@ function applyFT(data){
 // ═══════════════════════════════════════════════════════
 function pad(n){return String(n).padStart(2,'0');}
 function todayISO(){var d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+// Comme todayISO() mais pour n'importe quelle date — évite le bug de `toISOString()` qui convertit en UTC
+// et peut décaler la date d'un jour en soirée (heure du Québec = UTC-4/-5).
+function localISO(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
 function nowHHMM(){var n=new Date();return pad(n.getHours())+':'+pad(n.getMinutes());}
 function nowHHMMSS(){var n=new Date();return pad(n.getHours())+':'+pad(n.getMinutes())+':'+pad(n.getSeconds());}
 function fmtH(h){if(!h||h<=0)return '0h00';var totalMin=Math.round(h*60);var hh=Math.floor(totalMin/60),mm=totalMin%60;return hh+'h'+pad(mm);}
@@ -2049,7 +2052,7 @@ document.addEventListener('DOMContentLoaded', function(){
   buildPMMDateStrip();
   document.getElementById('pmmPrevWeek').addEventListener('click', function(){pmmWeekOffset--;buildPMMDateStrip();renderPlanMatch();});
   document.getElementById('pmmNextWeek').addEventListener('click', function(){pmmWeekOffset++;buildPMMDateStrip();renderPlanMatch();});
-  document.getElementById('pmmTodayBtn').addEventListener('click', function(){pmmWeekOffset=0;pmmDay=new Date().toISOString().slice(0,10);buildPMMDateStrip();renderPlanMatch();});
+  document.getElementById('pmmTodayBtn').addEventListener('click', function(){pmmWeekOffset=0;pmmDay=todayISO();buildPMMDateStrip();renderPlanMatch();});
   document.getElementById('pmmJumpDate').addEventListener('change', function(){if(this.value)pmmGoToDate(this.value);});
 
   // Auto-save 60s
@@ -2188,7 +2191,7 @@ function buildPMDateStrip(){
   var today=new Date();
   for(var i=-1;i<10;i++){
     var d=new Date(today);d.setDate(today.getDate()+i);
-    var iso=d.toISOString().slice(0,10);
+    var iso=localISO(d);
     var isToday=(i===0);
     var b=document.createElement('button');
     b.className='pm-day-btn'+(isToday?' on':'');
@@ -2202,7 +2205,7 @@ function buildPMDateStrip(){
     });})(iso,b);
     strip.appendChild(b);
   }
-  pmDay=today.toISOString().slice(0,10);
+  pmDay=todayISO();
 }
 
 function renderPlan(){
@@ -2444,12 +2447,12 @@ function buildPMMDateStrip(){
   var strip=document.getElementById('pmmDateStrip');
   if(!strip)return;
   strip.innerHTML='';
-  var todayIso=new Date().toISOString().slice(0,10);
+  var todayIso=todayISO();
   var monday=pmmMondayOfWeek(pmmWeekOffset);
   var selectedStillVisible=false;
   for(var i=0;i<7;i++){
     var d=new Date(monday);d.setDate(monday.getDate()+i);
-    var iso=d.toISOString().slice(0,10);
+    var iso=localISO(d);
     var isToday=(iso===todayIso);
     if(pmmDay===iso)selectedStillVisible=true;
     var b=document.createElement('button');
@@ -2464,7 +2467,7 @@ function buildPMMDateStrip(){
     strip.appendChild(b);
   }
   if(!selectedStillVisible){
-    pmmDay=(pmmWeekOffset===0)?todayIso:monday.toISOString().slice(0,10);
+    pmmDay=(pmmWeekOffset===0)?todayIso:localISO(monday);
     var match=strip.querySelector('[data-date="'+pmmDay+'"]');
     if(match)match.classList.add('on');
   }
@@ -2737,7 +2740,7 @@ function openPmmModal(planId){
   }else{
     document.getElementById('pmmModalTitle').textContent='Créer un Plan de Match';
     sel.value=currentUser.id;
-    document.getElementById('pmmDate').value=pmmDay||new Date().toISOString().slice(0,10);
+    document.getElementById('pmmDate').value=pmmDay||todayISO();
     document.getElementById('pmmVehicule').value='';
     document.getElementById('pmmSuperviseur').value=isSup()?fullName():'';
     document.getElementById('pmmResume').value='';
@@ -3235,7 +3238,7 @@ function recentDetails(){
 // Utilisé par le widget Accueil ET par le sélecteur rapide dans Temps (aucune donnée d'heures/cumul ici)
 function getTodayAssignedJobs(uid){
   uid=uid||currentUser.id;
-  var today=new Date().toISOString().slice(0,10);
+  var today=todayISO();
   var items=[];
   getWOs().filter(function(w){return w.date===today&&woAssignees(w).indexOf(uid)>=0;}).forEach(function(w){
     items.push({mod:'wo',icon:'📝',label:w.client+(w.site?' — '+w.site:''),sub:'Work Order · '+(w.status||'').replace('_',' '),
@@ -4041,7 +4044,7 @@ function renderEmpDash(){
     '<div class="stat-card blue"><div class="sc-label">Semaines saisies</div><div class="sc-val">'+ftIdx.length+'</div></div>'+
     '<div class="stat-card green"><div class="sc-label">Heures ce mois</div><div class="sc-val">'+fmtH(monthH)+'</div></div>'+
     '<div class="stat-card"><div class="sc-label">Total heures</div><div class="sc-val">'+fmtH(totalH)+'</div></div>'+
-    '<div class="stat-card orange"><div class="sc-label">Plan du jour</div><div class="sc-val">'+(getPlan().filter(function(p){return planAssignees(p).indexOf(currentUser.id)>=0&&p.date===new Date().toISOString().slice(0,10);}).length)+' WO</div></div>';
+    '<div class="stat-card orange"><div class="sc-label">Plan du jour</div><div class="sc-val">'+(getPlan().filter(function(p){return planAssignees(p).indexOf(currentUser.id)>=0&&p.date===todayISO();}).length)+' WO</div></div>';
   var histo=document.getElementById('edbHisto');histo.innerHTML='';
   if(ftIdx.length===0){histo.innerHTML='<div class="empty"><div class="ei">📋</div><h3>Aucune feuille</h3><p>Commence à saisir tes heures !</p></div>';return;}
   ftIdx.forEach(function(entry){
@@ -4288,7 +4291,7 @@ function openSortieModal(sortieId){
     document.getElementById('sorNom').value=fullName();
     document.getElementById('sorNoEmploye').value=currentUser.id;
     document.getElementById('sorDept').value=currentUser.dept||'';
-    document.getElementById('sorDate').value=new Date().toISOString().slice(0,10);
+    document.getElementById('sorDate').value=todayISO();
     sortieLignes=[];
     for(var i=0;i<3;i++)sortieLignes.push({code:'',loc:'',desc:'',qteSortie:'',qteRetour:'',projet:''});
     document.getElementById('sortieStatusBadge').textContent='📝 Brouillon (non envoyé)';
