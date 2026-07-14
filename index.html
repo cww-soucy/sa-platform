@@ -741,6 +741,9 @@ input,select,textarea{font-size:16px!important}
       <button class="pmm-subtab on" data-mod="plan">📅 Créneaux</button>
     </div>
     <div class="pm-date-strip" id="pmDateStrip"></div>
+    <div style="padding:8px 14px;background:#fff;border-bottom:1px solid var(--line)">
+      <button id="pmPrintDayBtn" class="btn btn-ghost btn-full">🖨️ Imprimer les créneaux du jour</button>
+    </div>
     <div class="main" id="pmContent" style="padding-top:10px"></div>
   </div>
 
@@ -829,6 +832,9 @@ input,select,textarea{font-size:16px!important}
       <input type="text" id="woSearch" placeholder="Rechercher un work order…"/>
     </div>
     <div style="display:flex;overflow-x:auto;scrollbar-width:none;background:#fff;border-bottom:1px solid var(--line);padding:6px 10px;gap:6px" id="woFilterBar"></div>
+    <div style="padding:8px 14px;background:#fff;border-bottom:1px solid var(--line)">
+      <button id="woPrintListBtn" class="btn btn-ghost btn-full">🖨️ Imprimer la liste des Work Orders</button>
+    </div>
     <div class="main" id="woList" style="padding-top:10px"></div>
   </div>
 
@@ -2033,6 +2039,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
   // Search
   document.getElementById('woSearch').addEventListener('input', renderWOList);
+  document.getElementById('woPrintListBtn').addEventListener('click', printWOList);
   document.getElementById('siteSearch').addEventListener('input', renderSiteList);
   document.getElementById('invSearch').addEventListener('input', renderInvList);
   document.getElementById('sortieSearch').addEventListener('input', renderSortieList);
@@ -2049,6 +2056,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
   initCanvas();
   buildPMDateStrip();
+  document.getElementById('pmPrintDayBtn').addEventListener('click', printPlanDay);
   buildPMMDateStrip();
   document.getElementById('pmmPrevWeek').addEventListener('click', function(){pmmWeekOffset--;buildPMMDateStrip();renderPlanMatch();});
   document.getElementById('pmmNextWeek').addEventListener('click', function(){pmmWeekOffset++;buildPMMDateStrip();renderPlanMatch();});
@@ -2434,6 +2442,10 @@ function pmmDrawBuilderTaskPhotos(zone,t){
 }
 
 var pmmWeekOffset=0; // décalage en semaines par rapport à la semaine courante
+// ➕ Job source sélectionné dans le picker "Assigné aujourd'hui" — consommé (et remis à null) par confirmJob()
+// pour lier le punch créé au WO / Plan / Plan de Match d'origine (task.sourceType/sourceId/sourceLabel).
+// N'affecte AUCUN calcul d'heures : c'est une simple référence stockée sur la tâche.
+var pendingJobSource=null;
 
 function pmmMondayOfWeek(offsetWeeks){
   var d=new Date();
@@ -2486,6 +2498,22 @@ function pmmGoToDate(iso){
   renderPlanMatch();
 }
 
+// Imprime tous les créneaux planifiés pour le jour sélectionné (tous employés)
+function printPlanDay(){
+  var slots=getPlan().filter(function(p){return p.date===pmDay;});
+  var h='<div class="pmm-print-doc">';
+  h+='<div class="pmm-print-hd"><h1>📅 CRÉNEAUX PLANIFIÉS</h1>';
+  h+='<div class="pmm-print-sub">'+fmtDate(pmDay)+' · '+slots.length+' créneau'+(slots.length>1?'x':'')+'</div></div>';
+  h+='<table class="pmm-print-table"><thead><tr><th style="width:60px">Heure</th><th>Client</th><th>Employé(s)</th><th>Notes</th></tr></thead><tbody>';
+  slots.forEach(function(slot){
+    var wo=getWOs().find(function(x){return x.id===slot.woId;});
+    h+='<tr><td class="ctr">'+esc(slot.heure||'—')+'</td><td>'+esc(wo?wo.client:'—')+'</td><td>'+esc(empNames(planAssignees(slot))||'—')+'</td><td>'+esc(slot.notes||'')+'</td></tr>';
+  });
+  h+='</tbody></table></div>';
+  document.getElementById('pmmPrintArea').innerHTML=h;
+  window.print();
+}
+
 function pmmTargetUid(){
   // Sup/admin peuvent consulter/remplir le plan d'un autre employé via le sélecteur
   if(isSup()){
@@ -2496,35 +2524,58 @@ function pmmTargetUid(){
 }
 
 // Construit un document propre (texte figé, pas d'inputs) pour l'impression
-function pmmBuildPrintHTML(plan){
+function pmmBuildPrintHTML(plan,wosToday,slotsToday,uidT){
+  wosToday=wosToday||[];slotsToday=slotsToday||[];
   var h='<div class="pmm-print-doc">';
-  h+='<div class="pmm-print-hd"><h1>📋 PLAN DE MATCH</h1>';
-  if(plan.resume)h+='<div class="pmm-print-sub">'+esc(plan.resume)+'</div>';
-  h+='<div class="pmm-print-meta"><span><b>Employé:</b> '+esc(empName(plan.emp))+'</span>';
-  if(plan.vehicule)h+='<span><b>Véhicule:</b> '+esc(plan.vehicule)+'</span>';
-  if(plan.superviseur)h+='<span><b>Superviseur:</b> '+esc(plan.superviseur)+'</span>';
-  h+='<span><b>Date:</b> '+fmtDate(plan.date)+'</span></div></div>';
+  h+='<div class="pmm-print-hd"><h1>📋 PLAN DE MATCH — JOURNÉE COMPLÈTE</h1>';
+  h+='<div class="pmm-print-meta"><span><b>Employé:</b> '+esc(empName(uidT||(plan?plan.emp:'')))+'</span>';
+  if(plan&&plan.vehicule)h+='<span><b>Véhicule:</b> '+esc(plan.vehicule)+'</span>';
+  if(plan&&plan.superviseur)h+='<span><b>Superviseur:</b> '+esc(plan.superviseur)+'</span>';
+  h+='<span><b>Date:</b> '+fmtDate(plan?plan.date:(wosToday[0]?wosToday[0].date:''))+'</span></div></div>';
+  if(plan&&plan.resume)h+='<div class="pmm-print-sub" style="margin:-6px 0 8px">'+esc(plan.resume)+'</div>';
 
-  (plan.sections||[]).forEach(function(sec){
-    if(sec.note){
-      h+='<div class="pmm-print-note '+(sec.noteColor==='amber'?'amber':'rouge')+'">'+(sec.noteColor==='amber'?'⚠️':'🚨')+' '+esc(sec.note)+'</div>';
-    }
-    h+='<div class="pmm-print-sec"><div class="pmm-print-sec-hd c-'+(sec.color||'bleu')+'">'+esc(sec.title||'')+'</div>';
-    h+='<table class="pmm-print-table"><thead><tr><th style="width:22px">✓</th><th>Tâche</th><th style="width:55px">Temps</th><th>Notes</th><th style="width:65px">Statut</th></tr></thead><tbody>';
-    (sec.tasks||[]).forEach(function(t){
-      h+='<tr><td class="ctr">'+(t.done?'☑':'☐')+'</td><td>'+esc(t.label)+'</td><td class="ctr">'+esc(t.est||'')+'</td><td>'+esc(t.notes||'')+'</td><td>'+esc(t.status||'À faire')+'</td></tr>';
-      if(t.photos&&t.photos.length){
-        h+='<tr><td></td><td colspan="4"><div class="pmm-print-photos">'+t.photos.map(function(p){return '<img src="'+p.data+'"/>';}).join('')+'</div></td></tr>';
-      }
+  if(wosToday.length>0){
+    h+='<div class="pmm-print-sec"><div class="pmm-print-sec-hd c-orange">📝 Work Orders assignés ('+wosToday.length+')</div>';
+    h+='<table class="pmm-print-table"><thead><tr><th>Client / Site</th><th style="width:70px">Statut</th><th style="width:70px">Priorité</th><th style="width:60px">Tâches</th></tr></thead><tbody>';
+    wosToday.forEach(function(wo){
+      var checkedCount=(wo.tasks||[]).filter(function(t){return t.done;}).length;var totalT=(wo.tasks||[]).length;
+      h+='<tr><td>'+esc(wo.client)+(wo.site?' — '+esc(wo.site):'')+'</td><td>'+esc((wo.status||'').replace('_',' '))+'</td><td>'+esc(wo.priorite||'')+'</td><td class="ctr">'+(totalT>0?(checkedCount+'/'+totalT):'—')+'</td></tr>';
     });
     h+='</tbody></table></div>';
-  });
+  }
 
-  if(plan.obstacles||plan.bonscoups){
-    h+='<div class="pmm-print-ff">';
-    h+='<div><b>🚧 Obstacles:</b> '+esc(plan.obstacles||'—')+'</div>';
-    h+='<div><b>🌟 Bons coups:</b> '+esc(plan.bonscoups||'—')+'</div>';
-    h+='</div>';
+  if(slotsToday.length>0){
+    h+='<div class="pmm-print-sec"><div class="pmm-print-sec-hd c-purple">📅 Créneaux planifiés ('+slotsToday.length+')</div>';
+    h+='<table class="pmm-print-table"><thead><tr><th style="width:60px">Heure</th><th>Client</th><th>Notes</th></tr></thead><tbody>';
+    slotsToday.forEach(function(slot){
+      var wo=getWOs().find(function(x){return x.id===slot.woId;});
+      h+='<tr><td class="ctr">'+esc(slot.heure||'—')+'</td><td>'+esc(wo?wo.client:'—')+'</td><td>'+esc(slot.notes||'')+'</td></tr>';
+    });
+    h+='</tbody></table></div>';
+  }
+
+  if(plan){
+    (plan.sections||[]).forEach(function(sec){
+      if(sec.note){
+        h+='<div class="pmm-print-note '+(sec.noteColor==='amber'?'amber':'rouge')+'">'+(sec.noteColor==='amber'?'⚠️':'🚨')+' '+esc(sec.note)+'</div>';
+      }
+      h+='<div class="pmm-print-sec"><div class="pmm-print-sec-hd c-'+(sec.color||'bleu')+'">'+esc(sec.title||'')+'</div>';
+      h+='<table class="pmm-print-table"><thead><tr><th style="width:22px">✓</th><th>Tâche</th><th style="width:55px">Temps</th><th>Notes</th><th style="width:65px">Statut</th></tr></thead><tbody>';
+      (sec.tasks||[]).forEach(function(t){
+        h+='<tr><td class="ctr">'+(t.done?'☑':'☐')+'</td><td>'+esc(t.label)+'</td><td class="ctr">'+esc(t.est||'')+'</td><td>'+esc(t.notes||'')+'</td><td>'+esc(t.status||'À faire')+'</td></tr>';
+        if(t.photos&&t.photos.length){
+          h+='<tr><td></td><td colspan="4"><div class="pmm-print-photos">'+t.photos.map(function(p){return '<img src="'+p.data+'"/>';}).join('')+'</div></td></tr>';
+        }
+      });
+      h+='</tbody></table></div>';
+    });
+
+    if(plan.obstacles||plan.bonscoups){
+      h+='<div class="pmm-print-ff">';
+      h+='<div><b>🚧 Obstacles:</b> '+esc(plan.obstacles||'—')+'</div>';
+      h+='<div><b>🌟 Bons coups:</b> '+esc(plan.bonscoups||'—')+'</div>';
+      h+='</div>';
+    }
   }
   h+='</div>';
   return h;
@@ -2556,6 +2607,28 @@ function renderPlanMatch(){
 
   // ➕ Work Orders assignés à cet employé pour ce jour, intégrés directement dans le Plan de Match
   var wosToday=getWOs().filter(function(w){return w.date===pmmDay&&woAssignees(w).indexOf(uidT)>=0;});
+  var slotsToday=getPlan().filter(function(p){return p.date===pmmDay&&planAssignees(p).indexOf(uidT)>=0;});
+
+  // Barre d'actions — imprimer fonctionne même s'il n'y a pas encore de checklist Plan de Match (WO/créneaux seuls)
+  if(plan||wosToday.length>0||slotsToday.length>0){
+    var actions=document.createElement('div');
+    actions.className='pmm-actions';
+    var printBtn=document.createElement('button');
+    printBtn.className='btn btn-ghost';printBtn.style.flex='1';printBtn.innerHTML='🖨️ Imprimer la journée';
+    printBtn.addEventListener('click',function(){
+      document.getElementById('pmmPrintArea').innerHTML=pmmBuildPrintHTML(plan,wosToday,slotsToday,uidT);
+      window.print();
+    });
+    actions.appendChild(printBtn);
+    if(isSup()&&plan){
+      var editBtn=document.createElement('button');
+      editBtn.className='btn btn-ghost';editBtn.style.flex='1';editBtn.innerHTML='✏️ Modifier la structure';
+      editBtn.addEventListener('click',function(){openPmmModal(plan.id);});
+      actions.appendChild(editBtn);
+    }
+    content.appendChild(actions);
+  }
+
   if(wosToday.length>0){
     var woSec=document.createElement('div');
     woSec.className='pmm-section';
@@ -2587,24 +2660,6 @@ function renderPlanMatch(){
     content.appendChild(d);
     return;
   }
-
-  // Barre d'actions (impression + édition sup/admin)
-  var actions=document.createElement('div');
-  actions.className='pmm-actions';
-  var printBtn=document.createElement('button');
-  printBtn.className='btn btn-ghost';printBtn.style.flex='1';printBtn.innerHTML='🖨️ Imprimer';
-  printBtn.addEventListener('click',function(){
-    document.getElementById('pmmPrintArea').innerHTML=pmmBuildPrintHTML(plan);
-    window.print();
-  });
-  actions.appendChild(printBtn);
-  if(isSup()){
-    var editBtn=document.createElement('button');
-    editBtn.className='btn btn-ghost';editBtn.style.flex='1';editBtn.innerHTML='✏️ Modifier la structure';
-    editBtn.addEventListener('click',function(){openPmmModal(plan.id);});
-    actions.appendChild(editBtn);
-  }
-  content.appendChild(actions);
 
   // En-tête
   var head=document.createElement('div');
@@ -2932,6 +2987,27 @@ function openWOModal(wo){
   renderWOTaskList();renderWOPj();
   openModal('woModal');
 }
+// Imprime la liste complète des WO actuellement affichés (filtre/recherche appliqués)
+function printWOList(){
+  var search=(document.getElementById('woSearch').value||'').toLowerCase();
+  var wos=getWOs().filter(function(wo){
+    if(search&&wo.client.toLowerCase().indexOf(search)<0&&wo.site.toLowerCase().indexOf(search)<0)return false;
+    if(woFilter==='Tous')return true;
+    if(woFilter==='urgent')return wo.priorite==='urgent';
+    return wo.status===woFilter;
+  });
+  var h='<div class="pmm-print-doc">';
+  h+='<div class="pmm-print-hd"><h1>📝 LISTE DES WORK ORDERS</h1>';
+  h+='<div class="pmm-print-sub">'+wos.length+' work order'+(wos.length>1?'s':'')+(woFilter&&woFilter!=='Tous'?' · Filtre: '+esc(woFilter):'')+'</div></div>';
+  h+='<table class="pmm-print-table"><thead><tr><th>Client / Site</th><th style="width:70px">Date</th><th style="width:90px">Assigné(s)</th><th style="width:60px">Statut</th><th style="width:60px">Priorité</th></tr></thead><tbody>';
+  wos.forEach(function(wo){
+    h+='<tr><td>'+esc(wo.client)+(wo.site?' — '+esc(wo.site):'')+'</td><td>'+(wo.date?fmtDate(wo.date):'—')+'</td><td>'+(woAssignees(wo).length?esc(empNames(woAssignees(wo))):'—')+'</td><td>'+esc((wo.status||'').replace('_',' '))+'</td><td>'+esc(wo.priorite||'')+'</td></tr>';
+  });
+  h+='</tbody></table></div>';
+  document.getElementById('pmmPrintArea').innerHTML=h;
+  window.print();
+}
+
 function printWO(){
   if(!woEditId)return;
   var wo=getWOs().find(function(w){return w.id===woEditId;});
@@ -3241,19 +3317,19 @@ function getTodayAssignedJobs(uid){
   var today=todayISO();
   var items=[];
   getWOs().filter(function(w){return w.date===today&&woAssignees(w).indexOf(uid)>=0;}).forEach(function(w){
-    items.push({mod:'wo',icon:'📝',label:w.client+(w.site?' — '+w.site:''),sub:'Work Order · '+(w.status||'').replace('_',' '),
+    items.push({mod:'wo',id:w.id,icon:'📝',label:w.client+(w.site?' — '+w.site:''),sub:'Work Order · '+(w.status||'').replace('_',' '),
       lieu:w.site||w.client,odt:w.id.slice(0,6).toUpperCase(),detail:w.desc||'',addr:woSiteAddr?woSiteAddr(w):''});
   });
   getPlan().filter(function(p){return p.date===today&&planAssignees(p).indexOf(uid)>=0;}).forEach(function(p){
     var wo=getWOs().find(function(x){return x.id===p.woId;});
-    items.push({mod:'plan',icon:'📅',label:wo?wo.client:'Intervention planifiée',sub:'Plan'+(p.heure?(' · '+p.heure):''),
+    items.push({mod:'plan',id:p.id,icon:'📅',label:wo?wo.client:'Intervention planifiée',sub:'Plan'+(p.heure?(' · '+p.heure):''),
       lieu:wo?(wo.site||wo.client):'',odt:wo?wo.id.slice(0,6).toUpperCase():'',detail:p.notes||'',addr:wo&&woSiteAddr?woSiteAddr(wo):''});
   });
   var pm=getPlanMatches().find(function(p){return p.date===today&&p.emp===uid;});
   if(pm){
     var allTasks=[];(pm.sections||[]).forEach(function(s){(s.tasks||[]).forEach(function(t){allTasks.push(t);});});
     var doneCount=allTasks.filter(function(t){return t.done;}).length;
-    items.push({mod:'planmatch',icon:'📋',label:'Plan de Match du jour',sub:doneCount+'/'+allTasks.length+' tâche'+(allTasks.length>1?'s':'')+' complétée'+(doneCount>1?'s':''),
+    items.push({mod:'planmatch',id:pm.id,icon:'📋',label:'Plan de Match du jour',sub:doneCount+'/'+allTasks.length+' tâche'+(allTasks.length>1?'s':'')+' complétée'+(doneCount>1?'s':''),
       lieu:pm.vehicule?('Plan de Match — '+pm.vehicule):'Plan de Match',odt:'',detail:pm.resume||''});
   }
   return items;
@@ -3707,6 +3783,7 @@ function isPunchAllowed(){
 function actionArriver(){if(chronoState[curDay].status!=='idle')return;if(!isPunchAllowed())return;document.getElementById('jobModalTitle').textContent='Premier chantier du jour';openJobModal(true);}
 function openJobModal(isFirst){
   mPjFiles=[];
+  pendingJobSource=null; // ➕ réinitialisation à chaque ouverture — évite un lien périmé d'un punch précédent
   document.getElementById('mLieu').value='';document.getElementById('mOdt').value='';
   document.getElementById('mDetail').value='';document.getElementById('mKmDep').value='';
   document.getElementById('mAddr').value='';document.getElementById('mAddrField').style.display='none';
@@ -3759,6 +3836,7 @@ function renderFtAssignedToday(){
         document.getElementById('mDetail').value=it.detail||'';
         onLieuChange();
         if(it.addr){document.getElementById('mAddr').value=it.addr;document.getElementById('mAddrField').style.display='block';}
+        pendingJobSource={type:it.mod,id:it.id,label:it.label}; // lie le prochain punch à ce WO/Plan/Plan de Match
       },50);
     });
   });
@@ -3787,6 +3865,7 @@ function renderJobPicker(){
       document.getElementById('mDetail').value=it.detail||'';
       onLieuChange();
       if(it.addr){document.getElementById('mAddr').value=it.addr;document.getElementById('mAddrField').style.display='block';}
+      pendingJobSource={type:it.mod,id:it.id,label:it.label}; // lie le prochain punch à ce WO/Plan/Plan de Match
       toast('✅ Champs pré-remplis avec : '+it.label);
     });
   });
@@ -3836,7 +3915,9 @@ function confirmJob(){
     });
     var task={id:++tid,lieu:lieu,odt:document.getElementById('mOdt').value.trim(),detail:document.getElementById('mDetail').value.trim(),
       addr:document.getElementById('mAddr').value.trim(),
-      start:now,startTs:Date.now(),end:'',hrs:0,active:true,kmDep:kmDep,kmArr:'',files:mPjFiles.slice(),gps:null};
+      start:now,startTs:Date.now(),end:'',hrs:0,active:true,kmDep:kmDep,kmArr:'',files:mPjFiles.slice(),gps:null,
+      sourceType:pendingJobSource?pendingJobSource.type:null,sourceId:pendingJobSource?pendingJobSource.id:null,sourceLabel:pendingJobSource?pendingJobSource.label:null};
+    pendingJobSource=null; // ➕ le lien n'est valable que pour ce punch ; on le réinitialise aussitôt utilisé
     st.tasks.push(task);st.activeTask=task;st.status='running';
     closeModal('jobModal');renderChrono();renderTaskLog();refreshCumul();buildDayTabs();saveFT();
     toast('🟢 Démarré : '+lieu);
@@ -4577,6 +4658,7 @@ function renderSuivi(){
         (info.task?'<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)">'+
         '<div style="font-size:13px;font-weight:600;color:var(--blue)">📍 '+(info.task.lieu||'—')+'</div>'+
         (info.task.detail?'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+info.task.detail+'</div>':'')+
+        (info.task.sourceLabel?'<div style="font-size:10.5px;color:var(--green);margin-top:3px;font-weight:700">🔗 Lié à : '+esc(info.task.sourceLabel)+'</div>':'')+
         (info.task.gps?'<a href="https://maps.google.com/?q='+info.task.gps.lat+','+info.task.gps.lng+'" target="_blank" style="display:inline-block;margin-top:6px;font-size:11px;color:var(--green);font-weight:700;text-decoration:none">🛰 Position GPS (±'+info.task.gps.acc+'m) ↗</a>':'')+'</div>':'')+
         '<div style="margin-top:8px;font-size:11px;color:var(--muted)">Total jour : <b style="color:var(--dk)">'+fmtH(info.dayTotal)+'</b></div>';
       // ➕ Ajout non-intrusif : badge des jobs assignés aujourd'hui (WO/Plan/Plan de Match) — lecture seule, ne touche à aucun calcul d'heures
