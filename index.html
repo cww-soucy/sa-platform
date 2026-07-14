@@ -236,6 +236,10 @@ input,select,textarea{font-size:16px!important}
 .pm-emp-chip{display:inline-flex;align-items:center;gap:5px;background:#fff;border-radius:20px;
               padding:3px 8px;font-size:11px;font-weight:600;color:var(--dk);margin-top:5px;margin-right:4px}
 
+.pmm-subtab{flex:1;background:var(--surface);border:1.5px solid var(--line);border-radius:10px;
+  padding:8px 6px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;text-align:center}
+.pmm-subtab.on{background:var(--navy);border-color:var(--navy);color:#fff}
+
 /* ── PLAN DE MATCH (checklist détaillée) ── */
 .pmm-head{background:var(--navy);border-radius:var(--r);padding:14px;color:#fff;margin-bottom:10px}
 .pmm-head h2{font-size:16px;font-weight:900;letter-spacing:.2px}
@@ -731,12 +735,22 @@ input,select,textarea{font-size:16px!important}
 
   <!-- ── MODULE : PLAN DU JOUR (employé) / PLAN MATCH (admin) ── -->
   <div id="modPlan" class="module" style="display:none">
+    <div style="background:#fff;border-bottom:1px solid var(--line);padding:8px 14px;display:flex;gap:6px">
+      <button class="pmm-subtab" data-mod="planmatch">📋 Plan de Match</button>
+      <button class="pmm-subtab" data-mod="wo">📝 Work Orders</button>
+      <button class="pmm-subtab on" data-mod="plan">📅 Créneaux</button>
+    </div>
     <div class="pm-date-strip" id="pmDateStrip"></div>
     <div class="main" id="pmContent" style="padding-top:10px"></div>
   </div>
 
   <!-- ── MODULE : PLAN DE MATCH (checklist détaillée par employé/jour) ── -->
   <div id="modPlanMatch" class="module" style="display:none">
+    <div style="background:#fff;border-bottom:1px solid var(--line);padding:8px 14px;display:flex;gap:6px">
+      <button class="pmm-subtab on" id="pmmTabChecklist" data-mod="planmatch">📋 Plan de Match</button>
+      <button class="pmm-subtab" id="pmmTabWO" data-mod="wo">📝 Work Orders</button>
+      <button class="pmm-subtab" id="pmmTabPlan" data-mod="plan">📅 Créneaux</button>
+    </div>
     <div style="background:#fff;border-bottom:1px solid var(--line);padding:8px 14px;display:flex;align-items:center;gap:8px">
       <button id="pmmPrevWeek" class="btn btn-ghost btn-sm" title="Semaine précédente">◀</button>
       <button id="pmmTodayBtn" class="btn btn-ghost btn-sm" style="flex:1">📅 Aujourd'hui</button>
@@ -805,6 +819,11 @@ input,select,textarea{font-size:16px!important}
 
   <!-- ── MODULE : WORK ORDERS ── -->
   <div id="modWO" class="module" style="display:none">
+    <div style="background:#fff;border-bottom:1px solid var(--line);padding:8px 14px;display:flex;gap:6px">
+      <button class="pmm-subtab" data-mod="planmatch">📋 Plan de Match</button>
+      <button class="pmm-subtab on" data-mod="wo">📝 Work Orders</button>
+      <button class="pmm-subtab" data-mod="plan">📅 Créneaux</button>
+    </div>
     <div class="search-bar">
       <span class="search-icon">🔍</span>
       <input type="text" id="woSearch" placeholder="Rechercher un work order…"/>
@@ -1877,6 +1896,9 @@ document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('woAddBtn').addEventListener('click', function(){openWOModal(null);});
   document.getElementById('siteAddBtn').addEventListener('click', function(){openSiteModal(null);});
   document.getElementById('flotteAddBtn').addEventListener('click', function(){openVehiculeModal(null);});
+  document.querySelectorAll('.pmm-subtab').forEach(function(b){
+    b.addEventListener('click',function(){switchMod(b.dataset.mod);});
+  });
   document.getElementById('invAddBtn').addEventListener('click', function(){openInvModal(null);});
   document.getElementById('sortieAddBtn').addEventListener('click', function(){openSortieModal(null);});
   document.getElementById('comptesAddBtn').addEventListener('click', function(){openCompteModal(null);});
@@ -2039,11 +2061,9 @@ document.addEventListener('DOMContentLoaded', function(){
 // ═══════════════════════════════════════════════════════
 var NAV_CONFIG=[
   {mod:'accueil',icon:'🏠', lbl:'Accueil'},
-  {mod:'plan',  icon:'📅', lbl:'Plan'},
-  {mod:'planmatch',icon:'📋',lbl:'Plan Match'},
+  {mod:'planmatch',icon:'📋',lbl:'Plan de Match'},
   {mod:'ft',    icon:'⏱',  lbl:'Temps'},
   {mod:'suivi', icon:'🔴', lbl:'Suivi'},
-  {mod:'wo',    icon:'📝', lbl:'WO'},
   {mod:'sites', icon:'🏗',  lbl:'Sites'},
   {mod:'flotte',icon:'🚗', lbl:'Flotte'},
   {mod:'inventaire',icon:'📦',lbl:'Stock'},
@@ -2129,7 +2149,11 @@ function switchMod(mod){
   curMod=mod;
   document.querySelectorAll('.module').forEach(function(m){m.style.display='none';});
   if(modMap[mod]){var el=document.getElementById(modMap[mod]);if(el)el.style.display='block';}
-  document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.toggle('on',b.dataset.mod===mod);});
+  document.querySelectorAll('.nav-btn').forEach(function(b){
+    var on=(b.dataset.mod===mod)||(b.dataset.mod==='planmatch'&&(mod==='wo'||mod==='plan'));
+    b.classList.toggle('on',on);
+  });
+  document.querySelectorAll('.pmm-subtab').forEach(function(b){b.classList.toggle('on',b.dataset.mod===mod);});
   // Afficher le bon FAB selon le module
   var fabMap={plan:'pmAddBtn',planmatch:'pmmAddBtn',wo:'woAddBtn',sites:'siteAddBtn',flotte:'flotteAddBtn',inventaire:'invAddBtn',comptes:'comptesAddBtn',sortie:'sortieAddBtn'};
   ['pmAddBtn','pmmAddBtn','woAddBtn','siteAddBtn','flotteAddBtn','invAddBtn','comptesAddBtn','sortieAddBtn'].forEach(function(id){
@@ -2526,6 +2550,31 @@ function renderPlanMatch(){
   var uidT=pmmTargetUid();
   var list=getPlanMatches();
   var plan=list.find(function(p){return p.date===pmmDay&&p.emp===uidT;});
+
+  // ➕ Work Orders assignés à cet employé pour ce jour, intégrés directement dans le Plan de Match
+  var wosToday=getWOs().filter(function(w){return w.date===pmmDay&&woAssignees(w).indexOf(uidT)>=0;});
+  if(wosToday.length>0){
+    var woSec=document.createElement('div');
+    woSec.className='pmm-section';
+    var woHd=document.createElement('div');
+    woHd.className='pmm-sec-hd c-orange';
+    woHd.textContent='📝 Work Orders assignés ('+wosToday.length+')';
+    woSec.appendChild(woHd);
+    wosToday.forEach(function(wo){
+      var row=document.createElement('div');
+      row.className='pmm-task';row.style.cursor='pointer';
+      var checkedCount=(wo.tasks||[]).filter(function(t){return t.done;}).length;
+      var totalT=(wo.tasks||[]).length;
+      row.innerHTML='<div class="pmm-t-main">'+
+        '<span class="pmm-t-label">'+esc(wo.client)+(wo.site?' — '+esc(wo.site):'')+'</span>'+
+        '<span class="pmm-t-est">'+(totalT>0?(checkedCount+'/'+totalT+' tâches'):'')+'</span>'+
+        '<div style="font-size:11px;color:var(--muted);margin-top:2px">Statut : '+esc((wo.status||'').replace('_',' '))+' · Priorité : '+esc(wo.priorite||'')+'</div>'+
+        '</div><div style="color:var(--muted);align-self:center">›</div>';
+      row.addEventListener('click',function(){switchMod('wo');setTimeout(function(){openWOModal(wo);},50);});
+      woSec.appendChild(row);
+    });
+    content.appendChild(woSec);
+  }
 
   if(!plan){
     var d=document.createElement('div');
