@@ -786,6 +786,8 @@ input,select,textarea{font-size:16px!important}
       <div id="fieldView"></div>
       <!-- ➕ Ajout non-intrusif : résumé automatique des jobs assignés aujourd'hui (WO/Plan/Plan de Match) -->
       <div id="ftAssignedToday" style="display:none"></div>
+      <!-- ➕ Ajout non-intrusif : modification exceptionnelle d'un jour terminé (non soumis), avec traçabilité -->
+      <div id="ftEditDayBox" style="display:none;margin:0 0 10px"></div>
       <!-- Bouton ajout manuel (sup/admin) -->
       <button id="addPunchManualBtn" class="btn btn-ghost btn-full" style="display:none;margin-bottom:10px">➕ Ajouter un punch manuellement</button>
       <!-- cumul -->
@@ -870,6 +872,15 @@ input,select,textarea{font-size:16px!important}
     <div class="main" id="sortieList" style="padding-top:10px"></div>
   </div>
 
+  <!-- ── MODULE : BONS DE LIVRAISON ── -->
+  <div id="modLivraison" class="module" style="display:none">
+    <div class="search-bar">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="livraisonSearch" placeholder="Rechercher un bon, un client…"/>
+    </div>
+    <div class="main" id="livraisonList" style="padding-top:10px"></div>
+  </div>
+
 
   <!-- ── MODULE : COMPTES ── -->
   <div id="modComptes" class="module" style="display:none">
@@ -909,6 +920,7 @@ input,select,textarea{font-size:16px!important}
   <button class="fab" id="flotteAddBtn"  style="display:none">＋</button>
   <button class="fab" id="invAddBtn"     style="display:none">＋</button>
   <button class="fab" id="sortieAddBtn"  style="display:none">＋</button>
+  <button class="fab" id="livraisonAddBtn" style="display:none">＋</button>
   <button class="fab" id="comptesAddBtn" style="display:none">＋</button>
 
   <!-- NAVBAR dynamique -->
@@ -997,6 +1009,22 @@ input,select,textarea{font-size:16px!important}
     </div>
     <button class="btn btn-primary btn-full" id="stopConfirm" style="margin-top:4px">✓ Terminer la journée</button>
     <button class="btn btn-ghost btn-full" id="stopCancel" style="margin-top:8px">Annuler</button>
+  </div>
+</div>
+
+<!-- Modal: Modification exceptionnelle d'un jour terminé (avec traçabilité) -->
+<div class="modal-bg" id="ftEditModal">
+  <div class="modal-box" style="max-width:600px">
+    <div class="modal-hd"><h3 id="ftEditModalTitle">Modifier les heures</h3><button class="modal-close" id="ftEditModalClose">✕</button></div>
+    <div style="background:var(--obg);color:var(--orange);border-radius:8px;padding:8px 10px;font-size:11.5px;font-weight:600;margin-bottom:10px">
+      ⚠️ Modification exceptionnelle d'un jour déjà terminé. Chaque changement est enregistré avec votre nom, l'heure, et l'ancienne valeur — visible par le superviseur.
+    </div>
+    <div id="ftEditTasksWrap" style="display:flex;flex-direction:column;gap:12px"></div>
+    <div class="mfield" style="margin-top:10px"><label>Raison de la modification (optionnel)</label>
+      <input type="text" id="ftEditReason" placeholder="Ex. Oubli de puncher, erreur d'heure…"/>
+    </div>
+    <button class="btn btn-success btn-full" id="ftEditSaveBtn" style="margin-top:10px">💾 Enregistrer les modifications</button>
+    <button class="btn btn-ghost btn-full" id="ftEditCancel" style="margin-top:8px">Annuler</button>
   </div>
 </div>
 
@@ -1264,6 +1292,56 @@ input,select,textarea{font-size:16px!important}
   </div>
 </div>
 
+<!-- Modal: Bon de Livraison -->
+<div class="modal-bg" id="livraisonModal">
+  <div class="modal-box" style="max-width:680px">
+    <div class="modal-hd"><h3 id="livraisonModalTitle">Bon de Livraison</h3><button class="modal-close" id="livraisonModalClose">✕</button></div>
+    <div style="background:var(--lt);color:var(--blue);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;margin-bottom:10px" id="livraisonNoBon">N° de bon : —</div>
+
+    <label style="display:flex;align-items:center;gap:8px;background:var(--rbg);border:1.5px solid var(--red);border-radius:8px;padding:8px 10px;margin-bottom:10px;cursor:pointer">
+      <input type="checkbox" id="livUrgent" style="width:18px;height:18px"/>
+      <span style="font-weight:700;color:var(--red);font-size:12.5px">⚠ URGENT / ASAP — AUJOURD'HUI</span>
+    </label>
+
+    <div class="m2">
+      <div class="mfield"><label>Date</label><input type="date" id="livDate"/></div>
+      <div class="mfield"><label>Heure / ASAP</label><input type="text" id="livHeure" placeholder="Ex. ASAP ou 14h00"/></div>
+    </div>
+    <div class="mfield"><label>Technicien</label><input type="text" id="livTechnicien" placeholder="Nom du technicien"/></div>
+    <div class="m2">
+      <div class="mfield"><label>Client</label><input type="text" id="livClient" placeholder="Ex. Best Western — Yvette"/></div>
+      <div class="mfield"><label>Téléphone client</label><input type="text" id="livTel" placeholder="418-000-0000"/></div>
+    </div>
+    <div class="mfield"><label>Adresse de livraison</label><input type="text" id="livAdresse" placeholder="Adresse complète"/></div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0 6px">
+      <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">📦 Items — Livraison</label>
+      <button class="pmm-mini-add" id="livAddLigneLiv" type="button">➕ Ajouter une ligne</button>
+    </div>
+    <div id="livLignesLivWrap" style="display:flex;flex-direction:column;gap:8px"></div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 6px">
+      <label style="font-size:10px;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:.3px">↩ Items — Retour / Échange</label>
+      <button class="pmm-mini-add" id="livAddLigneRet" type="button">➕ Ajouter une ligne</button>
+    </div>
+    <div id="livLignesRetWrap" style="display:flex;flex-direction:column;gap:8px"></div>
+
+    <div class="mfield" style="margin-top:10px">
+      <label>📸 Photos (livraison + retour — obligatoire)</label>
+      <div id="livPhotosZone" style="margin-top:4px"></div>
+    </div>
+
+    <div class="mfield" style="margin-top:10px"><label>Statut</label>
+      <div id="livStatusBadge" style="font-size:12px;font-weight:700;color:var(--muted)">Brouillon</div>
+    </div>
+
+    <button class="btn btn-ghost btn-full" id="livSaveBtn" style="margin-top:10px">💾 Enregistrer le brouillon</button>
+    <button class="btn btn-success btn-full" id="livDeliverBtn" style="margin-top:8px">✅🖨 Marquer livré (+ impression)</button>
+    <button class="btn btn-danger btn-full" id="livDeleteBtn" style="margin-top:8px;display:none">🗑 Supprimer</button>
+    <button class="btn btn-ghost btn-full" id="livCancel" style="margin-top:8px">Fermer</button>
+  </div>
+</div>
+
 <!-- Modal: Compte utilisateur -->
 <div class="modal-bg" id="compteModal">
   <div class="modal-box">
@@ -1434,7 +1512,7 @@ var SB_KEY='sb_publishable_qVd_6eoAvwrDGs9u81woAg_RrMpTJxn';
 var sb=null;
 var sbReady=false;
 var sbStatus='offline'; // offline | syncing | online
-var SB_TABLES={workorders:'workorders',sites:'sites',plan:'plan',planmatch:'plan_match',flotte:'flotte',inventaire:'inventaire',comptes:'comptes',sortie:'sorties_inventaire'};
+var SB_TABLES={workorders:'workorders',sites:'sites',plan:'plan',planmatch:'plan_match',flotte:'flotte',inventaire:'inventaire',comptes:'comptes',sortie:'sorties_inventaire',livraison:'bons_livraison'};
 
 function initSupabase(){
   try{
@@ -1594,6 +1672,7 @@ function subscribeRealtime(){
            (localKey==='flotte'&&curMod==='flotte')||
            (localKey==='inventaire'&&curMod==='inventaire')||
            (localKey==='sortie'&&curMod==='sortie')||
+           (localKey==='livraison'&&curMod==='livraison')||
            (localKey==='comptes'&&curMod==='comptes')){
           refreshCurrentMod();
         }
@@ -1610,6 +1689,7 @@ function refreshCurrentMod(){
   else if(curMod==='flotte')renderFlotteList();
   else if(curMod==='inventaire')renderInvList();
   else if(curMod==='sortie')renderSortieList();
+  else if(curMod==='livraison')renderLivraisonList();
   else if(curMod==='comptes')renderComptesList();
   else if(curMod==='stats')renderStats();
   else if(curMod==='suivi')renderSuivi();
@@ -1641,6 +1721,8 @@ function getInv(){return lsGet('inventaire')||[];}
 function setInv(d){lsSet('inventaire',d);sbPushAll('inventaire',d);}
 function getSorties(){return lsGet('sortie')||[];}
 function setSorties(d){lsSet('sortie',d);sbPushAll('sortie',d);}
+function getLivraisons(){return lsGet('livraison')||[];}
+function setLivraisons(d){lsSet('livraison',d);sbPushAll('livraison',d);}
 function getComptes(){return lsGet('comptes')||COMPTES;}
 function setComptes(d){lsSet('comptes',d);sbPushAll('comptes',d);}
 function getFTIndex(){return lsGet('ft_index')||[];}
@@ -1919,6 +2001,7 @@ document.addEventListener('DOMContentLoaded', function(){
   });
   document.getElementById('invAddBtn').addEventListener('click', function(){openInvModal(null);});
   document.getElementById('sortieAddBtn').addEventListener('click', function(){openSortieModal(null);});
+  document.getElementById('livraisonAddBtn').addEventListener('click', function(){openLivraisonModal(null);});
   document.getElementById('comptesAddBtn').addEventListener('click', function(){openCompteModal(null);});
 
   // ── CHRONO ──
@@ -2017,6 +2100,24 @@ document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('sortieSaveBtn').addEventListener('click', function(){saveSortie(false);});
   document.getElementById('sortieSendBtn').addEventListener('click', function(){saveSortie(true);});
   document.getElementById('sortieDeleteBtn').addEventListener('click', deleteSortie);
+
+  document.getElementById('livraisonModalClose').addEventListener('click', function(){closeModal('livraisonModal');});
+  document.getElementById('livCancel').addEventListener('click', function(){closeModal('livraisonModal');});
+  document.getElementById('livAddLigneLiv').addEventListener('click', function(){livAddLigne('liv',null);});
+  document.getElementById('livAddLigneRet').addEventListener('click', function(){livAddLigne('ret',null);});
+  document.getElementById('livSaveBtn').addEventListener('click', function(){saveLivraison(false);});
+  document.getElementById('livDeliverBtn').addEventListener('click', function(){saveLivraison(true);});
+  document.getElementById('livDeleteBtn').addEventListener('click', deleteLivraison);
+
+  document.getElementById('ftEditModalClose').addEventListener('click', function(){closeModal('ftEditModal');});
+  document.getElementById('ftEditCancel').addEventListener('click', function(){closeModal('ftEditModal');});
+  document.getElementById('ftEditSaveBtn').addEventListener('click', saveFtEdit);
+  // Délégation d'événement : rafraîchit le bouton de modification à chaque changement d'onglet jour
+  // (buildDayTabs()/renderDay() restent totalement inchangées — on écoute juste par-dessus)
+  var dtabsEl=document.getElementById('dtabs');
+  if(dtabsEl)dtabsEl.addEventListener('click',function(){setTimeout(renderFtEditButton,30);});
+
+
   document.getElementById('iDeleteBtn').addEventListener('click', deleteInv);
   document.getElementById('compteModalClose').addEventListener('click', function(){closeModal('compteModal');});
   document.getElementById('cCancel').addEventListener('click', function(){closeModal('compteModal');});
@@ -2052,13 +2153,14 @@ document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('siteSearch').addEventListener('input', renderSiteList);
   document.getElementById('invSearch').addEventListener('input', renderInvList);
   document.getElementById('sortieSearch').addEventListener('input', renderSortieList);
+  document.getElementById('livraisonSearch').addEventListener('input', renderLivraisonList);
 
   // PIN
   document.querySelectorAll('.pkey').forEach(function(btn){btn.addEventListener('click',function(){pinKey(this.dataset.k);});});
   document.getElementById('pinModal').addEventListener('click', function(e){if(e.target===this)closeModal('pinModal');});
 
   // Backdrop close pour tous les modals
-  ['jobModal','stopModal','woModal','siteModal','flotteModal','invModal','compteModal','pmModal','pmmModal','sortieModal'].forEach(function(id){
+  ['jobModal','stopModal','woModal','siteModal','flotteModal','invModal','compteModal','pmModal','pmmModal','sortieModal','livraisonModal','ftEditModal'].forEach(function(id){
     var el=document.getElementById(id);
     if(el)el.addEventListener('click',function(e){if(e.target===this)closeModal(id);});
   });
@@ -2088,6 +2190,7 @@ var NAV_CONFIG=[
   {mod:'flotte',icon:'🚗', lbl:'Flotte'},
   {mod:'inventaire',icon:'📦',lbl:'Stock'},
   {mod:'sortie',icon:'📤',lbl:'Sortie Inv.'},
+  {mod:'livraison',icon:'🚚',lbl:'Bon Livr.'},
   {mod:'comptes',icon:'👥',lbl:'Comptes'},
   {mod:'stats', icon:'📊', lbl:'Stats'},
   {mod:'map',   icon:'🗺',  lbl:'Carte'},
@@ -2162,7 +2265,7 @@ function doLogout(){
 // ═══════════════════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════════════════
-var modMap={accueil:'modAccueil',plan:'modPlan',planmatch:'modPlanMatch',ft:'modFT',suivi:'modSuivi',wo:'modWO',sites:'modSites',flotte:'modFlotte',inventaire:'modInv',sortie:'modSortie',comptes:'modComptes',stats:'modStats',map:'modMap'};
+var modMap={accueil:'modAccueil',plan:'modPlan',planmatch:'modPlanMatch',ft:'modFT',suivi:'modSuivi',wo:'modWO',sites:'modSites',flotte:'modFlotte',inventaire:'modInv',sortie:'modSortie',livraison:'modLivraison',comptes:'modComptes',stats:'modStats',map:'modMap'};
 
 function switchMod(mod){
   if(!hasDroit(mod))return;
@@ -2175,23 +2278,24 @@ function switchMod(mod){
   });
   document.querySelectorAll('.pmm-subtab').forEach(function(b){b.classList.toggle('on',b.dataset.mod===mod);});
   // Afficher le bon FAB selon le module
-  var fabMap={plan:'pmAddBtn',planmatch:'pmmAddBtn',wo:'woAddBtn',sites:'siteAddBtn',flotte:'flotteAddBtn',inventaire:'invAddBtn',comptes:'comptesAddBtn',sortie:'sortieAddBtn'};
-  ['pmAddBtn','pmmAddBtn','woAddBtn','siteAddBtn','flotteAddBtn','invAddBtn','comptesAddBtn','sortieAddBtn'].forEach(function(id){
+  var fabMap={plan:'pmAddBtn',planmatch:'pmmAddBtn',wo:'woAddBtn',sites:'siteAddBtn',flotte:'flotteAddBtn',inventaire:'invAddBtn',comptes:'comptesAddBtn',sortie:'sortieAddBtn',livraison:'livraisonAddBtn'};
+  ['pmAddBtn','pmmAddBtn','woAddBtn','siteAddBtn','flotteAddBtn','invAddBtn','comptesAddBtn','sortieAddBtn','livraisonAddBtn'].forEach(function(id){
     var el=document.getElementById(id);if(!el)return;
-    var openToAll=(id==='sortieAddBtn'); // tous les employés peuvent créer une sortie d'inventaire
+    var openToAll=(id==='sortieAddBtn'||id==='livraisonAddBtn'); // tous les employés peuvent créer une sortie/livraison
     var show=fabMap[mod]===id&&(openToAll||canEdit())&&(id!=='comptesAddBtn'||isAdmin());
     el.style.display=show?'flex':'none';
   });
   if(mod==='accueil')renderAccueil();
   else if(mod==='plan')renderPlan();
   else if(mod==='planmatch')renderPlanMatch();
-  else if(mod==='ft'){setupFTEmpSelector();_loadedWeekKey=mondayOf(document.getElementById('weekDate').value);buildDayTabs();renderDay(curDay);refreshCumul();refreshWkStatus();renderFtAssignedToday();}
+  else if(mod==='ft'){setupFTEmpSelector();_loadedWeekKey=mondayOf(document.getElementById('weekDate').value);buildDayTabs();renderDay(curDay);refreshCumul();refreshWkStatus();renderFtAssignedToday();renderFtEditButton();}
   else if(mod==='suivi')renderSuivi();
   else if(mod==='wo')renderWOList();
   else if(mod==='sites')renderSiteList();
   else if(mod==='flotte')renderFlotteList();
   else if(mod==='inventaire')renderInvList();
   else if(mod==='sortie')renderSortieList();
+  else if(mod==='livraison')renderLivraisonList();
   else if(mod==='comptes')renderComptesList();
   else if(mod==='stats')renderStats();
   else if(mod==='map')initMap();
@@ -3818,6 +3922,102 @@ function openJobModal(isFirst){
 // ne touche à AUCUNE logique de calcul/sauvegarde d'heures (confirmJob() reste inchangée).
 // ➕ Résumé automatique et visible directement dans l'écran Temps (sans avoir à ouvrir un modal)
 // Purement additif : lecture seule, ne touche à aucun calcul/sauvegarde d'heures.
+// ═══════════════════════════════════════════════════════
+// MODIFICATION EXCEPTIONNELLE D'UN JOUR TERMINÉ (avec traçabilité)
+// Autorisation explicite du client (2026-07-16) : jours "terminés" (saved) et NON SOUMIS uniquement.
+// Ne touche à aucun calcul existant : recalcule les heures avec hrsFrom() déjà utilisée par confirmStop(),
+// et persiste via saveFT() déjà existante. Chaque champ modifié est tracé (qui / quand / avant → après).
+// ═══════════════════════════════════════════════════════
+function weekIsSubmitted(uid,weekMonday){
+  return !!lsGet('ft_submitted_'+uid+'_'+weekMonday);
+}
+function markWeekSubmitted(uid,weekMonday){
+  lsSet('ft_submitted_'+uid+'_'+weekMonday,{by:uid,at:new Date().toISOString()});
+}
+
+function renderFtEditButton(){
+  var box=document.getElementById('ftEditDayBox');
+  if(!box)return;
+  // Cette fonctionnalité concerne uniquement SA PROPRE feuille de temps (pas celle consultée d'un autre employé)
+  if(typeof viewingUid!=='undefined'&&viewingUid){box.style.display='none';box.innerHTML='';return;}
+  var wd=document.getElementById('weekDate');
+  if(!wd){box.style.display='none';return;}
+  var monday=mondayOf(wd.value);
+  var submitted=weekIsSubmitted(currentUser.id,monday);
+  var day=chronoState[curDay];
+  if(!day||day.tasks.length===0){box.style.display='none';box.innerHTML='';return;}
+  var wasEdited=day.tasks.some(function(t){return t.editedBy;});
+  if(submitted){
+    box.style.display='block';
+    box.innerHTML='<div style="font-size:11px;color:var(--muted);text-align:center;padding:8px;background:var(--gray);border-radius:8px">🔒 Semaine déjà soumise au superviseur — modification impossible</div>';
+    return;
+  }
+  if(day.saved){
+    box.style.display='block';
+    box.innerHTML='<button class="btn btn-ghost btn-full" id="ftEditDayBtn">✏️ Modifier les heures de ce jour (terminé)</button>'+
+      (wasEdited?'<div style="font-size:10.5px;color:var(--orange);margin-top:5px;text-align:center;font-weight:600">⚠️ Ce jour contient des heures modifiées manuellement — visible par le superviseur</div>':'');
+    document.getElementById('ftEditDayBtn').addEventListener('click',openFtEditModal);
+  }else{
+    box.style.display='none';box.innerHTML='';
+  }
+}
+
+var ftEditWorking=[]; // copie de travail des tâches du jour en édition
+function openFtEditModal(){
+  var day=chronoState[curDay];
+  ftEditWorking=JSON.parse(JSON.stringify(day.tasks));
+  document.getElementById('ftEditModalTitle').textContent='Modifier les heures — '+DL[curDay];
+  document.getElementById('ftEditReason').value='';
+  var wrap=document.getElementById('ftEditTasksWrap');
+  wrap.innerHTML='';
+  ftEditWorking.forEach(function(t,i){
+    var box=document.createElement('div');
+    box.style.cssText='border:1.5px solid var(--line);border-radius:var(--rs);padding:10px';
+    box.innerHTML=
+      '<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px">Tâche '+(i+1)+(t.editedBy?' <span style="color:var(--orange)">· déjà modifiée le '+new Date(t.editedAt).toLocaleString('fr-CA')+' par '+esc(empName(t.editedBy))+'</span>':'')+'</div>'+
+      '<div class="mfield" style="margin-bottom:6px"><label>Lieu</label><input type="text" class="fte-lieu" value="'+esc(t.lieu||'')+'"/></div>'+
+      '<div class="m2">'+
+        '<div class="mfield"><label>Heure début</label><input type="time" class="fte-start" value="'+esc(t.start||'')+'"/></div>'+
+        '<div class="mfield"><label>Heure fin</label><input type="time" class="fte-end" value="'+esc(t.end||'')+'"/></div>'+
+      '</div>'+
+      '<div class="mfield" style="margin-top:6px"><label>Détail</label><input type="text" class="fte-detail" value="'+esc(t.detail||'')+'"/></div>';
+    wrap.appendChild(box);
+  });
+  openModal('ftEditModal');
+}
+
+function saveFtEdit(){
+  var wrap=document.getElementById('ftEditTasksWrap');
+  var boxes=wrap.children;
+  var reason=document.getElementById('ftEditReason').value.trim();
+  var now=new Date().toISOString();
+  var anyChange=false;
+  for(var i=0;i<ftEditWorking.length;i++){
+    var t=ftEditWorking[i];
+    var b=boxes[i];
+    var newLieu=b.querySelector('.fte-lieu').value.trim();
+    var newStart=b.querySelector('.fte-start').value;
+    var newEnd=b.querySelector('.fte-end').value;
+    var newDetail=b.querySelector('.fte-detail').value.trim();
+    var changed=(newLieu!==(t.lieu||'')||newStart!==(t.start||'')||newEnd!==(t.end||'')||newDetail!==(t.detail||''));
+    if(changed){
+      anyChange=true;
+      var before={lieu:t.lieu,start:t.start,end:t.end,hrs:t.hrs,detail:t.detail};
+      t.lieu=newLieu;t.start=newStart;t.end=newEnd;t.detail=newDetail;
+      if(newStart&&newEnd)t.hrs=hrsFrom(newStart,newEnd);
+      t.editedBy=currentUser.id;t.editedAt=now;t.editReason=reason;
+      t.editHistory=t.editHistory||[];
+      t.editHistory.push({by:currentUser.id,at:now,reason:reason,before:before});
+    }
+  }
+  if(!anyChange){toast('Aucune modification détectée');closeModal('ftEditModal');return;}
+  chronoState[curDay].tasks=ftEditWorking;
+  saveFT(); // ➕ réutilise la fonction de sauvegarde EXISTANTE, inchangée — aucun nouveau chemin de calcul/persistance
+  renderDay(curDay);refreshCumul();renderFtEditButton();
+  closeModal('ftEditModal');
+  toast('✅ Heures modifiées — modification tracée');
+}
+
 function renderFtAssignedToday(){
   var box=document.getElementById('ftAssignedToday');
   if(!box)return;
@@ -4028,6 +4228,7 @@ function submitWeek(){
   var emp=fullName()||'Employé';var week=document.getElementById('weekDate').value;
   var any=false;for(var i=0;i<7;i++)if(chronoState[i].tasks.length>0){any=true;break;}
   if(!any){toast('⚠️ Aucune tâche saisie');return;}
+  markWeekSubmitted(currentUser.id,mondayOf(week)); // ➕ verrouille les jours de cette semaine contre modification ultérieure
   // Corps courriel format Soucy AquatiK
   var body='';
   body+='Feuille de temps — Semaine du '+fmtDate(week)+'\n';
@@ -4477,6 +4678,232 @@ function sortieBuildPrintHTML(s){
   h+='<div style="margin-top:16px;border-bottom:1px solid #333;width:140px">&nbsp;</div><div style="font-size:10px;color:#666">Date</div>';
   h+='</div>';
   h+='</div>';
+  return h;
+}
+
+// ═══════════════════════════════════════════════════════
+// BONS DE LIVRAISON
+// ═══════════════════════════════════════════════════════
+var livraisonEditId=null;
+var livLignesLiv=[];
+var livLignesRet=[];
+var livPhotos=[];
+
+function livGenerateNoBon(){
+  var now=new Date();
+  var y=now.getFullYear(),m=String(now.getMonth()+1).padStart(2,'0'),d=String(now.getDate()).padStart(2,'0');
+  var rand=String(Math.floor(Math.random()*900)+100);
+  return 'SA-'+y+m+d+'-'+rand;
+}
+
+function renderLivraisonList(){
+  var list=document.getElementById('livraisonList');
+  list.innerHTML='';
+  var livs=getLivraisons().slice().sort(function(a,b){return (b.createdAt||'').localeCompare(a.createdAt||'');});
+  var search=(document.getElementById('livraisonSearch').value||'').toLowerCase();
+  if(search){
+    livs=livs.filter(function(l){
+      var hay=(l.noBon+' '+l.client+' '+l.technicien+' '+l.adresse).toLowerCase();
+      return hay.indexOf(search)>=0;
+    });
+  }
+  if(livs.length===0){
+    list.innerHTML='<div class="empty"><div class="ei">🚚</div><h3>Aucun bon de livraison</h3><p>Créez-en un avec le bouton ＋</p></div>';
+    return;
+  }
+  livs.forEach(function(l){
+    var card=document.createElement('div');card.className='sortie-card';
+    var livre=l.status==='livre';
+    var nbLiv=(l.itemsLiv||[]).filter(function(x){return x.item;}).length;
+    var nbRet=(l.itemsRet||[]).filter(function(x){return x.item;}).length;
+    card.innerHTML='<div class="sc-hd"><div><div class="sc-bon">'+esc(l.noBon)+(l.urgent?' · <span style="color:var(--red)">⚠ URGENT</span>':'')+'</div><div class="sc-nom">'+esc(l.client||'—')+'</div></div>'+
+      '<span class="badge '+(livre?'badge-green':'badge-orange')+'">'+(livre?'✅ Livré':'📝 Brouillon')+'</span></div>'+
+      '<div class="sc-body">'+
+        '<span>📅 '+(l.date?fmtDate(l.date):'—')+(l.heure?(' · '+esc(l.heure)):'')+'</span>'+
+        '<span>👷 '+esc(l.technicien||'—')+'</span>'+
+        '<span>📦 '+nbLiv+' livré'+(nbLiv>1?'s':'')+(nbRet>0?(' · ↩ '+nbRet+' retour'+(nbRet>1?'s':'')):'')+'</span>'+
+      '</div>';
+    card.addEventListener('click',function(){openLivraisonModal(l.id);});
+    list.appendChild(card);
+  });
+}
+
+function livAddLigne(kind,ligne){
+  var arr=kind==='liv'?livLignesLiv:livLignesRet;
+  if(kind==='liv')arr.push(ligne||{item:'',qteSortie:'',unite:'',qteLivree:'',statut:''});
+  else arr.push(ligne||{item:'',qteRecuperee:'',unite:'',raison:''});
+  livRenderLignes(kind);
+}
+
+function livRenderLignes(kind){
+  var wrap=document.getElementById(kind==='liv'?'livLignesLivWrap':'livLignesRetWrap');
+  var arr=kind==='liv'?livLignesLiv:livLignesRet;
+  wrap.innerHTML='';
+  arr.forEach(function(l,i){
+    var row=document.createElement('div');
+    row.className='sortie-ligne-row';
+    if(kind==='liv'){
+      row.innerHTML=
+        '<div class="sl-hd"><button type="button" class="pmm-mini-x">✕</button></div>'+
+        '<input type="text" placeholder="Item" class="sl-full" data-k="item"/>'+
+        '<input type="text" placeholder="Qté sortie" data-k="qteSortie"/>'+
+        '<input type="text" placeholder="Unité" data-k="unite"/>'+
+        '<input type="text" placeholder="Qté livrée" data-k="qteLivree"/>'+
+        '<input type="text" placeholder="Statut" class="sl-full" data-k="statut"/>';
+    }else{
+      row.innerHTML=
+        '<div class="sl-hd"><button type="button" class="pmm-mini-x">✕</button></div>'+
+        '<input type="text" placeholder="Item récupéré" class="sl-full" data-k="item"/>'+
+        '<input type="text" placeholder="Qté récupérée" data-k="qteRecuperee"/>'+
+        '<input type="text" placeholder="Unité" data-k="unite"/>'+
+        '<input type="text" placeholder="Raison / remarque" class="sl-full" data-k="raison"/>';
+    }
+    row.querySelectorAll('input').forEach(function(inp){
+      inp.value=l[inp.dataset.k]||'';
+      inp.addEventListener('input',function(){l[inp.dataset.k]=inp.value;});
+    });
+    row.querySelector('.pmm-mini-x').addEventListener('click',function(){arr.splice(i,1);livRenderLignes(kind);});
+    wrap.appendChild(row);
+  });
+}
+
+function livDrawPhotos(){
+  var zone=document.getElementById('livPhotosZone');
+  pmmRenderPhotos(zone,livPhotos,
+    function(i){livPhotos.splice(i,1);livDrawPhotos();},
+    function(dataUrl){livPhotos.push({data:dataUrl,name:'photo',addedBy:currentUser?currentUser.id:'',addedAt:new Date().toISOString()});livDrawPhotos();}
+  );
+}
+
+function openLivraisonModal(livId){
+  livraisonEditId=livId;
+  if(livId){
+    var l=getLivraisons().find(function(x){return x.id===livId;});
+    if(!l){toast('Bon introuvable');return;}
+    document.getElementById('livraisonModalTitle').textContent='Bon de Livraison';
+    document.getElementById('livraisonNoBon').textContent='N° de bon : '+l.noBon;
+    document.getElementById('livUrgent').checked=!!l.urgent;
+    document.getElementById('livDate').value=l.date||'';
+    document.getElementById('livHeure').value=l.heure||'';
+    document.getElementById('livTechnicien').value=l.technicien||'';
+    document.getElementById('livClient').value=l.client||'';
+    document.getElementById('livTel').value=l.tel||'';
+    document.getElementById('livAdresse').value=l.adresse||'';
+    livLignesLiv=JSON.parse(JSON.stringify(l.itemsLiv||[]));
+    livLignesRet=JSON.parse(JSON.stringify(l.itemsRet||[]));
+    livPhotos=JSON.parse(JSON.stringify(l.photos||[]));
+    document.getElementById('livStatusBadge').textContent=l.status==='livre'?('✅ Livré le '+(l.livreAt?new Date(l.livreAt).toLocaleString('fr-CA'):'')):'📝 Brouillon';
+    var canDelete=isSup()||l.createdBy===currentUser.id;
+    document.getElementById('livDeleteBtn').style.display=canDelete?'block':'none';
+  }else{
+    document.getElementById('livraisonModalTitle').textContent='Nouveau Bon de Livraison';
+    document.getElementById('livraisonNoBon').textContent='N° de bon : '+livGenerateNoBon();
+    document.getElementById('livUrgent').checked=false;
+    document.getElementById('livDate').value=todayISO();
+    document.getElementById('livHeure').value='';
+    document.getElementById('livTechnicien').value=fullName();
+    document.getElementById('livClient').value='';
+    document.getElementById('livTel').value='';
+    document.getElementById('livAdresse').value='';
+    livLignesLiv=[{item:'',qteSortie:'',unite:'',qteLivree:'',statut:''}];
+    livLignesRet=[];
+    livPhotos=[];
+    document.getElementById('livStatusBadge').textContent='📝 Brouillon';
+    document.getElementById('livDeleteBtn').style.display='none';
+  }
+  livRenderLignes('liv');livRenderLignes('ret');livDrawPhotos();
+  openModal('livraisonModal');
+}
+
+function saveLivraison(marquerLivre){
+  var client=document.getElementById('livClient').value.trim();
+  if(!client){document.getElementById('livClient').focus();toast('⚠️ Client requis');return;}
+  var itemsLiv=livLignesLiv.filter(function(l){return l.item;});
+  var itemsRet=livLignesRet.filter(function(l){return l.item;});
+  if(marquerLivre&&itemsLiv.length===0){toast('⚠️ Ajoutez au moins un item livré');return;}
+  var list=getLivraisons();
+  var l;
+  if(livraisonEditId){
+    l=list.find(function(x){return x.id===livraisonEditId;})||{id:uid(),createdBy:currentUser.id,createdAt:new Date().toISOString()};
+  }else{
+    l={id:uid(),noBon:document.getElementById('livraisonNoBon').textContent.replace('N° de bon : ',''),createdBy:currentUser.id,createdAt:new Date().toISOString()};
+  }
+  l.urgent=document.getElementById('livUrgent').checked;
+  l.date=document.getElementById('livDate').value;
+  l.heure=document.getElementById('livHeure').value.trim();
+  l.technicien=document.getElementById('livTechnicien').value.trim();
+  l.client=client;
+  l.tel=document.getElementById('livTel').value.trim();
+  l.adresse=document.getElementById('livAdresse').value.trim();
+  l.itemsLiv=itemsLiv;
+  l.itemsRet=itemsRet;
+  l.photos=livPhotos;
+  l.updatedAt=new Date().toISOString();
+  if(marquerLivre){l.status='livre';l.livreAt=new Date().toISOString();}
+  else if(!l.status)l.status='brouillon';
+  var idx=list.findIndex(function(x){return x.id===l.id;});
+  if(idx>=0)list[idx]=l;else list.push(l);
+  setLivraisons(list);
+
+  if(marquerLivre){
+    document.getElementById('pmmPrintArea').innerHTML=livraisonBuildPrintHTML(l);
+    window.print();
+    toast('✅ Bon marqué livré !');
+  }else{
+    toast('💾 Brouillon enregistré');
+  }
+  closeModal('livraisonModal');
+  renderLivraisonList();
+}
+
+function deleteLivraison(){
+  if(!livraisonEditId)return;
+  askConfirm('Supprimer ce bon de livraison ?',_deleteLivraisonDo,'🗑 Supprimer','Supprimer le bon');
+}
+function _deleteLivraisonDo(){
+  setLivraisons(getLivraisons().filter(function(l){return l.id!==livraisonEditId;}));
+  sbDelete('livraison',livraisonEditId);
+  closeModal('livraisonModal');renderLivraisonList();toast('🗑 Bon supprimé');
+}
+
+// Document imprimable — reproduit le format du Bon de Livraison papier
+function livraisonBuildPrintHTML(l){
+  var h='<div class="pmm-print-doc">';
+  h+='<div class="pmm-print-hd"><h1>🚚 BON DE LIVRAISON</h1>';
+  h+='<div class="pmm-print-sub">N° '+esc(l.noBon)+(l.urgent?' · ⚠ URGENT / ASAP — AUJOURD\'HUI':'')+'</div>';
+  h+='<div class="pmm-print-meta"><span><b>Date:</b> '+fmtDate(l.date)+(l.heure?(' — '+esc(l.heure)):'')+'</span>';
+  h+='<span><b>Technicien:</b> '+esc(l.technicien||'—')+'</span>';
+  h+='<span><b>Client:</b> '+esc(l.client)+'</span>';
+  h+='<span><b>Tél:</b> '+esc(l.tel||'—')+'</span></div></div>';
+  if(l.adresse)h+='<div class="pmm-print-sub" style="margin:-6px 0 8px">📍 '+esc(l.adresse)+'</div>';
+
+  h+='<div class="pmm-print-sec"><div class="pmm-print-sec-hd c-bleu">📦 Items — Livraison</div>';
+  h+='<table class="pmm-print-table"><thead><tr><th>Item</th><th style="width:70px">Qté sortie</th><th style="width:60px">Unité</th><th style="width:70px">Qté livrée</th><th style="width:80px">Statut</th></tr></thead><tbody>';
+  (l.itemsLiv||[]).forEach(function(it){
+    h+='<tr><td>'+esc(it.item)+'</td><td class="ctr">'+esc(it.qteSortie||'')+'</td><td class="ctr">'+esc(it.unite||'')+'</td><td class="ctr">'+esc(it.qteLivree||'')+'</td><td>'+esc(it.statut||'')+'</td></tr>';
+  });
+  h+='</tbody></table></div>';
+
+  if((l.itemsRet||[]).length>0){
+    h+='<div class="pmm-print-sec"><div class="pmm-print-sec-hd c-orange">↩ Items — Retour / Échange</div>';
+    h+='<table class="pmm-print-table"><thead><tr><th>Item</th><th style="width:80px">Qté récupérée</th><th style="width:60px">Unité</th><th>Raison / remarque</th></tr></thead><tbody>';
+    (l.itemsRet||[]).forEach(function(it){
+      h+='<tr><td>'+esc(it.item)+'</td><td class="ctr">'+esc(it.qteRecuperee||'')+'</td><td class="ctr">'+esc(it.unite||'')+'</td><td>'+esc(it.raison||'')+'</td></tr>';
+    });
+    h+='</tbody></table></div>';
+  }
+
+  if((l.photos||[]).length>0){
+    h+='<div class="pmm-print-sec"><div class="pmm-print-sec-hd c-vert">📸 Photos</div>';
+    h+='<div style="padding:8px;border:1px solid #c5d8ec;border-top:none"><div class="pmm-print-photos">'+l.photos.map(function(p){return '<img src="'+p.data+'"/>';}).join('')+'</div></div></div>';
+  }else{
+    h+='<div class="pmm-print-note amber">📸 Rappel : prendre une photo des items livrés ET une photo des items récupérés (retour) — obligatoire</div>';
+  }
+
+  h+='<div class="pmm-print-ff" style="display:flex;gap:40px">';
+  h+='<div><div style="margin-top:20px;border-bottom:1px solid #333;width:220px">&nbsp;</div><div style="font-size:10px;color:#666">Signature — Technicien</div></div>';
+  h+='<div><div style="margin-top:20px;border-bottom:1px solid #333;width:220px">&nbsp;</div><div style="font-size:10px;color:#666">Signature — Client</div></div>';
+  h+='</div></div>';
   return h;
 }
 
