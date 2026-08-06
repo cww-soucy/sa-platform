@@ -1574,8 +1574,11 @@ function syncPull(localKey, cb){
     // (ex: policy RLS trop restrictive, erreur silencieuse), on ne remplace PAS le cache local —
     // ça évite de faire "disparaître" des Plans de Match / WO déjà créés à chaque rechargement.
     var existing=lsGet(localKey)||[];
-    if(rows.length<existing.length){
-      console.warn('⚠️ syncPull('+localKey+') a reçu '+rows.length+' ligne(s) alors que '+existing.length+' étaient en cache local — cache local conservé (vérifier les policies RLS Supabase sur la table "'+table+'").');
+    // Garde-fou resserré : on ne conserve le cache local QUE si Supabase renvoie
+    // 0 ligne alors qu'on en avait (signature d'un échec RLS/auth). Toute réduction
+    // partielle (= vraie suppression faite ailleurs) est maintenant acceptée et propagée.
+    if(rows.length===0 && existing.length>0){
+      console.warn('syncPull('+localKey+'): 0 ligne reçue alors que '+existing.length+' en local — cache conservé (probable RLS/auth). Table "'+table+'".');
       if(cb)cb();
       return;
     }
@@ -1930,7 +1933,7 @@ function invCatIcon(c){var m={chimique:'🧪',equipement:'🔧',piece:'⚙️',c
 function roleBadge(r){var m={admin:'<span class="role-pill role-admin">Admin</span>',superviseur:'<span class="role-pill role-sup">Superviseur</span>',employe:'<span class="role-pill role-emp">Employé</span>'};return m[r]||'';}
 var DROITS_LABELS={plan:'Plan journalier',ft:'Feuilles de temps',suivi:'Suivi opérations (live)',wo:'Work Orders',sites:'Sites & Clients',flotte:'Flotte véhicules',inventaire:'Inventaire / Stock',comptes:'Gestion des comptes',stats:'Statistiques',map:'Carte GPS'};
 function toast(msg){var el=document.getElementById('toast');el.textContent=msg;el.classList.add('on');setTimeout(function(){el.classList.remove('on');},2500);}
-function openModal(id){document.getElementById(id).classList.add('open');}
+function openModal(id){var el=document.getElementById(id);if(el){el.dataset.dirty='';el.classList.add('open');}}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 
 // Confirmation modale fiable (remplace confirm() natif, capricieux sur iOS PWA)
@@ -1971,6 +1974,31 @@ document.addEventListener('DOMContentLoaded', function(){
   });
   window.addEventListener('pagehide', function(){if(currentUser)saveFT();});
   window.addEventListener('blur', function(){if(currentUser)saveFT();});
+
+  // ── RE-SYNC au retour au premier plan (crucial iOS PWA) ──
+  // iOS met la PWA en veille : le websocket realtime meurt et rien ne se
+  // re-télécharge. On force alors un pull complet + on reconnecte le realtime.
+  // NB : ne touche JAMAIS à chronoState / au calcul d'heures (feuille de temps intacte).
+  var _lastResync=0;
+  window.resyncNow=function(){
+    if(!sbReady||!sb)return;
+    var n=Date.now(); if(n-_lastResync<3000)return; _lastResync=n; // anti-rafale
+    setSbStatus('syncing');
+    try{ if(sb.removeAllChannels) sb.removeAllChannels(); }catch(e){}
+    syncPullAll(function(){
+      setSbStatus('online');
+      try{ subscribeRealtime(); subscribeFTRealtime(); }catch(e){}
+      try{ if(currentUser){ if(curMod==='accueil') renderAccueil(); else refreshCurrentMod(); } }catch(e){}
+    });
+  };
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState==='visible') resyncNow();
+  });
+  window.addEventListener('online', resyncNow);
+  window.addEventListener('focus', resyncNow);
+  // filet de sécurité : re-pull léger toutes les 60s tant que l'app est visible
+  // (garantit une cohérence éventuelle même si le realtime n'est pas activé côté Supabase)
+  setInterval(function(){ if(document.visibilityState==='visible') resyncNow(); }, 60000);
   // Vérifier la limite de 20h toutes les minutes
   setInterval(checkEndOfDay, 60000);
 
@@ -2036,7 +2064,7 @@ document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('peCancel').addEventListener('click', function(){closeModal('punchEditModal');});
   document.getElementById('peSaveBtn').addEventListener('click', savePunchEdit);
   document.getElementById('peDeleteBtn').addEventListener('click', deletePunch);
-  document.getElementById('punchEditModal').addEventListener('click', function(e){if(e.target===this)closeModal('punchEditModal');});
+  // (fermeture-fond du punchEditModal gérée par le garde anti-perte plus bas)
   document.getElementById('pePjBtn').addEventListener('click', function(){document.getElementById('pePjInput').click();});
   document.getElementById('pePjInput').addEventListener('change', function(){
     Array.from(this.files).forEach(function(f){pePjFiles.push({name:f.name,size:f.size,type:f.type});});
@@ -2161,10 +2189,25 @@ document.addEventListener('DOMContentLoaded', function(){
   document.querySelectorAll('.pkey').forEach(function(btn){btn.addEventListener('click',function(){pinKey(this.dataset.k);});});
   document.getElementById('pinModal').addEventListener('click', function(e){if(e.target===this)closeModal('pinModal');});
 
-  // Backdrop close pour tous les modals
-  ['jobModal','stopModal','woModal','siteModal','flotteModal','invModal','compteModal','pmModal','pmmModal','sortieModal','livraisonModal','ftEditModal'].forEach(function(id){
+  // ── GARDE ANTI-PERTE DE DONNÉES sur les modals de saisie ──
+  // Avant : un tap sur le fond fermait le modal instantanément → toutes les données saisies perdues.
+  // Maintenant : dès qu'on tape/coche quelque chose, le modal est marqué "modifié". Un tap sur le
+  // fond ne ferme plus brutalement — il demande confirmation si des données ont été saisies.
+  ['jobModal','stopModal','woModal','siteModal','flotteModal','invModal','compteModal','pmModal','pmmModal','sortieModal','livraisonModal','ftEditModal','punchEditModal'].forEach(function(id){
     var el=document.getElementById(id);
-    if(el)el.addEventListener('click',function(e){if(e.target===this)closeModal(id);});
+    if(!el)return;
+    el.addEventListener('input', function(){el.dataset.dirty='1';});
+    el.addEventListener('change', function(){el.dataset.dirty='1';});
+    el.addEventListener('click', function(e){
+      if(e.target!==this)return; // uniquement le fond sombre, pas l'intérieur du modal
+      if(el.dataset.dirty==='1'){
+        askConfirm('Fermer sans enregistrer ? Les informations saisies dans cette fenêtre seront perdues.',
+          function(){el.dataset.dirty='';closeModal(id);},
+          '❌ Fermer sans enregistrer', '⚠️ Modifications non enregistrées');
+      }else{
+        closeModal(id);
+      }
+    });
   });
 
   initCanvas();
@@ -3462,11 +3505,15 @@ function accTodayJobsHTML(){
   var items=getTodayAssignedJobs();
   if(items.length===0)return '';
   var h='<div class="acc-seclbl">📌 Assigné aujourd\'hui</div><div style="display:flex;flex-direction:column;gap:8px;margin-bottom:6px">';
-  items.forEach(function(it){
-    h+='<button class="acc-job-item" data-mod="'+it.mod+'" style="display:flex;align-items:center;gap:10px;background:#fff;border:none;border-radius:12px;padding:12px 14px;text-align:left;cursor:pointer;box-shadow:0 1px 4px rgba(13,59,110,.08);width:100%">'+
-      '<div style="font-size:20px;flex-shrink:0">'+it.icon+'</div>'+
-      '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px;color:var(--text)">'+esc(it.label)+'</div><div style="font-size:11px;color:var(--muted)">'+esc(it.sub)+'</div></div>'+
-      '<div style="color:var(--muted)">›</div></button>';
+  items.forEach(function(it,i){
+    var canPunch=(it.mod==='wo'||it.mod==='plan'); // le Plan de Match reste une navigation (checklist)
+    h+='<div style="display:flex;align-items:stretch;gap:8px">'+
+      '<button class="acc-job-item" data-mod="'+it.mod+'" style="flex:1;display:flex;align-items:center;gap:10px;background:#fff;border:none;border-radius:12px;padding:12px 14px;text-align:left;cursor:pointer;box-shadow:0 1px 4px rgba(13,59,110,.08);min-width:0">'+
+        '<div style="font-size:20px;flex-shrink:0">'+it.icon+'</div>'+
+        '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px;color:var(--text)">'+esc(it.label)+'</div><div style="font-size:11px;color:var(--muted)">'+esc(it.sub)+'</div></div>'+
+        '<div style="color:var(--muted)">›</div></button>'+
+      (canPunch?'<button class="acc-job-punch" data-i="'+i+'" title="Puncher sur ce chantier" style="flex-shrink:0;display:flex;align-items:center;gap:5px;background:var(--green);color:#fff;border:none;border-radius:12px;padding:0 15px;font-weight:800;font-size:13px;cursor:pointer;box-shadow:0 1px 4px rgba(26,122,74,.28)">▶ Puncher</button>':'')+
+      '</div>';
   });
   h+='</div>';
   return h;
@@ -3539,6 +3586,15 @@ function renderAccueil(){
   });
   Array.prototype.forEach.call(el.querySelectorAll('.acc-job-item'),function(b){
     b.addEventListener('click',function(){switchMod(b.getAttribute('data-mod'));});
+  });
+  // ▶ Puncher : ouvre le modal de punch DÉJÀ pré-rempli avec le job assigné choisi
+  Array.prototype.forEach.call(el.querySelectorAll('.acc-job-punch'),function(b){
+    b.addEventListener('click',function(ev){
+      ev.stopPropagation();
+      var arr=getTodayAssignedJobs();
+      var it=arr[parseInt(b.getAttribute('data-i'),10)];
+      if(it)openPrefilledPunch(it);
+    });
   });
   var accStripFT=document.getElementById('accStripFT');
   if(accStripFT)accStripFT.addEventListener('click',function(){switchMod('ft');});
@@ -4068,6 +4124,8 @@ function renderJobPicker(){
       '</button>';
   });
   h+='</div>';
+  // ➕ Option « Autre chantier » : vide les champs pour un punch manuel au cas où
+  h+='<button type="button" id="jobManualBtn" style="margin-top:6px;width:100%;background:transparent;border:1.5px dashed var(--line);border-radius:10px;padding:8px 10px;font-size:11.5px;font-weight:700;color:var(--muted);cursor:pointer">➕ Autre chantier (saisie manuelle)</button>';
   box.innerHTML=h;box.style.display='block';
   box.querySelectorAll('.job-pick-item').forEach(function(btn){
     btn.addEventListener('click',function(){
@@ -4081,6 +4139,37 @@ function renderJobPicker(){
       toast('✅ Champs pré-remplis avec : '+it.label);
     });
   });
+  var jm=box.querySelector('#jobManualBtn');
+  if(jm)jm.addEventListener('click',function(){
+    document.getElementById('mLieu').value='';
+    document.getElementById('mOdt').value='';
+    document.getElementById('mDetail').value='';
+    document.getElementById('mAddr').value='';
+    document.getElementById('mAddrField').style.display='none';
+    pendingJobSource=null; // punch manuel : aucun lien WO/Plan
+    var mL=document.getElementById('mLieu'); if(mL)mL.focus();
+    toast('✏️ Saisie manuelle — entre le chantier');
+  });
+}
+// ➕ Ouvre le modal de punch existant DÉJÀ pré-rempli avec un job assigné (WO/Plan).
+// Réutilise toute la logique existante (jobModal + confirmJob), donc AUCUNE logique de
+// calcul/sauvegarde d'heures n'est modifiée. L'employé n'a qu'à vérifier puis « Démarrer ».
+// Le bouton « Autre chantier » dans le modal permet un punch manuel au cas où.
+function openPrefilledPunch(it){
+  switchMod('ft');
+  setTimeout(function(){
+    if(!isPunchAllowed())return; // respecte la règle jour/semaine existante
+    var isFirst=(chronoState[curDay].status==='idle');
+    openJobModal(isFirst);       // ouvre le modal (picker + champs de saisie manuelle inclus)
+    var mL=document.getElementById('mLieu'); if(mL)mL.value=it.lieu||it.label||'';
+    var mO=document.getElementById('mOdt'); if(mO)mO.value=it.odt||'';
+    var mD=document.getElementById('mDetail'); if(mD)mD.value=it.detail||'';
+    if(it.addr){document.getElementById('mAddr').value=it.addr;document.getElementById('mAddrField').style.display='block';}
+    try{onLieuChange();}catch(e){}
+    pendingJobSource={type:it.mod,id:it.id,label:it.label}; // lie le punch au bon WO/Plan
+    if(mL)mL.focus();
+    toast('📋 '+it.label+' — vérifie puis démarre');
+  },180);
 }
 // Auto-remplir l'adresse quand un site connu est choisi
 function onLieuChange(){
