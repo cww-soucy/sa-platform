@@ -1576,6 +1576,40 @@ function setSbStatus(s){
 // Mapping clé locale → table Supabase
 function sbTableFor(localKey){return SB_TABLES[localKey]||null;}
 
+// ── Mapping objet app ↔ colonnes Supabase ──
+// Les tables utilisent des colonnes snake_case / scalaires ; l'app utilise camelCase / tableaux.
+// Sans ce mapping, les push de créneaux (woId, emps) et de WO (assignes) étaient REFUSÉS par le serveur.
+function mapRowToDb(localKey,row){
+  if(row.desc!==undefined){row.descr=row.desc;delete row.desc;}
+  // Champs meta camelCase de l'app → colonnes snake_case du serveur (sinon push refusé)
+  if(row.createdAt!==undefined){ if(row.created_at===undefined)row.created_at=row.createdAt; delete row.createdAt; }
+  if(row.createdBy!==undefined){ if(row.created_by===undefined)row.created_by=row.createdBy; delete row.createdBy; }
+  if(row.updatedAt!==undefined){ delete row.updatedAt; } // updated_at est posé explicitement
+  if(localKey==='plan'){
+    if(row.woId!==undefined){row.wo_id=row.woId;delete row.woId;}
+    if(row.emps!==undefined){ if(row.emp===undefined||row.emp===null||row.emp==='') row.emp=Array.isArray(row.emps)?row.emps.join(', '):String(row.emps); delete row.emps; }
+  }
+  if(localKey==='workorders'){
+    if(row.assignes!==undefined){ if(row.assigne===undefined||row.assigne===null||row.assigne==='') row.assigne=Array.isArray(row.assignes)?row.assignes.join(', '):String(row.assignes); delete row.assignes; }
+  }
+  return row;
+}
+function mapRowFromDb(localKey,r){
+  if(r.descr!==undefined){r.desc=r.descr;delete r.descr;}
+  if(r.created_by!==undefined){ if(r.createdBy===undefined)r.createdBy=r.created_by; }
+  if(localKey==='plan'){
+    if(r.wo_id!==undefined){r.woId=r.wo_id;delete r.wo_id;}
+    r.emps = r.emp ? String(r.emp).split(/,\s*/).filter(Boolean) : (Array.isArray(r.emps)?r.emps:[]);
+  }
+  if(localKey==='workorders'){
+    r.assignes = r.assigne ? String(r.assigne).split(/,\s*/).filter(Boolean) : (Array.isArray(r.assignes)?r.assignes:[]);
+  }
+  if(r.updated_at!==undefined && r.updatedAt===undefined) r.updatedAt=r.updated_at; // garde un horodatage pour la fusion
+  if(r.created_at!==undefined && r.createdAt===undefined) r.createdAt=r.created_at;
+  delete r.updated_at; delete r.created_at;
+  return r;
+}
+
 // PULL : récupère une table depuis Supabase → localStorage
 function syncPull(localKey, cb){
   var table=sbTableFor(localKey);
@@ -1583,11 +1617,7 @@ function syncPull(localKey, cb){
   sb.from(table).select('*').then(function(res){
     if(res.error){if(cb)cb();return;}
     var rows=res.data||[];
-    // Convertir descr→desc et nettoyer colonnes Supabase
-    rows.forEach(function(r){
-      if(r.descr!==undefined){r.desc=r.descr;delete r.descr;}
-      delete r.updated_at;delete r.created_at;
-    });
+    rows.forEach(function(r){ mapRowFromDb(localKey,r); });
     // ➕ FUSION PAR ID (au lieu d'un remplacement complet).
     // RÈGLE ABSOLUE : un pull ne peut JAMAIS supprimer un enregistrement présent en local.
     // - enregistrement seulement en local (pas encore poussé) → conservé
@@ -1650,8 +1680,7 @@ function sbPush(localKey, record){
   var table=sbTableFor(localKey);
   if(!sb||!table||!record)return;
   var row=JSON.parse(JSON.stringify(record));
-  // desc est réservé en SQL → descr
-  if(row.desc!==undefined){row.descr=row.desc;delete row.desc;}
+  mapRowToDb(localKey,row);
   row.updated_at=new Date().toISOString();
   setSbStatus('syncing');
   sb.from(table).upsert(row).then(function(res){
@@ -1683,7 +1712,7 @@ function sbPushAll(localKey, list){
   if(!sb||!table||!Array.isArray(list))return;
   var rows=list.map(function(r){
     var row=JSON.parse(JSON.stringify(r));
-    if(row.desc!==undefined){row.descr=row.desc;delete row.desc;}
+    mapRowToDb(localKey,row);
     row.updated_at=new Date().toISOString();
     return row;
   });
@@ -1945,6 +1974,32 @@ function planAssignees(slot){
   return slot.emp?[slot.emp]:[];
 }
 function empNames(ids){return (ids||[]).map(empName).filter(Boolean).join(', ');}
+
+// ➕ Regroupe TOUTE la journée par employé, en lisant les préassignations déjà faites
+// sur les WO (woAssignees) ET sur les créneaux planifiés (planAssignees).
+// Un WO déjà transformé en créneau ce jour n'est pas compté deux fois.
+function getDayAssignmentsByEmp(day){
+  var wos=getWOs(), plan=getPlan();
+  var UNASSIGNED='__none__';
+  var byEmp={};
+  function bucket(id){ if(!byEmp[id])byEmp[id]={wos:[],slots:[]}; return byEmp[id]; }
+  wos.filter(function(w){
+    return w.date===day && !plan.some(function(p){return p.woId===w.id&&p.date===day;});
+  }).forEach(function(w){
+    var a=woAssignees(w);
+    if(a.length===0)bucket(UNASSIGNED).wos.push(w);
+    else a.forEach(function(id){bucket(id).wos.push(w);});
+  });
+  plan.filter(function(p){return p.date===day;}).forEach(function(s){
+    var a=planAssignees(s);
+    if(a.length===0)bucket(UNASSIGNED).slots.push(s);
+    else a.forEach(function(id){bucket(id).slots.push(s);});
+  });
+  var ids=Object.keys(byEmp).filter(function(id){return id!==UNASSIGNED;});
+  ids.sort(function(a,b){return (empName(a)||'').localeCompare(empName(b)||'');});
+  if(byEmp[UNASSIGNED])ids.push(UNASSIGNED);
+  return {order:ids, byEmp:byEmp, UNASSIGNED:UNASSIGNED};
+}
 
 // Construit une liste de cases à cocher pour choisir un ou plusieurs employés
 function buildEmpChecklist(containerId,selectedIds,excludeAdmin){
@@ -2399,13 +2454,16 @@ var pmDay = null;
 function buildPMDateStrip(){
   var strip=document.getElementById('pmDateStrip');
   strip.innerHTML='';
+  if(!pmDay)pmDay=todayISO();            // ➕ ne force plus aujourd'hui : garde le jour choisi
+  var todayIso=todayISO();
   var today=new Date();
   for(var i=-1;i<10;i++){
     var d=new Date(today);d.setDate(today.getDate()+i);
     var iso=localISO(d);
-    var isToday=(i===0);
+    var isSel=(iso===pmDay);             // surligne le jour SÉLECTIONNÉ, pas forcément aujourd'hui
+    var isToday=(iso===todayIso);
     var b=document.createElement('button');
-    b.className='pm-day-btn'+(isToday?' on':'');
+    b.className='pm-day-btn'+(isSel?' on':'');
     b.dataset.date=iso;
     b.innerHTML='<span class="pd-d">'+['dim','lun','mar','mer','jeu','ven','sam'][d.getDay()]+'</span>'+
       '<span class="pd-n">'+d.getDate()+'</span>'+
@@ -2416,7 +2474,6 @@ function buildPMDateStrip(){
     });})(iso,b);
     strip.appendChild(b);
   }
-  pmDay=todayISO();
 }
 
 function renderPlan(){
@@ -2449,24 +2506,25 @@ function renderPlan(){
     return;
   }
 
-  // ── VUE ADMIN/SUP ──
+  // ── VUE ADMIN/SUP : JOURNÉE GLOBALE, GROUPÉE PAR EMPLOYÉ ──
   var hasContent=false;
-
-  // 1. WO dont la date = pmDay (apparaissent automatiquement)
-  if(dayWOs.length>0){
-    var sec1=document.createElement('div');sec1.className='sec-title';
-    sec1.textContent='📋 WO prévus ce jour ('+dayWOs.length+')';content.appendChild(sec1);
-    dayWOs.forEach(function(wo){renderWOAsSlot(content,wo);});
+  var grouped=getDayAssignmentsByEmp(pmDay);
+  grouped.order.forEach(function(empId){
+    var b=grouped.byEmp[empId];
+    var count=b.wos.length+b.slots.length;
+    if(count===0)return;
     hasContent=true;
-  }
-
-  // 2. Slots planifiés manuellement
-  if(daySlots.length>0){
-    var sec2=document.createElement('div');sec2.className='sec-title';
-    sec2.textContent='📅 Planifiés manuellement';content.appendChild(sec2);
-    daySlots.forEach(function(slot){renderPMSlot(content,slot);});
-    hasContent=true;
-  }
+    var hd=document.createElement('div');
+    hd.className='sec-title';
+    if(empId===grouped.UNASSIGNED){
+      hd.innerHTML='⚠️ Non assigné <span style="opacity:.55;font-weight:600">('+count+')</span>';
+    }else{
+      hd.innerHTML='👷 '+esc(empName(empId))+' <span style="opacity:.55;font-weight:600">('+count+')</span>';
+    }
+    content.appendChild(hd);
+    b.wos.forEach(function(wo){renderWOAsSlot(content,wo);});
+    b.slots.forEach(function(slot){renderPMSlot(content,slot);});
+  });
 
   // 3. WO ouverts sans date (non planifiés)
   var unscheduled=wos.filter(function(wo){
@@ -2703,16 +2761,33 @@ function pmmGoToDate(iso){
 
 // Imprime tous les créneaux planifiés pour le jour sélectionné (tous employés)
 function printPlanDay(){
-  var slots=getPlan().filter(function(p){return p.date===pmDay;});
+  var grouped=getDayAssignmentsByEmp(pmDay);
+  var wosMap=getWOs();
+  var total=0;
+  grouped.order.forEach(function(id){total+=grouped.byEmp[id].wos.length+grouped.byEmp[id].slots.length;});
   var h='<div class="pmm-print-doc">';
-  h+='<div class="pmm-print-hd"><h1>📅 CRÉNEAUX PLANIFIÉS</h1>';
-  h+='<div class="pmm-print-sub">'+fmtDate(pmDay)+' · '+slots.length+' créneau'+(slots.length>1?'x':'')+'</div></div>';
-  h+='<table class="pmm-print-table"><thead><tr><th style="width:60px">Heure</th><th>Client</th><th>Employé(s)</th><th>Notes</th></tr></thead><tbody>';
-  slots.forEach(function(slot){
-    var wo=getWOs().find(function(x){return x.id===slot.woId;});
-    h+='<tr><td class="ctr">'+esc(slot.heure||'—')+'</td><td>'+esc(wo?wo.client:'—')+'</td><td>'+esc(empNames(planAssignees(slot))||'—')+'</td><td>'+esc(slot.notes||'')+'</td></tr>';
+  h+='<div class="pmm-print-hd"><h1>📅 CRÉNEAUX DE LA JOURNÉE — ÉQUIPE</h1>';
+  h+='<div class="pmm-print-sub">'+fmtDate(pmDay)+' · '+total+' assignation'+(total>1?'s':'')+'</div></div>';
+  if(total===0){
+    h+='<p style="text-align:center;color:#666;padding:20px">Aucune assignation ce jour.</p></div>';
+    document.getElementById('pmmPrintArea').innerHTML=h;window.print();return;
+  }
+  grouped.order.forEach(function(empId){
+    var b=grouped.byEmp[empId];
+    var count=b.wos.length+b.slots.length; if(count===0)return;
+    var title=(empId===grouped.UNASSIGNED)?'⚠️ Non assigné':'👷 '+esc(empName(empId));
+    h+='<div class="pmm-print-sec"><div class="pmm-print-sec-hd">'+title+' ('+count+')</div>';
+    h+='<table class="pmm-print-table"><thead><tr><th style="width:55px">Heure</th><th>Client / Site</th><th style="width:90px">Type</th><th>Notes</th></tr></thead><tbody>';
+    b.wos.forEach(function(wo){
+      h+='<tr><td class="ctr">—</td><td>'+esc(wo.client)+(wo.site?' — '+esc(wo.site):'')+'</td><td>'+esc(wo.type||'')+'</td><td>'+esc(wo.notes||'')+'</td></tr>';
+    });
+    b.slots.forEach(function(slot){
+      var wo=wosMap.find(function(x){return x.id===slot.woId;});
+      h+='<tr><td class="ctr">'+esc(slot.heure||'—')+'</td><td>'+esc(wo?wo.client+(wo.site?' — '+wo.site:''):'—')+'</td><td>'+esc(wo?wo.type||'':'')+'</td><td>'+esc(slot.notes||'')+'</td></tr>';
+    });
+    h+='</tbody></table></div>';
   });
-  h+='</tbody></table></div>';
+  h+='</div>';
   document.getElementById('pmmPrintArea').innerHTML=h;
   window.print();
 }
