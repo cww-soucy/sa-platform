@@ -1585,11 +1585,11 @@ function syncPull(localKey, cb){
     // (ex: policy RLS trop restrictive, erreur silencieuse), on ne remplace PAS le cache local —
     // ça évite de faire "disparaître" des Plans de Match / WO déjà créés à chaque rechargement.
     var existing=lsGet(localKey)||[];
-    // Garde-fou resserré : on ne conserve le cache local QUE si Supabase renvoie
-    // 0 ligne alors qu'on en avait (signature d'un échec RLS/auth). Toute réduction
-    // partielle (= vraie suppression faite ailleurs) est maintenant acceptée et propagée.
-    if(rows.length===0 && existing.length>0){
-      console.warn('syncPull('+localKey+'): 0 ligne reçue alors que '+existing.length+' en local — cache conservé (probable RLS/auth). Table "'+table+'".');
+    // Garde-fou PROTECTEUR : si le serveur renvoie MOINS de lignes que le local, on garde le local.
+    // Raison : des données peuvent n'exister QUE localement (pas encore montées au serveur). On ne laisse
+    // jamais un serveur plus pauvre écraser un local plus riche → aucune perte de données non synchronisées.
+    if(existing.length>0 && rows.length<existing.length){
+      console.warn('syncPull('+localKey+'): serveur '+rows.length+' < local '+existing.length+' → cache local conservé (données non encore synchronisées protégées). Table "'+table+'".');
       if(cb)cb();
       return;
     }
@@ -2343,7 +2343,7 @@ function switchMod(mod){
     el.style.display=show?'flex':'none';
   });
   if(mod==='accueil')renderAccueil();
-  else if(mod==='plan')renderPlan();
+  else if(mod==='plan'){buildPMDateStrip();renderPlan();} // ➕ ré-ancre le jour affiché sur aujourd'hui (évite l'affichage vide « tout a disparu »)
   else if(mod==='planmatch')renderPlanMatch();
   else if(mod==='ft'){setupFTEmpSelector();_loadedWeekKey=mondayOf(document.getElementById('weekDate').value);buildDayTabs();renderDay(curDay);refreshCumul();refreshWkStatus();renderFtAssignedToday();renderFtEditButton();}
   else if(mod==='suivi')renderSuivi();
