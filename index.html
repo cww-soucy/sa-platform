@@ -1535,6 +1535,13 @@ function initSupabase(){
     setSbStatus('syncing');
     syncPullAll(function(){
       setSbStatus('online');
+      // ➕ RÉCONCILIATION MONTANTE (une seule fois) : tout ce qui a été créé pendant que la
+      // synchro ne marchait pas n'est QUE local. On le pousse maintenant au serveur.
+      // Le pull ci-dessus a gardé le local (garde-fou protecteur), donc rien n'a été perdu.
+      if(!initSupabase._pushedUp){
+        initSupabase._pushedUp=true;
+        try{ pushAllLocalToServer(); }catch(e){}
+      }
       subscribeRealtime();
       subscribeFTRealtime();
       // Rafraîchir l'écran courant avec les données fraîches de Supabase
@@ -1581,21 +1588,36 @@ function syncPull(localKey, cb){
       if(r.descr!==undefined){r.desc=r.descr;delete r.descr;}
       delete r.updated_at;delete r.created_at;
     });
-    // ➕ GARDE-FOU CRITIQUE : si Supabase renvoie MOINS d'enregistrements que ce qu'on a déjà en local
-    // (ex: policy RLS trop restrictive, erreur silencieuse), on ne remplace PAS le cache local —
-    // ça évite de faire "disparaître" des Plans de Match / WO déjà créés à chaque rechargement.
+    // ➕ FUSION PAR ID (au lieu d'un remplacement complet).
+    // RÈGLE ABSOLUE : un pull ne peut JAMAIS supprimer un enregistrement présent en local.
+    // - enregistrement seulement en local (pas encore poussé) → conservé
+    // - enregistrement dans les deux → on garde le plus récent (updatedAt)
+    // - enregistrement seulement au serveur → ajouté
+    // Résultat : impossible que "ça supprime tout" quand la synchro se termine.
     var existing=lsGet(localKey)||[];
-    // Garde-fou PROTECTEUR : si le serveur renvoie MOINS de lignes que le local, on garde le local.
-    // Raison : des données peuvent n'exister QUE localement (pas encore montées au serveur). On ne laisse
-    // jamais un serveur plus pauvre écraser un local plus riche → aucune perte de données non synchronisées.
-    if(existing.length>0 && rows.length<existing.length){
-      console.warn('syncPull('+localKey+'): serveur '+rows.length+' < local '+existing.length+' → cache local conservé (données non encore synchronisées protégées). Table "'+table+'".');
-      if(cb)cb();
-      return;
-    }
-    lsSet(localKey,rows);
+    lsSet(localKey, mergeById(existing, rows));
     if(cb)cb();
   });
+}
+
+// Horodatage d'un enregistrement (pour départager un conflit de fusion)
+function _recTs(x){
+  if(!x)return 0;
+  var t=x.updatedAt||x.updated_at||x.savedAt||x.createdAt||x.createdAt||0;
+  var n=new Date(t).getTime();
+  return isNaN(n)?0:n;
+}
+// Fusion de deux listes par id — ne supprime jamais, garde le plus récent en cas de conflit
+function mergeById(localArr, serverArr){
+  var map={}, order=[];
+  function put(r){
+    if(!r||r.id==null)return;
+    if(!(r.id in map)){order.push(r.id);map[r.id]=r;return;}
+    map[r.id]=(_recTs(r)>=_recTs(map[r.id]))?r:map[r.id];
+  }
+  (localArr||[]).forEach(put);   // local d'abord (protège une modif locale récente non poussée)
+  (serverArr||[]).forEach(put);  // serveur ensuite (gagne seulement s'il est plus récent)
+  return order.map(function(id){return map[id];});
 }
 
 // PULL feuilles de temps (structure spéciale)
@@ -1642,6 +1664,17 @@ function sbDelete(localKey, id){
   var table=sbTableFor(localKey);
   if(!sb||!table)return;
   sb.from(table).delete().eq('id',id).then(function(){});
+}
+
+// ➕ Pousse TOUT le local vers le serveur (upsert). Exclut les feuilles de temps (gérées à part).
+function pushAllLocalToServer(){
+  if(!sbReady||!sb)return;
+  ['comptes','sites','flotte','inventaire','workorders','plan','planmatch','sortie','livraison'].forEach(function(localKey){
+    try{
+      var list=lsGet(localKey);
+      if(Array.isArray(list)&&list.length>0){ sbPushAll(localKey,list); }
+    }catch(e){}
+  });
 }
 
 // PUSH liste complète (diff: upsert tout)
