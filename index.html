@@ -1518,7 +1518,18 @@ var SB_TABLES={workorders:'workorders',sites:'sites',plan:'plan',planmatch:'plan
 
 function initSupabase(){
   try{
-    if(typeof supabase==='undefined'){setSbStatus('offline');return;}
+    if(typeof supabase==='undefined'){
+      // La librairie @supabase/supabase-js n'est pas encore chargée (CDN lente / démarrage à froid iOS).
+      // AVANT : on abandonnait pour toute la session → aucun sync, tout restait local. MAINTENANT : on réessaie.
+      setSbStatus('offline');
+      initSupabase._t=(initSupabase._t||0)+1;
+      if(initSupabase._t===10){ // après ~4s, tente un CDN de secours au cas où le premier serait bloqué
+        try{var s=document.createElement('script');s.src='https://unpkg.com/@supabase/supabase-js@2';document.head.appendChild(s);}catch(e){}
+      }
+      if(initSupabase._t<40){ setTimeout(initSupabase, 400); } // ~16s de tentatives
+      return;
+    }
+    if(sbReady && sb){ return; } // déjà connecté
     sb=supabase.createClient(SB_URL,SB_KEY);
     sbReady=true;
     setSbStatus('syncing');
@@ -1713,13 +1724,13 @@ function subscribeFTRealtime(){
 }
 
 function getWOs(){return lsGet('workorders')||[];}
-function setWOs(d){lsSet('workorders',d);sbPushAll('workorders',d);}
+function setWOs(d){lsSet('workorders',d);} // push ciblé fait au point de modification (voir saveWO/_deleteWODo) — évite d'écraser les autres WO
 function getSites(){return lsGet('sites')||[];}
 function setSites(d){lsSet('sites',d);sbPushAll('sites',d);}
 function getPlan(){return lsGet('plan')||[];}
 function setPlan(d){lsSet('plan',d);sbPushAll('plan',d);}
 function getPlanMatches(){return lsGet('planmatch')||[];}
-function setPlanMatches(d){lsSet('planmatch',d);sbPushAll('planmatch',d);}
+function setPlanMatches(d){lsSet('planmatch',d);} // push ciblé fait au point de modification (savePmm/pmmScheduleSave/deletePmm) — évite d'écraser les mises à jour du superviseur
 function getFlotte(){return lsGet('flotte')||[];}
 function setFlotte(d){lsSet('flotte',d);sbPushAll('flotte',d);}
 function getInv(){return lsGet('inventaire')||[];}
@@ -1981,7 +1992,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // NB : ne touche JAMAIS à chronoState / au calcul d'heures (feuille de temps intacte).
   var _lastResync=0;
   window.resyncNow=function(){
-    if(!sbReady||!sb)return;
+    if(!sbReady||!sb){ initSupabase(); return; } // pas connecté → (re)tente l'init
     var n=Date.now(); if(n-_lastResync<3000)return; _lastResync=n; // anti-rafale
     setSbStatus('syncing');
     try{ if(sb.removeAllChannels) sb.removeAllChannels(); }catch(e){}
@@ -2923,6 +2934,7 @@ function pmmScheduleSave(plan){
     var idx=list.findIndex(function(p){return p.id===plan.id;});
     if(idx>=0)list[idx]=plan;else list.push(plan);
     setPlanMatches(list);
+    sbPush('planmatch',plan); // ➕ push ciblé : seulement CE plan, jamais toute la liste
   },700);
 }
 
@@ -3055,6 +3067,7 @@ function savePmm(){
   var idx=list.findIndex(function(p){return p.id===plan.id;});
   if(idx>=0)list[idx]=plan;else list.push(plan);
   setPlanMatches(list);
+  sbPush('planmatch',plan); // ➕ push ciblé : seulement CE plan
   closeModal('pmmModal');
   pmmDay=date;
   renderPlanMatch();
@@ -3226,14 +3239,14 @@ function saveWO(){
     createdAt:woEditId?undefined:new Date().toISOString()};
   if(woEditId){var idx2=wos.findIndex(function(w){return w.id===woEditId;});if(idx2>=0)wos[idx2]=wo;else wos.push(wo);}
   else wos.unshift(wo);
-  setWOs(wos);closeModal('woModal');renderWOList();toast('✅ WO sauvegardé !');
+  setWOs(wos);sbPush('workorders',wo);closeModal('woModal');renderWOList();toast('✅ WO sauvegardé !');
 }
 function deleteWO(){
   askConfirm('Supprimer ce Work Order ?', _deleteWODo, '🗑 Supprimer','Supprimer le WO');
 }
 function _deleteWODo(){
   var wos=getWOs().filter(function(w){return w.id!==woEditId;});
-  setWOs(wos);closeModal('woModal');renderWOList();toast('🗑 WO supprimé');
+  setWOs(wos);sbDelete('workorders',woEditId);closeModal('woModal');renderWOList();toast('🗑 WO supprimé');
 }
 function addWOTask(){
   var inp=document.getElementById('woTaskInp');var val=inp.value.trim();if(!val)return;
