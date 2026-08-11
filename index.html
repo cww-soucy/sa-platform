@@ -1166,7 +1166,7 @@ input,select,textarea{font-size:16px!important}
   <div class="modal-box" style="max-width:640px">
     <div class="modal-hd"><h3 id="pmmModalTitle">Créer un Plan de Match</h3><button class="modal-close" id="pmmModalClose">✕</button></div>
     <div class="m2">
-      <div class="mfield"><label>Employé</label><select id="pmmEmp"></select></div>
+      <div class="mfield" id="pmmEmpField"><label>Employé(s) assigné(s)</label><div id="pmmEmpList" style="max-height:150px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:2px 10px;background:var(--white)"></div></div>
       <div class="mfield"><label>Date</label><input type="date" id="pmmDate"/></div>
     </div>
     <div class="m2">
@@ -1480,7 +1480,50 @@ for(var _i=0;_i<7;_i++) chronoState.push(makeDay());
 // LOCALSTORAGE
 // ═══════════════════════════════════════════════════════
 function lsGet(k){try{var r=localStorage.getItem(LS+k);return r?JSON.parse(r):null;}catch(e){return null;}}
-function lsSet(k,v){try{localStorage.setItem(LS+k,JSON.stringify(v));}catch(e){}}
+function lsSet(k,v){try{localStorage.setItem(LS+k,JSON.stringify(v));}catch(e){}
+  try{ if(VAULT_KEYS.indexOf(k)>=0) scheduleVault(); }catch(e){}
+}
+
+// ════════════════ COFFRE DE SAUVEGARDE (anti-perte de données) ════════════════
+// Snapshot horodaté de toutes les tables importantes, à chaque écriture. Garde les 8 derniers.
+// Même s'il reste un bug qui vide une table, on peut toujours restaurer.
+var VAULT_KEYS=['workorders','plan','planmatch','sites','flotte','inventaire','comptes','sortie','livraison'];
+var _vaultTimer=null;
+function scheduleVault(){ if(_vaultTimer)clearTimeout(_vaultTimer); _vaultTimer=setTimeout(doVault,1500); }
+function doVault(){
+  try{
+    var snap={ts:new Date().toISOString(),data:{}};
+    var nonEmpty=0;
+    VAULT_KEYS.forEach(function(k){
+      var v=lsGet(k)||[];
+      snap.data[k]=v;
+      if(Array.isArray(v)&&v.length>0)nonEmpty++;
+    });
+    if(nonEmpty===0)return; // ne jamais sauvegarder un état totalement vide (évite d'écraser le coffre)
+    var hist=[]; try{hist=JSON.parse(localStorage.getItem(LS+'__vault')||'[]');}catch(e){}
+    hist.unshift(snap);
+    hist=hist.slice(0,8);
+    localStorage.setItem(LS+'__vault',JSON.stringify(hist));
+  }catch(e){}
+}
+function getVault(){ try{return JSON.parse(localStorage.getItem(LS+'__vault')||'[]');}catch(e){return [];} }
+// Restaure le dernier snapshot non vide dans le local (sans écraser ce qui est plus riche : fusion)
+function restoreVault(idx){
+  var hist=getVault(); if(!hist.length){toast('Aucune sauvegarde disponible');return;}
+  var snap=hist[idx||0];
+  VAULT_KEYS.forEach(function(k){
+    var backup=snap.data[k]||[];
+    var cur=lsGet(k)||[];
+    // fusion : on ne perd rien, on récupère ce qui manquait
+    var byId={}; var order=[];
+    function put(r){if(!r||r.id==null)return;if(!(r.id in byId))order.push(r.id);byId[r.id]=r;}
+    cur.forEach(put); backup.forEach(function(r){ if(r&&r.id!=null && !(r.id in byId)){order.push(r.id);byId[r.id]=r;} });
+    lsSet(k,order.map(function(id){return byId[id];}));
+  });
+  toast('✅ Sauvegarde restaurée ('+new Date(snap.ts).toLocaleString('fr-CA')+')');
+  try{ if(sbReady&&sb)pushAllLocalToServer(); }catch(e){}
+  setTimeout(function(){location.reload();},900);
+}
 
 // ═══════════════════════════════════════════════════════
 // NOTIFICATIONS
@@ -1587,7 +1630,12 @@ function mapRowToDb(localKey,row){
   if(row.updatedAt!==undefined){ delete row.updatedAt; } // updated_at est posé explicitement
   if(localKey==='plan'){
     if(row.woId!==undefined){row.wo_id=row.woId;delete row.woId;}
+  }
+  if(localKey==='plan'||localKey==='planmatch'){
     if(row.emps!==undefined){ if(row.emp===undefined||row.emp===null||row.emp==='') row.emp=Array.isArray(row.emps)?row.emps.join(', '):String(row.emps); delete row.emps; }
+  }
+  if(localKey==='planmatch'){
+    if(row.sections!==undefined && typeof row.sections!=='string'){ /* jsonb, laissé tel quel */ }
   }
   if(localKey==='workorders'){
     if(row.assignes!==undefined){ if(row.assigne===undefined||row.assigne===null||row.assigne==='') row.assigne=Array.isArray(row.assignes)?row.assignes.join(', '):String(row.assignes); delete row.assignes; }
@@ -1599,6 +1647,8 @@ function mapRowFromDb(localKey,r){
   if(r.created_by!==undefined){ if(r.createdBy===undefined)r.createdBy=r.created_by; }
   if(localKey==='plan'){
     if(r.wo_id!==undefined){r.woId=r.wo_id;delete r.wo_id;}
+  }
+  if(localKey==='plan'||localKey==='planmatch'){
     r.emps = r.emp ? String(r.emp).split(/,\s*/).filter(Boolean) : (Array.isArray(r.emps)?r.emps:[]);
   }
   if(localKey==='workorders'){
@@ -1973,6 +2023,13 @@ function planAssignees(slot){
   if(Array.isArray(slot.emps))return slot.emps;
   return slot.emp?[slot.emp]:[];
 }
+// Assignés d'un Plan de Match (multi). Compatible avec les anciens plans (emp = 1 seul id).
+function pmAssignees(pm){
+  if(!pm)return [];
+  if(Array.isArray(pm.emps))return pm.emps;
+  if(typeof pm.emp==='string'&&pm.emp.indexOf(',')>=0)return pm.emp.split(/,\s*/).filter(Boolean);
+  return pm.emp?[pm.emp]:[];
+}
 function empNames(ids){return (ids||[]).map(empName).filter(Boolean).join(', ');}
 
 // ➕ Regroupe TOUTE la journée par employé, en lisant les préassignations déjà faites
@@ -2063,6 +2120,24 @@ document.addEventListener('DOMContentLoaded', function(){
 
   // Initialiser la synchronisation cloud Supabase
   setTimeout(initSupabase, 500);
+
+  // ── Badge de version + accès restauration (toujours visible) ──
+  try{
+    var vb=document.createElement('div');
+    vb.id='__buildBadge';
+    vb.textContent='build F11 ⟲';
+    vb.title='Version de l\'app — toucher pour restaurer une sauvegarde';
+    vb.style.cssText='position:fixed;bottom:4px;right:6px;font:11px/1.4 monospace;color:#fff;background:rgba(27,79,140,.85);padding:3px 8px;border-radius:8px;z-index:99999;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.2)';
+    vb.addEventListener('click',function(){
+      var hist=getVault();
+      if(!hist.length){ toast('Aucune sauvegarde locale pour l\'instant'); return; }
+      var s=hist[0];
+      var n=0; VAULT_KEYS.forEach(function(k){ n+=(s.data[k]||[]).length; });
+      askConfirm('Restaurer la dernière sauvegarde locale du '+new Date(s.ts).toLocaleString('fr-CA')+' ? ('+n+' éléments) — rien ne sera supprimé, ça récupère ce qui manque.',
+        function(){ restoreVault(0); }, '⟲ Restaurer', '🗄 Coffre de sauvegarde');
+    });
+    document.body.appendChild(vb);
+  }catch(e){}
 
   // Initialiser les notifications
   initNotifications();
@@ -2801,6 +2876,26 @@ function pmmTargetUid(){
   return currentUser?currentUser.id:null;
 }
 
+// Imprime la journée de TOUTE l'équipe : une page par employé (WO + créneaux + Plan de Match), en lisant les préassignations
+function printTeamDay(day){
+  var pms=getPlanMatches().filter(function(p){return p.date===day;});
+  var ids={};
+  getWOs().forEach(function(w){if(w.date===day)woAssignees(w).forEach(function(i){ids[i]=1;});});
+  getPlan().forEach(function(p){if(p.date===day)planAssignees(p).forEach(function(i){ids[i]=1;});});
+  pms.forEach(function(p){pmAssignees(p).forEach(function(i){ids[i]=1;});});
+  var list=Object.keys(ids).sort(function(a,b){return (empName(a)||'').localeCompare(empName(b)||'');});
+  if(list.length===0){toast('Rien à imprimer pour ce jour');return;}
+  var h='';
+  list.forEach(function(uidP){
+    var plan=pms.find(function(p){return pmAssignees(p).indexOf(uidP)>=0;});
+    var wos=getWOs().filter(function(w){return w.date===day&&woAssignees(w).indexOf(uidP)>=0;});
+    var slots=getPlan().filter(function(p){return p.date===day&&planAssignees(p).indexOf(uidP)>=0;});
+    h+='<div style="page-break-after:always">'+pmmBuildPrintHTML(plan,wos,slots,uidP)+'</div>';
+  });
+  document.getElementById('pmmPrintArea').innerHTML=h;
+  window.print();
+}
+
 // Construit un document propre (texte figé, pas d'inputs) pour l'impression
 function pmmBuildPrintHTML(plan,wosToday,slotsToday,uidT){
   wosToday=wosToday||[];slotsToday=slotsToday||[];
@@ -2879,9 +2974,20 @@ function renderPlanMatch(){
 
   var content=document.getElementById('pmmContent');
   content.innerHTML='';
+  // ── HUB DE CRÉATION + IMPRESSION ÉQUIPE (admin/superviseur) ──
+  if(isSup()){
+    var hub=document.createElement('div');
+    hub.className='pmm-actions';hub.style.flexWrap='wrap';hub.style.gap='6px';hub.style.marginBottom='4px';
+    var _pmBtn=function(txt,fn){var b=document.createElement('button');b.className='btn btn-ghost';b.style.cssText='flex:1 1 46%;min-width:120px';b.innerHTML=txt;b.addEventListener('click',fn);return b;};
+    hub.appendChild(_pmBtn('➕ WO',function(){openWOModal(null);var d=document.getElementById('woDate');if(d)d.value=pmmDay;}));
+    hub.appendChild(_pmBtn('➕ Créneau',function(){openPmModal();var d=document.getElementById('pmDate');if(d)d.value=pmmDay;}));
+    hub.appendChild(_pmBtn('➕ Plan de Match',function(){openPmmModal(null);}));
+    hub.appendChild(_pmBtn('🖨️ Toute l\'équipe',function(){printTeamDay(pmmDay);}));
+    content.appendChild(hub);
+  }
   var uidT=pmmTargetUid();
   var list=getPlanMatches();
-  var plan=list.find(function(p){return p.date===pmmDay&&p.emp===uidT;});
+  var plan=list.find(function(p){return p.date===pmmDay&&pmAssignees(p).indexOf(uidT)>=0;});
 
   // ➕ Work Orders assignés à cet employé pour ce jour, intégrés directement dans le Plan de Match
   var wosToday=getWOs().filter(function(w){return w.date===pmmDay&&woAssignees(w).indexOf(uidT)>=0;});
@@ -3054,18 +3160,13 @@ var pmmBuilderSections=[];
 
 function openPmmModal(planId){
   pmmEditingId=planId;
-  var sel=document.getElementById('pmmEmp');
-  sel.innerHTML='';
-  getComptes().forEach(function(c){
-    var o=document.createElement('option');o.value=c.id;o.textContent=(c.prenom+' '+c.nom).trim();
-    sel.appendChild(o);
-  });
+  var empField=document.getElementById('pmmEmpField');
   document.getElementById('pmmDeleteBtn').style.display=planId?'block':'none';
   if(planId){
     var plan=getPlanMatches().find(function(p){return p.id===planId;});
     if(!plan){toast('Plan introuvable');return;}
     document.getElementById('pmmModalTitle').textContent='Modifier le Plan de Match';
-    sel.value=plan.emp;
+    buildEmpChecklist('pmmEmpList',pmAssignees(plan),false);
     document.getElementById('pmmDate').value=plan.date;
     document.getElementById('pmmVehicule').value=plan.vehicule||'';
     document.getElementById('pmmSuperviseur').value=plan.superviseur||'';
@@ -3073,13 +3174,15 @@ function openPmmModal(planId){
     pmmBuilderSections=JSON.parse(JSON.stringify(plan.sections||[]));
   }else{
     document.getElementById('pmmModalTitle').textContent='Créer un Plan de Match';
-    sel.value=currentUser.id;
+    buildEmpChecklist('pmmEmpList',[currentUser.id],false);
     document.getElementById('pmmDate').value=pmmDay||todayISO();
     document.getElementById('pmmVehicule').value='';
     document.getElementById('pmmSuperviseur').value=isSup()?fullName():'';
     document.getElementById('pmmResume').value='';
     pmmBuilderSections=[];
   }
+  // Employé (non-admin) : crée pour lui-même seulement → on masque le choix d'employés
+  if(empField)empField.style.display=isSup()?'block':'none';
   pmmRenderBuilder();
   openModal('pmmModal');
 }
@@ -3153,9 +3256,10 @@ function pmmAddSectionBlock(){
 }
 
 function savePmm(){
-  var emp=document.getElementById('pmmEmp').value;
+  var emps=isSup()?getCheckedEmp('pmmEmpList'):[currentUser.id];
   var date=document.getElementById('pmmDate').value;
-  if(!emp||!date){toast('⚠️ Employé et date requis');return;}
+  if(emps.length===0){toast('⚠️ Choisissez au moins un employé');return;}
+  if(!date){toast('⚠️ Date requise');return;}
   var list=getPlanMatches();
   var plan;
   if(pmmEditingId){
@@ -3163,7 +3267,8 @@ function savePmm(){
   }else{
     plan={id:uid(),createdBy:currentUser.id,createdAt:new Date().toISOString()};
   }
-  plan.emp=emp;
+  plan.emps=emps;
+  plan.emp=emps.join(', '); // conservé pour compat + comptabilisation par employé
   plan.date=date;
   plan.vehicule=document.getElementById('pmmVehicule').value;
   plan.superviseur=document.getElementById('pmmSuperviseur').value;
@@ -3605,7 +3710,7 @@ function getTodayAssignedJobs(uid){
     items.push({mod:'plan',id:p.id,icon:'📅',label:wo?wo.client:'Intervention planifiée',sub:'Plan'+(p.heure?(' · '+p.heure):''),
       lieu:wo?(wo.site||wo.client):'',odt:wo?wo.id.slice(0,6).toUpperCase():'',detail:p.notes||'',addr:wo&&woSiteAddr?woSiteAddr(wo):''});
   });
-  var pm=getPlanMatches().find(function(p){return p.date===today&&p.emp===uid;});
+  var pm=getPlanMatches().find(function(p){return p.date===today&&pmAssignees(p).indexOf(uid)>=0;});
   if(pm){
     var allTasks=[];(pm.sections||[]).forEach(function(s){(s.tasks||[]).forEach(function(t){allTasks.push(t);});});
     var doneCount=allTasks.filter(function(t){return t.done;}).length;
