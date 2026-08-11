@@ -12,6 +12,8 @@
 <title>SA Platform</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 /* ══ DESIGN SYSTEM v2.0 ══ */
 :root{
@@ -2125,7 +2127,7 @@ document.addEventListener('DOMContentLoaded', function(){
   try{
     var vb=document.createElement('div');
     vb.id='__buildBadge';
-    vb.textContent='build F11 ⟲';
+    vb.textContent='build F12 ⟲';
     vb.title='Version de l\'app — toucher pour restaurer une sauvegarde';
     vb.style.cssText='position:fixed;bottom:4px;right:6px;font:11px/1.4 monospace;color:#fff;background:rgba(27,79,140,.85);padding:3px 8px;border-radius:8px;z-index:99999;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.2)';
     vb.addEventListener('click',function(){
@@ -5394,6 +5396,52 @@ function _deleteCompteDo(){
 // SUIVI DES OPÉRATIONS EN COURS (superviseur)
 // ═══════════════════════════════════════════════════════
 var suiviTimer=null;
+var suiviMapObj=null, suiviLayer=null;
+// Extrait, par employé, la suite des positions de punch GPS du jour affiché (lecture seule)
+function empLatestPunches(){
+  var week=weekKey(), out=[];
+  getComptes().filter(function(c){return c.role!=='admin';}).forEach(function(c){
+    var ft=getFTWeek(c.id+'_'+week);
+    var day=ft&&ft.days&&ft.days[curDay]?ft.days[curDay]:null;
+    if(!day||!day.tasks)return;
+    var path=[];
+    day.tasks.forEach(function(t){ if(t.gps&&t.gps.lat){ path.push({lat:t.gps.lat,lng:t.gps.lng,lieu:t.lieu||'',time:t.start||'',acc:t.gps.acc}); } });
+    if(path.length){ out.push({nom:(c.prenom+' '+c.nom).trim(),id:c.id,path:path,last:path[path.length-1],running:day.status==='running'}); }
+  });
+  return out;
+}
+function suiviColor(i){var cs=['#1A5C9A','#1D9E75','#FF6B00','#7C3AED','#0E9C86','#E53935'];return cs[i%cs.length];}
+// Dessine la carte de suivi : dernière position de punch par technicien + trajet réel de la journée
+function drawSuiviMap(){
+  var box=document.getElementById('suiviMap'); if(!box)return;
+  if(typeof L==='undefined'){box.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">Carte indisponible (connexion requise au premier chargement).</div>';return;}
+  var emps=empLatestPunches();
+  var noGps=getComptes().filter(function(c){return c.role!=='admin';}).map(function(c){return (c.prenom+' '+c.nom).trim();})
+            .filter(function(nm){return !emps.some(function(e){return e.nom===nm;});});
+  try{
+    if(!suiviMapObj){
+      suiviMapObj=L.map('suiviMap',{zoomControl:true,scrollWheelZoom:false}).setView([BUREAU_GPS.lat,BUREAU_GPS.lng],11);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(suiviMapObj);
+    }
+    if(suiviLayer)suiviMapObj.removeLayer(suiviLayer);
+    suiviLayer=L.layerGroup().addTo(suiviMapObj);
+    L.circleMarker([BUREAU_GPS.lat,BUREAU_GPS.lng],{radius:5,color:'#6B8CAE',fillColor:'#6B8CAE',fillOpacity:.85}).addTo(suiviLayer).bindPopup('🏢 Bureau / Entrepôt');
+    var bounds=[[BUREAU_GPS.lat,BUREAU_GPS.lng]];
+    emps.forEach(function(e,i){
+      var col=suiviColor(i);
+      if(e.path.length>1){L.polyline(e.path.map(function(p){return [p.lat,p.lng];}),{color:col,weight:3,opacity:.5,dashArray:'5 5'}).addTo(suiviLayer);}
+      var icon=L.divIcon({className:'',iconSize:[28,28],iconAnchor:[14,28],html:'<div style="width:28px;height:28px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:'+col+';display:grid;place-items:center;box-shadow:0 2px 6px rgba(0,0,0,.35);border:2.5px solid #fff"><span style="transform:rotate(45deg);color:#fff;font-weight:800;font-size:12px">'+(e.nom[0]||'?')+'</span></div>'});
+      L.marker([e.last.lat,e.last.lng],{icon:icon}).addTo(suiviLayer)
+        .bindPopup('<b>'+esc(e.nom)+'</b><br>'+(e.running?'🟢 en activité':'⏹ dernier punch')+'<br>📍 '+esc(e.last.lieu||'—')+' · '+esc(e.last.time||'')+'<br><span style="color:#6B8CAE">précision ±'+(e.last.acc||'?')+' m</span>');
+      bounds.push([e.last.lat,e.last.lng]);
+    });
+    if(bounds.length>1)suiviMapObj.fitBounds(bounds,{padding:[40,40],maxZoom:13});
+    setTimeout(function(){try{suiviMapObj.invalidateSize();}catch(e){}},80);
+  }catch(err){box.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">Carte: '+err.message+'</div>';}
+  var note=document.getElementById('suiviMapNote');
+  if(note){if(noGps.length){note.style.display='block';note.innerHTML='📍 <b>Position non disponible</b> : '+noGps.join(', ')+' — pas de punch géolocalisé aujourd\'hui (GPS refusé ou aucun punch).';}else note.style.display='none';}
+}
+
 function renderSuivi(){
   var el=document.getElementById('suiviContent');
   if(!el)return;
@@ -5421,6 +5469,14 @@ function renderSuivi(){
   hdr.innerHTML='<div style="font-size:18px;font-weight:800;color:var(--dk)">Opérations en cours</div>'+
     '<div style="font-size:12px;color:var(--muted);margin-top:2px">'+DL[curDay]+' · mise à jour auto · '+actifs.length+' actif'+(actifs.length>1?'s':'')+'</div>';
   el.appendChild(hdr);
+  // ── CARTE DE LOCALISATION (positions issues des punchs GPS) ──
+  var mapCard=document.createElement('div');
+  mapCard.style.cssText='background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-bottom:12px;box-shadow:0 1px 4px rgba(13,59,110,.09)';
+  mapCard.innerHTML='<div style="padding:10px 12px;border-bottom:1px solid var(--line2);font-weight:800;font-size:14px;display:flex;align-items:center;gap:7px">📍 Position des techniciens <span style="margin-left:auto;font-size:11px;color:var(--muted);font-weight:600">d\'après le dernier punch · OpenStreetMap</span></div>'
+    +'<div id="suiviMap" style="width:100%;height:300px;background:#DCEBF3"></div>'
+    +'<div id="suiviMapNote" style="display:none;padding:9px 12px;background:var(--obg);border-top:1px dashed #f2c99e;font-size:11.5px;color:#9a4d00"></div>';
+  el.appendChild(mapCard);
+  drawSuiviMap();
   // Bouton activer notifications (si pas encore autorisé)
   if(('Notification' in window) && Notification.permission!=='granted'){
     var nb=document.createElement('button');
