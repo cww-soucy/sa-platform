@@ -143,6 +143,116 @@ function runTests(){
   ok('GPS du punch intact', ftCheck.days[day].tasks[0].gps.lat===46.7745);
   ok('heures/lieu du punch intacts', ftCheck.days[day].tasks[1].lieu==='Canotier');
 
+
+  /* ---------- 8 · TABLEAU GLISSABLE — réassignation sans perte ---------- */
+  section('8 · Tableau glissable (drag = réassigner) — aucune perte');
+  W.renderPlan = function(){}; // neutralise le rendu DOM, on teste la donnée
+  W.currentUser = {id:'boss',role:'admin'};
+  W.lsSet('plan',[{id:'s1',woId:'w1',date:'PMDAY',emps:['ch'],emp:'ch',heure:'08:00'}]);
+  W.lsSet('workorders',[{id:'w1',client:'X',date:'PMDAY',assignes:['ch'],assigne:'ch'},{id:'w2',client:'Y',date:'PMDAY',assignes:[],assigne:''}]);
+  // aligner pmDay avec la date des données
+  W.pmDay='PMDAY';
+  // fixer les dates au vrai pmDay
+  let _pl=W.getPlan();_pl[0].date=W.pmDay;W.lsSet('plan',_pl);
+  let _wo=W.getWOs();_wo.forEach(w=>w.date=W.pmDay);W.lsSet('workorders',_wo);
+  // réassigner le créneau s1 de Cheikh -> Samuel
+  W.boardReassign('slot','s1','sa');
+  ok('créneau réassigné à Samuel', JSON.stringify(W.getPlan().find(x=>x.id==='s1').emps)==='["sa"]');
+  ok('emp joint mis à jour', W.getPlan().find(x=>x.id==='s1').emp==='sa');
+  ok('toujours 1 créneau (rien perdu)', W.getPlan().length===1);
+  // réassigner WO w2 -> Mathis
+  W.boardReassign('wo','w2','ma');
+  ok('WO réassigné à Mathis', JSON.stringify(W.getWOs().find(x=>x.id==='w2').assignes)==='["ma"]');
+  ok('toujours 2 WO (rien perdu)', W.getWOs().length===2);
+  // changer l'heure d'un créneau
+  W.boardSetTime('s1','09:30');
+  ok('heure du créneau modifiée', W.getPlan().find(x=>x.id==='s1').heure==='09:30');
+  ok('créneau w1 lié intact', W.getPlan().find(x=>x.id==='s1').woId==='w1');
+  // remettre au pool (désassigner)
+  W.boardReassign('slot','s1',null);
+  ok('désassignation → emps vide, créneau conservé', W.getPlan().length===1 && W.getPlan()[0].emps.length===0);
+
+
+  /* ---------- 9 · SIMULATION DÉPLOIEMENT — aucune perte au 1er chargement ---------- */
+  section('9 · Déploiement réel : appareil PLEIN + serveur VIDE/plus vieux → rien perdu');
+  // Feuille de temps LOCALE récente (punchs du jour, pas encore montés)
+  W.lsSet('ft_week_ch_2026-W33', {uid:'ch',week:'2026-W33',emp:'Cheikh',savedAt:'2026-08-14T17:00:00Z',
+    days:[{tasks:[{lieu:'CCNQ',hrs:4,gps:{lat:46.77,lng:-71.26,acc:10}}],status:'done'}]});
+  // reproduire la logique corrigée de syncPullFT (protection par récence)
+  function pullFT(serverRow){
+    var key='ft_week_'+serverRow.id;
+    var local=W.lsGet(key);
+    var serverTs=new Date(serverRow.saved_at||0).getTime()||0;
+    var localTs=local?(new Date(local.savedAt||0).getTime()||0):-1;
+    if(!local || serverTs>=localTs){ W.lsSet(key,{week:serverRow.week,emp:serverRow.emp,savedAt:serverRow.saved_at,days:serverRow.days,uid:serverRow.uid}); }
+  }
+  // serveur a une version PLUS VIEILLE (vide) de la même semaine
+  pullFT({id:'ch_2026-W33',week:'2026-W33',emp:'Cheikh',saved_at:'2026-08-10T09:00:00Z',days:[{tasks:[],status:'idle'}],uid:'ch'});
+  const ftAfter=W.lsGet('ft_week_ch_2026-W33');
+  ok('feuille de temps locale récente CONSERVÉE (punch pas effacé)', ftAfter.days[0].tasks.length===1);
+  ok('heures du punch intactes (4h)', ftAfter.days[0].tasks[0].hrs===4);
+  ok('GPS du punch intact', ftAfter.days[0].tasks[0].gps.lat===46.77);
+  // serveur PLUS RÉCENT → doit mettre à jour
+  pullFT({id:'ch_2026-W33',week:'2026-W33',emp:'Cheikh',saved_at:'2026-08-14T18:30:00Z',days:[{tasks:[{lieu:'CCNQ',hrs:4},{lieu:'Quai',hrs:2}],status:'done'}],uid:'ch'});
+  ok('maj serveur plus récente appliquée (2 punchs)', W.lsGet('ft_week_ch_2026-W33').days[0].tasks.length===2);
+  // Tables métier : appareil plein, serveur vide → tout conservé (fusion)
+  W.lsSet('workorders',[{id:'w1'},{id:'w2'},{id:'w3'},{id:'w4'},{id:'w5'}]);
+  W.lsSet('plan',[{id:'s1'},{id:'s2'},{id:'s3'}]);
+  W.lsSet('planmatch',[{id:'p1'},{id:'p2'}]);
+  ok('5 WO conservés (serveur vide)', W.mergeById(W.getWOs(),[]).length===5);
+  ok('3 créneaux conservés (serveur vide)', W.mergeById(W.getPlan(),[]).length===3);
+  ok('2 plans de match conservés (serveur vide)', W.mergeById(W.getPlanMatches(),[]).length===2);
+  // serveur avec 1 nouveau + suppression apparente → local jamais réduit, nouveau ajouté
+  const m=W.mergeById(W.getWOs(),[{id:'w6',updatedAt:'z'}]);
+  ok('serveur ajoute w6 sans rien retirer → 6', m.length===6);
+  ok('pushAllLocalFT existe (montée des punchs)', typeof W.pushAllLocalFT==='function');
+
+
+  /* ---------- 10 · CRÉATION (saveWO / savePlan / savePmm) ---------- */
+  section('10 · Création WO / Créneau / Plan de Match — bon enregistrement + aucune perte');
+  ['closeModal','renderWOList','renderPlan','buildDayTabs','toast','renderTaskLog','refreshCumul','renderPlanMatch','renderChrono'].forEach(function(fn){ if(typeof W[fn]==='function') W[fn]=function(){}; });
+  W.getCheckedEmp=function(){return ['ch','sa'];};
+  W.isSup=function(){return true;};
+  W.currentUser={id:'boss',role:'admin',prenom:'Max',nom:'L'};
+  function setVal(id,v){var e=W.document.getElementById(id);if(e)e.value=v;}
+  // données existantes à préserver
+  W.lsSet('workorders',[{id:'old1'},{id:'old2'}]);
+  W.lsSet('plan',[{id:'olds1'}]);
+  W.lsSet('planmatch',[{id:'oldp1'}]);
+  // --- saveWO ---
+  W.woEditId=null; W.woTasks=[]; W.woPjFiles=[];
+  setVal('woClient','Nouveau Client');setVal('woSite','Site X');setVal('woType','entretien');setVal('woPriorite','haute');setVal('woStatus','ouvert');setVal('woDate','2026-08-14');setVal('woDesc','desc');setVal('woNotes','notes');
+  W.saveWO();
+  var nw=W.getWOs();
+  ok('WO créé — 3 au total (2 anciens préservés)', nw.length===3);
+  ok('nouveau WO en tête', nw[0].client==='Nouveau Client');
+  ok('WO multi-assigné (assignes + assigne)', JSON.stringify(nw[0].assignes)==='["ch","sa"]' && nw[0].assigne==='ch, sa');
+  ok('anciens WO préservés', nw.some(w=>w.id==='old1')&&nw.some(w=>w.id==='old2'));
+  ok('WO a un id et une date', !!nw[0].id && nw[0].date==='2026-08-14');
+  // --- savePlan (créneau) ---
+  var sel=W.document.getElementById('pmWoSel');
+  if(sel){var o=W.document.createElement('option');o.value=nw[0].id;sel.appendChild(o);sel.value=nw[0].id;}
+  var sb=W.document.getElementById('pmSaveBtn'); if(sb)sb.dataset.slotId='';
+  setVal('pmDate','2026-08-14');setVal('pmHeure','09:00');setVal('pmNotes','n');
+  W.savePlan();
+  var np=W.getPlan();
+  ok('créneau créé — 2 (ancien préservé)', np.length===2);
+  var newSlot=np.find(function(s){return s.woId===nw[0].id;});
+  ok('créneau lié au bon WO', !!newSlot);
+  ok('créneau multi-employés', newSlot && JSON.stringify(newSlot.emps)==='["ch","sa"]');
+  ok('créneau a heure + date', newSlot && newSlot.heure==='09:00' && newSlot.date==='2026-08-14');
+  ok('ancien créneau préservé', np.some(function(s){return s.id==='olds1';}));
+  // --- savePmm (plan de match) ---
+  setVal('pmmDate','2026-08-14');setVal('pmmVehicule','266');setVal('pmmSuperviseur','CW');setVal('pmmResume','r');
+  W.pmmBuilderSections=[{titre:'A',taches:[]}]; W.pmmEditingId=null;
+  W.savePmm();
+  var npm=W.getPlanMatches();
+  ok('plan de match créé — 2 (ancien préservé)', npm.length===2);
+  var newPm=npm.find(function(p){return p.date==='2026-08-14';});
+  ok('PM multi-employés', newPm && JSON.stringify(newPm.emps)==='["ch","sa"]');
+  ok('PM porte véhicule + sections', newPm && newPm.vehicule==='266' && (newPm.sections||[]).length===1);
+  ok('ancien plan de match préservé', npm.some(function(p){return p.id==='oldp1';}));
+
   /* ---------- RÉSULTAT ---------- */
   LOG.push('\n════════════════════════════════════════');
   LOG.push('  RÉSULTAT : '+PASS+' réussis · '+FAIL+' échoués');

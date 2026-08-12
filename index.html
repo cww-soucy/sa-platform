@@ -670,6 +670,33 @@ input,select,textarea{font-size:16px!important}
   .db-kpis{grid-template-columns:repeat(4,1fr)}
   .m2{grid-template-columns:1fr 1fr}
 }
+
+/* ── TABLEAU GLISSABLE (Créneaux) ── */
+.pm-toolbar{display:flex;gap:7px;flex-wrap:wrap;margin:2px 2px 8px}
+.btn-sm{padding:8px 12px;font-size:12.5px}
+
+.pm-board{display:flex;gap:11px;overflow-x:auto;padding:2px 0 12px;align-items:flex-start;-webkit-overflow-scrolling:touch}
+.pm-col{flex:0 0 230px;background:#fff;border:1px solid var(--line);border-radius:var(--r);box-shadow:0 1px 4px rgba(13,59,110,.09);display:flex;flex-direction:column}
+.pm-col.pool{flex:0 0 200px;background:#FBFCFE;border-style:dashed;box-shadow:none}
+.pm-col-hd{padding:10px 11px;border-bottom:1px solid var(--line2);display:flex;align-items:center;gap:8px}
+.pm-av{width:32px;height:32px;border-radius:9px;background:var(--blue);color:#fff;display:grid;place-items:center;font-weight:800;font-size:13px;flex-shrink:0}
+.pm-col-nm{font-weight:800;font-size:14.5px;line-height:1.05}
+.pm-col-veh{font-size:11px;color:var(--muted);font-weight:700}
+.pm-col-load{margin-left:auto;font-size:11px;color:var(--muted);font-weight:800;background:var(--surface);padding:2px 9px;border-radius:20px}
+.pm-col-body{padding:8px;display:flex;flex-direction:column;gap:8px;min-height:120px;border-radius:0 0 var(--r) var(--r);transition:background .12s}
+.pm-col-body.over{background:var(--blue-lt)}
+.pm-card{background:#fff;border:1px solid var(--line);border-left:4px solid var(--blue);border-radius:var(--rs);padding:8px 9px;box-shadow:0 1px 3px rgba(13,59,110,.07);cursor:grab;transition:box-shadow .12s}
+.pm-card:hover{box-shadow:0 3px 10px rgba(13,59,110,.13)}
+.pm-card:active{cursor:grabbing}.pm-card.dragging{opacity:.35}
+.pm-card-top{display:flex;align-items:center;gap:6px;margin-bottom:3px}
+.pm-time{font-size:12px;font-weight:800;background:var(--blue-lt);color:var(--blue);padding:1px 7px;border-radius:6px;cursor:pointer}
+.pm-badge-wo{font-size:9.5px;font-weight:800;background:var(--obg);color:#a35400;padding:2px 7px;border-radius:6px;letter-spacing:.4px}
+.pm-type{margin-left:auto;width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-size:12px;background:var(--blue-lt)}
+.pm-card-cli{font-weight:800;font-size:13.5px;line-height:1.15}
+.pm-card-site{font-size:11px;color:var(--muted)}
+.pm-col-empty{color:var(--hint);font-size:12px;text-align:center;padding:16px 6px;font-style:italic}
+.pm-col-add{margin-top:2px;border:1.5px dashed var(--line);background:#fff;color:var(--blue);border-radius:var(--rs);padding:7px;font-weight:700;font-size:12px;cursor:pointer}
+.pm-board-hint{font-size:11.5px;color:var(--muted);margin:0 2px 8px}
 </style>
 </head>
 <body>
@@ -1586,6 +1613,7 @@ function initSupabase(){
       if(!initSupabase._pushedUp){
         initSupabase._pushedUp=true;
         try{ pushAllLocalToServer(); }catch(e){}
+        try{ pushAllLocalFT(); }catch(e){}
       }
       subscribeRealtime();
       subscribeFTRealtime();
@@ -1710,7 +1738,14 @@ function syncPullFT(cb){
     var rows=res.data||[];
     var idx=[];
     rows.forEach(function(r){
-      lsSet('ft_week_'+r.id,{week:r.week,emp:r.emp,email:r.email,savedAt:r.saved_at,days:r.days,uid:r.uid});
+      var key='ft_week_'+r.id;
+      var local=lsGet(key);
+      var serverTs=new Date(r.saved_at||0).getTime()||0;
+      var localTs=local?(new Date(local.savedAt||0).getTime()||0):-1;
+      // PROTECTION : n'écrase JAMAIS une feuille locale plus récente (punchs non encore montés au serveur)
+      if(!local || serverTs>=localTs){
+        lsSet(key,{week:r.week,emp:r.emp,email:r.email,savedAt:r.saved_at,days:r.days,uid:r.uid});
+      }
       idx.push({week:r.week,uid:r.uid,emp:r.emp,savedAt:r.saved_at,totalH:r.total_h});
     });
     if(idx.length)lsSet('ft_index',idx);
@@ -1756,6 +1791,23 @@ function pushAllLocalToServer(){
       if(Array.isArray(list)&&list.length>0){ sbPushAll(localKey,list); }
     }catch(e){}
   });
+}
+
+// ➕ Pousse les feuilles de temps locales vers le serveur (après un pull-fusion, le local est le plus récent → sûr)
+function pushAllLocalFT(){
+  if(!sb)return;
+  try{
+    for(var i=0;i<localStorage.length;i++){
+      var k=localStorage.key(i);
+      if(k && k.indexOf(LS+'ft_week_')===0){
+        var d=null;try{d=JSON.parse(localStorage.getItem(k));}catch(e){}
+        if(d&&d.uid&&d.week&&d.days){
+          var totalH=0;(d.days||[]).forEach(function(day){((day&&day.tasks)||[]).forEach(function(t){totalH+=(t.hrs||0);});});
+          sbPushFT(d.uid,d.week,{emp:d.emp,email:d.email,days:d.days,savedAt:d.savedAt},totalH);
+        }
+      }
+    }
+  }catch(e){}
 }
 
 // PUSH liste complète (diff: upsert tout)
@@ -1842,7 +1894,7 @@ function setWOs(d){lsSet('workorders',d);} // push ciblé fait au point de modif
 function getSites(){return lsGet('sites')||[];}
 function setSites(d){lsSet('sites',d);sbPushAll('sites',d);}
 function getPlan(){return lsGet('plan')||[];}
-function setPlan(d){lsSet('plan',d);sbPushAll('plan',d);}
+function setPlan(d){lsSet('plan',d);} // push ciblé au point de modif (savePlan/board) — évite d'écraser
 function getPlanMatches(){return lsGet('planmatch')||[];}
 function setPlanMatches(d){lsSet('planmatch',d);} // push ciblé fait au point de modification (savePmm/pmmScheduleSave/deletePmm) — évite d'écraser les mises à jour du superviseur
 function getFlotte(){return lsGet('flotte')||[];}
@@ -2127,7 +2179,7 @@ document.addEventListener('DOMContentLoaded', function(){
   try{
     var vb=document.createElement('div');
     vb.id='__buildBadge';
-    vb.textContent='build F12 ⟲';
+    vb.textContent='build F16 ⟲';
     vb.title='Version de l\'app — toucher pour restaurer une sauvegarde';
     vb.style.cssText='position:fixed;bottom:4px;right:6px;font:11px/1.4 monospace;color:#fff;background:rgba(27,79,140,.85);padding:3px 8px;border-radius:8px;z-index:99999;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.2)';
     vb.addEventListener('click',function(){
@@ -2583,25 +2635,8 @@ function renderPlan(){
     return;
   }
 
-  // ── VUE ADMIN/SUP : JOURNÉE GLOBALE, GROUPÉE PAR EMPLOYÉ ──
-  var hasContent=false;
-  var grouped=getDayAssignmentsByEmp(pmDay);
-  grouped.order.forEach(function(empId){
-    var b=grouped.byEmp[empId];
-    var count=b.wos.length+b.slots.length;
-    if(count===0)return;
-    hasContent=true;
-    var hd=document.createElement('div');
-    hd.className='sec-title';
-    if(empId===grouped.UNASSIGNED){
-      hd.innerHTML='⚠️ Non assigné <span style="opacity:.55;font-weight:600">('+count+')</span>';
-    }else{
-      hd.innerHTML='👷 '+esc(empName(empId))+' <span style="opacity:.55;font-weight:600">('+count+')</span>';
-    }
-    content.appendChild(hd);
-    b.wos.forEach(function(wo){renderWOAsSlot(content,wo);});
-    b.slots.forEach(function(slot){renderPMSlot(content,slot);});
-  });
+  // ── VUE ADMIN/SUP : TABLEAU GLISSABLE PAR TECHNICIEN ──
+  var hasContent=renderPlanBoard(content);
 
   // 3. WO ouverts sans date (non planifiés)
   var unscheduled=wos.filter(function(wo){
@@ -2624,6 +2659,180 @@ function renderPlan(){
     content.innerHTML='<div class="empty"><div class="ei">📅</div><h3>Journée libre</h3><p>Aucun WO prévu ce jour.</p></div>';
   }
 }
+
+
+/* ===== TABLEAU GLISSABLE — Créneaux (écritures sûres : merge + push ciblé) ===== */
+function renderPlanBoard(content){
+  var grouped=getDayAssignmentsByEmp(pmDay);
+  var techs=getComptes().filter(function(c){return c.role!=='admin';});
+  var bar=document.createElement('div');bar.className='pm-toolbar';
+  bar.innerHTML='<button class="btn btn-primary btn-sm" id="pbAdd">➕ Ajouter</button>'
+    +'<button class="btn btn-ghost btn-sm" id="pbAuto">⚡ Placement auto</button>'
+    +'<button class="btn btn-ghost btn-sm" id="pbOpt">🗺️ Optimiser trajet</button>'
+    +'<button class="btn btn-ghost btn-sm" id="pbMap">🗺️ Carte tournée</button>';
+  content.appendChild(bar);
+  var hint=document.createElement('div');hint.className='pm-board-hint';hint.textContent='Glisse une carte vers un technicien · clique-la pour le détail · clique l\'heure pour l\'ajuster.';
+  content.appendChild(hint);
+  var mapPanel=document.createElement('div');mapPanel.id='pmRouteWrap';mapPanel.style.display='none';
+  mapPanel.innerHTML='<div id="pmRouteMap" style="width:100%;height:320px;border-radius:var(--r);overflow:hidden;border:1px solid var(--line);background:#DCEBF3"></div><div id="pmRouteNote" style="font-size:11.5px;color:var(--muted);margin:6px 2px"></div>';
+  content.appendChild(mapPanel);
+  var wrap=document.createElement('div');wrap.className='pm-board';
+  wrap.appendChild(boardCol(null,'À placer','',grouped.byEmp[grouped.UNASSIGNED]||{wos:[],slots:[]},true));
+  techs.forEach(function(t){
+    wrap.appendChild(boardCol(t.id,(t.prenom+' '+t.nom).trim(),t.vehicule||t.veh||'',grouped.byEmp[t.id]||{wos:[],slots:[]},false));
+  });
+  content.appendChild(wrap);
+  bindBoard(content);
+  var a=document.getElementById('pbAdd');if(a)a.addEventListener('click',function(){openPmModal();});
+  var au=document.getElementById('pbAuto');if(au)au.addEventListener('click',boardAutoPlace);
+  var op=document.getElementById('pbOpt');if(op)op.addEventListener('click',boardOptimize);
+  var mp=document.getElementById('pbMap');if(mp)mp.addEventListener('click',boardToggleRouteMap);
+  if(_pmRouteOpen)renderRouteMap();
+  return true;
+}
+function boardItems(b){
+  var items=[],wos=getWOs();
+  (b.wos||[]).forEach(function(wo){items.push({kind:'wo',id:wo.id,cli:wo.client,site:wo.site,type:wo.type,time:''});});
+  (b.slots||[]).forEach(function(s){var wo=wos.find(function(x){return x.id===s.woId;});items.push({kind:'slot',id:s.id,cli:wo?wo.client:(s.label||'Créneau'),site:wo?wo.site:(s.notes||''),type:wo?wo.type:'entretien',time:s.heure||''});});
+  items.sort(function(a,b){if(!a.time)return 1;if(!b.time)return -1;return a.time.localeCompare(b.time);});
+  return items;
+}
+function boardCol(techId,nom,veh,b,pool){
+  var items=boardItems(b);
+  var col=document.createElement('div');col.className='pm-col'+(pool?' pool':'');
+  var initial=pool?'↔':((nom[0]||'?'));
+  var h='<div class="pm-col-hd"><div class="pm-av"'+(pool?' style="background:#9fb3c8"':'')+'>'+initial+'</div>'
+    +'<div><div class="pm-col-nm">'+esc(nom)+'</div>'+(veh?'<div class="pm-col-veh">Véh. '+esc(veh)+'</div>':(pool?'<div class="pm-col-veh">non assigné</div>':''))+'</div>'
+    +'<div class="pm-col-load">'+items.length+'</div></div>'
+    +'<div class="pm-col-body" data-tech="'+(techId||'')+'">';
+  if(items.length){items.forEach(function(it){h+=boardCardHTML(it);});}
+  else h+='<div class="pm-col-empty">'+(pool?'Tout est assigné':'Dépose ici')+'</div>';
+  if(!pool)h+='<button class="pm-col-add" data-tech="'+techId+'">➕ Créneau</button>';
+  h+='</div>';
+  col.innerHTML=h;return col;
+}
+function boardTypeHex(t){return {installation:'#1D9E75',entretien:'#1A5C9A',reparation:'#FF6B00',inspection:'#0E9C86',miseeneau:'#0E9C86',livraison:'#7C3AED',autre:'#6B8CAE'}[t]||'#1A5C9A';}
+function boardCardHTML(it){
+  var hex=boardTypeHex(it.type);
+  return '<div class="pm-card" draggable="true" data-kind="'+it.kind+'" data-id="'+it.id+'" style="border-left-color:'+hex+'">'
+    +'<div class="pm-card-top">'+(it.kind==='slot'?'<span class="pm-time" data-id="'+it.id+'">'+(it.time||'—:—')+'</span>':'<span class="pm-badge-wo">WO</span>')
+    +'<span class="pm-type">'+woTypeIcon(it.type)+'</span></div>'
+    +'<div class="pm-card-cli">'+esc(it.cli||'—')+'</div>'+(it.site?'<div class="pm-card-site">'+esc(it.site)+'</div>':'')+'</div>';
+}
+var _dragK=null,_dragI=null;
+function bindBoard(root){
+  root.querySelectorAll('.pm-card').forEach(function(c){
+    c.addEventListener('dragstart',function(e){_dragK=c.dataset.kind;_dragI=c.dataset.id;c.classList.add('dragging');try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',c.dataset.id);}catch(err){}});
+    c.addEventListener('dragend',function(){c.classList.remove('dragging');});
+    c.addEventListener('click',function(e){if(e.target.classList.contains('pm-time'))return;boardOpen(c.dataset.kind,c.dataset.id);});
+  });
+  root.querySelectorAll('.pm-col-body').forEach(function(bd){
+    bd.addEventListener('dragover',function(e){e.preventDefault();bd.classList.add('over');});
+    bd.addEventListener('dragleave',function(){bd.classList.remove('over');});
+    bd.addEventListener('drop',function(e){e.preventDefault();bd.classList.remove('over');if(_dragI){boardReassign(_dragK,_dragI,bd.dataset.tech||null);_dragI=null;}});
+  });
+  root.querySelectorAll('.pm-time').forEach(function(el){
+    el.addEventListener('click',function(ev){ev.stopPropagation();
+      var inp=document.createElement('input');inp.type='time';inp.value=(el.textContent||'').indexOf(':')>=0&&el.textContent.indexOf('—')<0?el.textContent:'08:00';
+      inp.style.cssText='font-size:12px;font-weight:800;border:1.5px solid var(--blue);border-radius:6px;padding:0 3px;font-family:inherit';
+      var id=el.dataset.id;el.replaceWith(inp);inp.focus();
+      inp.addEventListener('blur',function(){boardSetTime(id,inp.value);});
+    });
+  });
+  root.querySelectorAll('.pm-col-add').forEach(function(b){b.addEventListener('click',function(){openPmModal();});});
+}
+function boardReassign(kind,id,techId){
+  if(kind==='wo'){var wos=getWOs();var wo=wos.find(function(x){return x.id===id;});if(!wo)return;wo.assignes=techId?[techId]:[];wo.assigne=(wo.assignes||[]).join(', ');setWOs(wos);sbPush('workorders',wo);}
+  else{var pl=getPlan();var s=pl.find(function(x){return x.id===id;});if(!s)return;s.emps=techId?[techId]:[];s.emp=(s.emps||[]).join(', ');setPlan(pl);sbPush('plan',s);}
+  renderPlan();
+}
+function boardSetTime(id,val){var pl=getPlan();var s=pl.find(function(x){return x.id===id;});if(s){s.heure=val;setPlan(pl);sbPush('plan',s);}renderPlan();}
+
+var _pmRouteOpen=false, _pmRouteMap=null, _pmRouteLayer=null;
+function hhmm2(m){var h=Math.floor(m/60),x=m%60;return (h<10?'0':'')+h+':'+(x<10?'0':'')+x;}
+// Placement auto : par technicien, met les créneaux en séquence dès 08:00
+function boardAutoPlace(){
+  var pl=getPlan();var techs=getComptes().filter(function(c){return c.role!=='admin';});
+  techs.forEach(function(t){
+    var slots=pl.filter(function(s){return s.date===pmDay && planAssignees(s).indexOf(t.id)>=0;});
+    var cur=8*60;
+    slots.forEach(function(s){s.heure=hhmm2(cur);cur+=75;sbPush('plan',s);});
+  });
+  setPlan(pl);renderPlan();toast('⚡ Horaire réparti dès 8:00');
+}
+// Résout les coordonnées d'un WO (site géolocalisé, sinon géocode l'adresse)
+function stopCoords(wo,cb){
+  if(!wo){cb(null);return;}
+  var sites=getSites();
+  var m=sites.find(function(s){return s.gps&&s.gps.lat&&(s.nom===wo.client||s.nom===wo.site);});
+  if(m){cb({lat:m.gps.lat,lng:m.gps.lng});return;}
+  geocodeAddr(wo.addr||wo.site||wo.client,cb);
+}
+// Optimiser : par technicien, ordonne par proximité et pose les heures
+function boardOptimize(){
+  toast('⏳ Optimisation des trajets…');
+  var pl=getPlan();var wos=getWOs();var techs=getComptes().filter(function(c){return c.role!=='admin';});
+  var pending=techs.length;
+  techs.forEach(function(t){
+    var slots=pl.filter(function(s){return s.date===pmDay && planAssignees(s).indexOf(t.id)>=0;});
+    if(slots.length<2){if(--pending===0)finishOpt(pl);return;}
+    var got=0,coords={};
+    slots.forEach(function(s){var wo=wos.find(function(x){return x.id===s.woId;});stopCoords(wo,function(c){coords[s.id]=c;if(++got===slots.length){orderTech(slots,coords);if(--pending===0)finishOpt(pl);}});});
+  });
+  function orderTech(slots,coords){
+    var withGeo=slots.filter(function(s){return coords[s.id];});
+    if(withGeo.length<2)return;
+    var ordered=[withGeo.shift()];
+    while(withGeo.length){var last=coords[ordered[ordered.length-1].id],bi=0,bd=1e9;
+      withGeo.forEach(function(s,i){var d=gpsDistance(last,coords[s.id]);if(d<bd){bd=d;bi=i;}});ordered.push(withGeo.splice(bi,1)[0]);}
+    var cur=8*60;ordered.forEach(function(s){s.heure=hhmm2(cur);cur+=90;sbPush('plan',s);});
+  }
+  function finishOpt(pl){setPlan(pl);renderPlan();toast('🗺️ Trajets optimisés par proximité');}
+}
+function boardToggleRouteMap(){_pmRouteOpen=!_pmRouteOpen;var w=document.getElementById('pmRouteWrap');if(w)w.style.display=_pmRouteOpen?'block':'none';if(_pmRouteOpen)renderRouteMap();}
+// Carte de la tournée planifiée : arrêts numérotés + routes par technicien
+function renderRouteMap(){
+  var box=document.getElementById('pmRouteMap');if(!box)return;
+  if(typeof L==='undefined'){box.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted)">Carte indisponible (connexion requise).</div>';return;}
+  try{
+    if(!_pmRouteMap){_pmRouteMap=L.map('pmRouteMap',{zoomControl:true,scrollWheelZoom:false}).setView([BUREAU_GPS.lat,BUREAU_GPS.lng],11);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(_pmRouteMap);}
+    if(_pmRouteLayer)_pmRouteMap.removeLayer(_pmRouteLayer);
+    _pmRouteLayer=L.layerGroup().addTo(_pmRouteMap);
+    var pl=getPlan(),wos=getWOs();
+    var techs=getComptes().filter(function(c){return c.role!=='admin';});
+    var bounds=[[BUREAU_GPS.lat,BUREAU_GPS.lng]],missing=[],idx=0;
+    L.circleMarker([BUREAU_GPS.lat,BUREAU_GPS.lng],{radius:5,color:'#6B8CAE',fillColor:'#6B8CAE',fillOpacity:.85}).addTo(_pmRouteLayer).bindPopup('🏢 Bureau');
+    var pending=0,done=false;
+    techs.forEach(function(t,ti){
+      var col=suiviColor(ti);
+      var slots=pl.filter(function(s){return s.date===pmDay && planAssignees(s).indexOf(t.id)>=0;})
+                  .sort(function(a,b){return (a.heure||'~').localeCompare(b.heure||'~');});
+      var pts=[];pending+=slots.length;
+      slots.forEach(function(s,i){var wo=wos.find(function(x){return x.id===s.woId;});
+        stopCoords(wo,function(c){
+          if(c){pts[i]={lat:c.lat,lng:c.lng,cli:wo?wo.client:'Créneau',h:s.heure};bounds.push([c.lat,c.lng]);}
+          else missing.push(t.nom+(wo?' → '+wo.client:''));
+          if(--pending<=0 && !done){done=true;drawAll();}
+        });
+      });
+      t._pts=pts;
+    });
+    if(pending===0)drawAll();
+    function drawAll(){
+      techs.forEach(function(t,ti){var col=suiviColor(ti);var pts=(t._pts||[]).filter(Boolean);
+        if(pts.length>1)L.polyline(pts.map(function(p){return [p.lat,p.lng];}),{color:col,weight:4,opacity:.7}).addTo(_pmRouteLayer);
+        pts.forEach(function(p,i){var icon=L.divIcon({className:'',iconSize:[26,26],iconAnchor:[13,13],html:'<div style="width:26px;height:26px;border-radius:50%;background:'+col+';display:grid;place-items:center;color:#fff;font-weight:800;font-size:12px;border:2.5px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,.3)">'+(i+1)+'</div>'});
+          L.marker([p.lat,p.lng],{icon:icon}).addTo(_pmRouteLayer).bindPopup('<b>'+(i+1)+'. '+esc(p.cli)+'</b><br>'+esc(t.prenom+' '+t.nom)+' · '+(p.h||'—'));});
+      });
+      if(bounds.length>1)_pmRouteMap.fitBounds(bounds,{padding:[40,40],maxZoom:13});
+      setTimeout(function(){try{_pmRouteMap.invalidateSize();}catch(e){}},80);
+      var n=document.getElementById('pmRouteNote');if(n)n.innerHTML=missing.length?('⚠️ Sans adresse (non tracé) : '+missing.join(', ')):'Tournée du jour — arrêts numérotés dans l\'ordre optimisé.';
+    }
+  }catch(err){box.innerHTML='<div style="padding:20px;color:var(--muted)">Carte: '+err.message+'</div>';}
+}
+
+function boardOpen(kind,id){if(kind==='wo'){var wo=getWOs().find(function(x){return x.id===id;});if(wo)openWOModal(wo);}else{var s=getPlan().find(function(x){return x.id===id;});if(s)openPmModal(s.woId,s.id);}}
 
 function renderWOAsSlot(container,wo){
   var div=document.createElement('div');
@@ -2689,7 +2898,7 @@ function savePlan(){
     notes:document.getElementById('pmNotes').value,status:'assigned'};
   if(slotId){var idx2=plan.findIndex(function(p){return p.id===slotId;});if(idx2>=0)plan[idx2]=slot;else plan.push(slot);}
   else plan.push(slot);
-  setPlan(plan);
+  setPlan(plan);sbPush('plan',slot);
   closeModal('pmModal');renderPlan();toast('✅ Intervention planifiée !');
 }
 
