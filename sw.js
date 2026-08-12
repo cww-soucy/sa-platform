@@ -1,7 +1,7 @@
 // SA Platform — Service Worker
-// NOTIFICATIONS DÉSACTIVÉES. Force la mise à jour du cache (v12).
+// NOTIFICATIONS DÉSACTIVÉES. Force la mise à jour du cache (v13).
 
-var CACHE_NAME = 'sa-platform-v12';
+var CACHE_NAME = 'sa-platform-v13';
 
 // Installation : s'activer tout de suite sans attendre
 self.addEventListener('install', function(event) {
