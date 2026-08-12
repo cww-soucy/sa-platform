@@ -2179,7 +2179,7 @@ document.addEventListener('DOMContentLoaded', function(){
   try{
     var vb=document.createElement('div');
     vb.id='__buildBadge';
-    vb.textContent='build F19 ⟲';
+    vb.textContent='build F20 ⟲';
     vb.title='Version de l\'app — toucher pour restaurer une sauvegarde';
     vb.style.cssText='position:fixed;bottom:4px;right:6px;font:11px/1.4 monospace;color:#fff;background:rgba(27,79,140,.85);padding:3px 8px;border-radius:8px;z-index:99999;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.2)';
     vb.addEventListener('click',function(){
@@ -5680,7 +5680,8 @@ function drawSuiviMap(forceFit){
   // Signature : si rien n'a changé, on ne redessine PAS (évite de perturber ton zoom/déplacement)
   var sig=emps.map(function(e){return e.id+':'+(e.last.lieu||'')+':'+(e.last.gps?(e.last.gps.lat+','+e.last.gps.lng):'')+':'+e.running;}).join('|')+'#'+noTask.join(',');
   var mapExists=false; try{ mapExists = suiviMapObj && suiviMapObj.getContainer()===box && document.body.contains(box); }catch(e){ mapExists=false; }
-  if(!forceFit && mapExists && sig===_suiviSig){ setTimeout(function(){try{suiviMapObj.invalidateSize();}catch(e){}},60); return; }
+  // La carte est déjà affichée → on n'y touche PLUS lors du rafraîchissement auto (aucun dézoom). Utiliser 🎯 Recentrer pour rafraîchir.
+  if(mapExists && !forceFit){ setTimeout(function(){try{suiviMapObj.invalidateSize();}catch(e){}},60); return; }
   _suiviSig=sig;
   try{
     if(suiviMapObj && !mapExists){ try{suiviMapObj.remove();}catch(e){} suiviMapObj=null; suiviLayer=null; _suiviFitDone=false; }
