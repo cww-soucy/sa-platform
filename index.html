@@ -2179,7 +2179,7 @@ document.addEventListener('DOMContentLoaded', function(){
   try{
     var vb=document.createElement('div');
     vb.id='__buildBadge';
-    vb.textContent='build F18 ⟲';
+    vb.textContent='build F19 ⟲';
     vb.title='Version de l\'app — toucher pour restaurer une sauvegarde';
     vb.style.cssText='position:fixed;bottom:4px;right:6px;font:11px/1.4 monospace;color:#fff;background:rgba(27,79,140,.85);padding:3px 8px;border-radius:8px;z-index:99999;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.2)';
     vb.addEventListener('click',function(){
@@ -5669,51 +5669,58 @@ function resolvePunchCoords(task,cb){
   try{ geocodeAddr(q,function(c){var r=c&&c.lat?{lat:c.lat,lng:c.lng,src:'addr'}:null;_geoCache[q]=r;cb(r);}); }
   catch(e){ _geoCache[q]=null; cb(null); }
 }
-// Carte de suivi : une épingle par technicien à sa position approximative (GPS punch, sinon site/adresse)
-function drawSuiviMap(){
+// Carte de suivi : une épingle par technicien (GPS punch → site → adresse), stable (pas de dézoom auto)
+var _suiviSig='', _suiviFitDone=false;
+function drawSuiviMap(forceFit){
   var box=document.getElementById('suiviMap'); if(!box)return;
   if(typeof L==='undefined'){box.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">Carte indisponible (connexion requise au premier chargement).</div>';return;}
   var emps=empLatestPunches();
   var allNames=getComptes().filter(function(c){return c.role!=='admin';}).map(function(c){return (c.prenom+' '+c.nom).trim();});
   var noTask=allNames.filter(function(nm){return !emps.some(function(e){return e.nom===nm;});});
+  // Signature : si rien n'a changé, on ne redessine PAS (évite de perturber ton zoom/déplacement)
+  var sig=emps.map(function(e){return e.id+':'+(e.last.lieu||'')+':'+(e.last.gps?(e.last.gps.lat+','+e.last.gps.lng):'')+':'+e.running;}).join('|')+'#'+noTask.join(',');
+  var mapExists=false; try{ mapExists = suiviMapObj && suiviMapObj.getContainer()===box && document.body.contains(box); }catch(e){ mapExists=false; }
+  if(!forceFit && mapExists && sig===_suiviSig){ setTimeout(function(){try{suiviMapObj.invalidateSize();}catch(e){}},60); return; }
+  _suiviSig=sig;
   try{
-    // Si le panneau Suivi a été reconstruit (rafraîchissement auto), l'ancienne carte pointe vers un div détaché → on la recrée sur le div courant
-    if(suiviMapObj){
-      var okCont=false;
-      try{ okCont = (suiviMapObj.getContainer()===box) && document.body.contains(box); }catch(e){ okCont=false; }
-      if(!okCont){ try{suiviMapObj.remove();}catch(e){} suiviMapObj=null; suiviLayer=null; }
-    }
+    if(suiviMapObj && !mapExists){ try{suiviMapObj.remove();}catch(e){} suiviMapObj=null; suiviLayer=null; _suiviFitDone=false; }
     if(!suiviMapObj){
-      suiviMapObj=L.map('suiviMap',{zoomControl:true,scrollWheelZoom:false}).setView([BUREAU_GPS.lat,BUREAU_GPS.lng],11);
+      suiviMapObj=L.map('suiviMap',{zoomControl:true,scrollWheelZoom:true}).setView([BUREAU_GPS.lat,BUREAU_GPS.lng],11);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(suiviMapObj);
     }
     if(suiviLayer)suiviMapObj.removeLayer(suiviLayer);
     suiviLayer=L.layerGroup().addTo(suiviMapObj);
     L.circleMarker([BUREAU_GPS.lat,BUREAU_GPS.lng],{radius:5,color:'#6B8CAE',fillColor:'#6B8CAE',fillOpacity:.85}).addTo(suiviLayer).bindPopup('🏢 Bureau / Entrepôt');
-    var bounds=[[BUREAU_GPS.lat,BUREAU_GPS.lng]], noLoc=[], pending=emps.length;
-    var invalidate=function(){[80,350,800].forEach(function(ms){setTimeout(function(){try{suiviMapObj.invalidateSize();}catch(e){}},ms);});};
-    if(pending===0){ invalidate(); finishNote(); return; }
+    var pending=emps.length, results=[], noLoc=[];
+    var invalidate=function(){[60,300,700].forEach(function(ms){setTimeout(function(){try{suiviMapObj.invalidateSize();}catch(e){}},ms);});};
+    if(pending===0){ finalize(); return; }
     emps.forEach(function(e,i){
-      var col=suiviColor(i);
-      resolvePunchCoords(e.last,function(c){
-        if(c){
-          if(e.gpsPath.length>1){L.polyline(e.gpsPath.map(function(p){return [p.lat,p.lng];}),{color:col,weight:3,opacity:.45,dashArray:'5 5'}).addTo(suiviLayer);}
-          var srcTxt=c.src==='gps'?('GPS ±'+(c.acc||'?')+' m'):(c.src==='site'?'position du site':'adresse approx.');
-          var icon=L.divIcon({className:'',iconSize:[28,28],iconAnchor:[14,28],html:'<div style="width:28px;height:28px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:'+col+';display:grid;place-items:center;box-shadow:0 2px 6px rgba(0,0,0,.35);border:2.5px solid #fff"><span style="transform:rotate(45deg);color:#fff;font-weight:800;font-size:12px">'+(e.nom[0]||'?')+'</span></div>'});
-          L.marker([c.lat,c.lng],{icon:icon}).addTo(suiviLayer)
-            .bindPopup('<b>'+esc(e.nom)+'</b><br>'+(e.running?'🟢 en activité':'⏹ dernier punch')+'<br>📍 '+esc(e.last.lieu||'—')+(e.last.start?(' · '+esc(e.last.start)):'')+'<br><span style="color:#6B8CAE">'+srcTxt+'</span>');
-          bounds.push([c.lat,c.lng]);
-        } else { noLoc.push(e.nom); }
-        if(--pending<=0){ if(bounds.length>1)suiviMapObj.fitBounds(bounds,{padding:[40,40],maxZoom:14}); invalidate(); finishNote(noLoc); }
-      });
+      resolvePunchCoords(e.last,function(c){ if(c)results.push({e:e,c:c,i:i}); else noLoc.push(e.nom); if(--pending<=0)finalize(); });
     });
-    function finishNote(noLoc){
-      noLoc=noLoc||[];
-      var note=document.getElementById('suiviMapNote'); if(!note)return;
-      var out=[];
-      if(noLoc.length)out.push('📍 <b>Sans localisation</b> : '+noLoc.join(', ')+' — punch sans GPS ni adresse (ajoute l\'adresse du chantier).');
-      if(noTask.length)out.push('⏸ <b>Pas encore punché</b> : '+noTask.join(', ')+'.');
-      if(out.length){note.style.display='block';note.innerHTML=out.join('<br>');}else note.style.display='none';
+    function finalize(){
+      var bounds=[[BUREAU_GPS.lat,BUREAU_GPS.lng]], seen={};
+      results.forEach(function(r){
+        var key=r.c.lat.toFixed(4)+','+r.c.lng.toFixed(4);
+        var n=seen[key]||0; seen[key]=n+1;
+        var lat=r.c.lat, lng=r.c.lng;
+        if(n>0){ var ang=n*2.399, rad=0.0007*(1+Math.floor((n-1)/6)); lat+=rad*Math.cos(ang); lng+=rad*Math.sin(ang); } // écarter les épingles au même lieu
+        var col=suiviColor(r.i);
+        if(r.e.gpsPath.length>1){L.polyline(r.e.gpsPath.map(function(p){return [p.lat,p.lng];}),{color:col,weight:3,opacity:.4,dashArray:'5 5'}).addTo(suiviLayer);}
+        var srcTxt=r.c.src==='gps'?('📡 GPS précis ±'+(r.c.acc||'?')+' m'):(r.c.src==='site'?'🏢 position du site (approx.)':'🗺️ adresse géocodée (approx.)');
+        var icon=L.divIcon({className:'',iconSize:[30,30],iconAnchor:[15,30],html:'<div style="width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:'+col+';display:grid;place-items:center;box-shadow:0 2px 6px rgba(0,0,0,.35);border:2.5px solid #fff"><span style="transform:rotate(45deg);color:#fff;font-weight:800;font-size:12px">'+(r.e.nom[0]||'?')+'</span></div>'});
+        L.marker([lat,lng],{icon:icon}).addTo(suiviLayer)
+          .bindPopup('<b>'+esc(r.e.nom)+'</b><br>'+(r.e.running?'🟢 en activité':'⏹ dernier punch')+'<br>📍 '+esc(r.e.last.lieu||'—')+(r.e.last.start?(' · '+esc(r.e.last.start)):'')+'<br><span style="color:#6B8CAE">'+srcTxt+'</span>');
+        bounds.push([lat,lng]);
+      });
+      var note=document.getElementById('suiviMapNote');
+      if(note){ var out=[];
+        out.push('<b>'+results.length+'</b> technicien(s) localisé(s) · <span style="color:#6B8CAE">position approximative sauf GPS</span>');
+        if(noLoc.length)out.push('📍 Sans localisation : '+noLoc.join(', ')+' (punch sans GPS ni adresse)');
+        if(noTask.length)out.push('⏸ Pas encore punché : '+noTask.join(', '));
+        note.style.display='block'; note.innerHTML=out.join('<br>');
+      }
+      if((!_suiviFitDone||forceFit) && bounds.length>1){ suiviMapObj.fitBounds(bounds,{padding:[45,45],maxZoom:13}); _suiviFitDone=true; }
+      invalidate();
     }
   }catch(err){box.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">Carte: '+err.message+'</div>';}
 }
@@ -5750,7 +5757,7 @@ function renderSuivi(){
   if(!suiviMapCard){
     suiviMapCard=document.createElement('div');
     suiviMapCard.style.cssText='background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-bottom:12px;box-shadow:0 1px 4px rgba(13,59,110,.09)';
-    suiviMapCard.innerHTML='<div style="padding:10px 12px;border-bottom:1px solid var(--line2);font-weight:800;font-size:14px;display:flex;align-items:center;gap:7px">📍 Position des techniciens <span style="margin-left:auto;font-size:11px;color:var(--muted);font-weight:600">d\'après le dernier punch · OpenStreetMap</span></div>'
+    suiviMapCard.innerHTML='<div style="padding:10px 12px;border-bottom:1px solid var(--line2);font-weight:800;font-size:14px;display:flex;align-items:center;gap:7px">📍 Position des techniciens <button onclick="drawSuiviMap(true)" style="margin-left:auto;border:1px solid var(--line);background:var(--surface);color:var(--blue);border-radius:8px;padding:4px 10px;font-weight:700;font-size:11px;cursor:pointer">🎯 Recentrer</button><span style="font-size:11px;color:var(--muted);font-weight:600;margin-left:8px">d\'après le dernier punch · OpenStreetMap</span></div>'
       +'<div id="suiviMap" style="width:100%;height:300px;background:#DCEBF3"></div>'
       +'<div id="suiviMapNote" style="display:none;padding:9px 12px;background:var(--obg);border-top:1px dashed #f2c99e;font-size:11.5px;color:#9a4d00"></div>';
   }
