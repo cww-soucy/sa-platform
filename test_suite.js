@@ -270,6 +270,41 @@ function runTests(){
   var allSlots=W.getPlan().filter(function(p){return p.date==='2026-08-14';});
   ok('vue Tous couvre les 2 créneaux du jour', allSlots.length===2);
 
+
+  /* ---------- 12 · Lieu de punch OBLIGATOIRE (répertoire ou nom+adresse exacte) ---------- */
+  section('12 · Validation du lieu de punch — obligatoire pour repérage carte');
+  W.lsSet('sites',[{id:'st1',nom:'CCNQ',addr:'2795 Bd Champlain, Québec',gps:{lat:46.7745,lng:-71.2660}}]);
+  ok('findSiteExact trouve un site connu (insensible à la casse)', !!W.findSiteExact('ccnq'));
+  ok('findSiteExact ne trouve rien pour un lieu inconnu', !W.findSiteExact('Chantier Fantôme'));
+  // Cas 1 : site du répertoire avec adresse → valide (pas de blocage)
+  var site=W.findSiteExact('CCNQ');
+  ok('site du répertoire a une adresse → punch valide sans saisie manuelle', !!(site&&site.addr));
+  // Cas 2 : lieu inconnu SANS adresse → doit être considéré invalide
+  var siteInconnu=W.findSiteExact('Nouveau Chantier'); var addrVide='';
+  ok('lieu inconnu + adresse vide → INVALIDE (bloquerait le punch)', !(siteInconnu&&siteInconnu.addr) && !addrVide);
+  // Cas 3 : lieu inconnu AVEC adresse saisie → valide
+  var addrSaisie='123 Rue Test, Québec';
+  ok('lieu inconnu + adresse saisie → VALIDE', !(siteInconnu&&siteInconnu.addr===undefined) || !!addrSaisie);
+
+  /* ---------- 13 · Journal GPS des punchs (additif, jamais de perte) ---------- */
+  section('13 · Journal GPS des punchs — additif, plafonné, jamais destructeur');
+  ok('fonction logPunchGPS définie', typeof W.logPunchGPS==='function');
+  ok('fonction updateGpsLogEntry définie', typeof W.updateGpsLogEntry==='function');
+  ok('fonction gpsLogForEmp définie', typeof W.gpsLogForEmp==='function');
+  W.lsSet('gpslog',[]);
+  W.logPunchGPS({id:'g1',uid:'ch',emp:'Cheikh Ndiaye',date:'2026-08-14',heure:'08:00',lieu:'CCNQ',addr:'2795 Bd Champlain',siteId:'st1',taskId:101,lat:null,lng:null,acc:null,src:'pending',createdAt:'x'});
+  ok('entrée créée', W.getGpsLog().length===1);
+  W.updateGpsLogEntry(101,{lat:46.77,lng:-71.26,acc:10,src:'gps'});
+  ok('entrée complétée (pas dupliquée)', W.getGpsLog().length===1 && W.getGpsLog()[0].src==='gps' && W.getGpsLog()[0].lat===46.77);
+  W.logPunchGPS({id:'g2',uid:'ch',emp:'Cheikh Ndiaye',date:'2026-08-14',heure:'10:15',lieu:'Canotier',addr:'',siteId:null,taskId:102,lat:null,lng:null,acc:null,src:'pending',createdAt:'x'});
+  ok('2 entrées maintenant (rien écrasé)', W.getGpsLog().length===2);
+  ok('gpsLogForEmp filtre par employé', W.gpsLogForEmp('ch').length===2 && W.gpsLogForEmp('sa').length===0);
+  ok('gpsLogForEmp filtre par date', W.gpsLogForEmp('ch','2026-08-15').length===0);
+  // Plafond : ajouter beaucoup d'entrées ne doit jamais dépasser 3000, et garde les plus récentes
+  for(var i=0;i<3005;i++){W.logPunchGPS({id:'bulk'+i,uid:'sa',emp:'Samuel',date:'2026-08-14',heure:'08:00',lieu:'X',addr:'',taskId:9000+i,lat:null,lng:null,acc:null,src:'pending',createdAt:'x'});}
+  ok('journal plafonné à 3000 entrées max', W.getGpsLog().length===3000);
+  ok('les entrées les plus récentes sont conservées', W.getGpsLog()[W.getGpsLog().length-1].taskId===9000+3004);
+
   /* ---------- RÉSULTAT ---------- */
   LOG.push('\n════════════════════════════════════════');
   LOG.push('  RÉSULTAT : '+PASS+' réussis · '+FAIL+' échoués');

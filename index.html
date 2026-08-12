@@ -1002,16 +1002,20 @@ input,select,textarea{font-size:16px!important}
   <div class="modal-box">
     <div class="modal-hd"><h3 id="jobModalTitle">Chantier</h3><button class="modal-close" id="jobModalClose">✕</button></div>
     <div id="mAssignedJobs" style="display:none;margin-bottom:12px"></div>
-    <div class="mfield"><label>Chantier / Lieu</label>
+    <div class="mfield"><label>Chantier / Lieu <span id="mLieuBadge" style="font-size:10px;font-weight:800;padding:1px 7px;border-radius:20px;margin-left:4px"></span></label>
       <input type="text" id="mLieu" placeholder="ex: Quai Paquet" list="sitesList" autocomplete="off"/>
       <datalist id="sitesList"></datalist>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px">Choisis un site du répertoire, ou entre un <b>nouveau nom + adresse exacte</b> — obligatoire pour repérer les techniciens sur la carte.</div>
     </div>
-    <div class="mfield" id="mAddrField" style="display:none">
-      <label>📍 Adresse</label>
+    <div class="mfield" id="mAddrField">
+      <label>📍 Adresse exacte <span id="mAddrReq" style="color:var(--red,#E53935)">*</span></label>
       <div style="display:flex;gap:6px;align-items:center">
         <input type="text" id="mAddr" placeholder="Adresse du chantier" style="flex:1"/>
         <a id="mAddrMap" href="#" target="_blank" class="btn btn-ghost" style="flex-shrink:0;padding:8px 12px;font-size:13px;text-decoration:none">🗺</a>
       </div>
+      <label id="mAddrSaveWrap" style="display:none;align-items:center;gap:6px;margin-top:6px;font-size:12px;color:var(--muted);font-weight:600">
+        <input type="checkbox" id="mAddrSave" checked style="width:auto"/> ➕ Ajouter ce lieu au répertoire de sites
+      </label>
     </div>
     <div class="m2">
       <div class="mfield"><label>N° ODT</label><input type="text" id="mOdt" placeholder="SA-2026-000"/></div>
@@ -1586,7 +1590,7 @@ var SB_KEY='sb_publishable_qVd_6eoAvwrDGs9u81woAg_RrMpTJxn';
 var sb=null;
 var sbReady=false;
 var sbStatus='offline'; // offline | syncing | online
-var SB_TABLES={workorders:'workorders',sites:'sites',plan:'plan',planmatch:'plan_match',flotte:'flotte',inventaire:'inventaire',comptes:'comptes',sortie:'sorties_inventaire',livraison:'bons_livraison'};
+var SB_TABLES={workorders:'workorders',sites:'sites',plan:'plan',planmatch:'plan_match',flotte:'flotte',inventaire:'inventaire',comptes:'comptes',sortie:'sorties_inventaire',livraison:'bons_livraison',gpslog:'punch_gps_log'};
 
 function initSupabase(){
   try{
@@ -1670,6 +1674,10 @@ function mapRowToDb(localKey,row){
   if(localKey==='workorders'){
     if(row.assignes!==undefined){ if(row.assigne===undefined||row.assigne===null||row.assigne==='') row.assigne=Array.isArray(row.assignes)?row.assignes.join(', '):String(row.assignes); delete row.assignes; }
   }
+  if(localKey==='gpslog'){
+    if(row.siteId!==undefined){row.site_id=row.siteId;delete row.siteId;}
+    if(row.taskId!==undefined){row.task_id=row.taskId;delete row.taskId;}
+  }
   return row;
 }
 function mapRowFromDb(localKey,r){
@@ -1683,6 +1691,10 @@ function mapRowFromDb(localKey,r){
   }
   if(localKey==='workorders'){
     r.assignes = r.assigne ? String(r.assigne).split(/,\s*/).filter(Boolean) : (Array.isArray(r.assignes)?r.assignes:[]);
+  }
+  if(localKey==='gpslog'){
+    if(r.site_id!==undefined){r.siteId=r.site_id;delete r.site_id;}
+    if(r.task_id!==undefined){r.taskId=r.task_id;delete r.task_id;}
   }
   if(r.updated_at!==undefined && r.updatedAt===undefined) r.updatedAt=r.updated_at; // garde un horodatage pour la fusion
   if(r.created_at!==undefined && r.createdAt===undefined) r.createdAt=r.created_at;
@@ -2179,7 +2191,7 @@ document.addEventListener('DOMContentLoaded', function(){
   try{
     var vb=document.createElement('div');
     vb.id='__buildBadge';
-    vb.textContent='build F20 ⟲';
+    vb.textContent='build F21 ⟲';
     vb.title='Version de l\'app — toucher pour restaurer une sauvegarde';
     vb.style.cssText='position:fixed;bottom:4px;right:6px;font:11px/1.4 monospace;color:#fff;background:rgba(27,79,140,.85);padding:3px 8px;border-radius:8px;z-index:99999;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.2)';
     vb.addEventListener('click',function(){
@@ -4431,7 +4443,9 @@ function openJobModal(isFirst){
   pendingJobSource=null; // ➕ réinitialisation à chaque ouverture — évite un lien périmé d'un punch précédent
   document.getElementById('mLieu').value='';document.getElementById('mOdt').value='';
   document.getElementById('mDetail').value='';document.getElementById('mKmDep').value='';
-  document.getElementById('mAddr').value='';document.getElementById('mAddrField').style.display='none';
+  document.getElementById('mAddr').value='';
+  var _b=document.getElementById('mLieuBadge');if(_b)_b.textContent='';
+  var _sw=document.getElementById('mAddrSaveWrap');if(_sw)_sw.style.display='none';
   // Remplir la liste des sites connus (nom + adresse)
   var dl=document.getElementById('sitesList');dl.innerHTML='';
   getSites().forEach(function(s){
@@ -4645,16 +4659,29 @@ function openPrefilledPunch(it){
   },180);
 }
 // Auto-remplir l'adresse quand un site connu est choisi
+function findSiteExact(lieu){
+  lieu=(lieu||'').trim().toLowerCase();
+  if(!lieu)return null;
+  return getSites().find(function(s){return (s.nom||'').trim().toLowerCase()===lieu;})||null;
+}
 function onLieuChange(){
   var lieu=document.getElementById('mLieu').value.trim();
-  var site=getSites().find(function(s){return s.nom===lieu;});
-  var addrField=document.getElementById('mAddrField');
-  if(site && site.addr){
-    document.getElementById('mAddr').value=site.addr;
-    addrField.style.display='block';
+  var site=findSiteExact(lieu);
+  var badge=document.getElementById('mLieuBadge');
+  var saveWrap=document.getElementById('mAddrSaveWrap');
+  var reqStar=document.getElementById('mAddrReq');
+  if(site){
+    if(site.addr)document.getElementById('mAddr').value=site.addr;
     var mapBtn=document.getElementById('mAddrMap');
     if(site.gps&&site.gps.lat){mapBtn.href='https://maps.google.com/?q='+site.gps.lat+','+site.gps.lng;}
-    else{mapBtn.href='https://maps.google.com/?q='+encodeURIComponent(site.addr);}
+    else if(site.addr){mapBtn.href='https://maps.google.com/?q='+encodeURIComponent(site.addr);}
+    if(badge){badge.textContent='📁 Répertoire';badge.style.background='var(--gbg,#E1F5EE)';badge.style.color='var(--green,#1D9E75)';}
+    if(saveWrap)saveWrap.style.display='none';
+    if(reqStar)reqStar.style.display=site.addr?'none':'inline';
+  }else{
+    if(badge){badge.textContent=lieu?'🆕 Nouveau lieu':'';badge.style.background='var(--obg,#FFF3E8)';badge.style.color='var(--orange,#FF6B00)';}
+    if(saveWrap)saveWrap.style.display=lieu?'flex':'none';
+    if(reqStar)reqStar.style.display='inline';
   }
 }
 // ═══════════════════════════════════════════════════════
@@ -4678,24 +4705,57 @@ function captureGPS(callback){
 
 function confirmJob(){
   var lieu=document.getElementById('mLieu').value.trim();if(!lieu){document.getElementById('mLieu').focus();toast('⚠️ Le lieu est obligatoire');return;}
+  var site=findSiteExact(lieu);
+  var addr=document.getElementById('mAddr').value.trim();
+  // ➕ OBLIGATOIRE : soit un site du répertoire (avec adresse), soit un nom + adresse exacte saisis — pour que le technicien soit repérable sur la carte.
+  if(!(site&&site.addr) && !addr){
+    toast('⚠️ Adresse obligatoire : choisis un site du répertoire ou entre le nom et l\'adresse exacte du chantier');
+    document.getElementById('mAddr').focus();
+    return;
+  }
   var st=chronoState[curDay];var now=nowHHMM();
   var kmDep=document.getElementById('mKmDep').value.trim();
   if(kmDep && (isNaN(parseFloat(kmDep))||parseFloat(kmDep)<0)){toast('⚠️ Km départ invalide');return;}
   var hasActive=false;var prevLieu='';
   st.tasks.forEach(function(t){if(t.active){hasActive=true;prevLieu=t.lieu;}});
   function doStart(){
+    // ➕ Nouveau lieu (pas dans le répertoire) + case cochée → on l'ajoute au répertoire de sites (additif, jamais de suppression/écrasement)
+    var siteId=site?site.id:null;
+    if(!site && addr){
+      var chk=document.getElementById('mAddrSave');
+      if(!chk||chk.checked){
+        var sites=getSites();
+        var newSite={id:uid(),nom:lieu,addr:addr,tel:'',email:'',type:'',annee:'',equips:[],notes:'Ajouté automatiquement depuis un punch',files:[]};
+        sites.unshift(newSite);setSites(sites);renderSiteList&&(document.getElementById('siteList')&&renderSiteList());
+        siteId=newSite.id;
+      }
+    }
     st.tasks.forEach(function(t){
       if(t.active){t.end=now;t.hrs=hrsFrom(t.start,now);t.active=false;}
     });
     var task={id:++tid,lieu:lieu,odt:document.getElementById('mOdt').value.trim(),detail:document.getElementById('mDetail').value.trim(),
-      addr:document.getElementById('mAddr').value.trim(),
+      addr:addr,siteId:siteId,
       start:now,startTs:Date.now(),end:'',hrs:0,active:true,kmDep:kmDep,kmArr:'',files:mPjFiles.slice(),gps:null,
       sourceType:pendingJobSource?pendingJobSource.type:null,sourceId:pendingJobSource?pendingJobSource.id:null,sourceLabel:pendingJobSource?pendingJobSource.label:null};
     pendingJobSource=null; // ➕ le lien n'est valable que pour ce punch ; on le réinitialise aussitôt utilisé
     st.tasks.push(task);st.activeTask=task;st.status='running';
     closeModal('jobModal');renderChrono();renderTaskLog();refreshCumul();buildDayTabs();saveFT();
     toast('🟢 Démarré : '+lieu);
-    captureGPS(function(gps){if(gps){task.gps=gps;saveFT();renderTaskLog();}});
+    // ➕ JOURNAL GPS DES PUNCHS : entrée créée tout de suite (pour les stats), complétée dès que la position est résolue
+    var logEntry={id:uid(),uid:currentUser?currentUser.id:'',emp:fullName(),date:todayISO(),heure:now,
+      lieu:lieu,addr:addr,siteId:siteId,taskId:task.id,lat:null,lng:null,acc:null,src:'pending',createdAt:new Date().toISOString()};
+    logPunchGPS(logEntry);
+    captureGPS(function(gps){
+      if(gps){
+        task.gps=gps;saveFT();renderTaskLog();
+        updateGpsLogEntry(task.id,{lat:gps.lat,lng:gps.lng,acc:gps.acc,src:'gps'});
+      }else if(typeof resolvePunchCoords==='function'){
+        resolvePunchCoords(task,function(c){
+          if(c)updateGpsLogEntry(task.id,{lat:c.lat,lng:c.lng,src:c.src});
+          else updateGpsLogEntry(task.id,{src:'none'});
+        });
+      }
+    });
   }
   if(hasActive){
     askConfirm('Terminer "'+prevLieu+'" et démarrer "'+lieu+'" maintenant ('+now+') ?\n\nLes heures seront enregistrées.', doStart, '✅ Changer de chantier', '🔄 Changement de job');
@@ -5656,6 +5716,28 @@ function empLatestPunches(){
   return out;
 }
 function suiviColor(i){var cs=['#1A5C9A','#1D9E75','#FF6B00','#7C3AED','#0E9C86','#E53935'];return cs[i%cs.length];}
+// ═══════════════════════════════════════════════════════
+// JOURNAL GPS DES PUNCHS — historique additif pour stats & précision carte
+// Chaque punch (démarrage de tâche) crée une entrée ; jamais écrasée par la suite (seulement complétée).
+// Plafonné à 3000 entrées (breadcrumbs supplémentaires, pas les feuilles de temps elles-mêmes — aucune perte des heures/paie).
+// ═══════════════════════════════════════════════════════
+function getGpsLog(){return lsGet('gpslog')||[];}
+function logPunchGPS(entry){
+  var log=getGpsLog();
+  log.push(entry);
+  if(log.length>3000)log=log.slice(log.length-3000); // garde les 3000 plus récentes ; chaque entrée est déjà poussée au serveur avant coupe
+  lsSet('gpslog',log);
+  sbPush('gpslog',entry);
+}
+function updateGpsLogEntry(taskId,patch){
+  var log=getGpsLog();
+  var e=log.find(function(x){return x.taskId===taskId;});
+  if(e){ for(var k in patch)e[k]=patch[k]; lsSet('gpslog',log); sbPush('gpslog',e); }
+}
+// Historique des positions d'un employé (pour stats/rapports) — optionnellement filtré par date (YYYY-MM-DD)
+function gpsLogForEmp(uid,sinceDate){
+  return getGpsLog().filter(function(e){return e.uid===uid && (!sinceDate || e.date>=sinceDate);});
+}
 // Résout la position d'un punch : GPS de l'appareil → site du punch → géocodage de l'adresse/lieu (avec cache)
 function resolvePunchCoords(task,cb){
   if(!task){cb(null);return;}
