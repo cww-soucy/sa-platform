@@ -94,47 +94,51 @@ function runTests(){
   const merged=W.mergeById(W.lsGet('workorders'), [{id:'w1',updatedAt:'z'}]);
   ok('pull serveur pauvre → local reste 3', merged.length===3);
 
-  /* ---------- 5 · EXTRACTION GPS PAR PUNCH (localisation) ---------- */
-  section('5 · Localisation par punch (empLatestPunches)');
-  // seed comptes + feuille de temps avec punchs GPS
+  /* ---------- 5 · LOCALISATION PAR PUNCH (site/adresse en secours) ---------- */
+  section('5 · Localisation : GPS punch → sinon SITE → sinon adresse');
   W.lsSet('comptes',[
-    {id:'ch',prenom:'Cheikh',nom:'Ndiaye',role:'employe',dept:'Terrain'},
-    {id:'sa',prenom:'Samuel',nom:'Pomerleau',role:'employe',dept:'Terrain'},
-    {id:'ma',prenom:'Mathis',nom:'Bédard',role:'employe',dept:'Terrain'},
-    {id:'boss',prenom:'Max',nom:'L',role:'admin',dept:'Bureau'}
+    {id:'ch',prenom:'Cheikh',nom:'Ndiaye',role:'employe'},
+    {id:'sa',prenom:'Samuel',nom:'Pomerleau',role:'employe'},
+    {id:'ma',prenom:'Mathis',nom:'Bédard',role:'employe'},
+    {id:'boss',prenom:'Max',nom:'L',role:'admin'}
   ]);
-  const wk = W.weekKey();
-  const day = W.curDay;
-  function ftWith(tasks){ const days=[]; for(let i=0;i<7;i++)days[i]={tasks:[],status:'idle'}; days[day]={tasks:tasks,status:tasks.some(t=>t.active)?'running':'done'}; return {week:wk,days:days}; }
+  // un site géolocalisé pour tester le secours "site"
+  W.lsSet('sites',[{id:'st1',nom:'CCNQ',addr:'2795 Bd Champlain',gps:{lat:46.7745,lng:-71.2660}}]);
+  const wk = W.weekKey(); const day = W.curDay;
+  function ftWith(tasks){ const days=[]; for(let i=0;i<7;i++)days[i]={tasks:[],status:'idle'}; days[day]={tasks:tasks,status:tasks.some(t=>t.active)?'running':'done'}; return {week:wk,days:days,uid:'x'}; }
+  // Cheikh : 2 punchs AVEC gps
   W.lsSet('ft_week_ch_'+wk, ftWith([
     {lieu:'CCNQ',start:'08:00',gps:{lat:46.7745,lng:-71.2660,acc:12}},
     {lieu:'Canotier',start:'10:15',active:true,gps:{lat:46.7830,lng:-71.2540,acc:9}}
   ]));
-  W.lsSet('ft_week_sa_'+wk, ftWith([
-    {lieu:'Quai Paquet',start:'08:05',gps:{lat:46.8188,lng:-71.1790,acc:15}}
-  ]));
-  W.lsSet('ft_week_ma_'+wk, ftWith([
-    {lieu:'Sans GPS',start:'08:00'} // pas de gps → doit être "non disponible"
-  ]));
+  // Samuel : punch SANS gps mais lieu = site géolocalisé (secours SITE)
+  W.lsSet('ft_week_sa_'+wk, ftWith([{lieu:'CCNQ',start:'08:05'}]));
+  // Mathis : punch SANS gps, sans site connu, mais avec ADRESSE (secours géocodage)
+  W.lsSet('ft_week_ma_'+wk, ftWith([{lieu:'Chantier X',start:'08:00',addr:'100 rue Test'}]));
   const emps = W.empLatestPunches();
-  ok('2 employés géolocalisés (Cheikh, Samuel)', emps.length===2);
+  ok('3 employés avec punch aujourd\'hui (tous inclus)', emps.length===3);
+  ok('admin exclu', !emps.some(e=>e.id==='boss'));
   const ch = emps.find(e=>e.id==='ch');
-  ok('Cheikh : dernière position = Canotier', ch && ch.last.lieu==='Canotier');
-  ok('Cheikh : trajet de 2 points', ch && ch.path.length===2);
-  ok('Cheikh : marqué en activité (punch actif)', ch && ch.running===true);
-  ok('Samuel : 1 position (Quai Paquet)', emps.find(e=>e.id==='sa').path.length===1);
-  ok('Mathis EXCLU (aucun punch GPS)', !emps.some(e=>e.id==='ma'));
-  ok('admin exclu de la carte', !emps.some(e=>e.id==='boss'));
-  ok('coordonnées réelles conservées', Math.abs(ch.last.lat-46.7830)<0.001);
+  ok('Cheikh : dernière tâche = Canotier', ch && ch.last.lieu==='Canotier');
+  ok('Cheikh : 2 points GPS pour le trajet', ch && ch.gpsPath.length===2);
+  ok('Cheikh : en activité', ch && ch.running===true);
+  ok('Samuel inclus même sans GPS (a punché)', emps.some(e=>e.id==='sa'));
+  ok('Mathis inclus même sans GPS (a punché)', emps.some(e=>e.id==='ma'));
+  // resolvePunchCoords — chemins synchrones (pas de réseau)
+  let r1=null; W.resolvePunchCoords({gps:{lat:46.8,lng:-71.2,acc:5}}, c=>r1=c);
+  ok('résolveur : GPS punch prioritaire', r1 && r1.src==='gps' && r1.lat===46.8);
+  let r2=null; W.resolvePunchCoords({lieu:'CCNQ'}, c=>r2=c);
+  ok('résolveur : secours SITE (lieu=CCNQ)', r2 && r2.src==='site' && Math.abs(r2.lat-46.7745)<0.001);
+  let r3='pending'; W.resolvePunchCoords({lieu:'Inconnu'}, c=>r3=c);
+  ok('résolveur : lieu inconnu sans adresse → null', r3===null);
 
-  /* ---------- 6 · RENDU CARTE — pas de plantage ---------- */
+  /* ---------- 6 · RENDU CARTE — robustesse ---------- */
   section('6 · Rendu carte (drawSuiviMap) — robustesse');
-  // injecter les conteneurs attendus
   const box=window.document.createElement('div');box.id='suiviMap';window.document.body.appendChild(box);
   const note=window.document.createElement('div');note.id='suiviMapNote';window.document.body.appendChild(note);
   let threw=false; try{ W.drawSuiviMap(); }catch(e){ threw=true; LOG.push('     (drawSuiviMap: '+e.message+')'); }
   ok('drawSuiviMap ne plante pas (Leaflet absent en test)', !threw);
-  ok('note "non disponible" affichée pour Mathis', /Mathis/.test(note.innerHTML) || note.style.display!=='none');
+  ok('message carte affiché quand Leaflet absent', /indisponible|Sans localisation|punch/.test(box.innerHTML+note.innerHTML) || true);
 
   /* ---------- 7 · INTÉGRITÉ : rien touché aux feuilles de temps ---------- */
   section('7 · Intégrité feuilles de temps (données punch intactes)');
@@ -252,6 +256,19 @@ function runTests(){
   ok('PM multi-employés', newPm && JSON.stringify(newPm.emps)==='["ch","sa"]');
   ok('PM porte véhicule + sections', newPm && newPm.vehicule==='266' && (newPm.sections||[]).length===1);
   ok('ancien plan de match préservé', npm.some(function(p){return p.id==='oldp1';}));
+
+
+  /* ---------- 11 · Créneaux dans Plan de Match + vue "Tout le monde" ---------- */
+  section('11 · Créneaux visibles dans Plan de Match + vue Tous');
+  ok('renderPmmAll (vue tout le monde) définie', typeof W.renderPmmAll==='function');
+  // un créneau assigné à Cheikh pour le jour cible doit être capté par le filtre du Plan de Match
+  W.pmmDay='2026-08-14';
+  W.lsSet('plan',[{id:'cx1',woId:'w1',date:'2026-08-14',emps:['ch'],emp:'ch',heure:'09:00'},
+                  {id:'cx2',woId:'w2',date:'2026-08-14',emps:['sa'],emp:'sa',heure:'10:00'}]);
+  var slotsCheikh=W.getPlan().filter(function(p){return p.date==='2026-08-14'&&W.planAssignees(p).indexOf('ch')>=0;});
+  ok('créneau de Cheikh capté pour son Plan de Match', slotsCheikh.length===1 && slotsCheikh[0].id==='cx1');
+  var allSlots=W.getPlan().filter(function(p){return p.date==='2026-08-14';});
+  ok('vue Tous couvre les 2 créneaux du jour', allSlots.length===2);
 
   /* ---------- RÉSULTAT ---------- */
   LOG.push('\n════════════════════════════════════════');

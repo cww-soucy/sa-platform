@@ -2179,7 +2179,7 @@ document.addEventListener('DOMContentLoaded', function(){
   try{
     var vb=document.createElement('div');
     vb.id='__buildBadge';
-    vb.textContent='build F16 ⟲';
+    vb.textContent='build F17 ⟲';
     vb.title='Version de l\'app — toucher pour restaurer une sauvegarde';
     vb.style.cssText='position:fixed;bottom:4px;right:6px;font:11px/1.4 monospace;color:#fff;background:rgba(27,79,140,.85);padding:3px 8px;border-radius:8px;z-index:99999;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.2)';
     vb.addEventListener('click',function(){
@@ -3165,6 +3165,29 @@ function pmmBuildPrintHTML(plan,wosToday,slotsToday,uidT){
   return h;
 }
 
+
+// Vue "Tout le monde" : toutes les assignations du jour, empilées par employé
+function renderPmmAll(content){
+  var day=pmmDay, wos=getWOs(), plan=getPlan(), pms=getPlanMatches();
+  var techs=getComptes().filter(function(c){return c.role!=='admin';});
+  var any=false;
+  techs.forEach(function(c){
+    var w=wos.filter(function(x){return x.date===day&&woAssignees(x).indexOf(c.id)>=0;});
+    var sl=plan.filter(function(x){return x.date===day&&planAssignees(x).indexOf(c.id)>=0;});
+    var pm=pms.find(function(x){return x.date===day&&pmAssignees(x).indexOf(c.id)>=0;});
+    if(!w.length&&!sl.length&&!pm)return;
+    any=true;
+    var sec=document.createElement('div');sec.className='pmm-section';
+    var hd=document.createElement('div');hd.className='pmm-sec-hd c-bleu';
+    hd.textContent='👷 '+(c.prenom+' '+c.nom).trim()+' — '+(w.length+sl.length)+' arrêt(s)'+(pm?' · plan de match ✓':'');
+    sec.appendChild(hd);
+    sl.forEach(function(slot){renderPMSlot(sec,slot);});
+    w.forEach(function(wo){renderWOAsSlot(sec,wo);});
+    content.appendChild(sec);
+  });
+  if(!any){var d=document.createElement('div');d.className='empty-state';d.style.cssText='padding:30px;text-align:center;color:var(--muted)';d.innerHTML='Aucune assignation ce jour.';content.appendChild(d);}
+}
+
 function renderPlanMatch(){
   var selWrap=document.getElementById('pmmEmpSelector');
   var sel=document.getElementById('pmmEmpSel');
@@ -3172,6 +3195,7 @@ function renderPlanMatch(){
     selWrap.style.display='flex';
     if(!sel.dataset.built){
       sel.innerHTML='';
+      var oAll=document.createElement('option');oAll.value='__ALL__';oAll.textContent='👥 Tout le monde';sel.appendChild(oAll);
       getComptes().forEach(function(c){
         var o=document.createElement('option');o.value=c.id;o.textContent=(c.prenom+' '+c.nom).trim();
         if(c.id===currentUser.id)o.selected=true;
@@ -3196,6 +3220,7 @@ function renderPlanMatch(){
     hub.appendChild(_pmBtn('🖨️ Toute l\'équipe',function(){printTeamDay(pmmDay);}));
     content.appendChild(hub);
   }
+  if(isSup()){var _selAll=document.getElementById('pmmEmpSel'); if(_selAll&&_selAll.value==='__ALL__'){ renderPmmAll(content); return; }}
   var uidT=pmmTargetUid();
   var list=getPlanMatches();
   var plan=list.find(function(p){return p.date===pmmDay&&pmAssignees(p).indexOf(uidT)>=0;});
@@ -3245,6 +3270,17 @@ function renderPlanMatch(){
       woSec.appendChild(row);
     });
     content.appendChild(woSec);
+  }
+  // ➕ Créneaux (interventions planifiées) assignés à cet employé — affichés automatiquement
+  if(slotsToday.length>0){
+    var slSec=document.createElement('div');
+    slSec.className='pmm-section';
+    var slHd=document.createElement('div');
+    slHd.className='pmm-sec-hd c-bleu';
+    slHd.textContent='📅 Créneaux assignés ('+slotsToday.length+')';
+    slSec.appendChild(slHd);
+    slotsToday.forEach(function(slot){ renderPMSlot(slSec, slot); });
+    content.appendChild(slSec);
   }
 
   if(!plan){
@@ -5605,28 +5641,41 @@ function _deleteCompteDo(){
 // SUIVI DES OPÉRATIONS EN COURS (superviseur)
 // ═══════════════════════════════════════════════════════
 var suiviTimer=null;
-var suiviMapObj=null, suiviLayer=null;
-// Extrait, par employé, la suite des positions de punch GPS du jour affiché (lecture seule)
+var suiviMapObj=null, suiviLayer=null, _geoCache={};
+// Dernière tâche du jour par employé (peu importe le GPS) + points GPS pour le trajet
 function empLatestPunches(){
   var week=weekKey(), out=[];
   getComptes().filter(function(c){return c.role!=='admin';}).forEach(function(c){
     var ft=getFTWeek(c.id+'_'+week);
     var day=ft&&ft.days&&ft.days[curDay]?ft.days[curDay]:null;
-    if(!day||!day.tasks)return;
-    var path=[];
-    day.tasks.forEach(function(t){ if(t.gps&&t.gps.lat){ path.push({lat:t.gps.lat,lng:t.gps.lng,lieu:t.lieu||'',time:t.start||'',acc:t.gps.acc}); } });
-    if(path.length){ out.push({nom:(c.prenom+' '+c.nom).trim(),id:c.id,path:path,last:path[path.length-1],running:day.status==='running'}); }
+    if(!day||!day.tasks||!day.tasks.length)return;
+    var gpsPath=[];
+    day.tasks.forEach(function(t){ if(t.gps&&t.gps.lat){ gpsPath.push({lat:t.gps.lat,lng:t.gps.lng}); } });
+    out.push({nom:(c.prenom+' '+c.nom).trim(),id:c.id,last:day.tasks[day.tasks.length-1],gpsPath:gpsPath,running:day.status==='running'});
   });
   return out;
 }
 function suiviColor(i){var cs=['#1A5C9A','#1D9E75','#FF6B00','#7C3AED','#0E9C86','#E53935'];return cs[i%cs.length];}
-// Dessine la carte de suivi : dernière position de punch par technicien + trajet réel de la journée
+// Résout la position d'un punch : GPS de l'appareil → site du punch → géocodage de l'adresse/lieu (avec cache)
+function resolvePunchCoords(task,cb){
+  if(!task){cb(null);return;}
+  if(task.gps&&task.gps.lat){cb({lat:task.gps.lat,lng:task.gps.lng,acc:task.gps.acc,src:'gps'});return;}
+  var sites=getSites();
+  var s=sites.find(function(x){return x.gps&&x.gps.lat&&(x.nom===task.lieu||(task.lieu&&x.nom&&task.lieu.indexOf(x.nom)>=0));});
+  if(s){cb({lat:s.gps.lat,lng:s.gps.lng,src:'site'});return;}
+  var q=(task.addr&&task.addr.trim())||task.lieu;
+  if(!q){cb(null);return;}
+  if(_geoCache[q]!==undefined){cb(_geoCache[q]);return;}
+  try{ geocodeAddr(q,function(c){var r=c&&c.lat?{lat:c.lat,lng:c.lng,src:'addr'}:null;_geoCache[q]=r;cb(r);}); }
+  catch(e){ _geoCache[q]=null; cb(null); }
+}
+// Carte de suivi : une épingle par technicien à sa position approximative (GPS punch, sinon site/adresse)
 function drawSuiviMap(){
   var box=document.getElementById('suiviMap'); if(!box)return;
   if(typeof L==='undefined'){box.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">Carte indisponible (connexion requise au premier chargement).</div>';return;}
   var emps=empLatestPunches();
-  var noGps=getComptes().filter(function(c){return c.role!=='admin';}).map(function(c){return (c.prenom+' '+c.nom).trim();})
-            .filter(function(nm){return !emps.some(function(e){return e.nom===nm;});});
+  var allNames=getComptes().filter(function(c){return c.role!=='admin';}).map(function(c){return (c.prenom+' '+c.nom).trim();});
+  var noTask=allNames.filter(function(nm){return !emps.some(function(e){return e.nom===nm;});});
   try{
     if(!suiviMapObj){
       suiviMapObj=L.map('suiviMap',{zoomControl:true,scrollWheelZoom:false}).setView([BUREAU_GPS.lat,BUREAU_GPS.lng],11);
@@ -5635,20 +5684,32 @@ function drawSuiviMap(){
     if(suiviLayer)suiviMapObj.removeLayer(suiviLayer);
     suiviLayer=L.layerGroup().addTo(suiviMapObj);
     L.circleMarker([BUREAU_GPS.lat,BUREAU_GPS.lng],{radius:5,color:'#6B8CAE',fillColor:'#6B8CAE',fillOpacity:.85}).addTo(suiviLayer).bindPopup('🏢 Bureau / Entrepôt');
-    var bounds=[[BUREAU_GPS.lat,BUREAU_GPS.lng]];
+    var bounds=[[BUREAU_GPS.lat,BUREAU_GPS.lng]], noLoc=[], pending=emps.length;
+    var invalidate=function(){[80,350,800].forEach(function(ms){setTimeout(function(){try{suiviMapObj.invalidateSize();}catch(e){}},ms);});};
+    if(pending===0){ invalidate(); finishNote(); return; }
     emps.forEach(function(e,i){
       var col=suiviColor(i);
-      if(e.path.length>1){L.polyline(e.path.map(function(p){return [p.lat,p.lng];}),{color:col,weight:3,opacity:.5,dashArray:'5 5'}).addTo(suiviLayer);}
-      var icon=L.divIcon({className:'',iconSize:[28,28],iconAnchor:[14,28],html:'<div style="width:28px;height:28px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:'+col+';display:grid;place-items:center;box-shadow:0 2px 6px rgba(0,0,0,.35);border:2.5px solid #fff"><span style="transform:rotate(45deg);color:#fff;font-weight:800;font-size:12px">'+(e.nom[0]||'?')+'</span></div>'});
-      L.marker([e.last.lat,e.last.lng],{icon:icon}).addTo(suiviLayer)
-        .bindPopup('<b>'+esc(e.nom)+'</b><br>'+(e.running?'🟢 en activité':'⏹ dernier punch')+'<br>📍 '+esc(e.last.lieu||'—')+' · '+esc(e.last.time||'')+'<br><span style="color:#6B8CAE">précision ±'+(e.last.acc||'?')+' m</span>');
-      bounds.push([e.last.lat,e.last.lng]);
+      resolvePunchCoords(e.last,function(c){
+        if(c){
+          if(e.gpsPath.length>1){L.polyline(e.gpsPath.map(function(p){return [p.lat,p.lng];}),{color:col,weight:3,opacity:.45,dashArray:'5 5'}).addTo(suiviLayer);}
+          var srcTxt=c.src==='gps'?('GPS ±'+(c.acc||'?')+' m'):(c.src==='site'?'position du site':'adresse approx.');
+          var icon=L.divIcon({className:'',iconSize:[28,28],iconAnchor:[14,28],html:'<div style="width:28px;height:28px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:'+col+';display:grid;place-items:center;box-shadow:0 2px 6px rgba(0,0,0,.35);border:2.5px solid #fff"><span style="transform:rotate(45deg);color:#fff;font-weight:800;font-size:12px">'+(e.nom[0]||'?')+'</span></div>'});
+          L.marker([c.lat,c.lng],{icon:icon}).addTo(suiviLayer)
+            .bindPopup('<b>'+esc(e.nom)+'</b><br>'+(e.running?'🟢 en activité':'⏹ dernier punch')+'<br>📍 '+esc(e.last.lieu||'—')+(e.last.start?(' · '+esc(e.last.start)):'')+'<br><span style="color:#6B8CAE">'+srcTxt+'</span>');
+          bounds.push([c.lat,c.lng]);
+        } else { noLoc.push(e.nom); }
+        if(--pending<=0){ if(bounds.length>1)suiviMapObj.fitBounds(bounds,{padding:[40,40],maxZoom:14}); invalidate(); finishNote(noLoc); }
+      });
     });
-    if(bounds.length>1)suiviMapObj.fitBounds(bounds,{padding:[40,40],maxZoom:13});
-    setTimeout(function(){try{suiviMapObj.invalidateSize();}catch(e){}},80);
+    function finishNote(noLoc){
+      noLoc=noLoc||[];
+      var note=document.getElementById('suiviMapNote'); if(!note)return;
+      var out=[];
+      if(noLoc.length)out.push('📍 <b>Sans localisation</b> : '+noLoc.join(', ')+' — punch sans GPS ni adresse (ajoute l\'adresse du chantier).');
+      if(noTask.length)out.push('⏸ <b>Pas encore punché</b> : '+noTask.join(', ')+'.');
+      if(out.length){note.style.display='block';note.innerHTML=out.join('<br>');}else note.style.display='none';
+    }
   }catch(err){box.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">Carte: '+err.message+'</div>';}
-  var note=document.getElementById('suiviMapNote');
-  if(note){if(noGps.length){note.style.display='block';note.innerHTML='📍 <b>Position non disponible</b> : '+noGps.join(', ')+' — pas de punch géolocalisé aujourd\'hui (GPS refusé ou aucun punch).';}else note.style.display='none';}
 }
 
 function renderSuivi(){
