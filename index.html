@@ -675,6 +675,31 @@ input,select,textarea{font-size:16px!important}
 .pm-toolbar{display:flex;gap:7px;flex-wrap:wrap;margin:2px 2px 8px}
 .btn-sm{padding:8px 12px;font-size:12.5px}
 
+/* ── Responsive mobile/iOS : colonnes plus larges, une à la fois avec défilement magnétique ── */
+@media(max-width:760px){
+  .pm-board{scroll-snap-type:x mandatory;gap:12px;padding-bottom:14px}
+  .pm-col{flex:0 0 86vw;scroll-snap-align:center}
+  .pm-col.pool{flex:0 0 78vw}
+  .pm-col-hd{padding:13px 14px}
+  .pm-av{width:38px;height:38px;font-size:15px}
+  .pm-col-nm{font-size:16.5px}
+  .pm-col-body{padding:10px;gap:10px;min-height:160px}
+  .pm-card{padding:11px 12px}
+  .pm-card-cli{font-size:15px}
+  .pm-time{font-size:13.5px;padding:3px 9px}
+  .pm-toolbar{gap:8px}
+  .pm-toolbar .btn{flex:1 1 auto;justify-content:center;min-width:0;font-size:12px;padding:10px 8px}
+  .pm-board-hint{font-size:11px;text-align:center}
+}
+@media(max-width:420px){
+  .pm-col{flex-basis:90vw}
+  .pm-col.pool{flex-basis:82vw}
+}
+@media(max-width:480px){
+  #suiviMap{height:240px!important}
+  #pmRouteMap{height:240px!important}
+}
+
 .pm-board{display:flex;gap:11px;overflow-x:auto;padding:2px 0 12px;align-items:flex-start;-webkit-overflow-scrolling:touch}
 .pm-col{flex:0 0 230px;background:#fff;border:1px solid var(--line);border-radius:var(--r);box-shadow:0 1px 4px rgba(13,59,110,.09);display:flex;flex-direction:column}
 .pm-col.pool{flex:0 0 200px;background:#FBFCFE;border-style:dashed;box-shadow:none}
@@ -2191,7 +2216,7 @@ document.addEventListener('DOMContentLoaded', function(){
   try{
     var vb=document.createElement('div');
     vb.id='__buildBadge';
-    vb.textContent='build F21 ⟲';
+    vb.textContent='build F22 ⟲';
     vb.title='Version de l\'app — toucher pour restaurer une sauvegarde';
     vb.style.cssText='position:fixed;bottom:4px;right:6px;font:11px/1.4 monospace;color:#fff;background:rgba(27,79,140,.85);padding:3px 8px;border-radius:8px;z-index:99999;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.2)';
     vb.addEventListener('click',function(){
@@ -2685,7 +2710,7 @@ function renderPlanBoard(content){
   content.appendChild(bar);
   var hint=document.createElement('div');hint.className='pm-board-hint';hint.textContent='Glisse une carte vers un technicien · clique-la pour le détail · clique l\'heure pour l\'ajuster.';
   content.appendChild(hint);
-  var mapPanel=document.createElement('div');mapPanel.id='pmRouteWrap';mapPanel.style.display='none';
+  var mapPanel=document.createElement('div');mapPanel.id='pmRouteWrap';mapPanel.style.display=_pmRouteOpen?'block':'none';
   mapPanel.innerHTML='<div id="pmRouteMap" style="width:100%;height:320px;border-radius:var(--r);overflow:hidden;border:1px solid var(--line);background:#DCEBF3"></div><div id="pmRouteNote" style="font-size:11.5px;color:var(--muted);margin:6px 2px"></div>';
   content.appendChild(mapPanel);
   var wrap=document.createElement('div');wrap.className='pm-board';
@@ -2807,38 +2832,53 @@ function renderRouteMap(){
   var box=document.getElementById('pmRouteMap');if(!box)return;
   if(typeof L==='undefined'){box.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted)">Carte indisponible (connexion requise).</div>';return;}
   try{
+    var mapExists=false; try{ mapExists = _pmRouteMap && _pmRouteMap.getContainer()===box && document.body.contains(box); }catch(e){ mapExists=false; }
+    if(_pmRouteMap && !mapExists){ try{_pmRouteMap.remove();}catch(e){} _pmRouteMap=null; }
     if(!_pmRouteMap){_pmRouteMap=L.map('pmRouteMap',{zoomControl:true,scrollWheelZoom:false}).setView([BUREAU_GPS.lat,BUREAU_GPS.lng],11);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(_pmRouteMap);}
-    if(_pmRouteLayer)_pmRouteMap.removeLayer(_pmRouteLayer);
+    if(_pmRouteLayer){try{_pmRouteMap.removeLayer(_pmRouteLayer);}catch(e){}}
     _pmRouteLayer=L.layerGroup().addTo(_pmRouteMap);
     var pl=getPlan(),wos=getWOs();
     var techs=getComptes().filter(function(c){return c.role!=='admin';});
-    var bounds=[[BUREAU_GPS.lat,BUREAU_GPS.lng]],missing=[],idx=0;
+    var missing=[];
     L.circleMarker([BUREAU_GPS.lat,BUREAU_GPS.lng],{radius:5,color:'#6B8CAE',fillColor:'#6B8CAE',fillOpacity:.85}).addTo(_pmRouteLayer).bindPopup('🏢 Bureau');
-    var pending=0,done=false;
-    techs.forEach(function(t,ti){
-      var col=suiviColor(ti);
+    // ➕ On calcule d'ABORD le total d'arrêts à résoudre (pour tous les techniciens), AVANT de lancer les résolutions async —
+    // sinon un premier technicien résolu de façon synchrone (site connu) pouvait déclencher le dessin avant que
+    // les autres techniciens ne soient même comptés (carte incomplète = le bug rapporté).
+    var techSlots=techs.map(function(t){
       var slots=pl.filter(function(s){return s.date===pmDay && planAssignees(s).indexOf(t.id)>=0;})
                   .sort(function(a,b){return (a.heure||'~').localeCompare(b.heure||'~');});
-      var pts=[];pending+=slots.length;
-      slots.forEach(function(s,i){var wo=wos.find(function(x){return x.id===s.woId;});
-        stopCoords(wo,function(c){
-          if(c){pts[i]={lat:c.lat,lng:c.lng,cli:wo?wo.client:'Créneau',h:s.heure};bounds.push([c.lat,c.lng]);}
-          else missing.push(t.nom+(wo?' → '+wo.client:''));
-          if(--pending<=0 && !done){done=true;drawAll();}
+      return {t:t,slots:slots};
+    });
+    var total=techSlots.reduce(function(n,x){return n+x.slots.length;},0);
+    if(total===0){ drawAll(); }
+    else{
+      var pending=total, done=false;
+      techSlots.forEach(function(ts){
+        var pts=[];ts.t._pts=pts;
+        ts.slots.forEach(function(s,i){
+          var wo=wos.find(function(x){return x.id===s.woId;});
+          stopCoords(wo,function(c){
+            if(c){pts[i]={lat:c.lat,lng:c.lng,cli:wo?wo.client:'Créneau',h:s.heure};}
+            else missing.push(ts.t.prenom+' '+ts.t.nom+(wo?' → '+wo.client:''));
+            if(--pending<=0 && !done){done=true;drawAll();}
+          });
         });
       });
-      t._pts=pts;
-    });
-    if(pending===0)drawAll();
+    }
     function drawAll(){
-      techs.forEach(function(t,ti){var col=suiviColor(ti);var pts=(t._pts||[]).filter(Boolean);
+      var bounds=[[BUREAU_GPS.lat,BUREAU_GPS.lng]];
+      techSlots.forEach(function(ts,ti){
+        var col=suiviColor(ti);var pts=(ts.t._pts||[]).filter(Boolean);
         if(pts.length>1)L.polyline(pts.map(function(p){return [p.lat,p.lng];}),{color:col,weight:4,opacity:.7}).addTo(_pmRouteLayer);
         pts.forEach(function(p,i){var icon=L.divIcon({className:'',iconSize:[26,26],iconAnchor:[13,13],html:'<div style="width:26px;height:26px;border-radius:50%;background:'+col+';display:grid;place-items:center;color:#fff;font-weight:800;font-size:12px;border:2.5px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,.3)">'+(i+1)+'</div>'});
-          L.marker([p.lat,p.lng],{icon:icon}).addTo(_pmRouteLayer).bindPopup('<b>'+(i+1)+'. '+esc(p.cli)+'</b><br>'+esc(t.prenom+' '+t.nom)+' · '+(p.h||'—'));});
+          L.marker([p.lat,p.lng],{icon:icon}).addTo(_pmRouteLayer).bindPopup('<b>'+(i+1)+'. '+esc(p.cli)+'</b><br>'+esc(ts.t.prenom+' '+ts.t.nom)+' · '+(p.h||'—'));
+          bounds.push([p.lat,p.lng]);
+        });
       });
       if(bounds.length>1)_pmRouteMap.fitBounds(bounds,{padding:[40,40],maxZoom:13});
       setTimeout(function(){try{_pmRouteMap.invalidateSize();}catch(e){}},80);
+      setTimeout(function(){try{_pmRouteMap.invalidateSize();}catch(e){}},350);
       var n=document.getElementById('pmRouteNote');if(n)n.innerHTML=missing.length?('⚠️ Sans adresse (non tracé) : '+missing.join(', ')):'Tournée du jour — arrêts numérotés dans l\'ordre optimisé.';
     }
   }catch(err){box.innerHTML='<div style="padding:20px;color:var(--muted)">Carte: '+err.message+'</div>';}
@@ -5762,8 +5802,7 @@ function drawSuiviMap(forceFit){
   // Signature : si rien n'a changé, on ne redessine PAS (évite de perturber ton zoom/déplacement)
   var sig=emps.map(function(e){return e.id+':'+(e.last.lieu||'')+':'+(e.last.gps?(e.last.gps.lat+','+e.last.gps.lng):'')+':'+e.running;}).join('|')+'#'+noTask.join(',');
   var mapExists=false; try{ mapExists = suiviMapObj && suiviMapObj.getContainer()===box && document.body.contains(box); }catch(e){ mapExists=false; }
-  // La carte est déjà affichée → on n'y touche PLUS lors du rafraîchissement auto (aucun dézoom). Utiliser 🎯 Recentrer pour rafraîchir.
-  if(mapExists && !forceFit){ setTimeout(function(){try{suiviMapObj.invalidateSize();}catch(e){}},60); return; }
+  if(mapExists && !forceFit && sig===_suiviSig){ setTimeout(function(){try{suiviMapObj.invalidateSize();}catch(e){}},60); return; } // rien de nouveau → on ne touche à rien
   _suiviSig=sig;
   try{
     if(suiviMapObj && !mapExists){ try{suiviMapObj.remove();}catch(e){} suiviMapObj=null; suiviLayer=null; _suiviFitDone=false; }
@@ -5812,7 +5851,7 @@ function renderSuivi(){
   var el=document.getElementById('suiviContent');
   if(!el)return;
   if(suiviTimer){clearInterval(suiviTimer);suiviTimer=null;}
-  if(curMod==='suivi'){suiviTimer=setInterval(function(){if(curMod==='suivi')renderSuivi();else{clearInterval(suiviTimer);suiviTimer=null;}},10000);}
+  if(curMod==='suivi'){suiviTimer=setInterval(function(){if(curMod==='suivi')renderSuivi();else{clearInterval(suiviTimer);suiviTimer=null;}},7000);}
   if(suiviMapCard&&suiviMapCard.parentNode){suiviMapCard.parentNode.removeChild(suiviMapCard);} // garder la carte vivante
   el.innerHTML='';
   var week=weekKey();
