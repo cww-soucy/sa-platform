@@ -376,6 +376,54 @@ function runTests(){
   W.lsSet('livraison',list);
   ok('validation applique le statut livré + nom du valideur', W.getLivraisons().find(function(l){return l.id==='lv1';}).livreParNom==='Charles Weil');
 
+
+  /* ---------- 20 · Journal de chantier (photos/notes -> SITE, jamais la paie) ---------- */
+  section('20 · Journal de chantier lié au site — additif, exclu de la paie');
+  ok('getSiteJournal définie', typeof W.getSiteJournal==='function');
+  ok('logSiteJournal définie', typeof W.logSiteJournal==='function');
+  ok('syncTaskToSiteJournal définie', typeof W.syncTaskToSiteJournal==='function');
+  ok('siteJournalFor définie', typeof W.siteJournalFor==='function');
+  W.lsSet('sitelog',[]);
+  W.currentUser={id:'ch',role:'employe',prenom:'Cheikh',nom:'Ndiaye'};
+  var taskWithPhoto={id:501,lieu:'CCNQ',siteId:'st1',start:'09:00',notes:'Chlore 3ppm, pH 7.4',
+    files:[{data:'data:image/jpeg;base64,AAA',name:'photo',addedBy:'ch',addedAt:'x'}],sourceType:null,sourceId:null};
+  W.syncTaskToSiteJournal(taskWithPhoto);
+  var jr=W.siteJournalFor('st1');
+  ok('entrée créée dans le journal du site', jr.length===1);
+  ok('notes conservées', jr[0].notes==='Chlore 3ppm, pH 7.4');
+  ok('photo réelle conservée (dataURL)', jr[0].photos[0].data==='data:image/jpeg;base64,AAA');
+  // re-sauvegarde de la même tâche (édition) -> MISE À JOUR, pas duplication
+  taskWithPhoto.notes='Chlore 2.5ppm — corrigé après-midi';
+  W.syncTaskToSiteJournal(taskWithPhoto);
+  ok('mise à jour = pas de doublon (toujours 1 entrée)', W.siteJournalFor('st1').length===1);
+  ok('notes mises à jour', W.siteJournalFor('st1')[0].notes==='Chlore 2.5ppm — corrigé après-midi');
+  // tâche sans site connu -> aucune écriture (rien à perdre, mais rien ne doit planter)
+  W.syncTaskToSiteJournal({id:502,lieu:'Sans site',siteId:null,notes:'test',files:[]});
+  ok('tâche sans siteId ignorée proprement', W.siteJournalFor('st1').length===1);
+  // tâche avec site mais SANS notes ni photos -> pas d'entrée créée (rien à documenter)
+  W.syncTaskToSiteJournal({id:503,lieu:'CCNQ',siteId:'st1',notes:'',files:[]});
+  ok('tâche vide (sans notes/photos) ne crée pas d\'entrée', W.siteJournalFor('st1').length===1);
+
+  /* ---------- 21 · Vérification anti-fuite : la feuille de temps N'INCLUT PAS les notes/photos du site ---------- */
+  section('21 · Feuille de temps (email) — aucune fuite du journal de chantier');
+  ok('submitWeek ne référence pas t.notes', !/body\+=.*t\.notes/.test(''+W.submitWeek));
+  ok('submitWeek ne référence pas t.files/photos', !/t\.files|t\.photos/.test(''+W.submitWeek));
+  ok('submitWeek référence bien le kilométrage', /kmDep|kmArr/.test(''+W.submitWeek));
+
+  /* ---------- 22 · Photos réelles (fini les métadonnées vides) ---------- */
+  section('22 · Photos punch/reçus — vraies données image (plus juste un nom de fichier)');
+  ok('renderMPj utilise pmmRenderPhotos', /pmmRenderPhotos/.test(''+W.renderMPj));
+  ok('renderSPj (reçus) utilise pmmRenderPhotos', /pmmRenderPhotos/.test(''+W.renderSPj));
+  ok('renderPePj (punch) utilise pmmRenderPhotos', /pmmRenderPhotos/.test(''+W.renderPePj));
+
+  /* ---------- 23 · Bug ID dupliqué site/reçus corrigé ---------- */
+  section('23 · IDs uniques (fini le bug de collision sPjZone/sPjInput)');
+  var htmlSrc=W.document.documentElement.outerHTML;
+  var countSPjZone=(htmlSrc.match(/id="sPjZone"/g)||[]).length;
+  var countSiteFilesZone=(htmlSrc.match(/id="siteFilesZone"/g)||[]).length;
+  ok('un seul élément #sPjZone (reçus fin de journée)', countSPjZone===1);
+  ok('la fiche site a son propre #siteFilesZone', countSiteFilesZone===1);
+
   /* ---------- RÉSULTAT ---------- */
   LOG.push('\n════════════════════════════════════════');
   LOG.push('  RÉSULTAT : '+PASS+' réussis · '+FAIL+' échoués');

@@ -681,41 +681,6 @@ input,select,textarea{font-size:16px!important}
 .btn-sm{padding:8px 12px;font-size:12.5px}
 
 /* ── Responsive mobile/iOS : colonnes plus larges, une à la fois avec défilement magnétique ── */
-@media(max-width:760px){
-  .pm-board{scroll-snap-type:x mandatory;gap:12px;padding-bottom:14px}
-  .pm-col{flex:0 0 86vw;scroll-snap-align:center}
-  .pm-col.pool{flex:0 0 78vw}
-  .pm-col-hd{padding:13px 14px}
-  .pm-av{width:38px;height:38px;font-size:15px}
-  .pm-col-nm{font-size:16.5px}
-  .pm-col-body{padding:10px;gap:10px;min-height:160px}
-  .pm-card{padding:11px 12px}
-  .pm-card-cli{font-size:15px}
-  .pm-time{font-size:13.5px;padding:3px 9px}
-  .pm-toolbar{gap:8px}
-  .pm-toolbar .btn{flex:1 1 auto;justify-content:center;min-width:0;font-size:12px;padding:10px 8px}
-  .pm-board-hint{font-size:11px;text-align:center}
-}
-@media(max-width:420px){
-  .pm-col{flex-basis:90vw}
-  .pm-col.pool{flex-basis:82vw}
-}
-@media(max-width:480px){
-  #suiviMap{height:240px!important}
-  #pmRouteMap{height:240px!important}
-}
-
-/* ── PC / tablette (gestion OPS) : utiliser toute la largeur, plus de colonnes visibles d'un coup, sans défilement forcé ── */
-@media(min-width:900px){
-  .pm-board{display:grid;grid-template-columns:repeat(auto-fit,minmax(258px,1fr));gap:16px;overflow-x:visible;align-items:start}
-  .pm-col,.pm-col.pool{flex:unset;width:100%;min-width:0}
-  .pm-col-body{min-height:180px}
-  .pm-toolbar .btn{padding:9px 16px}
-}
-@media(min-width:1300px){
-  .pm-board{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
-}
-
 .pm-board{display:flex;gap:11px;overflow-x:auto;padding:2px 0 12px;align-items:flex-start;-webkit-overflow-scrolling:touch}
 .pm-col{flex:0 0 230px;background:#fff;border:1px solid var(--line);border-radius:var(--r);box-shadow:0 1px 4px rgba(13,59,110,.09);display:flex;flex-direction:column}
 .pm-col.pool{flex:0 0 200px;background:#FBFCFE;border-style:dashed;box-shadow:none}
@@ -738,6 +703,57 @@ input,select,textarea{font-size:16px!important}
 .pm-col-empty{color:var(--hint);font-size:12px;text-align:center;padding:16px 6px;font-style:italic}
 .pm-col-add{margin-top:2px;border:1.5px dashed var(--line);background:#fff;color:var(--blue);border-radius:var(--rs);padding:7px;font-weight:700;font-size:12px;cursor:pointer}
 .pm-board-hint{font-size:11.5px;color:var(--muted);margin:0 2px 8px}
+
+/* ── Mobile (iPhone) : colonnes larges, défilement magnétique, cibles tactiles agrandies ── */
+/* (repositionné APRÈS les règles de base — même bug de cascade CSS corrigé que pour le bloc desktop) */
+@media(max-width:760px){
+  .pm-board{scroll-snap-type:x mandatory!important;gap:12px;padding-bottom:14px;display:flex!important;overflow-x:auto!important}
+  .pm-col{flex:0 0 86vw!important;scroll-snap-align:center}
+  .pm-col.pool{flex:0 0 78vw!important}
+  .pm-col-hd{padding:13px 14px}
+  .pm-av{width:38px;height:38px;font-size:15px}
+  .pm-col-nm{font-size:16.5px}
+  .pm-col-body{padding:10px;gap:10px;min-height:220px}
+  .pm-card{padding:12px 13px}
+  .pm-card-cli{font-size:15.5px}
+  .pm-time{font-size:14px;padding:4px 10px}
+  .pm-toolbar{gap:8px}
+  .pm-toolbar .btn{flex:1 1 auto;justify-content:center;min-width:0;font-size:12px;padding:11px 8px}
+  .pm-board-hint{font-size:11px;text-align:center}
+  #suiviMap{height:280px!important}
+  #pmRouteMap{height:280px!important}
+}
+@media(max-width:420px){
+  .pm-col{flex-basis:90vw!important}
+  .pm-col.pool{flex-basis:82vw!important}
+}
+
+/* ── PC / tablette (gestion OPS) : utiliser toute la largeur, colonnes plus grandes, zones de dépôt bien visibles ── */
+/* (placé APRÈS les règles de base .pm-board/.pm-col pour que la cascade CSS s'applique réellement — bug corrigé) */
+@media(min-width:900px){
+  .pm-board{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(270px,1fr))!important;gap:16px;overflow-x:visible!important;align-items:start}
+  .pm-col,.pm-col.pool{flex:unset!important;width:100%;min-width:0}
+  .pm-col-body{min-height:240px;padding:11px;gap:11px}
+  .pm-card{padding:11px 12px}
+  .pm-card-cli{font-size:14.5px}
+  .pm-time{font-size:12.5px;padding:2px 8px}
+  .pm-toolbar .btn{padding:9px 16px}
+  #suiviMap{height:380px!important}
+  #pmRouteMap{height:380px!important}
+}
+/* Grand écran / 2 écrans : encore plus d'air, cartes plus hautes pour bien voir le curseur se déplacer */
+@media(min-width:1300px){
+  .pm-board{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))!important}
+  .pm-col-body{min-height:300px}
+  #suiviMap{height:460px!important}
+  #pmRouteMap{height:460px!important}
+}
+@media(min-width:1800px){
+  .pm-board{grid-template-columns:repeat(auto-fit,minmax(320px,1fr))!important;gap:20px}
+  .pm-col-body{min-height:360px}
+  #suiviMap{height:540px!important}
+  #pmRouteMap{height:540px!important}
+}
 </style>
 </head>
 <body>
@@ -1217,9 +1233,10 @@ input,select,textarea{font-size:16px!important}
       <button type="button" class="btn btn-ghost btn-sm" id="sBassinAddBtn">➕ Ajouter une piscine/bassin</button>
     </div>
     <div class="mfield"><label>📎 Photos / Plans</label>
-      <div class="pj-zone" id="sPjZone"></div>
-      <input type="file" id="sPjInput" multiple accept="image/*,application/pdf,.heic" style="display:none"/>
+      <div class="pj-zone" id="siteFilesZone"></div>
+      <input type="file" id="siteFilesInput" multiple accept="image/*,application/pdf,.heic" style="display:none"/>
     </div>
+    <div class="mfield" id="sJournalPanel" style="display:none"></div>
     <div class="mfield"><label>Notes</label><textarea id="sNotes" placeholder="Notes techniques, historique, accès…"></textarea></div>
     <button class="btn btn-success btn-full" id="siteSaveBtn" style="margin-top:4px">💾 Sauvegarder la fiche</button>
     <button id="siteDeleteBtn" class="btn btn-danger btn-full" style="margin-top:8px;display:none">🗑 Supprimer</button>
@@ -1488,12 +1505,10 @@ input,select,textarea{font-size:16px!important}
       <div class="mfield"><label>Km départ</label><input type="number" id="peKmDep" placeholder="0" min="0"/></div>
       <div class="mfield"><label>Km arrivée</label><input type="number" id="peKmArr" placeholder="0" min="0"/></div>
     </div>
-    <div class="mfield"><label>Notes</label><textarea id="peNotes" placeholder="Notes additionnelles, observations…" rows="2"></textarea></div>
+    <div class="mfield"><label>📝 Notes / résultats de tests <span style="font-weight:600;color:var(--muted);font-size:11px">— consultables sur la fiche du site, jamais sur la feuille de temps</span></label><textarea id="peNotes" placeholder="Ex: chlore 3ppm, pH 7.4, filtre nettoyé…" rows="2"></textarea></div>
     <div class="mfield">
-      <label>Fichiers / Photos</label>
+      <label>📷 Photos du chantier <span style="font-weight:600;color:var(--muted);font-size:11px">— sauvegardées sur la fiche du site</span></label>
       <div id="pePjZone" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px"></div>
-      <button type="button" id="pePjBtn" class="btn btn-ghost btn-sm" style="font-size:13px">📎 Joindre un fichier</button>
-      <input type="file" id="pePjInput" multiple accept="image/*,application/pdf,.heic" style="display:none"/>
     </div>
     <div style="background:var(--lt);border-radius:var(--rs);padding:10px;font-size:11px;color:var(--blue);margin-bottom:4px">ℹ️ Les heures seront recalculées automatiquement.</div>
     <button class="btn btn-primary btn-full" id="peSaveBtn" style="margin-top:4px">💾 Enregistrer</button>
@@ -1648,7 +1663,7 @@ var SB_KEY='sb_publishable_qVd_6eoAvwrDGs9u81woAg_RrMpTJxn';
 var sb=null;
 var sbReady=false;
 var sbStatus='offline'; // offline | syncing | online
-var SB_TABLES={workorders:'workorders',sites:'sites',plan:'plan',planmatch:'plan_match',flotte:'flotte',inventaire:'inventaire',comptes:'comptes',sortie:'sorties_inventaire',livraison:'bons_livraison',gpslog:'punch_gps_log'};
+var SB_TABLES={workorders:'workorders',sites:'sites',plan:'plan',planmatch:'plan_match',flotte:'flotte',inventaire:'inventaire',comptes:'comptes',sortie:'sorties_inventaire',livraison:'bons_livraison',gpslog:'punch_gps_log',sitelog:'site_journal'};
 
 function initSupabase(){
   try{
@@ -1736,6 +1751,11 @@ function mapRowToDb(localKey,row){
     if(row.siteId!==undefined){row.site_id=row.siteId;delete row.siteId;}
     if(row.taskId!==undefined){row.task_id=row.taskId;delete row.taskId;}
   }
+  if(localKey==='sitelog'){
+    if(row.siteId!==undefined){row.site_id=row.siteId;delete row.siteId;}
+    if(row.taskId!==undefined){row.task_id=row.taskId;delete row.taskId;}
+    if(row.woId!==undefined){row.wo_id=row.woId;delete row.woId;}
+  }
   return row;
 }
 function mapRowFromDb(localKey,r){
@@ -1753,6 +1773,11 @@ function mapRowFromDb(localKey,r){
   if(localKey==='gpslog'){
     if(r.site_id!==undefined){r.siteId=r.site_id;delete r.site_id;}
     if(r.task_id!==undefined){r.taskId=r.task_id;delete r.task_id;}
+  }
+  if(localKey==='sitelog'){
+    if(r.site_id!==undefined){r.siteId=r.site_id;delete r.site_id;}
+    if(r.task_id!==undefined){r.taskId=r.task_id;delete r.task_id;}
+    if(r.wo_id!==undefined){r.woId=r.wo_id;delete r.wo_id;}
   }
   if(r.updated_at!==undefined && r.updatedAt===undefined) r.updatedAt=r.updated_at; // garde un horodatage pour la fusion
   if(r.created_at!==undefined && r.createdAt===undefined) r.createdAt=r.created_at;
@@ -2249,7 +2274,7 @@ document.addEventListener('DOMContentLoaded', function(){
   try{
     var vb=document.createElement('div');
     vb.id='__buildBadge';
-    vb.textContent='build F23 ⟲';
+    vb.textContent='build F24 ⟲';
     vb.title='Version de l\'app — toucher pour restaurer une sauvegarde';
     vb.style.cssText='position:fixed;bottom:4px;right:6px;font:11px/1.4 monospace;color:#fff;background:rgba(27,79,140,.85);padding:3px 8px;border-radius:8px;z-index:99999;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.2)';
     vb.addEventListener('click',function(){
@@ -2365,11 +2390,7 @@ document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('peSaveBtn').addEventListener('click', savePunchEdit);
   document.getElementById('peDeleteBtn').addEventListener('click', deletePunch);
   // (fermeture-fond du punchEditModal gérée par le garde anti-perte plus bas)
-  document.getElementById('pePjBtn').addEventListener('click', function(){document.getElementById('pePjInput').click();});
-  document.getElementById('pePjInput').addEventListener('change', function(){
-    Array.from(this.files).forEach(function(f){pePjFiles.push({name:f.name,size:f.size,type:f.type});});
-    renderPePj();this.value='';
-  });
+  // pePjBtn/pePjInput obsolètes : renderPePj utilise maintenant pmmRenderPhotos (bouton+input intégrés, vraies photos)
   document.getElementById('addPunchManualBtn').addEventListener('click', openPunchAdd);
   document.getElementById('ftEmpSel').addEventListener('change', onFTEmpChange);
 
@@ -2456,11 +2477,9 @@ document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('cDeleteBtn').addEventListener('click', deleteCompte);
   document.getElementById('cRole').addEventListener('change', function(){renderDroitsForm(null);});
 
-  // PJ inputs
-  document.getElementById('mPjInput').addEventListener('change', function(){Array.from(this.files).forEach(function(f){mPjFiles.push({name:f.name,size:f.size,type:f.type});});renderMPj();this.value='';});
-  document.getElementById('sPjInput').addEventListener('change', function(){Array.from(this.files).forEach(function(f){stopPjFiles.push({name:f.name,size:f.size,type:f.type});});renderSPj();this.value='';});
+  // PJ inputs — mPjInput/sPjInput obsolètes : renderMPj/renderSPj utilisent maintenant pmmRenderPhotos (input intégré, vraies photos)
   document.getElementById('woPjInput').addEventListener('change', function(){Array.from(this.files).forEach(function(f){woPjFiles.push({name:f.name,size:f.size,type:f.type});});renderWOPj();this.value='';});
-  document.getElementById('sPjInput').addEventListener('change', function(){Array.from(this.files).forEach(function(f){sitePjFiles.push({name:f.name,size:f.size,type:f.type});});renderSitePj();this.value='';}, true);
+  var _siteFilesInp=document.getElementById('siteFilesInput');if(_siteFilesInp)_siteFilesInp.addEventListener('change', function(){Array.from(this.files).forEach(function(f){sitePjFiles.push({name:f.name,size:f.size,type:f.type});});renderSitePj();this.value='';});
 
   // Équipements site
   document.querySelectorAll('.equip-tog').forEach(function(btn){
@@ -3883,8 +3902,37 @@ function openSiteModal(site){
     btn.className='btn btn-sm equip-tog '+(sEquips.indexOf(btn.dataset.e)>=0?'btn-primary':'btn-ghost');
   });
   document.getElementById('siteDeleteBtn').style.display=site&&canEdit()?'flex':'none';
-  renderSEquips();renderSitePj();renderSBassins();updateSLogoPreview();
+  renderSEquips();renderSitePj();renderSBassins();updateSLogoPreview();renderSiteJournalPanel(site);
   openModal('siteModal');
+}
+// ➕ Journal de chantier : notes/photos prises par l'équipe pendant leurs punchs sur ce site — consultable dans le temps
+function renderSiteJournalPanel(site){
+  var host=document.getElementById('sJournalPanel');
+  if(!host)return;
+  if(!site){host.style.display='none';host.innerHTML='';return;}
+  var entries=siteJournalFor(site.id);
+  if(!entries.length){host.style.display='none';host.innerHTML='';return;}
+  host.style.display='block';
+  var h='<label style="display:block;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:6px">📷 Journal de chantier ('+entries.length+')</label>';
+  entries.slice(0,30).forEach(function(e){
+    h+='<div style="border:1px solid var(--line);border-radius:var(--rs);padding:8px 10px;margin-bottom:7px">'
+      +'<div style="display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--muted);font-weight:700">👷 '+esc(e.emp||'—')+' · '+fmtDate(e.date)+(e.heure?(' '+esc(e.heure)):'')+'</div>'
+      +(e.notes?'<div style="font-size:12.5px;margin-top:4px">'+esc(e.notes)+'</div>':'')
+      +'<div class="sj-photos" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px"></div>'
+      +'</div>';
+  });
+  host.innerHTML=h;
+  // vignettes réelles avec loupe (évite d'injecter du HTML non échappé pour les data URLs)
+  var rows=host.querySelectorAll('.sj-photos');
+  entries.slice(0,30).forEach(function(e,i){
+    var zone=rows[i];if(!zone)return;
+    (e.photos||[]).forEach(function(p){
+      var img=document.createElement('img');
+      img.src=p.data;img.style.cssText='width:52px;height:52px;object-fit:cover;border-radius:7px;border:1px solid var(--line);cursor:pointer';
+      img.addEventListener('click',function(){pmmOpenLightbox(p.data);});
+      zone.appendChild(img);
+    });
+  });
 }
 function updateSLogoPreview(){
   var url=siteLogoUrl(document.getElementById('sSiteWeb').value.trim());
@@ -4418,15 +4466,10 @@ function renderTaskLogOLD(){
 // ── ÉDITION D'UN PUNCH (superviseur/admin) ──
 var punchEditIdx=null;
 var pePjFiles=[];
+// ➕ Photos réelles du chantier (dataURL) — reliées à la fiche du site, jamais à la feuille de temps
 function renderPePj(){
-  var z=document.getElementById('pePjZone');if(!z)return;z.innerHTML='';
-  pePjFiles.forEach(function(f,i){
-    var chip=document.createElement('div');chip.style.cssText='background:var(--lt);border-radius:8px;padding:4px 8px;font-size:11px;color:var(--blue);display:flex;align-items:center;gap:4px';
-    chip.innerHTML='📎 '+(f.name.length>16?f.name.slice(0,16)+'…':f.name);
-    var x=document.createElement('span');x.textContent=' ✕';x.style.cssText='cursor:pointer;font-weight:700';
-    (function(idx){x.addEventListener('click',function(){pePjFiles.splice(idx,1);renderPePj();});})(i);
-    chip.appendChild(x);z.appendChild(chip);
-  });
+  var z=document.getElementById('pePjZone');if(!z)return;
+  pmmRenderPhotos(z,pePjFiles,function(i){pePjFiles.splice(i,1);renderPePj();},function(dataUrl){pePjFiles.push({data:dataUrl,name:'photo',addedBy:currentUser?currentUser.id:'',addedAt:new Date().toISOString()});renderPePj();});
 }
 function openPunchEdit(idx){
   punchEditIdx=idx;
@@ -4494,6 +4537,7 @@ function savePunchEdit(){
     chronoState[targetDay].tasks.push(newTask);
     chronoState[targetDay].tasks.sort(function(a,b){return (a.start||'').localeCompare(b.start||'');});
     if(chronoState[targetDay].status==='idle')chronoState[targetDay].status='done';
+    syncTaskToSiteJournal(newTask); // ➕ notes/photos → fiche du site (jamais sur la feuille de temps)
     saveFT();closeModal('punchEditModal');
     if(targetDay!==curDay)renderDay(targetDay);
     renderTaskLog();refreshCumul();buildDayTabs();refreshWkStatus();
@@ -4509,6 +4553,7 @@ function savePunchEdit(){
   t.files=pePjFiles.slice();
   if(t.start&&t.end){t.hrs=hrsFrom(t.start,t.end);t.active=false;}
   t.correctedBy=currentUser.id;t.correctedAt=new Date().toISOString();
+  syncTaskToSiteJournal(t); // ➕ notes/photos → fiche du site (jamais sur la feuille de temps)
 
   // ── DÉPLACEMENT vers un autre jour ──
   if(targetDay!==curDay){
@@ -4876,6 +4921,7 @@ function confirmJob(){
     var logEntry={id:uid(),uid:currentUser?currentUser.id:'',emp:fullName(),date:todayISO(),heure:now,
       lieu:lieu,addr:addr,siteId:siteId,taskId:task.id,lat:null,lng:null,acc:null,src:'pending',createdAt:new Date().toISOString()};
     logPunchGPS(logEntry);
+    syncTaskToSiteJournal(task); // ➕ si des photos ont été jointes dès le démarrage
     captureGPS(function(gps){
       if(gps){
         task.gps=gps;saveFT();renderTaskLog();
@@ -5036,10 +5082,10 @@ function makePjZone(files,zone,onDel,onAdd){
   var add=document.createElement('button');add.className='pj-add';add.textContent='📎 Ajouter un fichier';
   add.addEventListener('click',onAdd);zone.appendChild(add);
 }
-function renderMPj(){makePjZone(mPjFiles,document.getElementById('mPjZone'),function(i){mPjFiles.splice(i,1);renderMPj();},function(){document.getElementById('mPjInput').click();});}
-function renderSPj(){makePjZone(stopPjFiles,document.getElementById('sPjZone'),function(i){stopPjFiles.splice(i,1);renderSPj();},function(){document.getElementById('sPjInput').click();});}
+function renderMPj(){pmmRenderPhotos(document.getElementById('mPjZone'),mPjFiles,function(i){mPjFiles.splice(i,1);renderMPj();},function(dataUrl){mPjFiles.push({data:dataUrl,name:'photo',addedBy:currentUser?currentUser.id:'',addedAt:new Date().toISOString()});renderMPj();});}
+function renderSPj(){pmmRenderPhotos(document.getElementById('sPjZone'),stopPjFiles,function(i){stopPjFiles.splice(i,1);renderSPj();},function(dataUrl){stopPjFiles.push({data:dataUrl,name:'reçu',addedBy:currentUser?currentUser.id:'',addedAt:new Date().toISOString()});renderSPj();});}
 function renderWOPj(){makePjZone(woPjFiles,document.getElementById('woPjZone'),function(i){woPjFiles.splice(i,1);renderWOPj();},function(){document.getElementById('woPjInput').click();});}
-function renderSitePj(){makePjZone(sitePjFiles,document.getElementById('sPjZone'),function(i){sitePjFiles.splice(i,1);renderSitePj();},function(){document.getElementById('sPjInput').click();});}
+function renderSitePj(){makePjZone(sitePjFiles,document.getElementById('siteFilesZone'),function(i){sitePjFiles.splice(i,1);renderSitePj();},function(){document.getElementById('siteFilesInput').click();});}
 
 // ═══════════════════════════════════════════════════════
 // DASHBOARDS
@@ -5926,6 +5972,48 @@ function updateGpsLogEntry(taskId,patch){
 // Historique des positions d'un employé (pour stats/rapports) — optionnellement filtré par date (YYYY-MM-DD)
 function gpsLogForEmp(uid,sinceDate){
   return getGpsLog().filter(function(e){return e.uid===uid && (!sinceDate || e.date>=sinceDate);});
+}
+// ═══════════════════════════════════════════════════════
+// JOURNAL DE CHANTIER — notes/photos prises pendant un punch, WO ou créneau.
+// Rattaché au SITE (dossier/projet), consultable dans le temps — JAMAIS inclus dans la feuille de temps envoyée au sup.
+// Additif, plafonné à 2000 entrées (les plus anciennes déjà synchronisées sont coupées en dernier recours).
+// ═══════════════════════════════════════════════════════
+function getSiteJournal(){return lsGet('sitelog')||[];}
+function logSiteJournal(entry){
+  var log=getSiteJournal();
+  log.push(entry);
+  if(log.length>2000)log=log.slice(log.length-2000);
+  lsSet('sitelog',log);
+  sbPush('sitelog',entry);
+}
+function updateSiteJournalEntry(taskId,patch){
+  var log=getSiteJournal();
+  var e=log.find(function(x){return x.taskId===taskId;});
+  if(e){ for(var k in patch)e[k]=patch[k]; lsSet('sitelog',log); sbPush('sitelog',e); return e; }
+  return null;
+}
+// Journal d'un site précis, plus récent en premier
+function siteJournalFor(siteId){
+  return getSiteJournal().filter(function(e){return e.siteId===siteId;}).sort(function(a,b){return (b.createdAt||'').localeCompare(a.createdAt||'');});
+}
+// Écrit (ou met à jour) l'entrée de journal liée à une tâche de punch, si elle a des notes/photos ET un site connu
+function syncTaskToSiteJournal(t){
+  if(!t||!t.siteId)return;
+  var hasPhotos=(t.files||[]).some(function(f){return f.data;});
+  if(!t.notes && !hasPhotos)return;
+  var existing=getSiteJournal().find(function(x){return x.taskId===t.id;});
+  var entry=existing||{id:uid(),taskId:t.id,siteId:t.siteId,uid:currentUser?currentUser.id:'',emp:fullName(),
+    date:todayISO(),heure:t.start||'',woId:t.sourceType==='wo'?t.sourceId:(t.sourceType==='plan'?null:null),createdAt:new Date().toISOString()};
+  entry.lieu=t.lieu||'';
+  entry.notes=t.notes||'';
+  entry.photos=(t.files||[]).filter(function(f){return f.data;});
+  entry.updatedAt=new Date().toISOString();
+  var log=getSiteJournal();
+  var idx=log.findIndex(function(x){return x.id===entry.id;});
+  if(idx>=0)log[idx]=entry;else log.push(entry);
+  if(log.length>2000)log=log.slice(log.length-2000);
+  lsSet('sitelog',log);
+  sbPush('sitelog',entry);
 }
 // Résout la position d'un punch : GPS de l'appareil → site du punch → géocodage de l'adresse/lieu (avec cache)
 function resolvePunchCoords(task,cb){
