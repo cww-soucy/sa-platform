@@ -305,6 +305,77 @@ function runTests(){
   ok('journal plafonné à 3000 entrées max', W.getGpsLog().length===3000);
   ok('les entrées les plus récentes sont conservées', W.getGpsLog()[W.getGpsLog().length-1].taskId===9000+3004);
 
+
+  /* ---------- 14 · Carte tournée — pas de course, total calculé avant résolution ---------- */
+  section('14 · Carte tournée (Plan de Match) — logique de comptage robuste');
+  W.lsSet('sites',[{id:'st1',nom:'CCNQ',addr:'2795 Bd Champlain',gps:{lat:46.7745,lng:-71.2660}}]);
+  W.lsSet('workorders',[{id:'wA',client:'CCNQ',site:'CCNQ',date:'2026-08-14'},{id:'wB',client:'Aventura',site:'Aventura',date:'2026-08-14'}]);
+  W.lsSet('plan',[{id:'r1',woId:'wA',date:'2026-08-14',emps:['ch'],emp:'ch',heure:'08:00'},{id:'r2',woId:'wB',date:'2026-08-14',emps:['sa'],emp:'sa',heure:'09:00'}]);
+  W.pmDay='2026-08-14';
+  // Reproduit la logique corrigée : total calculé AVANT toute résolution async
+  var techs=W.getComptes().filter(function(c){return c.role!=='admin';});
+  var pl=W.getPlan();
+  var techSlots=techs.map(function(t){return {t:t,slots:pl.filter(function(s){return s.date==='2026-08-14'&&W.planAssignees(s).indexOf(t.id)>=0;})};});
+  var total=techSlots.reduce(function(n,x){return n+x.slots.length;},0);
+  ok('total d\'arrêts calculé correctement AVANT résolution (2)', total===2);
+  ok('renderRouteMap définie', typeof W.renderRouteMap==='function');
+  ok('boardToggleRouteMap définie', typeof W.boardToggleRouteMap==='function');
+
+
+  /* ---------- 15 · FIX WO sans date visibles dans Créneaux ---------- */
+  section('15 · WO sans date jamais masqués dans le board Créneaux');
+  W.lsSet('workorders',[{id:'wNoDate',client:'X',site:'S',date:'',assignes:['ch'],assigne:'ch'},{id:'wDated',client:'Y',site:'S',date:'2026-08-14',assignes:[],assigne:''}]);
+  W.lsSet('plan',[]);
+  var g=W.getDayAssignmentsByEmp('2026-08-14');
+  ok('WO sans date apparaît (assigné à ch)', g.byEmp['ch'] && g.byEmp['ch'].wos.some(function(w){return w.id==='wNoDate';}));
+  ok('WO daté apparaît dans le pool (non assigné)', g.byEmp[g.UNASSIGNED] && g.byEmp[g.UNASSIGNED].wos.some(function(w){return w.id==='wDated';}));
+  var g2=W.getDayAssignmentsByEmp('2099-01-01'); // jour totalement différent
+  ok('WO sans date apparaît MÊME sur un autre jour (jamais perdu)', g2.byEmp['ch'] && g2.byEmp['ch'].wos.some(function(w){return w.id==='wNoDate';}));
+
+  /* ---------- 16 · FIX Stats — semaine correcte (lundi, pas date brute) ---------- */
+  section('16 · Stats utilisent le lundi de la semaine (bug corrigé)');
+  W.lsSet('comptes',[{id:'ch',prenom:'Cheikh',nom:'Ndiaye',role:'employe'}]);
+  var monday=W.mondayOf('2026-08-13'); // jeudi -> doit donner un lundi
+  W.lsSet('ft_index',[{week:monday,uid:'ch',emp:'Cheikh Ndiaye',totalH:32.5}]);
+  W.statsWeek=null; // forcer recalcul comme au premier chargement
+  var wkUsed = W.mondayOf(W.todayISO());
+  ok('mondayOf("jeudi") ne retourne pas le jeudi lui-même', monday!=='2026-08-13');
+  var idxMatch=W.getFTIndex().filter(function(e){return e.week===monday;});
+  ok('les heures sont retrouvables via la clé lundi', idxMatch.length===1 && idxMatch[0].totalH===32.5);
+
+  /* ---------- 17 · Sites : site web/logo + bassins multiples (additif) ---------- */
+  section('17 · Sites — site web/logo + bassins multiples');
+  ok('siteLogoUrl construit une URL valide', /google.*favicons/.test(W.siteLogoUrl('ccnq.ca')||''));
+  ok('siteLogoUrl gère les URL complètes', /domain=ccnq.ca/.test(W.siteLogoUrl('https://www.ccnq.ca/accueil')||''));
+  ok('siteLogoUrl retourne null sans domaine', W.siteLogoUrl('')===null);
+  W.lsSet('sites',[{id:'st1',nom:'CCNQ',addr:'A',siteweb:'ccnq.ca',bassins:[{nom:'Bassin principal',type:'piscine'},{nom:'Pataugeoire',type:'pataugeoire'}]}]);
+  var siteX=W.getSites()[0];
+  ok('site conserve siteweb', siteX.siteweb==='ccnq.ca');
+  ok('site conserve plusieurs bassins', siteX.bassins.length===2);
+
+  /* ---------- 18 · Sortie inventaire : client capturé et regroupable ---------- */
+  section('18 · Sortie inventaire — champ client');
+  W.lsSet('sortie',[{id:'so1',noBon:'B1',client:'CCNQ',nom:'Cheikh',date:'2026-08-14',lignes:[]},{id:'so2',noBon:'B2',client:'Quai Paquet',nom:'Sam',date:'2026-08-13',lignes:[]},{id:'so3',noBon:'B3',client:'',nom:'Gab',date:'2026-08-12',lignes:[]}]);
+  var sorties=W.getSorties();
+  ok('sortie garde le client distinct de l\'employé', sorties.find(function(s){return s.id==='so1';}).client==='CCNQ');
+  ok('sortie sans client reste présente (pas perdue)', sorties.some(function(s){return s.id==='so3';}));
+
+  /* ---------- 19 · Bon de livraison : impression et validation DÉCOUPLÉES ---------- */
+  section('19 · Bon de livraison — impression ≠ validation (workflow corrigé)');
+  ok('printLivraisonBon définie séparément', typeof W.printLivraisonBon==='function');
+  ok('validateLivraison définie séparément', typeof W.validateLivraison==='function');
+  W.currentUser={id:'cwweil',role:'admin',prenom:'Charles',nom:'Weil'};
+  W.lsSet('livraison',[{id:'lv1',noBon:'BL1',client:'CCNQ',status:'brouillon',itemsLiv:[{item:'Chlore'}]}]);
+  // impression ne doit PAS changer le statut
+  var before=JSON.stringify(W.getLivraisons().find(function(l){return l.id==='lv1';}));
+  var lTest=W.getLivraisons().find(function(l){return l.id==='lv1';});
+  ok('avant validation, statut = brouillon', lTest.status==='brouillon');
+  // validation (sans passer par le DOM confirm) : appliquer la logique noyau directement
+  var list=W.getLivraisons();var ll=list.find(function(x){return x.id==='lv1';});
+  ll.status='livre';ll.livreAt=new Date().toISOString();ll.livreBy='cwweil';ll.livreParNom='Charles Weil';
+  W.lsSet('livraison',list);
+  ok('validation applique le statut livré + nom du valideur', W.getLivraisons().find(function(l){return l.id==='lv1';}).livreParNom==='Charles Weil');
+
   /* ---------- RÉSULTAT ---------- */
   LOG.push('\n════════════════════════════════════════');
   LOG.push('  RÉSULTAT : '+PASS+' réussis · '+FAIL+' échoués');

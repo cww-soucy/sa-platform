@@ -318,12 +318,17 @@ input,select,textarea{font-size:16px!important}
 .pmm-print-photos img{width:90px;height:90px;object-fit:cover;border-radius:4px;border:1px solid #c5d8ec}
 .pmm-print-ff{margin-top:10px;font-size:11.5px;display:flex;flex-direction:column;gap:5px}
 
+.pmm-print-emp-name{font-size:15px;font-weight:800;color:#fff;margin-top:6px}
+.pmm-print-emp-block{margin-bottom:16px;border-bottom:2px dashed #c5d8ec;padding-bottom:10px}
+.pmm-print-emp-block:last-child{border-bottom:none}
 @media print{
   body *{visibility:hidden!important}
   #pmmPrintArea,#pmmPrintArea *{visibility:visible!important}
   #pmmPrintArea{display:block!important;position:absolute;top:0;left:0;width:100%;padding:10px}
   body{background:#fff!important}
-  @page{size:letter landscape;margin:10mm}
+  /* ➕ Portrait au lieu de paysage : beaucoup plus de hauteur utile pour les listes de tâches → nettement moins de pages */
+  @page{size:letter portrait;margin:10mm}
+  .pmm-print-emp-block{page-break-inside:avoid}
 }
 
 /* ── SORTIE D'INVENTAIRE ── */
@@ -698,6 +703,17 @@ input,select,textarea{font-size:16px!important}
 @media(max-width:480px){
   #suiviMap{height:240px!important}
   #pmRouteMap{height:240px!important}
+}
+
+/* ── PC / tablette (gestion OPS) : utiliser toute la largeur, plus de colonnes visibles d'un coup, sans défilement forcé ── */
+@media(min-width:900px){
+  .pm-board{display:grid;grid-template-columns:repeat(auto-fit,minmax(258px,1fr));gap:16px;overflow-x:visible;align-items:start}
+  .pm-col,.pm-col.pool{flex:unset;width:100%;min-width:0}
+  .pm-col-body{min-height:180px}
+  .pm-toolbar .btn{padding:9px 16px}
+}
+@media(min-width:1300px){
+  .pm-board{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
 }
 
 .pm-board{display:flex;gap:11px;overflow-x:auto;padding:2px 0 12px;align-items:flex-start;-webkit-overflow-scrolling:touch}
@@ -1188,6 +1204,18 @@ input,select,textarea{font-size:16px!important}
         <button class="btn btn-ghost btn-sm equip-tog" data-e="UV">UV</button>
       </div>
     </div>
+    <div class="mfield"><label>🌐 Site web (optionnel — logo affiché automatiquement)</label>
+      <input type="text" id="sSiteWeb" placeholder="ex: ccnq.ca ou https://ccnq.ca"/>
+      <div id="sLogoPreview" style="margin-top:6px;display:none;align-items:center;gap:8px">
+        <img id="sLogoImg" style="width:34px;height:34px;border-radius:8px;border:1px solid var(--line);object-fit:contain;background:#fff"/>
+        <span style="font-size:11px;color:var(--muted)">Logo récupéré automatiquement du site web</span>
+      </div>
+    </div>
+    <div class="mfield">
+      <label>🏊 Piscines / bassins (une même adresse peut en avoir plusieurs)</label>
+      <div id="sBassinsWrap" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+      <button type="button" class="btn btn-ghost btn-sm" id="sBassinAddBtn">➕ Ajouter une piscine/bassin</button>
+    </div>
     <div class="mfield"><label>📎 Photos / Plans</label>
       <div class="pj-zone" id="sPjZone"></div>
       <input type="file" id="sPjInput" multiple accept="image/*,application/pdf,.heic" style="display:none"/>
@@ -1326,6 +1354,9 @@ input,select,textarea{font-size:16px!important}
   <div class="modal-box" style="max-width:680px">
     <div class="modal-hd"><h3 id="sortieModalTitle">Sortie d'inventaire</h3><button class="modal-close" id="sortieModalClose">✕</button></div>
     <div style="background:var(--lt);color:var(--blue);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;margin-bottom:10px" id="sortieNoBon">N° de bon : —</div>
+    <div class="mfield"><label>🏢 Client / Site</label>
+      <input type="text" id="sorClient" placeholder="ex: CCNQ" list="sitesList" autocomplete="off"/>
+    </div>
     <div class="m2">
       <div class="mfield"><label>Nom et prénom</label><input type="text" id="sorNom" placeholder="Ex. Charles-William Weil"/></div>
       <div class="mfield"><label>N° d'employé</label><input type="text" id="sorNoEmploye" placeholder="Ex. 1021 ou N/A"/></div>
@@ -1396,7 +1427,8 @@ input,select,textarea{font-size:16px!important}
     </div>
 
     <button class="btn btn-ghost btn-full" id="livSaveBtn" style="margin-top:10px">💾 Enregistrer le brouillon</button>
-    <button class="btn btn-success btn-full" id="livDeliverBtn" style="margin-top:8px">✅🖨 Marquer livré (+ impression)</button>
+    <button class="btn btn-ghost btn-full" id="livPrintBtn" style="margin-top:8px">🖨️ Imprimer le bon + packing slip</button>
+    <button class="btn btn-success btn-full" id="livDeliverBtn" style="margin-top:8px">✅ Valider la livraison</button>
     <button class="btn btn-danger btn-full" id="livDeleteBtn" style="margin-top:8px;display:none">🗑 Supprimer</button>
     <button class="btn btn-ghost btn-full" id="livCancel" style="margin-top:8px">Fermer</button>
   </div>
@@ -1525,6 +1557,7 @@ var woEditId = null;
 var siteEditId = null;
 var stopPjFiles = [];
 var sEquips = [];
+var sBassins = [];
 var woTasks = [];
 var woPjFiles = [];
 var sitePjFiles = [];
@@ -2132,7 +2165,7 @@ function getDayAssignmentsByEmp(day){
   var byEmp={};
   function bucket(id){ if(!byEmp[id])byEmp[id]={wos:[],slots:[]}; return byEmp[id]; }
   wos.filter(function(w){
-    return w.date===day && !plan.some(function(p){return p.woId===w.id&&p.date===day;});
+    return (w.date===day || !w.date) && !plan.some(function(p){return p.woId===w.id&&p.date===day;});
   }).forEach(function(w){
     var a=woAssignees(w);
     if(a.length===0)bucket(UNASSIGNED).wos.push(w);
@@ -2216,7 +2249,7 @@ document.addEventListener('DOMContentLoaded', function(){
   try{
     var vb=document.createElement('div');
     vb.id='__buildBadge';
-    vb.textContent='build F22 ⟲';
+    vb.textContent='build F23 ⟲';
     vb.title='Version de l\'app — toucher pour restaurer une sauvegarde';
     vb.style.cssText='position:fixed;bottom:4px;right:6px;font:11px/1.4 monospace;color:#fff;background:rgba(27,79,140,.85);padding:3px 8px;border-radius:8px;z-index:99999;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.2)';
     vb.addEventListener('click',function(){
@@ -2290,6 +2323,8 @@ document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('pmmAddBtn').addEventListener('click', function(){openPmmModal(null);});
   document.getElementById('woAddBtn').addEventListener('click', function(){openWOModal(null);});
   document.getElementById('siteAddBtn').addEventListener('click', function(){openSiteModal(null);});
+  var _sBassinBtn=document.getElementById('sBassinAddBtn');if(_sBassinBtn)_sBassinBtn.addEventListener('click',function(){sBassins.push({nom:'',type:'piscine'});renderSBassins();});
+  var _sWebInp=document.getElementById('sSiteWeb');if(_sWebInp)_sWebInp.addEventListener('input',updateSLogoPreview);
   document.getElementById('flotteAddBtn').addEventListener('click', function(){openVehiculeModal(null);});
   document.querySelectorAll('.pmm-subtab').forEach(function(b){
     b.addEventListener('click',function(){switchMod(b.dataset.mod);});
@@ -2401,7 +2436,8 @@ document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('livAddLigneLiv').addEventListener('click', function(){livAddLigne('liv',null);});
   document.getElementById('livAddLigneRet').addEventListener('click', function(){livAddLigne('ret',null);});
   document.getElementById('livSaveBtn').addEventListener('click', function(){saveLivraison(false);});
-  document.getElementById('livDeliverBtn').addEventListener('click', function(){saveLivraison(true);});
+  document.getElementById('livPrintBtn').addEventListener('click', function(){saveLivraison(false,true);});
+  document.getElementById('livDeliverBtn').addEventListener('click', validateLivraisonFromModal);
   document.getElementById('livDeleteBtn').addEventListener('click', deleteLivraison);
 
   document.getElementById('ftEditModalClose').addEventListener('click', function(){closeModal('ftEditModal');});
@@ -2650,7 +2686,7 @@ function renderPlan(){
   var daySlots=plan.filter(function(p){return p.date===pmDay;});
   // WO dont la date prévue correspond à ce jour (pas encore dans un slot)
   var dayWOs=wos.filter(function(wo){
-    return wo.date===pmDay && !plan.some(function(p){return p.woId===wo.id&&p.date===pmDay;});
+    return (wo.date===pmDay || !wo.date) && !plan.some(function(p){return p.woId===wo.id&&p.date===pmDay;});
   });
 
   if(!isSup()){
@@ -3149,25 +3185,39 @@ function printTeamDay(day){
   var list=Object.keys(ids).sort(function(a,b){return (empName(a)||'').localeCompare(empName(b)||'');});
   if(list.length===0){toast('Rien à imprimer pour ce jour');return;}
   var h='';
-  list.forEach(function(uidP){
+  list.forEach(function(uidP,i){
     var plan=pms.find(function(p){return pmAssignees(p).indexOf(uidP)>=0;});
     var wos=getWOs().filter(function(w){return w.date===day&&woAssignees(w).indexOf(uidP)>=0;});
     var slots=getPlan().filter(function(p){return p.date===day&&planAssignees(p).indexOf(uidP)>=0;});
-    h+='<div style="page-break-after:always">'+pmmBuildPrintHTML(plan,wos,slots,uidP)+'</div>';
+    // ➕ Plus de saut de page forcé par employé (ça gaspillait du papier) — flux naturel, coupure seulement si le contenu déborde
+    h+='<div class="pmm-print-emp-block">'+pmmBuildPrintHTML(plan,wos,slots,uidP,day)+'</div>';
   });
   document.getElementById('pmmPrintArea').innerHTML=h;
   window.print();
 }
+// ➕ Impression rapide d'UN SEUL employé (un clic), sans passer par le sélecteur
+function printOneEmployeeDay(day,uidP){
+  var plan=getPlanMatches().find(function(p){return p.date===day&&pmAssignees(p).indexOf(uidP)>=0;});
+  var wos=getWOs().filter(function(w){return w.date===day&&woAssignees(w).indexOf(uidP)>=0;});
+  var slots=getPlan().filter(function(p){return p.date===day&&planAssignees(p).indexOf(uidP)>=0;});
+  if(!plan&&!wos.length&&!slots.length){toast('Rien à imprimer pour cet employé ce jour');return;}
+  document.getElementById('pmmPrintArea').innerHTML=pmmBuildPrintHTML(plan,wos,slots,uidP,day);
+  window.print();
+}
 
 // Construit un document propre (texte figé, pas d'inputs) pour l'impression
-function pmmBuildPrintHTML(plan,wosToday,slotsToday,uidT){
+function pmmBuildPrintHTML(plan,wosToday,slotsToday,uidT,dayFallback){
   wosToday=wosToday||[];slotsToday=slotsToday||[];
+  // ➕ Repli fiable de la date : plan → 1er WO → 1er créneau → jour demandé — ne reste jamais vide
+  var dateShown=(plan&&plan.date)||(wosToday[0]&&wosToday[0].date)||(slotsToday[0]&&slotsToday[0].date)||dayFallback||'';
+  var empDisplay=empName(uidT||(plan?plan.emp:''))||'—';
   var h='<div class="pmm-print-doc">';
   h+='<div class="pmm-print-hd"><h1>📋 PLAN DE MATCH — JOURNÉE COMPLÈTE</h1>';
-  h+='<div class="pmm-print-meta"><span><b>Employé:</b> '+esc(empName(uidT||(plan?plan.emp:'')))+'</span>';
+  h+='<div class="pmm-print-emp-name">👷 '+esc(empDisplay)+'</div>';
+  h+='<div class="pmm-print-meta">';
   if(plan&&plan.vehicule)h+='<span><b>Véhicule:</b> '+esc(plan.vehicule)+'</span>';
   if(plan&&plan.superviseur)h+='<span><b>Superviseur:</b> '+esc(plan.superviseur)+'</span>';
-  h+='<span><b>Date:</b> '+fmtDate(plan?plan.date:(wosToday[0]?wosToday[0].date:''))+'</span></div></div>';
+  h+='<span><b>Date:</b> '+fmtDate(dateShown)+'</span></div></div>';
   if(plan&&plan.resume)h+='<div class="pmm-print-sub" style="margin:-6px 0 8px">'+esc(plan.resume)+'</div>';
 
   if(wosToday.length>0){
@@ -3230,8 +3280,13 @@ function renderPmmAll(content){
     if(!w.length&&!sl.length&&!pm)return;
     any=true;
     var sec=document.createElement('div');sec.className='pmm-section';
-    var hd=document.createElement('div');hd.className='pmm-sec-hd c-bleu';
-    hd.textContent='👷 '+(c.prenom+' '+c.nom).trim()+' — '+(w.length+sl.length)+' arrêt(s)'+(pm?' · plan de match ✓':'');
+    var hd=document.createElement('div');hd.className='pmm-sec-hd c-bleu';hd.style.cssText='display:flex;align-items:center;gap:8px';
+    var hdTxt=document.createElement('span');hdTxt.textContent='👷 '+(c.prenom+' '+c.nom).trim()+' — '+(w.length+sl.length)+' arrêt(s)'+(pm?' · plan de match ✓':'');
+    hd.appendChild(hdTxt);
+    var pBtn=document.createElement('button');pBtn.textContent='🖨️';pBtn.title='Imprimer la journée de '+c.prenom;
+    pBtn.style.cssText='margin-left:auto;border:none;background:rgba(255,255,255,.25);color:#fff;border-radius:6px;padding:3px 9px;font-size:13px;cursor:pointer';
+    pBtn.addEventListener('click',function(e){e.stopPropagation();printOneEmployeeDay(day,c.id);});
+    hd.appendChild(pBtn);
     sec.appendChild(hd);
     sl.forEach(function(slot){renderPMSlot(sec,slot);});
     w.forEach(function(wo){renderWOAsSlot(sec,wo);});
@@ -3288,7 +3343,7 @@ function renderPlanMatch(){
     var printBtn=document.createElement('button');
     printBtn.className='btn btn-ghost';printBtn.style.flex='1';printBtn.innerHTML='🖨️ Imprimer la journée';
     printBtn.addEventListener('click',function(){
-      document.getElementById('pmmPrintArea').innerHTML=pmmBuildPrintHTML(plan,wosToday,slotsToday,uidT);
+      document.getElementById('pmmPrintArea').innerHTML=pmmBuildPrintHTML(plan,wosToday,slotsToday,uidT,pmmDay);
       window.print();
     });
     actions.appendChild(printBtn);
@@ -3780,6 +3835,14 @@ function renderWOTaskList(){
 // ═══════════════════════════════════════════════════════
 // SITES & CLIENTS
 // ═══════════════════════════════════════════════════════
+
+// Logo automatique à partir d'un site web (service favicon public — aucune clé, aucun stockage)
+function siteLogoUrl(website){
+  if(!website)return null;
+  var domain=String(website).trim().replace(/^https?:\/\//i,'').replace(/^www\./i,'').split('/')[0];
+  if(!domain||domain.indexOf('.')<0)return null;
+  return 'https://www.google.com/s2/favicons?sz=128&domain='+encodeURIComponent(domain);
+}
 function renderSiteList(){
   var list=document.getElementById('siteList');list.innerHTML='';
   var sites=getSites();
@@ -3791,10 +3854,12 @@ function renderSiteList(){
   sites.forEach(function(site){
     var card=document.createElement('div');card.className='site-card';
     var wos=getWOs().filter(function(w){return w.site&&w.site.indexOf(site.nom)>=0;});
+    var logoUrl=siteLogoUrl(site.siteweb);
+    var nbBassins=(site.bassins||[]).length;
     card.innerHTML='<div class="site-hd">'+
-      '<div class="site-avatar">'+siteTypeIcon(site.type)+'</div>'+
+      (logoUrl?'<img src="'+logoUrl+'" class="site-avatar" style="object-fit:contain;background:#fff" onerror="this.style.display=\'none\'"/>':'<div class="site-avatar">'+siteTypeIcon(site.type)+'</div>')+
       '<div class="site-info"><div class="site-name">'+site.nom+'</div><div class="site-addr">📍 '+site.addr+'</div></div>'+
-      '<div class="li-right"><span class="badge badge-blue">'+wos.length+' WO'+(wos.length!==1?'s':'')+'</span>'+(site.annee?'<span style="font-size:11px;color:var(--muted)">'+site.annee+'</span>':'')+'</div></div>'+
+      '<div class="li-right"><span class="badge badge-blue">'+wos.length+' WO'+(wos.length!==1?'s':'')+'</span>'+(nbBassins>1?'<span class="badge badge-orange" style="margin-top:2px">🏊 '+nbBassins+' bassins</span>':'')+(site.annee?'<span style="font-size:11px;color:var(--muted)">'+site.annee+'</span>':'')+'</div></div>'+
       (site.equips&&site.equips.length?'<div class="site-body">'+site.equips.map(function(e){return '<span class="equip-tag">'+e+'</span>';}).join('')+'</div>':'');
     card.addEventListener('click',function(){openSiteModal(site);});
     list.appendChild(card);
@@ -3804,11 +3869,13 @@ function openSiteModal(site){
   siteEditId=site?site.id:null;
   sitePjFiles=site&&site.files?site.files.slice():[];
   sEquips=site&&site.equips?site.equips.slice():[];
+  sBassins=site&&site.bassins?JSON.parse(JSON.stringify(site.bassins)):[];
   document.getElementById('siteModalTitle').textContent=site?site.nom:'Nouveau site / client';
   document.getElementById('sNom').value=site?site.nom:'';
   document.getElementById('sAddr').value=site?site.addr:'';
   document.getElementById('sTel').value=site?site.tel:'';
   document.getElementById('sEmail').value=site?site.email:'';
+  document.getElementById('sSiteWeb').value=site&&site.siteweb?site.siteweb:'';
   document.getElementById('sType').value=site?site.type:'creusee';
   document.getElementById('sAnnee').value=site?site.annee:'';
   document.getElementById('sNotes').value=site?site.notes:'';
@@ -3816,16 +3883,40 @@ function openSiteModal(site){
     btn.className='btn btn-sm equip-tog '+(sEquips.indexOf(btn.dataset.e)>=0?'btn-primary':'btn-ghost');
   });
   document.getElementById('siteDeleteBtn').style.display=site&&canEdit()?'flex':'none';
-  renderSEquips();renderSitePj();
+  renderSEquips();renderSitePj();renderSBassins();updateSLogoPreview();
   openModal('siteModal');
+}
+function updateSLogoPreview(){
+  var url=siteLogoUrl(document.getElementById('sSiteWeb').value.trim());
+  var wrap=document.getElementById('sLogoPreview'),img=document.getElementById('sLogoImg');
+  if(url){img.src=url;wrap.style.display='flex';}else{wrap.style.display='none';}
+}
+function renderSBassins(){
+  var wrap=document.getElementById('sBassinsWrap');wrap.innerHTML='';
+  if(sBassins.length===0){wrap.innerHTML='<div style="font-size:11.5px;color:var(--muted);font-style:italic">Aucun bassin ajouté — la fiche représente 1 piscine/bassin par défaut.</div>';return;}
+  sBassins.forEach(function(b,i){
+    var row=document.createElement('div');
+    row.style.cssText='display:flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:var(--rs);padding:6px 8px';
+    row.innerHTML='<input type="text" placeholder="Nom (ex: Bassin principal)" data-k="nom" style="flex:2;border:none;outline:none;font-size:13px"/>'+
+      '<select data-k="type" style="border:none;outline:none;font-size:12px;color:var(--muted)">'+
+        '<option value="piscine">Piscine</option><option value="spa">Spa</option><option value="pataugeoire">Pataugeoire</option><option value="jeuxdeau">Jeux d\'eau</option><option value="autre">Autre</option>'+
+      '</select>'+
+      '<button type="button" class="pmm-mini-x" style="flex-shrink:0">✕</button>';
+    var inp=row.querySelector('[data-k=nom]');inp.value=b.nom||'';inp.addEventListener('input',function(){b.nom=inp.value;});
+    var sel=row.querySelector('[data-k=type]');sel.value=b.type||'piscine';sel.addEventListener('change',function(){b.type=sel.value;});
+    row.querySelector('.pmm-mini-x').addEventListener('click',function(){sBassins.splice(i,1);renderSBassins();});
+    wrap.appendChild(row);
+  });
 }
 function saveSite(){
   var nom=document.getElementById('sNom').value.trim();if(!nom){document.getElementById('sNom').focus();return;}
   var sites=getSites();
   var site={id:siteEditId||uid(),nom:nom,addr:document.getElementById('sAddr').value.trim(),
     tel:document.getElementById('sTel').value.trim(),email:document.getElementById('sEmail').value.trim(),
+    siteweb:document.getElementById('sSiteWeb').value.trim(),
     type:document.getElementById('sType').value,annee:document.getElementById('sAnnee').value,
-    equips:sEquips.slice(),notes:document.getElementById('sNotes').value.trim(),files:sitePjFiles};
+    equips:sEquips.slice(),bassins:sBassins.filter(function(b){return b.nom;}),
+    notes:document.getElementById('sNotes').value.trim(),files:sitePjFiles};
   if(siteEditId){var idx2=sites.findIndex(function(s){return s.id===siteEditId;});if(idx2>=0)sites[idx2]=site;else sites.push(site);}
   else sites.unshift(site);
   setSites(sites);closeModal('siteModal');renderSiteList();toast('✅ Fiche sauvegardée !');
@@ -5170,11 +5261,11 @@ function sortieGenerateNoBon(){
 function renderSortieList(){
   var list=document.getElementById('sortieList');
   list.innerHTML='';
-  var sorties=getSorties().slice().sort(function(a,b){return (b.createdAt||'').localeCompare(a.createdAt||'');});
+  var sorties=getSorties().slice().sort(function(a,b){return (b.date||b.createdAt||'').localeCompare(a.date||a.createdAt||'');});
   var search=(document.getElementById('sortieSearch').value||'').toLowerCase();
   if(search){
     sorties=sorties.filter(function(s){
-      var hay=(s.noBon+' '+s.nom+' '+s.departement+' '+(s.lignes||[]).map(function(l){return l.projet+' '+l.desc+' '+l.code;}).join(' ')).toLowerCase();
+      var hay=(s.noBon+' '+s.client+' '+s.nom+' '+s.departement+' '+(s.lignes||[]).map(function(l){return l.projet+' '+l.desc+' '+l.code;}).join(' ')).toLowerCase();
       return hay.indexOf(search)>=0;
     });
   }
@@ -5182,19 +5273,32 @@ function renderSortieList(){
     list.innerHTML='<div class="empty"><div class="ei">📤</div><h3>Aucune sortie d\'inventaire</h3><p>Créez-en une avec le bouton ＋</p></div>';
     return;
   }
+  // ➕ Regroupement intelligent par client (plus lisible qu'une simple liste plate)
+  var groups={}, order=[];
   sorties.forEach(function(s){
-    var card=document.createElement('div');card.className='sortie-card';
-    var nbLignes=(s.lignes||[]).filter(function(l){return l.desc||l.code;}).length;
-    var envoye=s.status==='envoye';
-    card.innerHTML='<div class="sc-hd"><div><div class="sc-bon">'+esc(s.noBon)+'</div><div class="sc-nom">'+esc(s.nom||'—')+'</div></div>'+
-      '<span class="badge '+(envoye?'badge-green':'badge-orange')+'">'+(envoye?'✅ Envoyé':'📝 Brouillon')+'</span></div>'+
-      '<div class="sc-body">'+
-        '<span>📅 '+(s.date?fmtDate(s.date):'—')+'</span>'+
-        '<span>🏢 '+esc(s.departement||'—')+'</span>'+
-        '<span>📦 '+nbLignes+' item'+(nbLignes>1?'s':'')+'</span>'+
-      '</div>';
-    card.addEventListener('click',function(){openSortieModal(s.id);});
-    list.appendChild(card);
+    var key=s.client||'Sans client précisé';
+    if(!groups[key]){groups[key]=[];order.push(key);}
+    groups[key].push(s);
+  });
+  order.sort(function(a,b){ if(a==='Sans client précisé')return 1; if(b==='Sans client précisé')return -1; return a.localeCompare(b); });
+  order.forEach(function(client){
+    var hd=document.createElement('div');hd.className='sec-title';
+    hd.innerHTML='🏢 '+esc(client)+' <span style="opacity:.55;font-weight:600">('+groups[client].length+')</span>';
+    list.appendChild(hd);
+    groups[client].forEach(function(s){
+      var card=document.createElement('div');card.className='sortie-card';
+      var nbLignes=(s.lignes||[]).filter(function(l){return l.desc||l.code;}).length;
+      var envoye=s.status==='envoye';
+      card.innerHTML='<div class="sc-hd"><div><div class="sc-bon">'+esc(s.noBon)+'</div><div class="sc-nom">'+esc(s.client||'Client non précisé')+'</div></div>'+
+        '<span class="badge '+(envoye?'badge-green':'badge-orange')+'">'+(envoye?'✅ Envoyé':'📝 Brouillon')+'</span></div>'+
+        '<div class="sc-body">'+
+          '<span>📅 '+(s.date?fmtDate(s.date):'—')+'</span>'+
+          '<span>👤 '+esc(s.nom||'—')+'</span>'+
+          '<span>📦 '+nbLignes+' item'+(nbLignes>1?'s':'')+'</span>'+
+        '</div>';
+      card.addEventListener('click',function(){openSortieModal(s.id);});
+      list.appendChild(card);
+    });
   });
 }
 
@@ -5233,6 +5337,7 @@ function openSortieModal(sortieId){
     if(!s){toast('Sortie introuvable');return;}
     document.getElementById('sortieModalTitle').textContent='Sortie d\'inventaire';
     document.getElementById('sortieNoBon').textContent='N° de bon : '+s.noBon;
+    document.getElementById('sorClient').value=s.client||'';
     document.getElementById('sorNom').value=s.nom||'';
     document.getElementById('sorNoEmploye').value=s.noEmploye||'';
     document.getElementById('sorDept').value=s.departement||'';
@@ -5244,6 +5349,7 @@ function openSortieModal(sortieId){
   }else{
     document.getElementById('sortieModalTitle').textContent='Nouvelle sortie d\'inventaire';
     document.getElementById('sortieNoBon').textContent='N° de bon : '+sortieGenerateNoBon();
+    document.getElementById('sorClient').value='';
     document.getElementById('sorNom').value=fullName();
     document.getElementById('sorNoEmploye').value=currentUser.id;
     document.getElementById('sorDept').value=currentUser.dept||'';
@@ -5269,6 +5375,7 @@ function saveSortie(send){
   }else{
     s={id:uid(),noBon:document.getElementById('sortieNoBon').textContent.replace('N° de bon : ',''),createdBy:currentUser.id,createdAt:new Date().toISOString()};
   }
+  s.client=document.getElementById('sorClient').value.trim();
   s.nom=nom;
   s.noEmploye=document.getElementById('sorNoEmploye').value.trim();
   s.departement=document.getElementById('sorDept').value.trim();
@@ -5387,7 +5494,14 @@ function renderLivraisonList(){
         '<span>📅 '+(l.date?fmtDate(l.date):'—')+(l.heure?(' · '+esc(l.heure)):'')+'</span>'+
         '<span>👷 '+esc(l.technicien||'—')+'</span>'+
         '<span>📦 '+nbLiv+' livré'+(nbLiv>1?'s':'')+(nbRet>0?(' · ↩ '+nbRet+' retour'+(nbRet>1?'s':'')):'')+'</span>'+
+      '</div>'+
+      '<div class="sc-body" style="padding-top:0;gap:8px">'+
+        '<button type="button" class="btn btn-ghost btn-sm liv-quick-print">🖨️ Imprimer</button>'+
+        (livre?'':'<button type="button" class="btn btn-ghost btn-sm liv-quick-valid" style="color:var(--green)">✅ Valider</button>')+
       '</div>';
+    card.querySelector('.liv-quick-print').addEventListener('click',function(e){e.stopPropagation();printLivraisonBon(l);});
+    var vBtn=card.querySelector('.liv-quick-valid');
+    if(vBtn)vBtn.addEventListener('click',function(e){e.stopPropagation();validateLivraison(l.id);});
     card.addEventListener('click',function(){openLivraisonModal(l.id);});
     list.appendChild(card);
   });
@@ -5480,12 +5594,12 @@ function openLivraisonModal(livId){
   openModal('livraisonModal');
 }
 
-function saveLivraison(marquerLivre){
+// marquerLivre : conservé pour compat mais n'est plus déclenché par ce chemin (voir validateLivraison) — imprimer=true imprime sans changer le statut
+function saveLivraison(marquerLivre,imprimer){
   var client=document.getElementById('livClient').value.trim();
-  if(!client){document.getElementById('livClient').focus();toast('⚠️ Client requis');return;}
+  if(!client){document.getElementById('livClient').focus();toast('⚠️ Client requis');return null;}
   var itemsLiv=livLignesLiv.filter(function(l){return l.item;});
   var itemsRet=livLignesRet.filter(function(l){return l.item;});
-  if(marquerLivre&&itemsLiv.length===0){toast('⚠️ Ajoutez au moins un item livré');return;}
   var list=getLivraisons();
   var l;
   if(livraisonEditId){
@@ -5509,16 +5623,51 @@ function saveLivraison(marquerLivre){
   var idx=list.findIndex(function(x){return x.id===l.id;});
   if(idx>=0)list[idx]=l;else list.push(l);
   setLivraisons(list);
+  livraisonEditId=l.id;
 
-  if(marquerLivre){
-    document.getElementById('pmmPrintArea').innerHTML=livraisonBuildPrintHTML(l);
-    window.print();
-    toast('✅ Bon marqué livré !');
+  if(imprimer){
+    printLivraisonBon(l);
+    toast('🖨️ Bon envoyé à l\'impression');
   }else{
     toast('💾 Brouillon enregistré');
   }
   closeModal('livraisonModal');
   renderLivraisonList();
+  return l;
+}
+// ➕ Impression = juste un document (bon de livraison + packing slip pour le client), n'affecte JAMAIS le statut de livraison
+function printLivraisonBon(l){
+  document.getElementById('pmmPrintArea').innerHTML=livraisonBuildPrintHTML(l);
+  window.print();
+}
+// Bouton "✅ Valider la livraison" du modal : sauvegarde d'abord les champs actuels, puis demande confirmation
+function validateLivraisonFromModal(){
+  var itemsLiv=livLignesLiv.filter(function(l){return l.item;});
+  if(itemsLiv.length===0){toast('⚠️ Ajoutez au moins un item livré avant de valider');return;}
+  var l=saveLivraison(false,false);
+  if(l)validateLivraison(l.id);
+}
+// ➕ VALIDATION DE LIVRAISON — action de l'employé sur le terrain (in-app), séparée de l'impression.
+// Validation simple manuelle : confirmation + nom du valideur + horodatage (tient lieu de signature).
+function validateLivraison(livId){
+  var l=getLivraisons().find(function(x){return x.id===livId;});
+  if(!l){toast('Bon introuvable');return;}
+  if(l.status==='livre'){toast('Déjà validé le '+(l.livreAt?new Date(l.livreAt).toLocaleString('fr-CA'):''));return;}
+  askConfirm('Confirmer que ce bon a été livré ?\n\nVotre nom et l\'heure seront enregistrés comme validation.',function(){
+    var list=getLivraisons();
+    var ll=list.find(function(x){return x.id===livId;});
+    if(!ll)return;
+    ll.status='livre';
+    ll.livreAt=new Date().toISOString();
+    ll.livreBy=currentUser?currentUser.id:'';
+    ll.livreParNom=fullName();
+    ll.updatedAt=new Date().toISOString();
+    setLivraisons(list);
+    sbPush('livraison',ll);
+    toast('✅ Livraison validée — '+fullName());
+    if(document.getElementById('livraisonModal').classList.contains('on'))closeModal('livraisonModal');
+    renderLivraisonList();
+  },'✅ Valider la livraison','Validation de livraison');
 }
 
 function deleteLivraison(){
@@ -5968,10 +6117,23 @@ function renderSuivi(){
   }
 }
 
+var statsWeek=null; // ➕ semaine affichée dans Stats — indépendante du champ caché de Temps
 function renderStats(){
   var el=document.getElementById('statsList');el.innerHTML='';
-  var wos=getWOs();var ftIdx=getFTIndex();var week=document.getElementById('weekDate').value;
+  var wos=getWOs();var ftIdx=getFTIndex();
+  // ➕ BUG CORRIGÉ : Stats lisait la date BRUTE du sélecteur de Temps (ex: jeudi) au lieu du LUNDI de la semaine,
+  // qui est la clé réellement utilisée dans l'index des feuilles de temps → les heures affichaient 0 la plupart du temps.
+  if(!statsWeek)statsWeek=mondayOf(todayISO());
+  var week=statsWeek;
   var wrap=document.createElement('div');wrap.style.padding='12px';
+  // Navigation de semaine (propre à Stats, ne dépend plus d'un autre module)
+  var nav=document.createElement('div');nav.style.cssText='display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:var(--rs);padding:6px 8px;margin-bottom:12px';
+  var mondayD=new Date(week+'T12:00:00');var sundayD=new Date(mondayD);sundayD.setDate(mondayD.getDate()+6);
+  nav.innerHTML='<button class="btn btn-ghost btn-sm" id="statsPrevWk">◀</button>'
+    +'<div style="flex:1;text-align:center;font-weight:800;font-size:13px">'+fmtDate(week)+' → '+fmtDate(localISO(sundayD))+'</div>'
+    +'<button class="btn btn-ghost btn-sm" id="statsNextWk">▶</button>'
+    +'<button class="btn btn-ghost btn-sm" id="statsTodayWk">Aujourd\'hui</button>';
+  wrap.appendChild(nav);
   var totalH=ftIdx.filter(function(e){return e.week===week;}).reduce(function(s,e){return s+(e.totalH||0);},0);
   var kpi=document.createElement('div');kpi.className='stat-grid';kpi.style.cssText='padding:0 0 10px;margin:0';
   kpi.innerHTML='<div class="sc" style="background:var(--blue-lt)"><div class="sc-lbl" style="color:var(--blue)">Heures semaine</div><div class="sc-val" style="color:var(--navy)">'+fmtH(totalH)+'</div></div>'+
@@ -5980,7 +6142,7 @@ function renderStats(){
     '<div class="sc" style="background:var(--rbg)"><div class="sc-lbl" style="color:var(--red)">Stock bas</div><div class="sc-val" style="color:var(--red)">'+getInv().filter(function(i){return parseFloat(i.seuil)>0&&parseFloat(i.qte)<=parseFloat(i.seuil);}).length+'</div></div>';
   wrap.appendChild(kpi);
   var c1=document.createElement('div');c1.className='card';c1.style.marginBottom='10px';
-  c1.innerHTML='<div class="card-hd"><div class="card-hd-t">⏱ Heures par employé — Semaine</div></div>';
+  c1.innerHTML='<div class="card-hd"><div class="card-hd-t">⏱ Heures par employé — Semaine du '+fmtDate(week)+'</div></div>';
   var body1=document.createElement('div');body1.style.padding='12px';
   var emps=getComptes().filter(function(c){return c.role!=='admin';});
   var maxH=0;
@@ -6008,6 +6170,9 @@ function renderStats(){
   });
   c2.appendChild(body2);wrap.appendChild(c2);
   el.appendChild(wrap);
+  document.getElementById('statsPrevWk').addEventListener('click',function(){var d=new Date(statsWeek+'T12:00:00');d.setDate(d.getDate()-7);statsWeek=localISO(d);renderStats();});
+  document.getElementById('statsNextWk').addEventListener('click',function(){var d=new Date(statsWeek+'T12:00:00');d.setDate(d.getDate()+7);statsWeek=localISO(d);renderStats();});
+  document.getElementById('statsTodayWk').addEventListener('click',function(){statsWeek=mondayOf(todayISO());renderStats();});
 }
 
 // ═══════════════════════════════════════════════════════
