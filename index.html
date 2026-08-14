@@ -1124,7 +1124,7 @@ input,select,textarea{font-size:16px!important}
 <div class="modal-bg" id="woModal">
   <div class="modal-box">
     <div class="modal-hd"><h3 id="woModalTitle">Work Order</h3><button class="modal-close" id="woModalClose">✕</button></div>
-    <div class="mfield"><label>Client</label><input type="text" id="woClient" placeholder="Nom du client"/></div>
+    <div class="mfield"><label>Client</label><input type="text" id="woClient" placeholder="Nom du client" list="sitesList" autocomplete="off"/></div>
     <div class="mfield"><label>Site / Adresse</label><input type="text" id="woSite" placeholder="123 rue de la Piscine, Québec"/></div>
     <div class="m2">
       <div class="mfield">
@@ -1417,7 +1417,7 @@ input,select,textarea{font-size:16px!important}
     </div>
     <div class="mfield"><label>Technicien</label><input type="text" id="livTechnicien" placeholder="Nom du technicien"/></div>
     <div class="m2">
-      <div class="mfield"><label>Client</label><input type="text" id="livClient" placeholder="Ex. Best Western — Yvette"/></div>
+      <div class="mfield"><label>Client</label><input type="text" id="livClient" placeholder="Ex. Best Western — Yvette" list="sitesList" autocomplete="off"/></div>
       <div class="mfield"><label>Téléphone client</label><input type="text" id="livTel" placeholder="418-000-0000"/></div>
     </div>
     <div class="mfield"><label>Adresse de livraison</label><input type="text" id="livAdresse" placeholder="Adresse complète"/></div>
@@ -2274,7 +2274,7 @@ document.addEventListener('DOMContentLoaded', function(){
   try{
     var vb=document.createElement('div');
     vb.id='__buildBadge';
-    vb.textContent='build F24 ⟲';
+    vb.textContent='build F25 ⟲';
     vb.title='Version de l\'app — toucher pour restaurer une sauvegarde';
     vb.style.cssText='position:fixed;bottom:4px;right:6px;font:11px/1.4 monospace;color:#fff;background:rgba(27,79,140,.85);padding:3px 8px;border-radius:8px;z-index:99999;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.2)';
     vb.addEventListener('click',function(){
@@ -3726,6 +3726,7 @@ function renderWOList(){
 }
 
 function openWOModal(wo){
+  populateClientList();
   woEditId=wo?wo.id:null;
   woPjFiles=wo&&wo.files?wo.files.slice():[];
   woTasks=wo&&wo.tasks?wo.tasks.slice():[];
@@ -3885,6 +3886,7 @@ function renderSiteList(){
   });
 }
 function openSiteModal(site){
+  populateClientList();
   siteEditId=site?site.id:null;
   sitePjFiles=site&&site.files?site.files.slice():[];
   sEquips=site&&site.equips?site.equips.slice():[];
@@ -4614,6 +4616,19 @@ function isPunchAllowed(){
   return true;
 }
 function actionArriver(){if(chronoState[curDay].status!=='idle')return;if(!isPunchAllowed())return;document.getElementById('jobModalTitle').textContent='Premier chantier du jour';openJobModal(true);}
+// ➕ Liste déroulante de clients UNIFIÉE, disponible partout dans l'app : sites du répertoire + tout nom de client
+// déjà saisi ailleurs (WO, bons de livraison, sorties d'inventaire) — jamais besoin de retaper un nom connu.
+function populateClientList(){
+  var dl=document.getElementById('sitesList');if(!dl)return;
+  var names={};
+  getSites().forEach(function(s){if(s.nom)names[s.nom]=1;});
+  getWOs().forEach(function(w){if(w.client)names[w.client]=1;});
+  getLivraisons().forEach(function(l){if(l.client)names[l.client]=1;});
+  getSorties().forEach(function(so){if(so.client)names[so.client]=1;});
+  var list=Object.keys(names).sort(function(a,b){return a.localeCompare(b);});
+  dl.innerHTML='';
+  list.forEach(function(nm){var opt=document.createElement('option');opt.value=nm;dl.appendChild(opt);});
+}
 function openJobModal(isFirst){
   mPjFiles=[];
   pendingJobSource=null; // ➕ réinitialisation à chaque ouverture — évite un lien périmé d'un punch précédent
@@ -4622,11 +4637,7 @@ function openJobModal(isFirst){
   document.getElementById('mAddr').value='';
   var _b=document.getElementById('mLieuBadge');if(_b)_b.textContent='';
   var _sw=document.getElementById('mAddrSaveWrap');if(_sw)_sw.style.display='none';
-  // Remplir la liste des sites connus (nom + adresse)
-  var dl=document.getElementById('sitesList');dl.innerHTML='';
-  getSites().forEach(function(s){
-    var opt=document.createElement('option');opt.value=s.nom;dl.appendChild(opt);
-  });
+  populateClientList(); // ➕ liste déroulante unifiée (sites + clients déjà saisis partout ailleurs)
   // Mémoire des descriptions récentes (menus à mémoire)
   var ddl=document.getElementById('detailsList');
   if(ddl){
@@ -5377,6 +5388,7 @@ function sortieRenderLignes(){
 }
 
 function openSortieModal(sortieId){
+  populateClientList();
   sortieEditId=sortieId;
   if(sortieId){
     var s=getSorties().find(function(x){return x.id===sortieId;});
@@ -5601,6 +5613,7 @@ function livDrawPhotos(){
 }
 
 function openLivraisonModal(livId){
+  populateClientList();
   livraisonEditId=livId;
   if(livId){
     var l=getLivraisons().find(function(x){return x.id===livId;});
