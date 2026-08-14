@@ -1248,17 +1248,38 @@ input,select,textarea{font-size:16px!important}
 <div class="modal-bg" id="pmModal">
   <div class="modal-box">
     <div class="modal-hd"><h3 id="pmModalTitle">Planifier une intervention</h3><button class="modal-close" id="pmModalClose">✕</button></div>
-    <div class="mfield"><label>Work Order</label>
-      <select id="pmWoSel"><option value="">Choisir un WO…</option></select>
+    <div class="mfield"><label>Client / Site <span id="pmClientBadge" style="font-size:10px;font-weight:800;padding:1px 7px;border-radius:20px;margin-left:4px"></span></label>
+      <input type="text" id="pmClient" placeholder="ex: CCNQ" list="sitesList" autocomplete="off"/>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px">Choisis un site du répertoire (adresse auto) ou entre un nouveau client.</div>
+    </div>
+    <div class="mfield" id="pmAddrField">
+      <label>📍 Adresse</label>
+      <input type="text" id="pmAddr" placeholder="Adresse du chantier"/>
+      <label id="pmAddrSaveWrap" style="display:none;align-items:center;gap:6px;margin-top:6px;font-size:12px;color:var(--muted);font-weight:600">
+        <input type="checkbox" id="pmAddrSave" checked style="width:auto"/> ➕ Ajouter ce client au répertoire de sites
+      </label>
     </div>
     <div class="m2">
-      <div class="mfield"><label>Date</label><input type="date" id="pmDate"/></div>
+      <div class="mfield"><label>Type</label>
+        <select id="pmType">
+          <option value="entretien">🧹 Entretien</option><option value="installation">🔧 Installation</option>
+          <option value="reparation">🔨 Réparation</option><option value="inspection">🔍 Inspection</option>
+          <option value="livraison">🚚 Livraison</option><option value="autre">📋 Autre</option>
+        </select>
+      </div>
       <div class="mfield"><label>Heure prévue</label><input type="time" id="pmHeure"/></div>
     </div>
+    <div class="mfield"><label>Date</label><input type="date" id="pmDate"/></div>
     <div class="mfield"><label>Employé(s) assigné(s)</label>
       <div id="pmEmpList" style="max-height:170px;overflow-y:auto;border:1.5px solid var(--line);border-radius:var(--rs);padding:4px 10px"></div>
     </div>
-    <div class="mfield"><label>Notes</label><textarea id="pmNotes" placeholder="Instructions, adresse, matériel…" style="min-height:60px"></textarea></div>
+    <div class="mfield"><label>📋 Travail à faire <span style="font-weight:600;color:var(--muted);font-size:11px">— imprimé sur le plan de match de l'employé</span></label>
+      <textarea id="pmDescr" placeholder="Ex: nettoyage filtre, test d'eau, ajustement chlore…" style="min-height:60px"></textarea>
+    </div>
+    <div class="mfield"><label>Notes additionnelles</label><textarea id="pmNotes" placeholder="Matériel, accès, consignes…" style="min-height:44px"></textarea></div>
+    <div class="mfield" id="pmWoLinkWrap"><label>🔗 Lier à un Work Order existant <span style="font-weight:600;color:var(--muted);font-size:11px">(optionnel — pour une checklist détaillée)</span></label>
+      <select id="pmWoSel"><option value="">Aucun — ce créneau se suffit à lui-même</option></select>
+    </div>
     <button class="btn btn-success btn-full" id="pmSaveBtn" style="margin-top:4px">💾 Planifier</button>
     <button class="btn btn-ghost btn-full" id="pmCancel" style="margin-top:8px">Annuler</button>
   </div>
@@ -2274,7 +2295,7 @@ document.addEventListener('DOMContentLoaded', function(){
   try{
     var vb=document.createElement('div');
     vb.id='__buildBadge';
-    vb.textContent='build F25 ⟲';
+    vb.textContent='build F26 ⟲';
     vb.title='Version de l\'app — toucher pour restaurer une sauvegarde';
     vb.style.cssText='position:fixed;bottom:4px;right:6px;font:11px/1.4 monospace;color:#fff;background:rgba(27,79,140,.85);padding:3px 8px;border-radius:8px;z-index:99999;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.2)';
     vb.addEventListener('click',function(){
@@ -2428,6 +2449,7 @@ document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('pmModalClose').addEventListener('click', function(){closeModal('pmModal');});
   document.getElementById('pmCancel').addEventListener('click', function(){closeModal('pmModal');});
   document.getElementById('pmSaveBtn').addEventListener('click', savePlan);
+  var _pmClientInp=document.getElementById('pmClient');if(_pmClientInp)_pmClientInp.addEventListener('input',onPmClientChange);
 
   document.getElementById('pmmModalClose').addEventListener('click', function(){closeModal('pmmModal');});
   document.getElementById('pmmCancel').addEventListener('click', function(){closeModal('pmmModal');});
@@ -2785,7 +2807,10 @@ function renderPlanBoard(content){
 function boardItems(b){
   var items=[],wos=getWOs();
   (b.wos||[]).forEach(function(wo){items.push({kind:'wo',id:wo.id,cli:wo.client,site:wo.site,type:wo.type,time:''});});
-  (b.slots||[]).forEach(function(s){var wo=wos.find(function(x){return x.id===s.woId;});items.push({kind:'slot',id:s.id,cli:wo?wo.client:(s.label||'Créneau'),site:wo?wo.site:(s.notes||''),type:wo?wo.type:'entretien',time:s.heure||''});});
+  (b.slots||[]).forEach(function(s){
+    var wo=s.woId?wos.find(function(x){return x.id===s.woId;}):null;
+    items.push({kind:'slot',id:s.id,cli:s.client||(wo?wo.client:'Créneau'),site:s.addr||(wo?wo.site:(s.notes||'')),type:s.type||(wo?wo.type:'entretien'),time:s.heure||''});
+  });
   items.sort(function(a,b){if(!a.time)return 1;if(!b.time)return -1;return a.time.localeCompare(b.time);});
   return items;
 }
@@ -2957,26 +2982,50 @@ function renderWOAsSlot(container,wo){
 
 function renderPMSlot(container,slot){
   var wos=getWOs();
-  var wo=wos.find(function(w){return w.id===slot.woId;});
+  var wo=slot.woId?wos.find(function(w){return w.id===slot.woId;}):null;
+  var cli=slot.client||(wo?wo.client:'Intervention');
+  var addr=slot.addr||(wo?wo.site:'');
+  var typ=slot.type||(wo?wo.type:'entretien');
   var div=document.createElement('div');
   var cls=slot.status==='complete'?'done':slot.status==='en_cours'?'inprog':'assigned';
   div.className='pm-slot '+cls;
   div.innerHTML='<div class="pm-slot-top">'+
-    '<span class="pm-slot-name">'+(wo?woTypeIcon(wo.type)+' '+wo.client:'Intervention')+'</span>'+
+    '<span class="pm-slot-name">'+woTypeIcon(typ)+' '+esc(cli)+'</span>'+
     '<span class="pm-slot-time">'+(slot.heure||'')+'</span></div>'+
-    '<div class="pm-slot-meta">'+(wo?wo.site:'')+(planAssignees(slot).length?'<br/>':'')+'</div>'+
+    '<div class="pm-slot-meta">'+esc(addr)+(planAssignees(slot).length?'<br/>':'')+'</div>'+
+    (slot.descr?'<div class="pm-slot-meta" style="margin-top:4px">📋 '+esc(slot.descr)+'</div>':'')+
     (planAssignees(slot).length?'<div style="margin-top:6px">'+planAssignees(slot).map(function(id){return '<span class="pm-emp-chip">👷 '+empName(id)+'</span>';}).join('')+'</div>':'')+
-    (slot.notes?'<div class="pm-slot-meta" style="margin-top:4px;font-style:italic">'+slot.notes+'</div>':'');
+    (slot.notes?'<div class="pm-slot-meta" style="margin-top:4px;font-style:italic">'+esc(slot.notes)+'</div>':'');
   if(isAdmin()){div.addEventListener('click',function(){openPmModal(slot.woId,slot.id);});}
   container.appendChild(div);
 }
 
+function findSiteByNameForSlot(nom){
+  nom=(nom||'').trim().toLowerCase();
+  if(!nom)return null;
+  return getSites().find(function(s){return (s.nom||'').trim().toLowerCase()===nom;})||null;
+}
+function onPmClientChange(){
+  var client=document.getElementById('pmClient').value.trim();
+  var site=findSiteByNameForSlot(client);
+  var badge=document.getElementById('pmClientBadge');
+  var saveWrap=document.getElementById('pmAddrSaveWrap');
+  if(site){
+    if(site.addr)document.getElementById('pmAddr').value=site.addr;
+    if(badge){badge.textContent='📁 Répertoire';badge.style.background='var(--gbg,#E1F5EE)';badge.style.color='var(--green,#1D9E75)';}
+    if(saveWrap)saveWrap.style.display='none';
+  }else{
+    if(badge){badge.textContent=client?'🆕 Nouveau client':'';badge.style.background='var(--obg,#FFF3E8)';badge.style.color='var(--orange,#FF6B00)';}
+    if(saveWrap)saveWrap.style.display=client?'flex':'none';
+  }
+}
 function openPmModal(woId, slotId){
   woTasks=[];
+  populateClientList();
   var wos=getWOs();
   document.getElementById('pmModalTitle').textContent=slotId?'Modifier planification':'Planifier une intervention';
   var sel=document.getElementById('pmWoSel');
-  sel.innerHTML='<option value="">Choisir un WO…</option>';
+  sel.innerHTML='<option value="">Aucun — ce créneau se suffit à lui-même</option>';
   wos.forEach(function(wo){
     var opt=document.createElement('option');opt.value=wo.id;opt.textContent=woTypeIcon(wo.type)+' '+wo.client+' — '+wo.site;
     if(wo.id===woId)opt.selected=true;
@@ -2984,24 +3033,55 @@ function openPmModal(woId, slotId){
   });
   document.getElementById('pmDate').value=pmDay||'';
   document.getElementById('pmHeure').value='';
-  document.getElementById('pmNotes').value='';
+  document.getElementById('pmClient').value='';document.getElementById('pmAddr').value='';
+  document.getElementById('pmDescr').value='';document.getElementById('pmNotes').value='';
+  document.getElementById('pmType').value='entretien';
+  var badge0=document.getElementById('pmClientBadge');if(badge0)badge0.textContent='';
+  var sw0=document.getElementById('pmAddrSaveWrap');if(sw0)sw0.style.display='none';
   var preSelected=[];
   if(slotId){
     var plan=getPlan();var slot=plan.find(function(p){return p.id===slotId;});
-    if(slot){document.getElementById('pmHeure').value=slot.heure||'';document.getElementById('pmNotes').value=slot.notes||'';preSelected=planAssignees(slot);}
+    if(slot){
+      document.getElementById('pmHeure').value=slot.heure||'';document.getElementById('pmNotes').value=slot.notes||'';
+      document.getElementById('pmClient').value=slot.client||'';document.getElementById('pmAddr').value=slot.addr||'';
+      document.getElementById('pmDescr').value=slot.descr||'';document.getElementById('pmType').value=slot.type||'entretien';
+      preSelected=planAssignees(slot);
+      onPmClientChange();
+    }
+  }else if(woId){
+    // pré-rempli depuis un WO existant (ex: bouton "Planifier" sur une fiche WO)
+    var wo0=wos.find(function(w){return w.id===woId;});
+    if(wo0){document.getElementById('pmClient').value=wo0.client||'';document.getElementById('pmAddr').value=woSiteAddr(wo0)||'';document.getElementById('pmType').value=wo0.type||'entretien';onPmClientChange();}
   }
   buildEmpChecklist('pmEmpList',preSelected);
   document.getElementById('pmSaveBtn').dataset.slotId=slotId||'';
   openModal('pmModal');
 }
 function savePlan(){
+  var client=document.getElementById('pmClient').value.trim();
   var woId=document.getElementById('pmWoSel').value;
-  if(!woId){toast('⚠️ Choisissez un WO');return;}
+  var addr=document.getElementById('pmAddr').value.trim();
+  if(!client && !woId){document.getElementById('pmClient').focus();toast('⚠️ Indique le client/site, ou lie ce créneau à un Work Order');return;}
   var plan=getPlan();
   var slotId=document.getElementById('pmSaveBtn').dataset.slotId;
   var emps=getCheckedEmp('pmEmpList');
-  var slot={id:slotId||uid(),woId:woId,date:document.getElementById('pmDate').value,
+  var site=findSiteByNameForSlot(client);
+  var siteId=site?site.id:null;
+  if(!addr && site && site.addr)addr=site.addr; // repli si le champ n'a pas eu le temps de se remplir (site choisi rapidement)
+  // ➕ Nouveau client saisi (pas dans le répertoire) + case cochée → on l'ajoute au répertoire (additif, jamais d'écrasement)
+  if(client && !site){
+    var chk=document.getElementById('pmAddrSave');
+    if(!chk||chk.checked){
+      var sites=getSites();
+      var newSite={id:uid(),nom:client,addr:addr,tel:'',email:'',type:'',annee:'',equips:[],notes:'Ajouté automatiquement depuis un créneau',files:[]};
+      sites.unshift(newSite);setSites(sites);
+      siteId=newSite.id;
+    }
+  }
+  var slot={id:slotId||uid(),woId:woId||null,date:document.getElementById('pmDate').value,
     heure:document.getElementById('pmHeure').value,emps:emps,emp:emps.join(', '),
+    client:client,addr:addr,siteId:siteId,type:document.getElementById('pmType').value,
+    descr:document.getElementById('pmDescr').value.trim(),
     notes:document.getElementById('pmNotes').value,status:'assigned'};
   if(slotId){var idx2=plan.findIndex(function(p){return p.id===slotId;});if(idx2>=0)plan[idx2]=slot;else plan.push(slot);}
   else plan.push(slot);
@@ -3251,10 +3331,15 @@ function pmmBuildPrintHTML(plan,wosToday,slotsToday,uidT,dayFallback){
 
   if(slotsToday.length>0){
     h+='<div class="pmm-print-sec"><div class="pmm-print-sec-hd c-purple">📅 Créneaux planifiés ('+slotsToday.length+')</div>';
-    h+='<table class="pmm-print-table"><thead><tr><th style="width:60px">Heure</th><th>Client</th><th>Notes</th></tr></thead><tbody>';
+    h+='<table class="pmm-print-table"><thead><tr><th style="width:55px">Heure</th><th>Client / Site</th><th style="width:80px">Type</th><th>Travail à faire</th></tr></thead><tbody>';
     slotsToday.forEach(function(slot){
-      var wo=getWOs().find(function(x){return x.id===slot.woId;});
-      h+='<tr><td class="ctr">'+esc(slot.heure||'—')+'</td><td>'+esc(wo?wo.client:'—')+'</td><td>'+esc(slot.notes||'')+'</td></tr>';
+      var wo=slot.woId?getWOs().find(function(x){return x.id===slot.woId;}):null;
+      var cli=slot.client||(wo?wo.client:'—');
+      var addr=slot.addr||(wo?wo.site:'');
+      var typ=slot.type||(wo?wo.type:'');
+      var travail=slot.descr||(wo?('WO: '+(wo.descr||wo.desc||'')):'')||slot.notes||'';
+      h+='<tr><td class="ctr">'+esc(slot.heure||'—')+'</td><td><b>'+esc(cli)+'</b>'+(addr?'<br><span class="addr" style="color:#6B8CAE;font-size:10.5px">'+esc(addr)+'</span>':'')+'</td>'
+        +'<td>'+(typ?esc(typ):'—')+'</td><td>'+esc(travail||'—')+(slot.notes&&slot.descr?'<br><span style="color:#6B8CAE;font-style:italic">'+esc(slot.notes)+'</span>':'')+'</td></tr>';
     });
     h+='</tbody></table></div>';
   }
