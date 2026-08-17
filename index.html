@@ -2295,7 +2295,7 @@ document.addEventListener('DOMContentLoaded', function(){
   try{
     var vb=document.createElement('div');
     vb.id='__buildBadge';
-    vb.textContent='build F26 ⟲';
+    vb.textContent='build F29 ⟲';
     vb.title='Version de l\'app — toucher pour restaurer une sauvegarde';
     vb.style.cssText='position:fixed;bottom:4px;right:6px;font:11px/1.4 monospace;color:#fff;background:rgba(27,79,140,.85);padding:3px 8px;border-radius:8px;z-index:99999;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.2)';
     vb.addEventListener('click',function(){
@@ -2382,9 +2382,6 @@ document.addEventListener('DOMContentLoaded', function(){
 
   // ── CHRONO ──
   // ── CHRONO (boutons gérés dynamiquement dans renderFieldView) ──
-  var _bA=document.getElementById('btnArr');if(_bA)_bA.addEventListener('click', actionArriver);
-  var _bC=document.getElementById('btnChg');if(_bC)_bC.addEventListener('click', function(){openJobModal(false);});
-  var _bS=document.getElementById('btnStop');if(_bS)_bS.addEventListener('click', openStopModal);
 
   // ── MODAL CONFIRMATION universel ──
   document.getElementById('confirmOk').addEventListener('click', function(){
@@ -4471,28 +4468,6 @@ function renderFieldView(){
   }
 }
 
-function renderChronoOLD(){
-  var st=chronoState[curDay];
-  var box=document.getElementById('chronoBox');
-  if(!box)return; // éléments retirés — fonction obsolète
-  var icon=document.getElementById('chIcon');var txt=document.getElementById('chTxt');var sub=document.getElementById('chSub');var clk=document.getElementById('chClock');
-  var bA=document.getElementById('btnArr');var bC=document.getElementById('btnChg');var bS=document.getElementById('btnStop');
-  if(clockTimer){clearInterval(clockTimer);clockTimer=null;}
-  box.className='chrono-box '+st.status;
-  if(st.status==='idle'){icon.textContent='⏱';txt.textContent='Prêt à commencer';sub.textContent='Appuie sur Arriver pour démarrer';clk.style.display='none';bA.disabled=false;bC.disabled=true;bS.disabled=true;}
-  else if(st.status==='running'){icon.textContent='🟢';txt.textContent=st.activeTask?st.activeTask.lieu||'En cours':'En cours';sub.textContent=st.activeTask?(st.activeTask.detail||'')+(st.activeTask.odt?' • '+st.activeTask.odt:''):'';clk.style.display='block';
-    function tick(){
-      if(!st.activeTask){return;}
-      var secs;
-      if(st.activeTask.startTs){secs=Math.floor((Date.now()-st.activeTask.startTs)/1000);}
-      else{secs=minsFrom(st.activeTask.start,nowHHMM())*60;}
-      if(secs<0)secs=0;
-      var hh=Math.floor(secs/3600),mm=Math.floor((secs%3600)/60),ss=secs%60;
-      clk.textContent=hh+'h'+pad(mm)+'m'+pad(ss)+'s';
-    }
-    tick();clockTimer=setInterval(tick,1000);bA.disabled=true;bC.disabled=false;bS.disabled=false;}
-  else{icon.textContent='✅';txt.textContent='Journée terminée';sub.textContent='Total : '+fmtH(dayTotal(curDay));clk.style.display='none';bA.disabled=true;bC.disabled=true;bS.disabled=true;}
-}
 function repairActivePunches(st){
   // Sécurité : si plusieurs punchs actifs, fermer tous sauf le dernier
   var actives=[];
@@ -4520,40 +4495,6 @@ function renderTaskLog(){
   if(!card)return; // élément retiré — logique déplacée vers renderFieldView
   card.style.display='none';
 }
-function renderTaskLogOLD(){
-  var st=chronoState[curDay];var log=document.getElementById('taskLog');var card=document.getElementById('taskLogCard');
-  // Réparer les punchs corrompus (multiples actifs) avant affichage
-  if(repairActivePunches(st)){saveFT();refreshCumul();}
-  if(st.tasks.length===0){card.style.display='none';return;}
-  card.style.display='block';log.innerHTML='';
-  st.tasks.forEach(function(t,ti){
-    var row=document.createElement('div');row.style.cssText='display:flex;align-items:center;gap:10px;padding:11px 13px;border-bottom:1px solid var(--line)';
-    var dot=document.createElement('div');dot.style.cssText='width:10px;height:10px;border-radius:50%;flex-shrink:0;background:'+(t.active?'var(--orange)':'var(--green)');
-    var body=document.createElement('div');body.style.cssText='flex:1;min-width:0';
-    body.innerHTML='<div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(t.lieu||'Tâche')+(t.odt?' — '+t.odt:'')+'</div>'+
-      '<div style="font-size:11px;color:var(--muted);margin-top:1px">'+(t.detail?t.detail+' • ':'')+t.start+(t.end?' → '+t.end:' → en cours')+'</div>'+
-      (t.kmDep?'<div style="font-size:11px;color:var(--orange);margin-top:1px">🚗 '+t.kmDep+(t.kmArr?' → '+t.kmArr+' km':'')+'</div>':'')+
-      (t.addr?'<div style="font-size:11px;color:var(--blue);margin-top:1px">📍 '+t.addr+' <a href="https://maps.google.com/?q='+encodeURIComponent(t.addr)+'" target="_blank" style="color:var(--blue);font-weight:700;text-decoration:none">↗</a></div>':'')+
-      (t.gps?'<div style="font-size:11px;color:var(--green);margin-top:1px">📍 Position enregistrée</div>':'')+
-      (t.files&&t.files.length?'<div style="font-size:11px;color:var(--blue);margin-top:1px">📎 '+t.files.length+' fichier'+(t.files.length>1?'s':'')+'</div>':'');
-    var hrs=document.createElement('div');hrs.style.cssText='font-size:13px;font-weight:800;color:var(--blue);flex-shrink:0';hrs.textContent=t.active?'⏳':fmtH(t.hrs||0);
-    row.appendChild(dot);row.appendChild(body);row.appendChild(hrs);
-    // Bouton édition pour superviseur/admin
-    if(canEdit()){
-      var edit=document.createElement('button');
-      edit.style.cssText='border:none;background:var(--lt);border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:14px;flex-shrink:0;margin-left:4px';
-      edit.textContent='✏️';
-      (function(idx){edit.addEventListener('click',function(e){e.stopPropagation();openPunchEdit(idx);});})(ti);
-      row.appendChild(edit);
-    }
-    log.appendChild(row);
-  });
-}
-
-// ── ÉDITION D'UN PUNCH (superviseur/admin) ──
-var punchEditIdx=null;
-var pePjFiles=[];
-// ➕ Photos réelles du chantier (dataURL) — reliées à la fiche du site, jamais à la feuille de temps
 function renderPePj(){
   var z=document.getElementById('pePjZone');if(!z)return;
   pmmRenderPhotos(z,pePjFiles,function(i){pePjFiles.splice(i,1);renderPePj();},function(dataUrl){pePjFiles.push({data:dataUrl,name:'photo',addedBy:currentUser?currentUser.id:'',addedAt:new Date().toISOString()});renderPePj();});
@@ -4677,7 +4618,6 @@ function refreshCumul(){
     '<div class="stat-card blue"><div class="sc-label">Semaine</div><div class="sc-val">'+fmtH(wt)+'</div></div>'+
     '<div class="stat-card green"><div class="sc-label">Régulier ≤40h</div><div class="sc-val">'+fmtH(reg)+'</div></div>'+
     '<div class="stat-card orange"><div class="sc-label">Supplémentaire</div><div class="sc-val">'+(supp>0?fmtH(supp):'—')+'</div></div>';
-  document.getElementById('dayBadge').textContent=fmtH(lt);
   document.getElementById('wtag').textContent=fmtH(wt);
   document.getElementById('wtag').style.background=wt>40?'var(--orange)':'var(--blue)';
 }
@@ -6304,6 +6244,105 @@ function renderSuivi(){
 }
 
 var statsWeek=null; // ➕ semaine affichée dans Stats — indépendante du champ caché de Temps
+// ═══════════════════════════════════════════════════════
+// EXPORT ÉQUIPE HEBDOMADAIRE (superviseur/admin) — remplace le copier-coller manuel de chaque courriel employé.
+// Compile les mêmes données que chaque envoi individuel (submitWeek), pour TOUS les employés, en un seul bloc.
+// ═══════════════════════════════════════════════════════
+// ➕ Format tabulaire compact — pensé pour être ANALYSÉ (par Claude), pas juste lu.
+// Une ligne = un punch, données brutes (aucune interprétation faite par l'app) + comparaison semaine précédente.
+function compileWeekTeamReport(week){
+  var comptes=getComptes().filter(function(c){return c.role!=='admin';});
+  var prevWeek=(function(){var d=new Date(week+'T12:00:00');d.setDate(d.getDate()-7);return localISO(d);})();
+  var rows=[]; // lignes brutes, une par punch
+  var empTotals=[]; // un résumé par employé
+  var teamTotal=0, teamPrevTotal=0, teamReg=0, teamSupp=0;
+  var anyData=false;
+
+  comptes.forEach(function(c){
+    var ft=getFTWeek(c.id+'_'+week);
+    if(!ft||!ft.days)return;
+    var hasAny=ft.days.some(function(d){return d&&d.tasks&&d.tasks.length;});
+    if(!hasAny)return;
+    anyData=true;
+    var empName=(c.prenom+' '+c.nom).trim();
+    var cumul=0, nbPunch=0;
+    for(var i=0;i<7;i++){
+      var d=ft.days[i];
+      if(!d||!d.tasks||!d.tasks.length)continue;
+      d.tasks.forEach(function(t){
+        var dur=t.hrs||0;cumul+=dur;nbPunch++;
+        var km=(t.kmDep&&t.kmArr)?Math.round(Math.abs(parseFloat(t.kmArr)-parseFloat(t.kmDep))):'';
+        rows.push([empName,DL[i],t.start||'',t.end||'(en cours)',fmtH(dur),(t.lieu||'—'),(t.addr||''),(t.odt||''),(t.detail||''),km].join(' | '));
+      });
+    }
+    var reg=Math.min(cumul,40),supp=Math.max(0,cumul-40);
+    teamTotal+=cumul;teamReg+=reg;teamSupp+=supp;
+    // comparaison semaine précédente (même employé) — pour repérer les écarts sans que Claude ait à redemander
+    var ftPrev=getFTWeek(c.id+'_'+prevWeek);
+    var prevTotal=0;
+    if(ftPrev&&ftPrev.days){ftPrev.days.forEach(function(d){(d&&d.tasks||[]).forEach(function(t){prevTotal+=(t.hrs||0);});});}
+    teamPrevTotal+=prevTotal;
+    empTotals.push(empName+' | Total: '+fmtH(cumul)+' | Régulier: '+fmtH(reg)+' | Supp: '+fmtH(supp)+' | Punchs: '+nbPunch+' | Sem. préc. ('+fmtDate(prevWeek)+'): '+fmtH(prevTotal));
+  });
+  if(!anyData)return null;
+
+  var body='';
+  body+='DONNÉES BRUTES — FEUILLES DE TEMPS SOUCY AQUATIK\n';
+  body+='Semaine du '+fmtDate(week)+' au '+fmtDate((function(){var d=new Date(week+'T12:00:00');d.setDate(d.getDate()+4);return localISO(d);})())+' | '+comptes.filter(function(c){return getFTWeek(c.id+'_'+week);}).length+' employé(s) actif(s) | Généré le '+fmtDate(todayISO())+'\n';
+  body+='Note: aucune interprétation faite ici — lieu/adresse/durée/km bruts, tels que saisis par les employés. Notes et photos de chantier volontairement exclues (confidentiel site, hors paie).\n\n';
+
+  body+='── PUNCHS (une ligne par tâche) ──\n';
+  body+='Employé | Jour | Début | Fin | Durée | Lieu | Adresse | ODT | Détail | Km\n';
+  rows.forEach(function(r){body+=r+'\n';});
+
+  body+='\n── TOTAUX PAR EMPLOYÉ ──\n';
+  empTotals.forEach(function(l){body+=l+'\n';});
+
+  body+='\n── TOTAL ÉQUIPE ──\n';
+  body+='Total: '+fmtH(teamTotal)+' | Régulier: '+fmtH(teamReg)+' | Supplémentaire: '+fmtH(teamSupp)+' (ratio '+(teamTotal>0?(teamSupp/teamTotal*100).toFixed(1):'0')+'%)\n';
+  body+='Semaine précédente ('+fmtDate(prevWeek)+', mêmes employés): '+fmtH(teamPrevTotal)+' | Δ: '+(teamTotal>=teamPrevTotal?'+':'')+fmtH(teamTotal-teamPrevTotal)+'\n';
+
+  body+='\n---\nSA Platform — Soucy Aquatik';
+  return body;
+}
+function downloadWeekTeamReport(){
+  var week=statsWeek||mondayOf(todayISO());
+  var body=compileWeekTeamReport(week);
+  if(!body){toast('⚠️ Aucune donnée pour cette semaine');return;}
+  var blob=new Blob([body],{type:'text/plain;charset=utf-8'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');a.href=url;a.download='SoucyAquatik_Equipe_Semaine_'+week+'.txt';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(function(){URL.revokeObjectURL(url);},2000);
+  toast('⬇️ Fichier téléchargé');
+}
+function copyWeekTeamReport(){
+  var week=statsWeek||mondayOf(todayISO());
+  var body=compileWeekTeamReport(week);
+  if(!body){toast('⚠️ Aucune donnée pour cette semaine');return;}
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(body).then(function(){toast('📋 Copié — colle-le directement dans Claude');})
+      .catch(function(){toast('⚠️ Copie impossible, utilise le téléchargement');});
+  }else{toast('⚠️ Copie non supportée, utilise le téléchargement');}
+}
+function emailWeekTeamReport(){
+  var week=statsWeek||mondayOf(todayISO());
+  var body=compileWeekTeamReport(week);
+  if(!body){toast('⚠️ Aucune donnée pour cette semaine');return;}
+  // ➕ Limite pratique des liens mailto (~1800-2000 car. selon client) : au-delà, le courriel arriverait tronqué —
+  // on avertit et on redirige vers le téléchargement plutôt que d'envoyer un rapport coupé sans le dire.
+  if(body.length>1800){
+    toast('⚠️ Trop de données pour un courriel direct — fichier téléchargé à joindre manuellement');
+    downloadWeekTeamReport();
+    return;
+  }
+  var sub=encodeURIComponent('Rapport équipe — Semaine du '+fmtDate(week));
+  var be=encodeURIComponent(body);
+  var url='mailto:cwweil@soucyaquatik.com?subject='+sub+'&body='+be;
+  window.open(url,'_blank');
+  toast('📧 Courriel prêt à envoyer');
+}
+
 function renderStats(){
   var el=document.getElementById('statsList');el.innerHTML='';
   var wos=getWOs();var ftIdx=getFTIndex();
@@ -6320,6 +6359,14 @@ function renderStats(){
     +'<button class="btn btn-ghost btn-sm" id="statsNextWk">▶</button>'
     +'<button class="btn btn-ghost btn-sm" id="statsTodayWk">Aujourd\'hui</button>';
   wrap.appendChild(nav);
+  // ➕ Export équipe hebdomadaire — remplace le copier-coller manuel de chaque courriel employé
+  var exportBar=document.createElement('div');
+  exportBar.style.cssText='display:flex;gap:8px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:var(--rs);padding:10px;margin-bottom:12px';
+  exportBar.innerHTML='<div style="width:100%;font-size:11.5px;color:var(--muted);font-weight:700;margin-bottom:2px">📊 Rapport équipe de la semaine — à transmettre à Claude</div>'
+    +'<button class="btn btn-primary btn-sm" id="statsCopyBtn">📋 Copier (pour Claude)</button>'
+    +'<button class="btn btn-ghost btn-sm" id="statsDlBtn">⬇️ Télécharger</button>'
+    +'<button class="btn btn-ghost btn-sm" id="statsEmailBtn">📧 Envoyer par courriel</button>';
+  wrap.appendChild(exportBar);
   var totalH=ftIdx.filter(function(e){return e.week===week;}).reduce(function(s,e){return s+(e.totalH||0);},0);
   var kpi=document.createElement('div');kpi.className='stat-grid';kpi.style.cssText='padding:0 0 10px;margin:0';
   kpi.innerHTML='<div class="sc" style="background:var(--blue-lt)"><div class="sc-lbl" style="color:var(--blue)">Heures semaine</div><div class="sc-val" style="color:var(--navy)">'+fmtH(totalH)+'</div></div>'+
@@ -6359,6 +6406,9 @@ function renderStats(){
   document.getElementById('statsPrevWk').addEventListener('click',function(){var d=new Date(statsWeek+'T12:00:00');d.setDate(d.getDate()-7);statsWeek=localISO(d);renderStats();});
   document.getElementById('statsNextWk').addEventListener('click',function(){var d=new Date(statsWeek+'T12:00:00');d.setDate(d.getDate()+7);statsWeek=localISO(d);renderStats();});
   document.getElementById('statsTodayWk').addEventListener('click',function(){statsWeek=mondayOf(todayISO());renderStats();});
+  document.getElementById('statsCopyBtn').addEventListener('click',copyWeekTeamReport);
+  document.getElementById('statsDlBtn').addEventListener('click',downloadWeekTeamReport);
+  document.getElementById('statsEmailBtn').addEventListener('click',emailWeekTeamReport);
 }
 
 // ═══════════════════════════════════════════════════════
