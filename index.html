@@ -1811,7 +1811,7 @@ function syncPull(localKey, cb){
   var table=sbTableFor(localKey);
   if(!sb||!table){if(cb)cb();return;}
   sb.from(table).select('*').then(function(res){
-    if(res.error){if(cb)cb();return;}
+    if(res.error){ reportSyncError(localKey, res.error); if(cb)cb(); return; } // ➕ ne plus échouer en silence
     var rows=res.data||[];
     rows.forEach(function(r){ mapRowFromDb(localKey,r); });
     // ➕ FUSION PAR ID (au lieu d'un remplacement complet).
@@ -1879,16 +1879,75 @@ function syncPullAll(cb){
 }
 
 // PUSH : envoie un enregistrement vers Supabase (upsert)
+// ➕ DIAGNOSTIC DE SYNCHRONISATION — vérifie que CHAQUE table répond vraiment côté serveur.
+// Permet de détecter immédiatement une table/colonne manquante au lieu de perdre des données en silence.
+function runSyncDiagnostic(){
+  if(!sb){ askConfirm('❌ Pas connecté au serveur.\n\nVérifie ta connexion internet, puis réessaie.', function(){}, 'OK', '🔍 Diagnostic synchro'); return; }
+  toast('🔍 Diagnostic en cours…');
+  var keys=Object.keys(SB_TABLES);
+  var results=[], done=0;
+  keys.forEach(function(k){
+    var table=SB_TABLES[k];
+    sb.from(table).select('id').limit(1).then(function(res){
+      if(res.error){
+        results.push({k:k,table:table,ok:false,msg:(res.error.message||'erreur').slice(0,70)});
+      }else{
+        var localN=(lsGet(k)||[]).length;
+        results.push({k:k,table:table,ok:true,localN:localN});
+      }
+      if(++done===keys.length) showDiag();
+    });
+  });
+  function showDiag(){
+    results.sort(function(a,b){ return (a.ok===b.ok)?a.k.localeCompare(b.k):(a.ok?1:-1); });
+    var bad=results.filter(function(r){return !r.ok;});
+    var msg='';
+    if(bad.length){
+      msg+='❌ '+bad.length+' TABLE(S) EN ERREUR — tes données NE MONTENT PAS :\n\n';
+      bad.forEach(function(r){ msg+='• '+r.k+' → '+r.msg+'\n'; });
+      msg+='\n👉 Solution : lance le script CORRECTIF_SYNC_COMPLET.sql dans Supabase (SQL Editor), puis refais ce diagnostic.\n\n';
+    }else{
+      msg+='✅ Toutes les tables répondent correctement.\n\n';
+    }
+    var okList=results.filter(function(r){return r.ok;});
+    msg+='Détail (enregistrements locaux) :\n';
+    okList.forEach(function(r){ msg+='  ✓ '+r.k+' ('+r.localN+' local)\n'; });
+    askConfirm(msg, function(){}, 'OK', '🔍 Diagnostic synchro');
+  }
+}
+
 function sbPush(localKey, record){
+  // ➕ CORRECTIF CRITIQUE : le stamp doit se poser INCONDITIONNELLEMENT, avant même de vérifier la connexion.
+  // Sinon, hors-ligne ou pendant l'initialisation de Supabase (exactement les moments à haut risque),
+  // l'objet local n'est jamais marqué comme "récemment modifié" et reste vulnérable à une resynchro plus tard.
+  if(record) record.updatedAt=new Date().toISOString();
   var table=sbTableFor(localKey);
   if(!sb||!table||!record)return;
   var row=JSON.parse(JSON.stringify(record));
   mapRowToDb(localKey,row);
-  row.updated_at=new Date().toISOString();
+  row.updated_at=record.updatedAt;
   setSbStatus('syncing');
   sb.from(table).upsert(row).then(function(res){
     setSbStatus(res.error?'offline':'online');
+    // ➕ FINI LES ÉCHECS SILENCIEUX : si le serveur rejette (table/colonne manquante, etc.),
+    // on le dit CLAIREMENT au lieu de laisser croire que c'est sauvegardé.
+    if(res.error) reportSyncError(localKey, res.error);
   });
+}
+
+// ➕ Signale visiblement un rejet du serveur — une donnée qui n'a pas pu monter ne doit JAMAIS passer inaperçue.
+var _syncErrShown={};
+function reportSyncError(localKey, err){
+  try{
+    var msg=(err && (err.message||err.hint||err.details))||'erreur inconnue';
+    console.error('[SA SYNC] Rejet serveur sur "'+localKey+'":', err);
+    var key=localKey+'|'+msg;
+    if(_syncErrShown[key])return;        // une seule alerte par type d'erreur, pas de spam
+    _syncErrShown[key]=true;
+    var court=msg.length>90?msg.slice(0,90)+'…':msg;
+    toast('⚠️ NON SYNCHRONISÉ ('+localKey+') : '+court);
+    setSbStatus('offline');
+  }catch(e){}
 }
 
 // PUSH suppression
@@ -1928,18 +1987,22 @@ function pushAllLocalFT(){
 
 // PUSH liste complète (diff: upsert tout)
 function sbPushAll(localKey, list){
+  if(Array.isArray(list)){ // ➕ stampe INCONDITIONNELLEMENT, même hors-ligne (voir sbPush)
+    list.forEach(function(r){ if(r) r.updatedAt=new Date().toISOString(); });
+  }
   var table=sbTableFor(localKey);
   if(!sb||!table||!Array.isArray(list))return;
   var rows=list.map(function(r){
     var row=JSON.parse(JSON.stringify(r));
     mapRowToDb(localKey,row);
-    row.updated_at=new Date().toISOString();
+    row.updated_at=r.updatedAt;
     return row;
   });
   if(!rows.length)return;
   setSbStatus('syncing');
   sb.from(table).upsert(rows).then(function(res){
     setSbStatus(res.error?'offline':'online');
+    if(res.error) reportSyncError(localKey, res.error);
   });
 }
 
@@ -2295,7 +2358,7 @@ document.addEventListener('DOMContentLoaded', function(){
   try{
     var vb=document.createElement('div');
     vb.id='__buildBadge';
-    vb.textContent='build F29 ⟲';
+    vb.textContent='build F31 ⟲';
     vb.title='Version de l\'app — toucher pour restaurer une sauvegarde';
     vb.style.cssText='position:fixed;bottom:4px;right:6px;font:11px/1.4 monospace;color:#fff;background:rgba(27,79,140,.85);padding:3px 8px;border-radius:8px;z-index:99999;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.2)';
     vb.addEventListener('click',function(){
@@ -2856,11 +2919,11 @@ function bindBoard(root){
   root.querySelectorAll('.pm-col-add').forEach(function(b){b.addEventListener('click',function(){openPmModal();});});
 }
 function boardReassign(kind,id,techId){
-  if(kind==='wo'){var wos=getWOs();var wo=wos.find(function(x){return x.id===id;});if(!wo)return;wo.assignes=techId?[techId]:[];wo.assigne=(wo.assignes||[]).join(', ');setWOs(wos);sbPush('workorders',wo);}
-  else{var pl=getPlan();var s=pl.find(function(x){return x.id===id;});if(!s)return;s.emps=techId?[techId]:[];s.emp=(s.emps||[]).join(', ');setPlan(pl);sbPush('plan',s);}
+  if(kind==='wo'){var wos=getWOs();var wo=wos.find(function(x){return x.id===id;});if(!wo)return;wo.assignes=techId?[techId]:[];wo.assigne=(wo.assignes||[]).join(', ');wo.updatedAt=new Date().toISOString();setWOs(wos);sbPush('workorders',wo);}
+  else{var pl=getPlan();var s=pl.find(function(x){return x.id===id;});if(!s)return;s.emps=techId?[techId]:[];s.emp=(s.emps||[]).join(', ');s.updatedAt=new Date().toISOString();setPlan(pl);sbPush('plan',s);}
   renderPlan();
 }
-function boardSetTime(id,val){var pl=getPlan();var s=pl.find(function(x){return x.id===id;});if(s){s.heure=val;setPlan(pl);sbPush('plan',s);}renderPlan();}
+function boardSetTime(id,val){var pl=getPlan();var s=pl.find(function(x){return x.id===id;});if(s){s.heure=val;s.updatedAt=new Date().toISOString();setPlan(pl);sbPush('plan',s);}renderPlan();}
 
 var _pmRouteOpen=false, _pmRouteMap=null, _pmRouteLayer=null;
 function hhmm2(m){var h=Math.floor(m/60),x=m%60;return (h<10?'0':'')+h+':'+(x<10?'0':'')+x;}
@@ -2870,9 +2933,11 @@ function boardAutoPlace(){
   techs.forEach(function(t){
     var slots=pl.filter(function(s){return s.date===pmDay && planAssignees(s).indexOf(t.id)>=0;});
     var cur=8*60;
-    slots.forEach(function(s){s.heure=hhmm2(cur);cur+=75;sbPush('plan',s);});
+    slots.forEach(function(s){s.heure=hhmm2(cur);cur+=75;s.updatedAt=new Date().toISOString();}); // ➕ stampé avant setPlan (ci-dessous)
   });
-  setPlan(pl);renderPlan();toast('⚡ Horaire réparti dès 8:00');
+  setPlan(pl);
+  techs.forEach(function(t){pl.filter(function(s){return s.date===pmDay && planAssignees(s).indexOf(t.id)>=0;}).forEach(function(s){sbPush('plan',s);});});
+  renderPlan();toast('⚡ Horaire réparti dès 8:00');
 }
 // Résout les coordonnées d'un WO (site géolocalisé, sinon géocode l'adresse)
 function stopCoords(wo,cb){
@@ -3070,7 +3135,7 @@ function savePlan(){
     var chk=document.getElementById('pmAddrSave');
     if(!chk||chk.checked){
       var sites=getSites();
-      var newSite={id:uid(),nom:client,addr:addr,tel:'',email:'',type:'',annee:'',equips:[],notes:'Ajouté automatiquement depuis un créneau',files:[]};
+      var newSite={id:uid(),nom:client,addr:addr,tel:'',email:'',type:'',annee:'',equips:[],notes:'Ajouté automatiquement depuis un créneau',files:[],updatedAt:new Date().toISOString()};
       sites.unshift(newSite);setSites(sites);
       siteId=newSite.id;
     }
@@ -3079,7 +3144,8 @@ function savePlan(){
     heure:document.getElementById('pmHeure').value,emps:emps,emp:emps.join(', '),
     client:client,addr:addr,siteId:siteId,type:document.getElementById('pmType').value,
     descr:document.getElementById('pmDescr').value.trim(),
-    notes:document.getElementById('pmNotes').value,status:'assigned'};
+    notes:document.getElementById('pmNotes').value,status:'assigned',
+    updatedAt:new Date().toISOString()}; // ➕ posé AVANT setPlan — protège contre une resynchro rapide
   if(slotId){var idx2=plan.findIndex(function(p){return p.id===slotId;});if(idx2>=0)plan[idx2]=slot;else plan.push(slot);}
   else plan.push(slot);
   setPlan(plan);sbPush('plan',slot);
@@ -3905,7 +3971,8 @@ function saveWO(){
     date:document.getElementById('woDate').value,assignes:assignes,assigne:assignes.join(', '),
     desc:document.getElementById('woDesc').value.trim(),notes:document.getElementById('woNotes').value.trim(),
     tasks:woTasks,files:woPjFiles,
-    createdAt:woEditId?undefined:new Date().toISOString()};
+    createdAt:woEditId?undefined:new Date().toISOString(),
+    updatedAt:new Date().toISOString()}; // ➕ posé AVANT setWOs — protège contre une resynchro qui arriverait juste après la sauvegarde
   if(woEditId){var idx2=wos.findIndex(function(w){return w.id===woEditId;});if(idx2>=0)wos[idx2]=wo;else wos.push(wo);}
   else wos.unshift(wo);
   setWOs(wos);sbPush('workorders',wo);closeModal('woModal');renderWOList();toast('✅ WO sauvegardé !');
@@ -4048,7 +4115,8 @@ function saveSite(){
     siteweb:document.getElementById('sSiteWeb').value.trim(),
     type:document.getElementById('sType').value,annee:document.getElementById('sAnnee').value,
     equips:sEquips.slice(),bassins:sBassins.filter(function(b){return b.nom;}),
-    notes:document.getElementById('sNotes').value.trim(),files:sitePjFiles};
+    notes:document.getElementById('sNotes').value.trim(),files:sitePjFiles,
+    updatedAt:new Date().toISOString()}; // ➕ posé AVANT setSites — protège contre une resynchro rapide
   if(siteEditId){var idx2=sites.findIndex(function(s){return s.id===siteEditId;});if(idx2>=0)sites[idx2]=site;else sites.push(site);}
   else sites.unshift(site);
   setSites(sites);closeModal('siteModal');renderSiteList();toast('✅ Fiche sauvegardée !');
@@ -6365,7 +6433,8 @@ function renderStats(){
   exportBar.innerHTML='<div style="width:100%;font-size:11.5px;color:var(--muted);font-weight:700;margin-bottom:2px">📊 Rapport équipe de la semaine — à transmettre à Claude</div>'
     +'<button class="btn btn-primary btn-sm" id="statsCopyBtn">📋 Copier (pour Claude)</button>'
     +'<button class="btn btn-ghost btn-sm" id="statsDlBtn">⬇️ Télécharger</button>'
-    +'<button class="btn btn-ghost btn-sm" id="statsEmailBtn">📧 Envoyer par courriel</button>';
+    +'<button class="btn btn-ghost btn-sm" id="statsEmailBtn">📧 Envoyer par courriel</button>'
+    +'<button class="btn btn-ghost btn-sm" id="statsDiagBtn" style="color:var(--orange)">🔍 Diagnostic synchro</button>';
   wrap.appendChild(exportBar);
   var totalH=ftIdx.filter(function(e){return e.week===week;}).reduce(function(s,e){return s+(e.totalH||0);},0);
   var kpi=document.createElement('div');kpi.className='stat-grid';kpi.style.cssText='padding:0 0 10px;margin:0';
@@ -6409,6 +6478,7 @@ function renderStats(){
   document.getElementById('statsCopyBtn').addEventListener('click',copyWeekTeamReport);
   document.getElementById('statsDlBtn').addEventListener('click',downloadWeekTeamReport);
   document.getElementById('statsEmailBtn').addEventListener('click',emailWeekTeamReport);
+  var _diagBtn=document.getElementById('statsDiagBtn');if(_diagBtn)_diagBtn.addEventListener('click',runSyncDiagnostic);
 }
 
 // ═══════════════════════════════════════════════════════
