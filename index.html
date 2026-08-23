@@ -1176,6 +1176,19 @@ input,select,textarea{font-size:16px!important}
       </select>
     </div>
     <div class="mfield"><label>Notes techniques</label><textarea id="woNotes" placeholder="Notes, références équipements…"></textarea></div>
+    <div class="mfield" style="background:var(--obg);border:1.5px solid #f5d5b8;border-radius:var(--rs);padding:10px 12px">
+      <label style="color:#a35400">⚠️ Exigences obligatoires au punch</label>
+      <div style="font-size:11.5px;color:var(--muted);margin-bottom:8px">L'employé ne pourra pas terminer son punch sur ce WO sans les fournir.</div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;margin-bottom:5px">
+        <input type="checkbox" id="woReqBassin" style="width:auto"/> 🧪 Relevés de bassin (chlore, pH…)
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;margin-bottom:5px">
+        <input type="checkbox" id="woReqPhoto" style="width:auto"/> 📷 Au moins une photo
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600">
+        <input type="checkbox" id="woReqNotes" style="width:auto"/> 📝 Notes écrites
+      </label>
+    </div>
     <button class="btn btn-success btn-full" id="woSaveBtn" style="margin-top:4px">💾 Sauvegarder WO</button>
     <button class="btn btn-ghost btn-full" id="woPrintBtn" style="margin-top:8px;display:none">🖨️ Imprimer ce WO</button>
     <button id="woDeleteBtn" class="btn btn-danger btn-full" style="margin-top:8px;display:none">🗑 Supprimer ce WO</button>
@@ -1526,6 +1539,15 @@ input,select,textarea{font-size:16px!important}
       <div class="mfield"><label>Km départ</label><input type="number" id="peKmDep" placeholder="0" min="0"/></div>
       <div class="mfield"><label>Km arrivée</label><input type="number" id="peKmArr" placeholder="0" min="0"/></div>
     </div>
+    <div class="mfield" id="peBassinField" style="display:none">
+      <label>🧪 Paramètres du bassin <span id="peBassinReq" style="color:var(--red);display:none">* obligatoire</span></label>
+      <div id="peBassinList" style="display:flex;flex-direction:column;gap:8px"></div>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <select id="peBassinSel" style="flex:1;font-size:14px;padding:8px;border:1.5px solid var(--line);border-radius:var(--rs);background:#fff"></select>
+        <button type="button" class="btn btn-ghost btn-sm" id="peBassinAdd" style="flex-shrink:0">➕ Relevé</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">Chlore libre, pH, alcalinité, température… Sauvegardé sur la fiche du site.</div>
+    </div>
     <div class="mfield"><label>📝 Notes / résultats de tests <span style="font-weight:600;color:var(--muted);font-size:11px">— consultables sur la fiche du site, jamais sur la feuille de temps</span></label><textarea id="peNotes" placeholder="Ex: chlore 3ppm, pH 7.4, filtre nettoyé…" rows="2"></textarea></div>
     <div class="mfield">
       <label>📷 Photos du chantier <span style="font-weight:600;color:var(--muted);font-size:11px">— sauvegardées sur la fiche du site</span></label>
@@ -1607,8 +1629,86 @@ for(var _i=0;_i<7;_i++) chronoState.push(makeDay());
 // LOCALSTORAGE
 // ═══════════════════════════════════════════════════════
 function lsGet(k){try{var r=localStorage.getItem(LS+k);return r?JSON.parse(r):null;}catch(e){return null;}}
-function lsSet(k,v){try{localStorage.setItem(LS+k,JSON.stringify(v));}catch(e){}
+// ➕ CORRECTIF CRITIQUE — ÉCHEC DE SAUVEGARDE SILENCIEUX
+// Avant : `catch(e){}` vide. Quand le stockage du navigateur était plein (limite ~5 Mo,
+// atteinte vite avec des photos dans les punchs), la sauvegarde échouait SANS RIEN DIRE.
+// L'app affichait "✅ enregistré", puis la synchro rechargeait l'ancienne version → punchs perdus.
+// Maintenant : on détecte, on libère de l'espace, on réessaie, et on ALERTE si ça échoue encore.
+var _lsQuotaAlerted=false;
+function lsSet(k,v){
+  var payload;
+  try{ payload=JSON.stringify(v); }
+  catch(e){ console.error('[SA] Données non sérialisables pour '+k, e); return false; }
+  try{
+    localStorage.setItem(LS+k,payload);
+  }catch(e){
+    // Stockage plein (QuotaExceededError) — on tente de libérer puis de réessayer
+    console.error('[SA] Échec écriture "'+k+'" :', e && e.name, e && e.message);
+    var freed=freeUpStorage(k);
+    var ok=false;
+    try{ localStorage.setItem(LS+k,payload); ok=true; }catch(e2){ ok=false; }
+    if(!ok){
+      // Dernier recours pour une feuille de temps : sauver SANS les photos plutôt que de tout perdre.
+      if(k.indexOf('ft_week_')===0){
+        try{
+          var slim=JSON.parse(payload);
+          (slim.days||[]).forEach(function(d){
+            (d&&d.tasks||[]).forEach(function(t){ if(t.files) t.files=[]; });
+            if(d) d.stopFiles=[];
+          });
+          localStorage.setItem(LS+k,JSON.stringify(slim));
+          ok=true;
+          alertStorageFull('Espace insuffisant : tes HEURES ont été sauvegardées, mais les PHOTOS de ce punch n\'ont pas pu l\'être.');
+        }catch(e3){ ok=false; }
+      }
+    }
+    if(!ok){
+      alertStorageFull('⛔ SAUVEGARDE IMPOSSIBLE — mémoire pleine. Ne ferme pas l\'app : note tes heures et préviens le superviseur.');
+      return false;
+    }
+  }
   try{ if(VAULT_KEYS.indexOf(k)>=0) scheduleVault(); }catch(e){}
+  return true;
+}
+
+// Libère de l'espace : purge les vieux snapshots du coffre et les vieilles feuilles de temps déjà synchronisées
+function freeUpStorage(protectKey){
+  var freed=0;
+  try{
+    // 1) Réduire le coffre à 2 snapshots (au lieu de 8)
+    var vault=lsGet('__vault');
+    if(vault && vault.length>2){
+      try{ localStorage.setItem(LS+'__vault', JSON.stringify(vault.slice(-2))); freed++; }catch(e){}
+    }
+    // 2) Supprimer les feuilles de temps de plus de 8 semaines (elles sont sur le serveur)
+    var cutoff=new Date(); cutoff.setDate(cutoff.getDate()-56);
+    var cutoffISO=cutoff.toISOString().slice(0,10);
+    var toDelete=[];
+    for(var i=0;i<localStorage.length;i++){
+      var key=localStorage.key(i);
+      if(!key || key.indexOf(LS+'ft_week_')!==0) continue;
+      if(LS+protectKey===key) continue;                 // jamais la feuille qu'on essaie d'écrire
+      var wk=key.slice((LS+'ft_week_').length).split('_').pop();
+      if(wk && wk < cutoffISO) toDelete.push(key);
+    }
+    toDelete.forEach(function(key){ try{ localStorage.removeItem(key); freed++; }catch(e){} });
+  }catch(e){}
+  return freed;
+}
+
+function alertStorageFull(msg){
+  try{
+    console.error('[SA STOCKAGE] '+msg);
+    if(typeof toast==='function') toast(msg.slice(0,110));
+    if(!_lsQuotaAlerted){
+      _lsQuotaAlerted=true;
+      setTimeout(function(){
+        if(typeof askConfirm==='function'){
+          askConfirm(msg+'\n\nCause : trop de photos stockées sur cet appareil.\n\nQue faire :\n• Les heures restent prioritaires et sont conservées.\n• Préviens le superviseur pour libérer de l\'espace.', function(){}, 'Compris', '⚠️ Mémoire de l\'appareil pleine');
+        }
+      }, 400);
+    }
+  }catch(e){}
 }
 
 // ════════════════ COFFRE DE SAUVEGARDE (anti-perte de données) ════════════════
@@ -1847,20 +1947,64 @@ function mergeById(localArr, serverArr){
 }
 
 // PULL feuilles de temps (structure spéciale)
+// ➕ Fusionne deux journées de punchs SANS jamais perdre un punch local.
+// Règle : on garde l'union des punchs des deux côtés (identifiés par heure de début + lieu).
+// Un punch actif (sans heure de fin) local est TOUJOURS conservé — c'est la journée en cours.
+function mergeFTDay(localDay, serverDay){
+  localDay = localDay || {tasks:[], status:'idle'};
+  serverDay = serverDay || {tasks:[], status:'idle'};
+  var lt = localDay.tasks || [], st = serverDay.tasks || [];
+  var out = [], seen = {};
+  function sig(t){ return (t.start||'')+'|'+(t.lieu||''); }
+  function add(t){
+    var k = sig(t);
+    if(!(k in seen)){ seen[k]=out.length; out.push(t); return; }
+    // Même punch des deux côtés : on garde celui qui a le plus d'information (terminé > en cours, plus d'heures)
+    var prev = out[seen[k]];
+    var prevScore = (prev.end?2:0) + (prev.hrs||0)/1000;
+    var curScore  = (t.end?2:0)   + (t.hrs||0)/1000;
+    if(curScore > prevScore) out[seen[k]] = t;
+  }
+  lt.forEach(add);  // le local d'abord : ses punchs sont la référence
+  st.forEach(add);  // le serveur complète, ne remplace jamais
+  out.sort(function(a,b){ return (a.start||'').localeCompare(b.start||''); });
+  var hasActive = out.some(function(t){ return t.active || !t.end; });
+  return {
+    tasks: out,
+    status: hasActive ? 'running' : (out.length ? (localDay.status==='idle'?'done':localDay.status) : 'idle'),
+    saved: localDay.saved || serverDay.saved || false,
+    kmArr: localDay.kmArr || serverDay.kmArr || '',
+    stopFiles: (localDay.stopFiles && localDay.stopFiles.length) ? localDay.stopFiles : (serverDay.stopFiles||[])
+  };
+}
+
 function syncPullFT(cb){
   if(!sb){if(cb)cb();return;}
   sb.from('feuilles_temps').select('*').then(function(res){
-    if(res.error){if(cb)cb();return;}
+    if(res.error){ reportSyncError('feuilles_temps', res.error); if(cb)cb(); return; }
     var rows=res.data||[];
     var idx=[];
     rows.forEach(function(r){
       var key='ft_week_'+r.id;
       var local=lsGet(key);
-      var serverTs=new Date(r.saved_at||0).getTime()||0;
-      var localTs=local?(new Date(local.savedAt||0).getTime()||0):-1;
-      // PROTECTION : n'écrase JAMAIS une feuille locale plus récente (punchs non encore montés au serveur)
-      if(!local || serverTs>=localTs){
+      // ➕ CORRECTIF CRITIQUE : plus AUCUN remplacement de feuille de temps.
+      // Avant : si le serveur avait un horodatage >= au local, il ÉCRASAIT toute la semaine locale
+      // (le `>=` faisait gagner le serveur même à égalité) → un punch en cours pouvait disparaître.
+      // Maintenant : fusion jour par jour, punch par punch. Un punch local ne peut plus être perdu.
+      if(!local){
         lsSet(key,{week:r.week,emp:r.emp,email:r.email,savedAt:r.saved_at,days:r.days,uid:r.uid});
+      }else{
+        var mergedDays=[];
+        for(var i=0;i<7;i++){
+          mergedDays[i]=mergeFTDay((local.days||[])[i], (r.days||[])[i]);
+        }
+        var localTs=new Date(local.savedAt||0).getTime()||0;
+        var serverTs=new Date(r.saved_at||0).getTime()||0;
+        lsSet(key,{
+          week:r.week, emp:r.emp||local.emp, email:r.email||local.email,
+          savedAt:(localTs>=serverTs? local.savedAt : r.saved_at),
+          days:mergedDays, uid:r.uid||local.uid
+        });
       }
       idx.push({week:r.week,uid:r.uid,emp:r.emp,savedAt:r.saved_at,totalH:r.total_h});
     });
@@ -2358,7 +2502,7 @@ document.addEventListener('DOMContentLoaded', function(){
   try{
     var vb=document.createElement('div');
     vb.id='__buildBadge';
-    vb.textContent='build F31 ⟲';
+    vb.textContent='build F33 ⟲';
     vb.title='Version de l\'app — toucher pour restaurer une sauvegarde';
     vb.style.cssText='position:fixed;bottom:4px;right:6px;font:11px/1.4 monospace;color:#fff;background:rgba(27,79,140,.85);padding:3px 8px;border-radius:8px;z-index:99999;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.2)';
     vb.addEventListener('click',function(){
@@ -2469,6 +2613,18 @@ document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('punchEditClose').addEventListener('click', function(){closeModal('punchEditModal');});
   document.getElementById('peCancel').addEventListener('click', function(){closeModal('punchEditModal');});
   document.getElementById('peSaveBtn').addEventListener('click', savePunchEdit);
+  var _peBAdd=document.getElementById('peBassinAdd');
+  if(_peBAdd)_peBAdd.addEventListener('click',function(){
+    var sel=document.getElementById('peBassinSel');
+    var nom=(sel&&sel.value)||'Bassin principal';
+    peBassins.push({bassin:nom,cl:null,ph:null,alc:null,temp:null});
+    renderPeBassins();
+  });
+  var _peLieuInp=document.getElementById('peLieu');
+  if(_peLieuInp)_peLieuInp.addEventListener('input',function(){
+    var t=(punchEditIdx!==null)?chronoState[curDay].tasks[punchEditIdx]:null;
+    refreshPeBassinSection(t);
+  });
   document.getElementById('peDeleteBtn').addEventListener('click', deletePunch);
   // (fermeture-fond du punchEditModal gérée par le garde anti-perte plus bas)
   // pePjBtn/pePjInput obsolètes : renderPePj utilise maintenant pmmRenderPhotos (bouton+input intégrés, vraies photos)
@@ -3889,6 +4045,9 @@ function openWOModal(wo){
   buildEmpChecklist('woAssigneList',woAssignees(wo),true);
   document.getElementById('woDesc').value=wo?wo.desc:'';
   document.getElementById('woNotes').value=wo?wo.notes:'';
+  document.getElementById('woReqBassin').checked=!!(wo&&wo.reqBassin);
+  document.getElementById('woReqPhoto').checked=!!(wo&&wo.reqPhoto);
+  document.getElementById('woReqNotes').checked=!!(wo&&wo.reqNotes);
   document.getElementById('woDeleteBtn').style.display=wo&&canEdit()?'flex':'none';
   document.getElementById('woPrintBtn').style.display=wo?'block':'none';
   renderWOTaskList();renderWOPj();
@@ -3971,6 +4130,9 @@ function saveWO(){
     date:document.getElementById('woDate').value,assignes:assignes,assigne:assignes.join(', '),
     desc:document.getElementById('woDesc').value.trim(),notes:document.getElementById('woNotes').value.trim(),
     tasks:woTasks,files:woPjFiles,
+    reqBassin:document.getElementById('woReqBassin').checked,
+    reqPhoto:document.getElementById('woReqPhoto').checked,
+    reqNotes:document.getElementById('woReqNotes').checked,
     createdAt:woEditId?undefined:new Date().toISOString(),
     updatedAt:new Date().toISOString()}; // ➕ posé AVANT setWOs — protège contre une resynchro qui arriverait juste après la sauvegarde
   if(woEditId){var idx2=wos.findIndex(function(w){return w.id===woEditId;});if(idx2>=0)wos[idx2]=wo;else wos.push(wo);}
@@ -4068,6 +4230,14 @@ function renderSiteJournalPanel(site){
   entries.slice(0,30).forEach(function(e){
     h+='<div style="border:1px solid var(--line);border-radius:var(--rs);padding:8px 10px;margin-bottom:7px">'
       +'<div style="display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--muted);font-weight:700">👷 '+esc(e.emp||'—')+' · '+fmtDate(e.date)+(e.heure?(' '+esc(e.heure)):'')+'</div>'
+      +((e.bassins&&e.bassins.length)?('<div style="margin-top:5px">'+e.bassins.map(function(b){
+          var vals=[];
+          if(b.cl!=null)vals.push('Cl '+b.cl+'ppm');
+          if(b.ph!=null)vals.push('pH '+b.ph);
+          if(b.alc!=null)vals.push('Alc '+b.alc+'ppm');
+          if(b.temp!=null)vals.push(b.temp+'°C');
+          return '<div style="font-size:12px;background:var(--blue-lt);border-radius:6px;padding:3px 8px;margin-bottom:3px"><b>🧪 '+esc(b.bassin||'Bassin')+'</b> — '+esc(vals.join(' · '))+'</div>';
+        }).join('')+'</div>'):'')
       +(e.notes?'<div style="font-size:12.5px;margin-top:4px">'+esc(e.notes)+'</div>':'')
       +'<div class="sj-photos" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px"></div>'
       +'</div>';
@@ -4563,6 +4733,98 @@ function renderTaskLog(){
   if(!card)return; // élément retiré — logique déplacée vers renderFieldView
   card.style.display='none';
 }
+// ═══════════════════════════════════════════════════════
+// RELEVÉS DE BASSIN (paramètres fontainier) — saisis au punch, rattachés à la fiche du site
+// ═══════════════════════════════════════════════════════
+var peBassins=[]; // [{bassin, cl, ph, alc, temp, note}]
+var BASSIN_PARAMS=[
+  {k:'cl',   lbl:'Chlore libre', unit:'ppm', step:'0.1'},
+  {k:'ph',   lbl:'pH',           unit:'',    step:'0.1'},
+  {k:'alc',  lbl:'Alcalinité',   unit:'ppm', step:'1'},
+  {k:'temp', lbl:'Temp.',        unit:'°C',  step:'0.5'}
+];
+// Bassins connus pour le lieu courant (fiche site) — sinon saisie libre
+function bassinsForLieu(lieu){
+  var s=getSites().find(function(x){return (x.nom||'').trim().toLowerCase()===(lieu||'').trim().toLowerCase();});
+  var list=(s&&s.bassins)?s.bassins.map(function(b){return b.nom;}):[];
+  if(!list.length)list=['Bassin principal'];
+  return list;
+}
+function renderPeBassins(){
+  var wrap=document.getElementById('peBassinList'); if(!wrap)return;
+  wrap.innerHTML='';
+  if(!peBassins.length){
+    wrap.innerHTML='<div style="font-size:11.5px;color:var(--muted);font-style:italic">Aucun relevé — utilise « ➕ Relevé » ci-dessous.</div>';
+    return;
+  }
+  peBassins.forEach(function(b,i){
+    var row=document.createElement('div');
+    row.style.cssText='border:1.5px solid var(--line);border-radius:var(--rs);padding:8px 10px;background:#fff';
+    var head='<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><b style="font-size:13px;flex:1">🏊 '+esc(b.bassin||'Bassin')+'</b><button type="button" class="pe-b-x" data-i="'+i+'" style="border:none;background:var(--rbg);color:var(--red);border-radius:6px;padding:2px 8px;font-weight:700;cursor:pointer">✕</button></div>';
+    var grid='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">';
+    BASSIN_PARAMS.forEach(function(p){
+      grid+='<label style="font-size:11px;color:var(--muted);font-weight:700">'+p.lbl+(p.unit?(' ('+p.unit+')'):'')
+        +'<input type="number" step="'+p.step+'" data-bi="'+i+'" data-bk="'+p.k+'" value="'+(b[p.k]!=null?b[p.k]:'')+'" style="width:100%;font-size:14px;padding:7px;border:1.5px solid var(--line);border-radius:8px;margin-top:2px" inputmode="decimal"/></label>';
+    });
+    grid+='</div>';
+    row.innerHTML=head+grid;
+    wrap.appendChild(row);
+  });
+  wrap.querySelectorAll('input[data-bk]').forEach(function(inp){
+    inp.addEventListener('input',function(){
+      var bi=+inp.dataset.bi, bk=inp.dataset.bk;
+      peBassins[bi][bk]=inp.value===''?null:parseFloat(inp.value);
+    });
+  });
+  wrap.querySelectorAll('.pe-b-x').forEach(function(btn){
+    btn.addEventListener('click',function(){ peBassins.splice(+btn.dataset.i,1); renderPeBassins(); });
+  });
+}
+// Affiche/masque la section selon le WO lié et ses exigences
+function refreshPeBassinSection(task){
+  var field=document.getElementById('peBassinField'); if(!field)return;
+  var req=punchRequirements(task);
+  var lieu=document.getElementById('peLieu').value||'';
+  // Visible si exigé par le WO, ou si des relevés existent déjà, ou si le site a des bassins définis
+  var siteHasBassins=getSites().some(function(x){
+    return (x.nom||'').trim().toLowerCase()===lieu.trim().toLowerCase() && (x.bassins||[]).length>0;
+  });
+  var show = req.bassin || peBassins.length>0 || siteHasBassins;
+  field.style.display = show?'block':'none';
+  document.getElementById('peBassinReq').style.display = req.bassin?'inline':'none';
+  var sel=document.getElementById('peBassinSel');
+  if(sel){
+    sel.innerHTML='';
+    bassinsForLieu(lieu).forEach(function(nm){
+      var o=document.createElement('option');o.value=nm;o.textContent=nm;sel.appendChild(o);
+    });
+  }
+  renderPeBassins();
+}
+// Exigences applicables à un punch, d'après le WO auquel il est rattaché
+function punchRequirements(task){
+  var out={bassin:false,photo:false,notes:false,woClient:''};
+  if(!task || task.sourceType!=='wo' || !task.sourceId) return out;
+  var wo=getWOs().find(function(w){return w.id===task.sourceId;});
+  if(!wo)return out;
+  out.bassin=!!wo.reqBassin; out.photo=!!wo.reqPhoto; out.notes=!!wo.reqNotes; out.woClient=wo.client||'';
+  return out;
+}
+// Vérifie que les exigences sont satisfaites — retourne la liste de ce qui manque
+function checkPunchRequirements(task, notesVal, photosArr, bassinsArr){
+  var req=punchRequirements(task);
+  var manque=[];
+  if(req.bassin){
+    var valides=(bassinsArr||[]).filter(function(b){
+      return BASSIN_PARAMS.some(function(p){ return b[p.k]!=null && b[p.k]!==''; });
+    });
+    if(!valides.length) manque.push('🧪 au moins un relevé de bassin (chlore, pH…)');
+  }
+  if(req.photo && !(photosArr||[]).some(function(f){return f && f.data;})) manque.push('📷 au moins une photo');
+  if(req.notes && !(notesVal||'').trim()) manque.push('📝 des notes écrites');
+  return manque;
+}
+
 function renderPePj(){
   var z=document.getElementById('pePjZone');if(!z)return;
   pmmRenderPhotos(z,pePjFiles,function(i){pePjFiles.splice(i,1);renderPePj();},function(dataUrl){pePjFiles.push({data:dataUrl,name:'photo',addedBy:currentUser?currentUser.id:'',addedAt:new Date().toISOString()});renderPePj();});
@@ -4580,6 +4842,8 @@ function openPunchEdit(idx){
   document.getElementById('peNotes').value=t.notes||'';
   document.getElementById('peDay').value=String(curDay);
   pePjFiles=t.files?t.files.slice():[];renderPePj();
+  peBassins=t.bassins?JSON.parse(JSON.stringify(t.bassins)):[];
+  refreshPeBassinSection(t);
   document.getElementById('peModalTitle').textContent=(t.active?'✏️ Modifier (en cours) — ':'Corriger — ')+(t.lieu||'Tâche');
   document.getElementById('peDeleteBtn').style.display='block';
   openModal('punchEditModal');
@@ -4596,6 +4860,7 @@ function openPunchAdd(){
   document.getElementById('peNotes').value='';
   document.getElementById('peDay').value=String(curDay);
   pePjFiles=[];renderPePj();
+  peBassins=[];refreshPeBassinSection(null);
   document.getElementById('peModalTitle').textContent='Ajouter un punch — '+DL[curDay];
   document.getElementById('peDeleteBtn').style.display='none';
   openModal('punchEditModal');
@@ -4620,6 +4885,16 @@ function savePunchEdit(){
   if(kmArr && (isNaN(parseFloat(kmArr))||parseFloat(kmArr)<0)){toast('⚠️ Km arrivée invalide');return;}
   if(kmDep && kmArr && parseFloat(kmArr)<parseFloat(kmDep)){toast('⚠️ Km arrivée < km départ');return;}
 
+  // ➕ EXIGENCES OBLIGATOIRES définies sur le WO lié (relevés de bassin / photo / notes)
+  var _peNotesVal=document.getElementById('peNotes').value.trim();
+  var _refTask = (punchEditIdx===null) ? null : chronoState[curDay].tasks[punchEditIdx];
+  var _manque = checkPunchRequirements(_refTask, _peNotesVal, pePjFiles, peBassins);
+  if(_manque.length){
+    var _req=punchRequirements(_refTask);
+    askConfirm('Ce punch est lié au Work Order'+(_req.woClient?(' de '+_req.woClient):'')+', qui exige :\n\n'+_manque.map(function(m){return '   • '+m;}).join('\n')+'\n\nComplète ces éléments avant d\'enregistrer.', function(){}, 'Compris', '⚠️ Éléments obligatoires manquants');
+    return;
+  }
+
   // Jour cible (sélecteur) — permet de déplacer un punch vers un autre jour
   var targetDay=parseInt(document.getElementById('peDay').value);
   if(isNaN(targetDay)||targetDay<0||targetDay>6)targetDay=curDay;
@@ -4628,7 +4903,8 @@ function savePunchEdit(){
     // ── MODE AJOUT ──
     var hrs=(start&&end)?hrsFrom(start,end):0;
     var newTask={id:++tid,lieu:lieu,detail:detail,start:start||'00:00',end:end||'',hrs:hrs,
-      active:false,kmDep:kmDep,kmArr:kmArr,files:pePjFiles.slice(),notes:document.getElementById('peNotes').value.trim(),
+      active:false,kmDep:kmDep,kmArr:kmArr,files:pePjFiles.slice(),notes:_peNotesVal,
+      bassins:peBassins.slice(),
       addedBy:currentUser.id,addedAt:new Date().toISOString()};
     chronoState[targetDay].tasks.push(newTask);
     chronoState[targetDay].tasks.sort(function(a,b){return (a.start||'').localeCompare(b.start||'');});
@@ -4645,8 +4921,9 @@ function savePunchEdit(){
   var t=chronoState[curDay].tasks[punchEditIdx];
   if(!t)return;
   t.lieu=lieu;t.detail=detail;t.start=start;t.end=end;t.kmDep=kmDep;t.kmArr=kmArr;
-  t.notes=document.getElementById('peNotes').value.trim();
+  t.notes=_peNotesVal;
   t.files=pePjFiles.slice();
+  t.bassins=peBassins.slice(); // ➕ relevés de bassin (paramètres fontainier)
   if(t.start&&t.end){t.hrs=hrsFrom(t.start,t.end);t.active=false;}
   t.correctedBy=currentUser.id;t.correctedAt=new Date().toISOString();
   syncTaskToSiteJournal(t); // ➕ notes/photos → fiche du site (jamais sur la feuille de temps)
@@ -6106,12 +6383,14 @@ function siteJournalFor(siteId){
 function syncTaskToSiteJournal(t){
   if(!t||!t.siteId)return;
   var hasPhotos=(t.files||[]).some(function(f){return f.data;});
-  if(!t.notes && !hasPhotos)return;
+  var hasBassins=(t.bassins||[]).some(function(b){ return b && (b.cl!=null||b.ph!=null||b.alc!=null||b.temp!=null); });
+  if(!t.notes && !hasPhotos && !hasBassins)return;
   var existing=getSiteJournal().find(function(x){return x.taskId===t.id;});
   var entry=existing||{id:uid(),taskId:t.id,siteId:t.siteId,uid:currentUser?currentUser.id:'',emp:fullName(),
     date:todayISO(),heure:t.start||'',woId:t.sourceType==='wo'?t.sourceId:(t.sourceType==='plan'?null:null),createdAt:new Date().toISOString()};
   entry.lieu=t.lieu||'';
   entry.notes=t.notes||'';
+  entry.bassins=(t.bassins||[]).filter(function(b){ return b && (b.cl!=null||b.ph!=null||b.alc!=null||b.temp!=null); });
   entry.photos=(t.files||[]).filter(function(f){return f.data;});
   entry.updatedAt=new Date().toISOString();
   var log=getSiteJournal();
