@@ -1634,7 +1634,7 @@ function lsGet(k){try{var r=localStorage.getItem(LS+k);return r?JSON.parse(r):nu
 // atteinte vite avec des photos dans les punchs), la sauvegarde échouait SANS RIEN DIRE.
 // L'app affichait "✅ enregistré", puis la synchro rechargeait l'ancienne version → punchs perdus.
 // Maintenant : on détecte, on libère de l'espace, on réessaie, et on ALERTE si ça échoue encore.
-var _lsQuotaAlerted=false;
+var _lsQuotaAlerted=false, _lsQuotaBloquantAlerte=false;
 function lsSet(k,v){
   var payload;
   try{ payload=JSON.stringify(v); }
@@ -1658,7 +1658,7 @@ function lsSet(k,v){
           });
           localStorage.setItem(LS+k,JSON.stringify(slim));
           ok=true;
-          alertStorageFull('Espace insuffisant : tes HEURES ont été sauvegardées, mais les PHOTOS de ce punch n\'ont pas pu l\'être.');
+          alertStorageFull('Photos non sauvegardées (mémoire pleine) — tes heures sont conservées.', false);
         }catch(e3){ ok=false; }
       }
     }
@@ -1668,9 +1668,9 @@ function lsSet(k,v){
       try{ purgeToutesLesPhotos(); }catch(e){}
       try{ localStorage.setItem(LS+k,payload); ok=true; }catch(e4){ ok=false; }
       if(ok){
-        alertStorageFull('Mémoire libérée automatiquement (photos locales purgées). Tes heures sont sauvegardées.');
+        alertStorageFull('🧹 Mémoire libérée — tes heures sont sauvegardées.', false);
       }else{
-        alertStorageFull('⛔ SAUVEGARDE IMPOSSIBLE — mémoire pleine. Ne ferme pas l\'app : note tes heures et préviens le superviseur.');
+        alertStorageFull('⛔ SAUVEGARDE IMPOSSIBLE — mémoire pleine. Ne ferme pas l\'app : note tes heures et préviens le superviseur.', true);
         return false;
       }
     }
@@ -1742,18 +1742,23 @@ function freeUpStorage(protectKey){
   return freed;
 }
 
-function alertStorageFull(msg){
+// bloquant=true -> popup (échec réel). bloquant=false -> simple toast discret (sauvegarde réussie, dégradée).
+function alertStorageFull(msg, bloquant){
   try{
-    console.error('[SA STOCKAGE] '+msg);
-    if(typeof toast==='function') toast(msg.slice(0,110));
-    if(!_lsQuotaAlerted){
-      _lsQuotaAlerted=true;
-      setTimeout(function(){
-        if(typeof askConfirm==='function'){
-          askConfirm(msg+'\n\nCause : trop de photos stockées sur cet appareil.\n\nQue faire :\n• Les heures restent prioritaires et sont conservées.\n• Préviens le superviseur pour libérer de l\'espace.', function(){}, 'Compris', '⚠️ Mémoire de l\'appareil pleine');
-        }
-      }, 400);
+    console.warn('[SA STOCKAGE] '+msg);
+    if(!bloquant){
+      // Sauvegarde RÉUSSIE : information discrète, une seule fois par session, jamais de popup.
+      if(!_lsQuotaAlerted && typeof toast==='function'){ _lsQuotaAlerted=true; toast(msg.slice(0,110)); }
+      return;
     }
+    if(_lsQuotaBloquantAlerte) return;   // un seul popup par session
+    _lsQuotaBloquantAlerte=true;
+    if(typeof toast==='function') toast(msg.slice(0,110));
+    setTimeout(function(){
+      if(typeof askConfirm==='function'){
+        askConfirm(msg+'\n\nCause : trop de photos stockées sur cet appareil.\n\nQue faire :\n• Les heures restent prioritaires et sont conservées.\n• Préviens le superviseur pour libérer de l\'espace.', function(){}, 'Compris', '⚠️ Mémoire de l\'appareil pleine');
+      }
+    }, 400);
   }catch(e){}
 }
 
@@ -2663,7 +2668,7 @@ document.addEventListener('DOMContentLoaded', function(){
   try{
     var vb=document.createElement('div');
     vb.id='__buildBadge';
-    vb.textContent='build F36 ⟲';
+    vb.textContent='build F38 ⟲';
     vb.title='Version de l\'app — toucher pour restaurer une sauvegarde';
     vb.style.cssText='position:fixed;bottom:4px;right:6px;font:11px/1.4 monospace;color:#fff;background:rgba(27,79,140,.85);padding:3px 8px;border-radius:8px;z-index:99999;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.2)';
     vb.addEventListener('click',function(){
@@ -3857,30 +3862,461 @@ function pmmBuildPrintHTML(plan,wosToday,slotsToday,uidT,dayFallback){
 
 
 // Vue "Tout le monde" : toutes les assignations du jour, empilées par employé
+
+// ═══════════════════════════════════════════════════════
+// TÂCHES RÉCURRENTES — modèles générant des tâches sur un calendrier
+// ═══════════════════════════════════════════════════════
+function getRecurrences(){return lsGet('recurrences')||[];}
+function setRecurrences(d){lsSet('recurrences',d);}
+function getRecurFaites(){return lsGet('recur_faites')||{};}
+function recurrenceEstFaite(id,date){var m=getRecurFaites();return !!(m[id]&&m[id][date]);}
+function marquerRecurrence(id,date,fait){
+  var m=getRecurFaites();
+  if(!m[id])m[id]={};
+  if(fait)m[id][date]=new Date().toISOString(); else delete m[id][date];
+  lsSet('recur_faites',m);
+}
+// Les récurrences applicables à une date donnée
+function recurrencesPourDate(dateISO){
+  if(!dateISO)return [];
+  var d;try{d=new Date(dateISO+'T12:00:00');}catch(e){return [];}
+  var jour=d.getDay();              // 0=dimanche
+  var jourLun=(jour===0)?6:(jour-1); // 0=lundi
+  var quantieme=d.getDate();
+  return getRecurrences().filter(function(r){
+    if(!r||r.actif===false)return false;
+    if(r.debut && dateISO < r.debut)return false;
+    if(r.fin   && dateISO > r.fin)return false;
+    if(r.frequence==='quotidien')  return true;
+    if(r.frequence==='ouvrable')   return jourLun<=4;
+    if(r.frequence==='hebdomadaire')return (r.jours||[]).indexOf(jourLun)>=0;
+    if(r.frequence==='mensuel')    return quantieme===(r.quantieme||1);
+    return false;
+  });
+}
+// Gestion des récurrences (liste + création)
+function ouvrirGestionRecurrences(){
+  var modal=document.getElementById('recurModal');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.className='modal-bg';modal.id='recurModal';
+    modal.innerHTML='<div class="modal-box"><div class="modal-hd"><h3>🔁 Tâches récurrentes</h3><button class="modal-close" id="recurClose">✕</button></div>'
+      +'<div id="recurBody"></div>'
+      +'<button class="btn btn-primary btn-full" id="recurNew" style="margin-top:8px">➕ Nouvelle tâche récurrente</button></div>';
+    document.body.appendChild(modal);
+    document.getElementById('recurClose').addEventListener('click',function(){closeModal('recurModal');});
+    document.getElementById('recurNew').addEventListener('click',function(){ouvrirRecurrence(null);});
+  }
+  var body=document.getElementById('recurBody');
+  var list=getRecurrences();
+  if(!list.length){
+    body.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">Aucune tâche récurrente.<br><span style="font-size:11.5px">Ex : test d\'eau tous les matins, entretien hebdomadaire…</span></div>';
+  }else{
+    body.innerHTML='';
+    list.forEach(function(r){
+      var freq={quotidien:'Tous les jours',ouvrable:'Jours ouvrables',hebdomadaire:'Hebdomadaire',mensuel:'Mensuel'}[r.frequence]||r.frequence;
+      var row=document.createElement('div');
+      row.style.cssText='border:1px solid var(--line);border-left:4px solid '+(r.actif===false?'var(--hint)':'var(--teal)')+';border-radius:var(--rs);padding:9px 11px;margin-bottom:7px;cursor:pointer';
+      row.innerHTML='<div style="font-weight:800;font-size:13.5px">'+esc(r.titre||'(sans titre)')+(r.actif===false?' <span style="color:var(--hint);font-weight:600">— inactive</span>':'')+'</div>'
+        +'<div style="font-size:11.5px;color:var(--muted);margin-top:2px">'+esc(r.client||'')+' · '+freq+(r.heure?(' · '+esc(r.heure)):'')+'</div>'
+        +'<div style="font-size:11px;color:var(--muted);margin-top:2px">👷 '+(esc(empNames(r.emps))||'non assigné')+'</div>';
+      row.addEventListener('click',function(){ouvrirRecurrence(r.id);});
+      body.appendChild(row);
+    });
+  }
+  openModal('recurModal');
+}
+// Création / édition d'une récurrence
+function ouvrirRecurrence(id){
+  var r=id?getRecurrences().find(function(x){return x.id===id;}):null;
+  var modal=document.getElementById('recurEditModal');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.className='modal-bg';modal.id='recurEditModal';
+    modal.innerHTML='<div class="modal-box"><div class="modal-hd"><h3 id="recurEditTitre">Tâche récurrente</h3><button class="modal-close" id="recurEditClose">✕</button></div>'
+      +'<div class="mfield"><label>Titre</label><input type="text" id="rcTitre" placeholder="Ex: Test d\'eau du matin"/></div>'
+      +'<div class="mfield"><label>Client / Site</label><input type="text" id="rcClient" list="sitesList" autocomplete="off" placeholder="Ex: Quai Paquet"/></div>'
+      +'<div class="m2"><div class="mfield"><label>Fréquence</label><select id="rcFreq">'
+        +'<option value="ouvrable">Jours ouvrables (lun-ven)</option><option value="quotidien">Tous les jours</option>'
+        +'<option value="hebdomadaire">Certains jours</option><option value="mensuel">Mensuel</option></select></div>'
+      +'<div class="mfield"><label>Heure</label><input type="time" id="rcHeure"/></div></div>'
+      +'<div class="mfield" id="rcJoursWrap" style="display:none"><label>Jours de la semaine</label><div id="rcJours" style="display:flex;gap:5px;flex-wrap:wrap"></div></div>'
+      +'<div class="mfield" id="rcQuantWrap" style="display:none"><label>Jour du mois</label><input type="number" id="rcQuant" min="1" max="28" value="1"/></div>'
+      +'<div class="mfield"><label>Employé(s) assigné(s)</label><div id="rcEmpList" style="max-height:150px;overflow-y:auto;border:1.5px solid var(--line);border-radius:var(--rs);padding:4px 10px"></div></div>'
+      +'<div class="m2"><div class="mfield"><label>Début</label><input type="date" id="rcDebut"/></div>'
+      +'<div class="mfield"><label>Fin (optionnel)</label><input type="date" id="rcFin"/></div></div>'
+      +'<div class="mfield"><label>Notes</label><textarea id="rcNotes" placeholder="Instructions, matériel…"></textarea></div>'
+      +'<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;margin-bottom:10px"><input type="checkbox" id="rcActif" checked style="width:auto"/> Active</label>'
+      +'<button class="btn btn-success btn-full" id="rcSave">💾 Enregistrer</button>'
+      +'<button class="btn btn-danger btn-full" id="rcDel" style="margin-top:8px;display:none">🗑 Supprimer</button></div>';
+    document.body.appendChild(modal);
+    document.getElementById('recurEditClose').addEventListener('click',function(){closeModal('recurEditModal');});
+    document.getElementById('rcSave').addEventListener('click',sauverRecurrence);
+    document.getElementById('rcDel').addEventListener('click',supprimerRecurrence);
+    document.getElementById('rcFreq').addEventListener('change',majChampsFrequence);
+  }
+  var jw=document.getElementById('rcJours');
+  jw.innerHTML='';
+  ['L','M','M','J','V','S','D'].forEach(function(lbl,i){
+    var b=document.createElement('button');b.type='button';b.dataset.j=i;b.textContent=lbl;
+    b.className='rc-jour';
+    b.style.cssText='width:34px;height:34px;border-radius:8px;border:1.5px solid var(--line);background:#fff;font-weight:800;cursor:pointer';
+    b.addEventListener('click',function(){
+      var on=b.dataset.on==='1';b.dataset.on=on?'0':'1';
+      b.style.background=on?'#fff':'var(--blue)';b.style.color=on?'var(--text)':'#fff';
+    });
+    jw.appendChild(b);
+  });
+  document.getElementById('recurEditTitre').textContent=id?'Modifier la récurrence':'Nouvelle tâche récurrente';
+  document.getElementById('rcTitre').value=r?r.titre||'':'';
+  document.getElementById('rcClient').value=r?r.client||'':'';
+  document.getElementById('rcFreq').value=r?r.frequence||'ouvrable':'ouvrable';
+  document.getElementById('rcHeure').value=r?r.heure||'':'';
+  document.getElementById('rcQuant').value=r?r.quantieme||1:1;
+  document.getElementById('rcDebut').value=r?r.debut||todayISO():todayISO();
+  document.getElementById('rcFin').value=r?r.fin||'':'';
+  document.getElementById('rcNotes').value=r?r.notes||'':'';
+  document.getElementById('rcActif').checked=r?r.actif!==false:true;
+  if(r&&r.jours){ jw.querySelectorAll('.rc-jour').forEach(function(b){
+    if(r.jours.indexOf(+b.dataset.j)>=0){b.dataset.on='1';b.style.background='var(--blue)';b.style.color='#fff';}
+  }); }
+  buildEmpChecklist('rcEmpList', r?(r.emps||[]):[]);
+  document.getElementById('rcSave').dataset.id=id||'';
+  document.getElementById('rcDel').style.display=id?'flex':'none';
+  majChampsFrequence();
+  if(typeof populateClientList==='function')populateClientList();
+  openModal('recurEditModal');
+}
+function majChampsFrequence(){
+  var f=document.getElementById('rcFreq').value;
+  document.getElementById('rcJoursWrap').style.display=(f==='hebdomadaire')?'block':'none';
+  document.getElementById('rcQuantWrap').style.display=(f==='mensuel')?'block':'none';
+}
+function sauverRecurrence(){
+  var titre=document.getElementById('rcTitre').value.trim();
+  if(!titre){document.getElementById('rcTitre').focus();toast('⚠️ Titre requis');return;}
+  var id=document.getElementById('rcSave').dataset.id;
+  var jours=[];
+  document.querySelectorAll('#rcJours .rc-jour').forEach(function(b){ if(b.dataset.on==='1')jours.push(+b.dataset.j); });
+  var emps=getCheckedEmp('rcEmpList');
+  var r={id:id||uid(),titre:titre,
+    client:document.getElementById('rcClient').value.trim(),
+    frequence:document.getElementById('rcFreq').value,
+    heure:document.getElementById('rcHeure').value,
+    jours:jours, quantieme:parseInt(document.getElementById('rcQuant').value,10)||1,
+    emps:emps, debut:document.getElementById('rcDebut').value,
+    fin:document.getElementById('rcFin').value,
+    notes:document.getElementById('rcNotes').value.trim(),
+    actif:document.getElementById('rcActif').checked,
+    updatedAt:new Date().toISOString()};
+  var list=getRecurrences();
+  var i=list.findIndex(function(x){return x.id===r.id;});
+  if(i>=0)list[i]=r; else list.push(r);
+  setRecurrences(list);
+  if(typeof auditLog==='function')auditLog(id?'MODIFICATION':'CREATION','recurrences',r.id);
+  closeModal('recurEditModal');
+  toast('✅ Tâche récurrente enregistrée');
+  if(typeof renderPlanMatch==='function'&&curMod==='planmatch')renderPlanMatch();
+  if(document.getElementById('recurModal')&&document.getElementById('recurModal').classList.contains('on'))ouvrirGestionRecurrences();
+}
+function supprimerRecurrence(){
+  var id=document.getElementById('rcSave').dataset.id;if(!id)return;
+  askConfirm('Supprimer cette tâche récurrente ?\n\nElle ne sera plus générée dans les plans de match.',function(){
+    setRecurrences(getRecurrences().filter(function(x){return x.id!==id;}));
+    if(typeof auditLog==='function')auditLog('SUPPRESSION','recurrences',id);
+    closeModal('recurEditModal');toast('🗑 Récurrence supprimée');
+    if(curMod==='planmatch')renderPlanMatch();
+  },'🗑 Supprimer','Supprimer la récurrence');
+}
+
+// ═══════════════════════════════════════════════════════
+// GESTION DES HEURES D'UN EMPLOYÉ (superviseur)
+// ═══════════════════════════════════════════════════════
+function ouvrirHeuresEmploye(empId, date){
+  var semaine=mondayOf(date), jourIdx=indexJourSemaine(date);
+  var ft=getFTWeek(empId+'_'+semaine);
+  var jour=(ft&&ft.days)?ft.days[jourIdx]:null;
+  var taches=(jour&&jour.tasks)?jour.tasks:[];
+  var total=taches.reduce(function(a,t){return a+(t.hrs||0);},0);
+  var modal=document.getElementById('heuresModal');
+  if(!modal){
+    modal=document.createElement('div');modal.className='modal-bg';modal.id='heuresModal';
+    modal.innerHTML='<div class="modal-box"><div class="modal-hd"><h3 id="heuresTitre">Heures</h3><button class="modal-close" id="heuresClose">✕</button></div><div id="heuresBody"></div></div>';
+    document.body.appendChild(modal);
+    document.getElementById('heuresClose').addEventListener('click',function(){closeModal('heuresModal');});
+  }
+  document.getElementById('heuresTitre').textContent='⏱ '+empName(empId)+' — '+fmtDate(date);
+  var body=document.getElementById('heuresBody');
+  var h='<div style="background:var(--blue-lt);border-radius:var(--rs);padding:10px 12px;margin-bottom:10px">'
+    +'<div style="font-size:20px;font-weight:800;color:var(--blue)">'+fmtH(total)+'</div>'
+    +'<div style="font-size:11px;color:var(--muted);font-weight:700">'+taches.length+' punch'+(taches.length>1?'s':'')+' ce jour</div></div>';
+  if(!taches.length){
+    h+='<div style="padding:16px;text-align:center;color:var(--muted);font-size:12.5px">Aucun punch enregistré ce jour.</div>';
+  }else{
+    taches.forEach(function(t,i){
+      var enCours=t.active||!t.end;
+      h+='<div class="heure-ligne" data-i="'+i+'" style="border:1px solid var(--line);border-left:4px solid '+(enCours?'var(--green)':'var(--blue)')+';border-radius:var(--rs);padding:9px 11px;margin-bottom:7px;cursor:pointer">'
+        +'<div style="display:flex;align-items:center;gap:7px"><b style="font-size:13.5px;flex:1">'+esc(t.lieu||'—')+'</b>'
+        +'<span style="font-size:12.5px;font-weight:800;color:var(--blue)">'+fmtH(t.hrs||0)+'</span></div>'
+        +'<div style="font-size:11.5px;color:var(--muted);margin-top:2px">'+esc(t.start||'')+' → '+(enCours?'<b style="color:var(--green)">en cours</b>':esc(t.end||''))
+        +(t.detail?(' · '+esc(t.detail)):'')+'</div>'
+        +(t.approuve?'<div style="font-size:11px;color:var(--green);font-weight:700;margin-top:3px">✅ Approuvé</div>':'')
+        +'</div>';
+    });
+    h+='<button class="btn btn-success btn-full" id="heuresApprouver" style="margin-top:6px">✅ Approuver la journée</button>';
+  }
+  h+='<div style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center">Touche un punch pour le corriger</div>';
+  body.innerHTML=h;
+  body.querySelectorAll('.heure-ligne').forEach(function(el){
+    el.addEventListener('click',function(){
+      closeModal('heuresModal');
+      ouvrirCorrectionPunch(empId, semaine, jourIdx, +el.dataset.i);
+    });
+  });
+  var ap=document.getElementById('heuresApprouver');
+  if(ap)ap.addEventListener('click',function(){approuverJournee(empId,semaine,jourIdx,date);});
+  openModal('heuresModal');
+}
+// Approbation d'une journée (traçable)
+function approuverJournee(empId, semaine, jourIdx, date){
+  var cle=empId+'_'+semaine;
+  var ft=getFTWeek(cle);
+  if(!ft||!ft.days||!ft.days[jourIdx]){toast('Aucune donnée à approuver');return;}
+  ft.days[jourIdx].tasks=(ft.days[jourIdx].tasks||[]).map(function(t){
+    t.approuve=true;t.approuvePar=currentUser?currentUser.id:'';t.approuveLe=new Date().toISOString();
+    return t;
+  });
+  ft.savedAt=new Date().toISOString();
+  lsSet('ft_week_'+cle, ft);
+  if(typeof sbPushFT==='function'){
+    var totalH=0;(ft.days||[]).forEach(function(d){((d&&d.tasks)||[]).forEach(function(t){totalH+=(t.hrs||0);});});
+    try{ sbPushFT(empId, semaine, {emp:ft.emp,email:ft.email,days:ft.days,savedAt:ft.savedAt}, totalH); }catch(e){}
+  }
+  if(typeof auditLog==='function')auditLog('MODIFICATION','feuilles_temps',cle,{action:'approbation',jour:date});
+  closeModal('heuresModal');
+  toast('✅ Journée approuvée');
+  if(curMod==='planmatch')renderPlanMatch();
+}
+// Correction d'un punch d'un autre employé (superviseur)
+function ouvrirCorrectionPunch(empId, semaine, jourIdx, taskIdx){
+  var ft=getFTWeek(empId+'_'+semaine);
+  var t=(ft&&ft.days&&ft.days[jourIdx]&&ft.days[jourIdx].tasks)?ft.days[jourIdx].tasks[taskIdx]:null;
+  if(!t){toast('Punch introuvable');return;}
+  var modal=document.getElementById('corrPunchModal');
+  if(!modal){
+    modal=document.createElement('div');modal.className='modal-bg';modal.id='corrPunchModal';
+    modal.innerHTML='<div class="modal-box"><div class="modal-hd"><h3>✏️ Corriger le punch</h3><button class="modal-close" id="cpClose">✕</button></div>'
+      +'<div class="mfield"><label>Chantier / Lieu</label><input type="text" id="cpLieu" list="sitesList" autocomplete="off"/></div>'
+      +'<div class="m2"><div class="mfield"><label>Début</label><input type="time" id="cpStart"/></div>'
+      +'<div class="mfield"><label>Fin</label><input type="time" id="cpEnd"/></div></div>'
+      +'<div class="mfield"><label>Détail</label><input type="text" id="cpDetail"/></div>'
+      +'<div style="background:var(--obg);border-radius:var(--rs);padding:9px 11px;font-size:11.5px;color:#a35400;margin-bottom:10px">⚠️ Toute correction est enregistrée dans le journal d\'audit (qui, quoi, quand).</div>'
+      +'<button class="btn btn-success btn-full" id="cpSave">💾 Enregistrer la correction</button></div>';
+    document.body.appendChild(modal);
+    document.getElementById('cpClose').addEventListener('click',function(){closeModal('corrPunchModal');});
+    document.getElementById('cpSave').addEventListener('click',sauverCorrectionPunch);
+  }
+  document.getElementById('cpLieu').value=t.lieu||'';
+  document.getElementById('cpStart').value=t.start||'';
+  document.getElementById('cpEnd').value=t.end||'';
+  document.getElementById('cpDetail').value=t.detail||'';
+  var b=document.getElementById('cpSave');
+  b.dataset.emp=empId;b.dataset.sem=semaine;b.dataset.jour=jourIdx;b.dataset.task=taskIdx;
+  if(typeof populateClientList==='function')populateClientList();
+  openModal('corrPunchModal');
+}
+function sauverCorrectionPunch(){
+  var b=document.getElementById('cpSave');
+  var empId=b.dataset.emp, semaine=b.dataset.sem, jourIdx=+b.dataset.jour, taskIdx=+b.dataset.task;
+  var cle=empId+'_'+semaine;
+  var ft=getFTWeek(cle);
+  var t=(ft&&ft.days&&ft.days[jourIdx]&&ft.days[jourIdx].tasks)?ft.days[jourIdx].tasks[taskIdx]:null;
+  if(!t){toast('Punch introuvable');return;}
+  var start=document.getElementById('cpStart').value, end=document.getElementById('cpEnd').value;
+  if(start&&end&&end<=start){toast('⚠️ La fin doit être après le début');return;}
+  var avant={lieu:t.lieu,start:t.start,end:t.end,hrs:t.hrs};
+  t.lieu=document.getElementById('cpLieu').value.trim();
+  t.detail=document.getElementById('cpDetail').value.trim();
+  t.start=start;t.end=end;
+  if(start&&end&&typeof hrsFrom==='function'){ t.hrs=hrsFrom(start,end); t.active=false; }
+  t.correctedBy=currentUser?currentUser.id:'';t.correctedAt=new Date().toISOString();
+  ft.savedAt=new Date().toISOString();
+  lsSet('ft_week_'+cle, ft);
+  if(typeof sbPushFT==='function'){
+    var totalH=0;(ft.days||[]).forEach(function(d){((d&&d.tasks)||[]).forEach(function(x){totalH+=(x.hrs||0);});});
+    try{ sbPushFT(empId, semaine, {emp:ft.emp,email:ft.email,days:ft.days,savedAt:ft.savedAt}, totalH); }catch(e){}
+  }
+  if(typeof auditLog==='function')auditLog('MODIFICATION','feuilles_temps',cle,{action:'correction_punch',avant:avant,apres:{lieu:t.lieu,start:t.start,end:t.end,hrs:t.hrs}});
+  closeModal('corrPunchModal');
+  toast('✅ Punch corrigé');
+  if(curMod==='planmatch')renderPlanMatch();
+}
+
 function renderPmmAll(content){
-  var day=pmmDay, wos=getWOs(), plan=getPlan(), pms=getPlanMatches();
+  var day=pmmDay;
+  var wos=getWOs(), plan=getPlan(), pms=getPlanMatches(), livs=getLivraisons();
   var techs=getComptes().filter(function(c){return c.role!=='admin';});
-  var any=false;
+
+  // ── BARRE D'ACTIONS — tout est créable depuis ici ──
+  var bar=document.createElement('div');
+  bar.style.cssText='display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px';
+  bar.innerHTML='<button class="btn btn-primary btn-sm" id="spvAddWO">➕ Work Order</button>'
+    +'<button class="btn btn-ghost btn-sm" id="spvAddCreneau">➕ Créneau</button>'
+    +'<button class="btn btn-ghost btn-sm" id="spvAddLivr">🚚 Bon livraison</button>'
+    +'<button class="btn btn-ghost btn-sm" id="spvRecur">🔁 Récurrences</button>'
+    +'<button class="btn btn-ghost btn-sm" id="spvPrintAll">🖨️ Imprimer équipe</button>';
+  content.appendChild(bar);
+
+  // ── SYNTHÈSE DE LA JOURNÉE ──
+  var wosJour=wos.filter(function(x){return x.date===day;});
+  var slJour=plan.filter(function(x){return x.date===day;});
+  var livJour=livs.filter(function(l){return l.date===day;});
+  var recJour=recurrencesPourDate(day);
+  var nonAssignes=wosJour.filter(function(w){return woAssignees(w).length===0;}).length
+                 +slJour.filter(function(x){return planAssignees(x).length===0;}).length;
+  var synth=document.createElement('div');
+  synth.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px;margin-bottom:14px';
+  function tuile(v,l,coul){return '<div style="background:#fff;border:1px solid var(--line);border-top:3px solid '+coul+';border-radius:var(--rs);padding:9px 11px">'
+    +'<div style="font-size:19px;font-weight:800;color:'+coul+'">'+v+'</div>'
+    +'<div style="font-size:9.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:700;margin-top:2px">'+l+'</div></div>';}
+  synth.innerHTML=tuile(techs.length,'Équipe','var(--blue)')
+    +tuile(wosJour.length,'Work orders','var(--orange)')
+    +tuile(slJour.length,'Créneaux','var(--blue-md)')
+    +tuile(livJour.length,'Livraisons','var(--purple)')
+    +tuile(recJour.length,'Récurrences','var(--teal)')
+    +tuile(nonAssignes,'Non assigné',nonAssignes>0?'var(--red)':'var(--green)');
+  content.appendChild(synth);
+
+  // ── NON ASSIGNÉ : à traiter en premier ──
+  var orphWO=wosJour.filter(function(w){return woAssignees(w).length===0;});
+  var orphSL=slJour.filter(function(x){return planAssignees(x).length===0;});
+  if(orphWO.length||orphSL.length){
+    var secO=document.createElement('div');secO.className='pmm-section';
+    var hdO=document.createElement('div');hdO.className='pmm-sec-hd';
+    hdO.style.cssText='background:var(--red);display:flex;align-items:center;gap:8px';
+    hdO.innerHTML='<span>⚠️ À assigner ('+(orphWO.length+orphSL.length)+')</span>';
+    secO.appendChild(hdO);
+    orphSL.forEach(function(x){renderPMSlot(secO,x);});
+    orphWO.forEach(function(w){renderWOAsSlot(secO,w);});
+    content.appendChild(secO);
+  }
+
+  // ── PAR EMPLOYÉ : la vraie vue de gestion d'équipe ──
+  var semaine=(typeof mondayOf==='function')?mondayOf(day):null;
+  var jourIdx=indexJourSemaine(day);
   techs.forEach(function(c){
-    var w=wos.filter(function(x){return x.date===day&&woAssignees(x).indexOf(c.id)>=0;});
-    var sl=plan.filter(function(x){return x.date===day&&planAssignees(x).indexOf(c.id)>=0;});
+    var w=wosJour.filter(function(x){return woAssignees(x).indexOf(c.id)>=0;});
+    var sl=slJour.filter(function(x){return planAssignees(x).indexOf(c.id)>=0;});
     var pm=pms.find(function(x){return x.date===day&&pmAssignees(x).indexOf(c.id)>=0;});
-    if(!w.length&&!sl.length&&!pm)return;
-    any=true;
+    var lv=livJour.filter(function(l){return (l.technicien||'').toLowerCase().indexOf((c.prenom||'').toLowerCase())>=0;});
+    var rc=recJour.filter(function(r){return (r.emps||[]).indexOf(c.id)>=0;});
+    var total=w.length+sl.length+lv.length+rc.length;
+
+    // Heures pointées du jour (lecture seule, depuis la feuille de temps)
+    var heures=0, punchs=0, actif=false;
+    if(semaine&&jourIdx>=0){
+      var ft=getFTWeek(c.id+'_'+semaine);
+      var d=ft&&ft.days?ft.days[jourIdx]:null;
+      if(d&&d.tasks){ d.tasks.forEach(function(t){ heures+=(t.hrs||0); punchs++; if(t.active||!t.end)actif=true; }); }
+    }
+
     var sec=document.createElement('div');sec.className='pmm-section';
-    var hd=document.createElement('div');hd.className='pmm-sec-hd c-bleu';hd.style.cssText='display:flex;align-items:center;gap:8px';
-    var hdTxt=document.createElement('span');hdTxt.textContent='👷 '+(c.prenom+' '+c.nom).trim()+' — '+(w.length+sl.length)+' arrêt(s)'+(pm?' · plan de match ✓':'');
-    hd.appendChild(hdTxt);
-    var pBtn=document.createElement('button');pBtn.textContent='🖨️';pBtn.title='Imprimer la journée de '+c.prenom;
-    pBtn.style.cssText='margin-left:auto;border:none;background:rgba(255,255,255,.25);color:#fff;border-radius:6px;padding:3px 9px;font-size:13px;cursor:pointer';
-    pBtn.addEventListener('click',function(e){e.stopPropagation();printOneEmployeeDay(day,c.id);});
-    hd.appendChild(pBtn);
+    var hd=document.createElement('div');hd.className='pmm-sec-hd c-bleu';
+    hd.style.cssText='display:flex;align-items:center;gap:8px;flex-wrap:wrap';
+    hd.innerHTML='<span style="font-size:14px">'+(actif?'🟢':'⚪')+' '+esc((c.prenom+' '+c.nom).trim())+'</span>'
+      +'<span style="font-size:11px;opacity:.85">'+total+' tâche'+(total>1?'s':'')+'</span>'
+      +'<span style="font-size:11px;opacity:.85">· ⏱ '+fmtH(heures)+' ('+punchs+' punch'+(punchs>1?'s':'')+')</span>'
+      +(pm?'<span style="font-size:11px;opacity:.85">· 📋 plan ✓</span>':'');
+    var actions=document.createElement('span');
+    actions.style.cssText='margin-left:auto;display:flex;gap:5px';
+    function miniBtn(txt,titre,fn){
+      var b=document.createElement('button');b.textContent=txt;b.title=titre;
+      b.style.cssText='border:none;background:rgba(255,255,255,.22);color:#fff;border-radius:6px;padding:3px 9px;font-size:12.5px;cursor:pointer';
+      b.addEventListener('click',function(e){e.stopPropagation();fn();});
+      return b;
+    }
+    actions.appendChild(miniBtn('➕','Assigner une tâche à '+c.prenom,function(){ouvrirCreneauPour(c.id,day);}));
+    actions.appendChild(miniBtn('⏱','Gérer les heures de '+c.prenom,function(){ouvrirHeuresEmploye(c.id,day);}));
+    actions.appendChild(miniBtn('🖨️','Imprimer la journée de '+c.prenom,function(){printOneEmployeeDay(day,c.id);}));
+    hd.appendChild(actions);
     sec.appendChild(hd);
-    sl.forEach(function(slot){renderPMSlot(sec,slot);});
-    w.forEach(function(wo){renderWOAsSlot(sec,wo);});
+
+    if(total===0){
+      var vide=document.createElement('div');
+      vide.style.cssText='padding:12px;text-align:center;color:var(--hint);font-size:12px;font-style:italic';
+      vide.textContent='Aucune tâche assignée — utilise ➕ pour en ajouter';
+      sec.appendChild(vide);
+    }else{
+      sl.forEach(function(x){renderPMSlot(sec,x);});
+      w.forEach(function(x){renderWOAsSlot(sec,x);});
+      rc.forEach(function(r){renderRecurrenceLigne(sec,r,day);});
+      lv.forEach(function(l){renderLivraisonLigne(sec,l);});
+    }
     content.appendChild(sec);
   });
-  if(!any){var d=document.createElement('div');d.className='empty-state';d.style.cssText='padding:30px;text-align:center;color:var(--muted)';d.innerHTML='Aucune assignation ce jour.';content.appendChild(d);}
+
+  // ── LIVRAISONS NON RATTACHÉES ──
+  var livOrph=livJour.filter(function(l){
+    return !techs.some(function(c){return (l.technicien||'').toLowerCase().indexOf((c.prenom||'').toLowerCase())>=0;});
+  });
+  if(livOrph.length){
+    var secL=document.createElement('div');secL.className='pmm-section';
+    var hdL=document.createElement('div');hdL.className='pmm-sec-hd';
+    hdL.style.cssText='background:var(--purple)';
+    hdL.textContent='🚚 Livraisons du jour non assignées ('+livOrph.length+')';
+    secL.appendChild(hdL);
+    livOrph.forEach(function(l){renderLivraisonLigne(secL,l);});
+    content.appendChild(secL);
+  }
+
+  // ── Câblage des actions ──
+  var b1=document.getElementById('spvAddWO');    if(b1)b1.addEventListener('click',function(){openWOModal(null);});
+  var b2=document.getElementById('spvAddCreneau');if(b2)b2.addEventListener('click',function(){ouvrirCreneauPour(null,day);});
+  var b3=document.getElementById('spvAddLivr');  if(b3)b3.addEventListener('click',function(){openLivraisonModal(null);});
+  var b4=document.getElementById('spvRecur');    if(b4)b4.addEventListener('click',ouvrirGestionRecurrences);
+  var b5=document.getElementById('spvPrintAll'); if(b5)b5.addEventListener('click',function(){printTeamDay(day);});
+}
+
+// Ouvre le modal créneau prérempli pour un employé et une date
+function ouvrirCreneauPour(empId, date){
+  openPmModal(null,null);
+  setTimeout(function(){
+    var d=document.getElementById('pmDate'); if(d&&date)d.value=date;
+    if(empId){
+      var box=document.getElementById('pmEmpList');
+      if(box){ box.querySelectorAll('input[type=checkbox]').forEach(function(cb){ cb.checked=(cb.value===empId); }); }
+    }
+  },60);
+}
+// Index du jour de semaine (0=lundi) pour une date ISO
+function indexJourSemaine(dateISO){
+  try{ var d=new Date(dateISO+'T12:00:00'); var j=d.getDay(); return (j===0)?6:(j-1); }catch(e){ return -1; }
+}
+// Ligne compacte pour une livraison
+function renderLivraisonLigne(container,l){
+  var div=document.createElement('div');
+  div.className='pm-slot '+(l.status==='livre'?'done':'assigned');
+  div.style.borderLeftColor='var(--purple)';
+  var nb=(l.itemsLiv||[]).filter(function(x){return x.item;}).length;
+  div.innerHTML='<div class="pm-slot-top"><span class="pm-slot-name">🚚 '+esc(l.client||'Livraison')+'</span>'
+    +'<span class="pm-slot-time">'+esc(l.heure||'')+'</span></div>'
+    +'<div class="pm-slot-meta">'+esc(l.adresse||'')+' · '+nb+' item'+(nb>1?'s':'')
+    +(l.status==='livre'?' · ✅ livré':' · 📝 à livrer')+'</div>';
+  div.addEventListener('click',function(){openLivraisonModal(l.id);});
+  container.appendChild(div);
+}
+// Ligne compacte pour une tâche récurrente
+function renderRecurrenceLigne(container,r,date){
+  var div=document.createElement('div');
+  div.className='pm-slot assigned';
+  div.style.borderLeftColor='var(--teal)';
+  var faite=recurrenceEstFaite(r.id,date);
+  div.innerHTML='<div class="pm-slot-top"><span class="pm-slot-name">🔁 '+esc(r.titre||'Tâche récurrente')+'</span>'
+    +'<span class="pm-slot-time">'+esc(r.heure||'')+'</span></div>'
+    +'<div class="pm-slot-meta">'+esc(r.client||'')+(r.notes?(' · '+esc(r.notes)):'')
+    +(faite?' · ✅ fait':'')+'</div>';
+  div.addEventListener('click',function(){ouvrirRecurrence(r.id);});
+  container.appendChild(div);
 }
 
 function renderPlanMatch(){
@@ -3893,9 +4329,9 @@ function renderPlanMatch(){
       var oAll=document.createElement('option');oAll.value='__ALL__';oAll.textContent='👥 Tout le monde';sel.appendChild(oAll);
       getComptes().forEach(function(c){
         var o=document.createElement('option');o.value=c.id;o.textContent=(c.prenom+' '+c.nom).trim();
-        if(c.id===currentUser.id)o.selected=true;
         sel.appendChild(o);
       });
+      sel.value='__ALL__'; // ➕ le superviseur arrive sur la VUE ÉQUIPE
       sel.dataset.built='1';
     }
   }else{
@@ -4804,7 +5240,7 @@ function renderAccueil(){
       '<div class="ah-chip">'+roleLabel+'</div></div>'+
       '<div class="ah-clk">'+dayHtml+'</div>'+
       '<div class="ah-loc">'+(st.status==='done'?'✓ Journée terminée — beau travail':salut+', prêt à démarrer ?')+'</div>'+
-      ((isPunchAllowed()||curDay===realIdx)?'<div class="ah-actions"><button class="a start" id="accStart">🟢 '+(st.status==='done'?'Reprendre le travail':'Arriver — démarrer')+'</button></div>':'')+'</div>';
+      (isPunchAllowed()?'<div class="ah-actions"><button class="a start" id="accStart">🟢 '+(st.status==='done'?'Reprendre le travail':'Arriver — démarrer')+'</button></div>':'')+'</div>';
   }
 
   var pct=Math.min(Math.round(weekH/40*100),100);
@@ -5241,7 +5677,9 @@ function refreshWkStatus(){
   }g.innerHTML=html;
 }
 function isPunchAllowed(){
-  // Admin/superviseur : toujours autorisé
+  // ➕ ADMIN : compte de GESTION — aucun punch (pas un poste terrain)
+  if(typeof isAdmin==='function' && isAdmin()) return false;
+  // Superviseur : autorisé (il travaille aussi sur le terrain)
   if(canEdit())return true;
   // Employé : seulement sur le jour réel d'aujourd'hui de la semaine courante
   var wd=document.getElementById('weekDate').value;
