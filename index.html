@@ -1663,8 +1663,16 @@ function lsSet(k,v){
       }
     }
     if(!ok){
-      alertStorageFull('⛔ SAUVEGARDE IMPOSSIBLE — mémoire pleine. Ne ferme pas l\'app : note tes heures et préviens le superviseur.');
-      return false;
+      // ➕ DERNIER RECOURS : purge de toutes les photos locales puis nouvel essai.
+      // Un employé ne doit JAMAIS se retrouver incapable de sauvegarder ses heures.
+      try{ purgeToutesLesPhotos(); }catch(e){}
+      try{ localStorage.setItem(LS+k,payload); ok=true; }catch(e4){ ok=false; }
+      if(ok){
+        alertStorageFull('Mémoire libérée automatiquement (photos locales purgées). Tes heures sont sauvegardées.');
+      }else{
+        alertStorageFull('⛔ SAUVEGARDE IMPOSSIBLE — mémoire pleine. Ne ferme pas l\'app : note tes heures et préviens le superviseur.');
+        return false;
+      }
     }
   }
   try{ if(VAULT_KEYS.indexOf(k)>=0) scheduleVault(); }catch(e){}
@@ -1771,17 +1779,67 @@ function storageUsedBytes(){
 // ➕ Nettoie préventivement si on approche de la limite du navigateur (~5 Mo)
 function autoCleanStorageIfNeeded(){
   var used=storageUsedBytes();
-  var LIMITE=3.5*1024*1024; // seuil d'action : 3,5 Mo
+  var LIMITE=2.5*1024*1024; // seuil d'action abaissé à 2,5 Mo (marge de sécurité)
   console.log('[SA STOCKAGE] Occupation : '+(used/1024/1024).toFixed(2)+' Mo');
   if(used<LIMITE) return false;
   console.warn('[SA STOCKAGE] Seuil atteint — nettoyage préventif automatique');
   freeUpStorage('');
   var apres=storageUsedBytes();
   console.log('[SA STOCKAGE] Après nettoyage : '+(apres/1024/1024).toFixed(2)+' Mo');
-  if(apres>LIMITE && typeof toast==='function'){
-    setTimeout(function(){ toast('🧹 Mémoire allégée — pense à synchroniser régulièrement'); }, 2500);
+  // ➕ Si toujours au-dessus du seuil : nettoyage D'URGENCE (purge toutes les photos,
+  // même de la semaine courante). Les HEURES sont toujours conservées.
+  // Mieux vaut perdre des photos que de laisser un employé incapable de puncher.
+  if(apres>=LIMITE){
+    console.warn('[SA STOCKAGE] Nettoyage d\'urgence : purge de toutes les photos locales');
+    purgeToutesLesPhotos();
+    var final=storageUsedBytes();
+    console.log('[SA STOCKAGE] Après purge d\'urgence : '+(final/1024/1024).toFixed(2)+' Mo');
+    if(typeof toast==='function'){
+      setTimeout(function(){ toast('🧹 Photos locales purgées pour libérer la mémoire — heures conservées'); }, 2500);
+    }
   }
   return true;
+}
+// ➕ Purge TOUTES les photos stockées localement (dernier recours) — les heures et données métier restent intactes
+function purgeToutesLesPhotos(){
+  var n=0;
+  try{
+    // Photos dans les feuilles de temps (toutes semaines)
+    for(var i=localStorage.length-1;i>=0;i--){
+      var k=localStorage.key(i);
+      if(!k || k.indexOf(LS+'ft_week_')!==0) continue;
+      try{
+        var ft=JSON.parse(localStorage.getItem(k));
+        var mod=false;
+        (ft.days||[]).forEach(function(d){
+          if(!d)return;
+          (d.tasks||[]).forEach(function(t){ if(t.files&&t.files.length){t.files=[];mod=true;} });
+          if(d.stopFiles&&d.stopFiles.length){d.stopFiles=[];mod=true;}
+        });
+        if(mod){ localStorage.setItem(k,JSON.stringify(ft)); n++; }
+      }catch(e){}
+    }
+    // Photos dans les tables métier
+    ['workorders','livraison','sortie','sites','sitelog'].forEach(function(cle){
+      try{
+        var liste=lsGet(cle); if(!Array.isArray(liste))return;
+        var mod=false;
+        liste.forEach(function(rec){
+          if(!rec||typeof rec!=='object')return;
+          ['files','photos','itemsLiv','itemsRet'].forEach(function(champ){
+            if(Array.isArray(rec[champ]) && rec[champ].some(function(f){return f&&f.data;})){
+              rec[champ]=rec[champ].map(function(f){ return (f&&f.data)?{name:f.name||'photo',_purged:true}:f; });
+              mod=true;
+            }
+          });
+        });
+        if(mod){ try{ localStorage.setItem(LS+cle, JSON.stringify(liste)); n++; }catch(e){} }
+      }catch(e){}
+    });
+    try{ localStorage.removeItem(LS+'__vault'); }catch(e){}
+  }catch(e){}
+  console.warn('[SA STOCKAGE] Purge photos : '+n+' emplacement(s) allégé(s)');
+  return n;
 }
 
 function doVault(){
@@ -2605,7 +2663,7 @@ document.addEventListener('DOMContentLoaded', function(){
   try{
     var vb=document.createElement('div');
     vb.id='__buildBadge';
-    vb.textContent='build F35 ⟲';
+    vb.textContent='build F36 ⟲';
     vb.title='Version de l\'app — toucher pour restaurer une sauvegarde';
     vb.style.cssText='position:fixed;bottom:4px;right:6px;font:11px/1.4 monospace;color:#fff;background:rgba(27,79,140,.85);padding:3px 8px;border-radius:8px;z-index:99999;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.2)';
     vb.addEventListener('click',function(){
