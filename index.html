@@ -1672,27 +1672,65 @@ function lsSet(k,v){
 }
 
 // Libère de l'espace : purge les vieux snapshots du coffre et les vieilles feuilles de temps déjà synchronisées
+// ➕ CORRIGÉ : libère RÉELLEMENT de l'espace, par étapes de plus en plus agressives.
+// L'ancienne version ne touchait jamais aux photos (la vraie cause du remplissage) → elle ne libérait rien.
 function freeUpStorage(protectKey){
   var freed=0;
+  var semaineActuelle=(typeof weekKey==='function')?weekKey():'';
   try{
-    // 1) Réduire le coffre à 2 snapshots (au lieu de 8)
-    var vault=lsGet('__vault');
-    if(vault && vault.length>2){
-      try{ localStorage.setItem(LS+'__vault', JSON.stringify(vault.slice(-2))); freed++; }catch(e){}
-    }
-    // 2) Supprimer les feuilles de temps de plus de 8 semaines (elles sont sur le serveur)
-    var cutoff=new Date(); cutoff.setDate(cutoff.getDate()-56);
-    var cutoffISO=cutoff.toISOString().slice(0,10);
-    var toDelete=[];
+    // ÉTAPE 1 — Vider complètement le coffre (il est reconstruit automatiquement après)
+    try{ localStorage.removeItem(LS+'__vault'); freed++; }catch(e){}
+
+    // ÉTAPE 2 — Supprimer les feuilles de temps des semaines PASSÉES (déjà sur le serveur)
+    var aSupprimer=[];
     for(var i=0;i<localStorage.length;i++){
       var key=localStorage.key(i);
       if(!key || key.indexOf(LS+'ft_week_')!==0) continue;
-      if(LS+protectKey===key) continue;                 // jamais la feuille qu'on essaie d'écrire
-      var wk=key.slice((LS+'ft_week_').length).split('_').pop();
-      if(wk && wk < cutoffISO) toDelete.push(key);
+      if(LS+protectKey===key) continue;                       // jamais la feuille en cours d'écriture
+      var sem=key.split('_').pop();
+      if(sem && semaineActuelle && sem < semaineActuelle) aSupprimer.push(key); // semaines passées seulement
     }
-    toDelete.forEach(function(key){ try{ localStorage.removeItem(key); freed++; }catch(e){} });
+    aSupprimer.forEach(function(key){ try{ localStorage.removeItem(key); freed++; }catch(e){} });
+
+    // ÉTAPE 3 — Retirer les photos des SEMAINES PASSÉES restantes (les heures sont conservées)
+    for(var j=0;j<localStorage.length;j++){
+      var k2=localStorage.key(j);
+      if(!k2 || k2.indexOf(LS+'ft_week_')!==0) continue;
+      if(LS+protectKey===k2) continue;
+      var sem2=k2.split('_').pop();
+      if(sem2 && semaineActuelle && sem2 >= semaineActuelle) continue; // on protège la semaine courante
+      try{
+        var ft=JSON.parse(localStorage.getItem(k2));
+        var modifie=false;
+        (ft.days||[]).forEach(function(d){
+          if(!d)return;
+          (d.tasks||[]).forEach(function(t){ if(t.files&&t.files.length){t.files=[];modifie=true;} });
+          if(d.stopFiles&&d.stopFiles.length){d.stopFiles=[];modifie=true;}
+        });
+        if(modifie){ localStorage.setItem(k2,JSON.stringify(ft)); freed++; }
+      }catch(e){}
+    }
+
+    // ÉTAPE 4 — Alléger les photos des WO/livraisons/sorties CLÔTURÉS (déjà synchronisés au serveur)
+    ['workorders','livraison','sortie'].forEach(function(cle){
+      try{
+        var liste=lsGet(cle); if(!Array.isArray(liste))return;
+        var modifie=false;
+        liste.forEach(function(rec){
+          var termine = rec && (rec.status==='complete'||rec.status==='facture'||rec.status==='livre'||rec.status==='envoye');
+          if(!termine)return;
+          ['files','photos','itemsLiv','itemsRet'].forEach(function(champ){
+            if(Array.isArray(rec[champ]) && rec[champ].some(function(f){return f&&f.data;})){
+              rec[champ]=rec[champ].map(function(f){ return (f&&f.data)?{name:f.name||'photo',_archived:true}:f; });
+              modifie=true;
+            }
+          });
+        });
+        if(modifie){ try{ localStorage.setItem(LS+cle, JSON.stringify(liste)); freed++; }catch(e){} }
+      }catch(e){}
+    });
   }catch(e){}
+  console.warn('[SA STOCKAGE] Espace libéré, '+freed+' opération(s)');
   return freed;
 }
 
@@ -1717,22 +1755,83 @@ function alertStorageFull(msg){
 var VAULT_KEYS=['workorders','plan','planmatch','sites','flotte','inventaire','comptes','sortie','livraison'];
 var _vaultTimer=null;
 function scheduleVault(){ if(_vaultTimer)clearTimeout(_vaultTimer); _vaultTimer=setTimeout(doVault,1500); }
+// ➕ Mesure l'espace occupé par l'app (en octets)
+function storageUsedBytes(){
+  var total=0;
+  try{
+    for(var i=0;i<localStorage.length;i++){
+      var k=localStorage.key(i);
+      if(!k || k.indexOf(LS)!==0) continue;
+      var v=localStorage.getItem(k)||'';
+      total += (k.length + v.length) * 2; // UTF-16 : 2 octets par caractère
+    }
+  }catch(e){}
+  return total;
+}
+// ➕ Nettoie préventivement si on approche de la limite du navigateur (~5 Mo)
+function autoCleanStorageIfNeeded(){
+  var used=storageUsedBytes();
+  var LIMITE=3.5*1024*1024; // seuil d'action : 3,5 Mo
+  console.log('[SA STOCKAGE] Occupation : '+(used/1024/1024).toFixed(2)+' Mo');
+  if(used<LIMITE) return false;
+  console.warn('[SA STOCKAGE] Seuil atteint — nettoyage préventif automatique');
+  freeUpStorage('');
+  var apres=storageUsedBytes();
+  console.log('[SA STOCKAGE] Après nettoyage : '+(apres/1024/1024).toFixed(2)+' Mo');
+  if(apres>LIMITE && typeof toast==='function'){
+    setTimeout(function(){ toast('🧹 Mémoire allégée — pense à synchroniser régulièrement'); }, 2500);
+  }
+  return true;
+}
+
 function doVault(){
   try{
     var snap={ts:new Date().toISOString(),data:{}};
     var nonEmpty=0;
     VAULT_KEYS.forEach(function(k){
       var v=lsGet(k)||[];
-      snap.data[k]=v;
+      snap.data[k]=stripPhotosForVault(v); // ➕ le coffre ne duplique PLUS les photos (voir ci-dessous)
       if(Array.isArray(v)&&v.length>0)nonEmpty++;
     });
     if(nonEmpty===0)return; // ne jamais sauvegarder un état totalement vide (évite d'écraser le coffre)
     var hist=[]; try{hist=JSON.parse(localStorage.getItem(LS+'__vault')||'[]');}catch(e){}
     hist.unshift(snap);
-    hist=hist.slice(0,8);
-    localStorage.setItem(LS+'__vault',JSON.stringify(hist));
+    hist=hist.slice(0,4); // ➕ 4 snapshots au lieu de 8 — largement suffisant, 2x moins d'espace
+    try{
+      localStorage.setItem(LS+'__vault',JSON.stringify(hist));
+    }catch(e){
+      // Coffre trop gros : on retombe à 2 snapshots plutôt que d'échouer
+      try{ localStorage.setItem(LS+'__vault',JSON.stringify(hist.slice(0,2))); }catch(e2){}
+    }
   }catch(e){}
 }
+// ➕ CORRECTIF CRITIQUE — CAUSE PRINCIPALE DES "MÉMOIRE PLEINE"
+// Avant : le coffre gardait 8 copies COMPLÈTES de workorders/sites/livraison, photos incluses.
+// Chaque photo était donc stockée 9 fois (1 originale + 8 copies) → la mémoire se remplissait très vite.
+// Maintenant : le coffre garde la structure et les données métier, mais REMPLACE les images
+// par un marqueur léger. Les vraies photos restent intactes dans les données principales.
+function stripPhotosForVault(list){
+  if(!Array.isArray(list))return list;
+  try{
+    return list.map(function(rec){
+      if(!rec||typeof rec!=='object')return rec;
+      var copy=null;
+      ['files','photos','itemsLiv','itemsRet'].forEach(function(champ){
+        var arr=rec[champ];
+        if(!Array.isArray(arr))return;
+        var aDesPhotos=arr.some(function(f){return f&&f.data;});
+        if(!aDesPhotos)return;
+        if(!copy)copy=Object.assign({},rec);
+        copy[champ]=arr.map(function(f){
+          if(f&&f.data)return {name:f.name||'photo',_stripped:true}; // marqueur léger
+          return f;
+        });
+      });
+      return copy||rec;
+    });
+  }catch(e){ return list; }
+}
+
 function getVault(){ try{return JSON.parse(localStorage.getItem(LS+'__vault')||'[]');}catch(e){return [];} }
 // Restaure le dernier snapshot non vide dans le local (sans écraser ce qui est plus riche : fusion)
 function restoreVault(idx){
@@ -2489,6 +2588,10 @@ function siteTypeIcon(t){var m={creusee:'🏊',horsterre:'🌊',spa:'♨️',com
 // INIT
 // ═══════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', function(){
+  // ➕ NETTOYAGE AUTOMATIQUE AU DÉMARRAGE — évite le blocage "mémoire pleine" sur le terrain.
+  // Mesure l'occupation ; au-delà de ~3,5 Mo on libère AVANT que l'employé ne se fasse bloquer.
+  try{ autoCleanStorageIfNeeded(); }catch(e){}
+
   // Splash
   setTimeout(function(){var s=document.getElementById('splash');if(s){s.style.opacity='0';setTimeout(function(){s.remove();},380);}},900);
 
@@ -2502,7 +2605,7 @@ document.addEventListener('DOMContentLoaded', function(){
   try{
     var vb=document.createElement('div');
     vb.id='__buildBadge';
-    vb.textContent='build F33 ⟲';
+    vb.textContent='build F35 ⟲';
     vb.title='Version de l\'app — toucher pour restaurer une sauvegarde';
     vb.style.cssText='position:fixed;bottom:4px;right:6px;font:11px/1.4 monospace;color:#fff;background:rgba(27,79,140,.85);padding:3px 8px;border-radius:8px;z-index:99999;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.2)';
     vb.addEventListener('click',function(){
@@ -2816,14 +2919,118 @@ function buildNavbar(){
 // ═══════════════════════════════════════════════════════
 // LOGIN
 // ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+// JOURNAL D'AUDIT — traçabilité Loi 25
+// Enregistre les actions sensibles : qui, quoi, quand. Jamais de contenu confidentiel.
+// ═══════════════════════════════════════════════════════
+function auditLog(action, ressource, ressourceId, details){
+  try{
+    if(!sb) return;
+    sb.from('audit_log').insert({
+      acteur: currentUser?currentUser.id:'anonyme',
+      acteur_nom: (typeof fullName==='function'&&currentUser)?fullName():'',
+      action: action,
+      ressource: ressource||'',
+      ressource_id: ressourceId?String(ressourceId):null,
+      details: details||null,
+      appareil: (navigator.userAgent||'').slice(0,120)
+    }).then(function(res){
+      if(res.error) console.warn('[SA AUDIT] non journalisé :', res.error.message);
+    });
+  }catch(e){}
+}
+
+// Changement de mot de passe — vérifié et journalisé côté serveur
+function ouvrirChangementMdp(){
+  var html='<div class="mfield"><label>Mot de passe actuel</label><input type="password" id="mdpAncien" autocomplete="current-password"/></div>'
+    +'<div class="mfield"><label>Nouveau mot de passe (8 caractères minimum)</label><input type="password" id="mdpNouveau" autocomplete="new-password"/></div>'
+    +'<div class="mfield"><label>Confirmer le nouveau mot de passe</label><input type="password" id="mdpConfirme" autocomplete="new-password"/></div>'
+    +'<div id="mdpErr" style="color:var(--red);font-size:12.5px;font-weight:700;min-height:16px"></div>';
+  var box=document.getElementById('mdpModalBox');
+  if(!box){
+    var wrap=document.createElement('div');
+    wrap.className='modal-bg';wrap.id='mdpModal';
+    wrap.innerHTML='<div class="modal-box"><div class="modal-hd"><h3>🔒 Changer mon mot de passe</h3><button class="modal-close" id="mdpClose">✕</button></div>'
+      +'<div id="mdpModalBox"></div>'
+      +'<button class="btn btn-success btn-full" id="mdpSave" style="margin-top:4px">💾 Enregistrer</button></div>';
+    document.body.appendChild(wrap);
+    document.getElementById('mdpClose').addEventListener('click',function(){closeModal('mdpModal');});
+    document.getElementById('mdpSave').addEventListener('click',sauverNouveauMdp);
+    box=document.getElementById('mdpModalBox');
+  }
+  box.innerHTML=html;
+  openModal('mdpModal');
+}
+function sauverNouveauMdp(){
+  var ancien=document.getElementById('mdpAncien').value;
+  var nouveau=document.getElementById('mdpNouveau').value;
+  var confirme=document.getElementById('mdpConfirme').value;
+  var err=document.getElementById('mdpErr');
+  if(nouveau.length<8){err.textContent='Le nouveau mot de passe doit contenir au moins 8 caractères.';return;}
+  if(nouveau!==confirme){err.textContent='Les deux nouveaux mots de passe ne correspondent pas.';return;}
+  if(!sb){err.textContent='Connexion au serveur requise pour changer le mot de passe.';return;}
+  err.textContent='Enregistrement…';
+  sb.rpc('changer_mdp',{p_id:currentUser.id,p_ancien:ancien,p_nouveau:nouveau}).then(function(res){
+    if(res.error){ err.textContent='Erreur : '+(res.error.message||'impossible'); return; }
+    if(res.data===false){ err.textContent='Mot de passe actuel incorrect.'; return; }
+    closeModal('mdpModal');
+    toast('🔒 Mot de passe mis à jour');
+  });
+}
+
 function doLogin(){
   var user=document.getElementById('loginUser').value.trim().toLowerCase();
   var pass=document.getElementById('loginPass').value;
-  // Tenter un refresh des comptes depuis Supabase avant de valider (pour comptes créés ailleurs)
+  // ➕ SÉCURITÉ : la vérification se fait CÔTÉ SERVEUR (mot de passe haché, jamais comparé localement).
+  // Le hachage ne quitte jamais la base de données. Chaque tentative est journalisée (audit Loi 25).
   if(sb&&sbReady){
-    syncPull('comptes',function(){doLoginCheck(user,pass);});
+    document.getElementById('loginErr').textContent='Vérification…';
+    sb.rpc('verifier_connexion',{p_id:user,p_mdp:pass}).then(function(res){
+      if(res.error){
+        // La fonction sécurisée n'existe pas encore (script SQL non exécuté) → repli local
+        console.warn('[SA SÉCURITÉ] verifier_connexion indisponible, repli local :', res.error.message);
+        syncPull('comptes',function(){doLoginCheck(user,pass);});
+        return;
+      }
+      var rows=res.data||[];
+      if(!rows.length){
+        document.getElementById('loginErr').textContent='Identifiant ou mot de passe incorrect';
+        return;
+      }
+      var compte=rows[0];
+      // Conserver le compte localement SANS aucun secret
+      var comptes=getComptes();
+      var idx=comptes.findIndex(function(c){return c.id===compte.id;});
+      var propre={id:compte.id,prenom:compte.prenom,nom:compte.nom,role:compte.role,dept:compte.dept,email:compte.email,tel:compte.tel,droits:compte.droits||undefined};
+      if(idx>=0)comptes[idx]=Object.assign({},comptes[idx],propre,{mdp:undefined});
+      else comptes.push(propre);
+      lsSet('comptes',comptes);
+      ouvrirSession(propre, !!compte.doit_changer_mdp);
+    });
   }else{
     doLoginCheck(user,pass);
+  }
+}
+// Ouvre la session une fois l'identité confirmée
+function ouvrirSession(compte, doitChangerMdp){
+  currentUser=compte;
+  viewingUid=null;
+  document.getElementById('loginErr').textContent='';
+  document.getElementById('screenLogin').classList.remove('active');
+  document.getElementById('screenApp').classList.add('active');
+  document.getElementById('topbarSub').textContent=fullName()+' · '+(isAdmin()?'Administrateur':isSup()?'Superviseur':currentUser.dept);
+  document.getElementById('dashBtn').style.display='block';
+  for(var _ri=0;_ri<7;_ri++) chronoState[_ri]=makeDay();
+  tid=0;
+  var stored=loadFT(document.getElementById('weekDate').value);
+  if(stored) applyFT(stored);
+  buildNavbar();
+  switchMod('accueil');
+  toast('Bienvenue, '+fullName()+' !');
+  if(doitChangerMdp){
+    setTimeout(function(){
+      askConfirm('Pour des raisons de sécurité, ton mot de passe doit être changé.\n\nLes anciens mots de passe étaient stockés sans protection suffisante — ils ont été remplacés par un stockage chiffré.\n\nChoisis un nouveau mot de passe d\'au moins 8 caractères.', function(){ ouvrirChangementMdp(); }, 'Changer maintenant', '🔒 Changement de mot de passe requis');
+    }, 900);
   }
 }
 function doLoginCheck(user,pass){
@@ -3304,7 +3511,7 @@ function savePlan(){
     updatedAt:new Date().toISOString()}; // ➕ posé AVANT setPlan — protège contre une resynchro rapide
   if(slotId){var idx2=plan.findIndex(function(p){return p.id===slotId;});if(idx2>=0)plan[idx2]=slot;else plan.push(slot);}
   else plan.push(slot);
-  setPlan(plan);sbPush('plan',slot);
+  setPlan(plan);sbPush('plan',slot);auditLog(slotId?'MODIFICATION':'CREATION','plan',slot.id);
   closeModal('pmModal');renderPlan();toast('✅ Intervention planifiée !');
 }
 
@@ -4137,12 +4344,13 @@ function saveWO(){
     updatedAt:new Date().toISOString()}; // ➕ posé AVANT setWOs — protège contre une resynchro qui arriverait juste après la sauvegarde
   if(woEditId){var idx2=wos.findIndex(function(w){return w.id===woEditId;});if(idx2>=0)wos[idx2]=wo;else wos.push(wo);}
   else wos.unshift(wo);
-  setWOs(wos);sbPush('workorders',wo);closeModal('woModal');renderWOList();toast('✅ WO sauvegardé !');
+  setWOs(wos);sbPush('workorders',wo);auditLog(woEditId?'MODIFICATION':'CREATION','workorders',wo.id);closeModal('woModal');renderWOList();toast('✅ WO sauvegardé !');
 }
 function deleteWO(){
   askConfirm('Supprimer ce Work Order ?', _deleteWODo, '🗑 Supprimer','Supprimer le WO');
 }
 function _deleteWODo(){
+  auditLog('SUPPRESSION','workorders',woEditId);
   var wos=getWOs().filter(function(w){return w.id!==woEditId;});
   setWOs(wos);sbDelete('workorders',woEditId);closeModal('woModal');renderWOList();toast('🗑 WO supprimé');
 }
@@ -4289,7 +4497,7 @@ function saveSite(){
     updatedAt:new Date().toISOString()}; // ➕ posé AVANT setSites — protège contre une resynchro rapide
   if(siteEditId){var idx2=sites.findIndex(function(s){return s.id===siteEditId;});if(idx2>=0)sites[idx2]=site;else sites.push(site);}
   else sites.unshift(site);
-  setSites(sites);closeModal('siteModal');renderSiteList();toast('✅ Fiche sauvegardée !');
+  setSites(sites);auditLog(siteEditId?'MODIFICATION':'CREATION','sites',site.id);closeModal('siteModal');renderSiteList();toast('✅ Fiche sauvegardée !');
 }
 function deleteSite(){
   askConfirm('Supprimer cette fiche client ?', _deleteSiteDo, '🗑 Supprimer','Supprimer la fiche');
@@ -6654,6 +6862,7 @@ function compileWeekTeamReport(week){
 }
 function downloadWeekTeamReport(){
   var week=statsWeek||mondayOf(todayISO());
+  auditLog('CONSULTATION','rapport_equipe',week,{format:'telechargement'});
   var body=compileWeekTeamReport(week);
   if(!body){toast('⚠️ Aucune donnée pour cette semaine');return;}
   var blob=new Blob([body],{type:'text/plain;charset=utf-8'});
@@ -6665,6 +6874,7 @@ function downloadWeekTeamReport(){
 }
 function copyWeekTeamReport(){
   var week=statsWeek||mondayOf(todayISO());
+  auditLog('CONSULTATION','rapport_equipe',week,{format:'copie'});
   var body=compileWeekTeamReport(week);
   if(!body){toast('⚠️ Aucune donnée pour cette semaine');return;}
   if(navigator.clipboard&&navigator.clipboard.writeText){
