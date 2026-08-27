@@ -2132,6 +2132,14 @@ function mapRowToDb(localKey,row){
     if(row.taskId!==undefined){row.task_id=row.taskId;delete row.taskId;}
     if(row.woId!==undefined){row.wo_id=row.woId;delete row.woId;}
   }
+  if(localKey==='livraison'){
+    if(row.noBon!==undefined){row.no_bon=row.noBon;delete row.noBon;}
+    if(row.itemsLiv!==undefined){row.items_liv=row.itemsLiv;delete row.itemsLiv;}
+    if(row.itemsRet!==undefined){row.items_ret=row.itemsRet;delete row.itemsRet;}
+    if(row.livreAt!==undefined){row.livre_at=row.livreAt;delete row.livreAt;}
+    if(row.livreBy!==undefined){row.livre_by=row.livreBy;delete row.livreBy;}
+    if(row.livreParNom!==undefined){row.livre_par_nom=row.livreParNom;delete row.livreParNom;}
+  }
   return row;
 }
 function mapRowFromDb(localKey,r){
@@ -2154,6 +2162,14 @@ function mapRowFromDb(localKey,r){
     if(r.site_id!==undefined){r.siteId=r.site_id;delete r.site_id;}
     if(r.task_id!==undefined){r.taskId=r.task_id;delete r.task_id;}
     if(r.wo_id!==undefined){r.woId=r.wo_id;delete r.wo_id;}
+  }
+  if(localKey==='livraison'){
+    if(r.no_bon!==undefined){r.noBon=r.no_bon;delete r.no_bon;}
+    if(r.items_liv!==undefined){r.itemsLiv=r.items_liv;delete r.items_liv;}
+    if(r.items_ret!==undefined){r.itemsRet=r.items_ret;delete r.items_ret;}
+    if(r.livre_at!==undefined){r.livreAt=r.livre_at;delete r.livre_at;}
+    if(r.livre_by!==undefined){r.livreBy=r.livre_by;delete r.livre_by;}
+    if(r.livre_par_nom!==undefined){r.livreParNom=r.livre_par_nom;delete r.livre_par_nom;}
   }
   if(r.updated_at!==undefined && r.updatedAt===undefined) r.updatedAt=r.updated_at; // garde un horodatage pour la fusion
   if(r.created_at!==undefined && r.createdAt===undefined) r.createdAt=r.created_at;
@@ -2807,7 +2823,7 @@ document.addEventListener('DOMContentLoaded', function(){
   try{
     var vb=document.createElement('div');
     vb.id='__buildBadge';
-    vb.textContent='build F41 ⟲';
+    vb.textContent='build F42 ⟲';
     vb.title='Version de l\'app — toucher pour restaurer une sauvegarde';
     vb.style.cssText='position:fixed;bottom:4px;right:6px;font:11px/1.4 monospace;color:#fff;background:rgba(27,79,140,.85);padding:3px 8px;border-radius:8px;z-index:99999;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.2)';
     vb.addEventListener('click',function(){
