@@ -1670,8 +1670,32 @@ function lsSet(k,v){
       if(ok){
         alertStorageFull('🧹 Mémoire libérée — tes heures sont sauvegardées.', false);
       }else{
-        alertStorageFull('⛔ SAUVEGARDE IMPOSSIBLE — mémoire pleine. Ne ferme pas l\'app : note tes heures et préviens le superviseur.', true);
-        return false;
+        // ➕ FILET ULTIME : si RIEN ne peut être libéré (mémoire saturée par autre chose),
+        // on sauvegarde une version MINIMALE des heures — sans photos ni pièces jointes.
+        // C'est le strict nécessaire pour la paie : jamais un employé ne doit perdre ses heures.
+        var sauve=false;
+        if(k.indexOf('ft_week_')===0){
+          try{
+            var mini=JSON.parse(payload);
+            (mini.days||[]).forEach(function(d){
+              if(!d)return;
+              d.stopFiles=[];
+              d.tasks=(d.tasks||[]).map(function(t){
+                return {id:t.id,lieu:t.lieu,start:t.start,end:t.end,hrs:t.hrs,active:t.active,
+                        kmDep:t.kmDep,kmArr:t.kmArr,detail:t.detail,odt:t.odt,
+                        sourceType:t.sourceType,sourceId:t.sourceId};
+              });
+            });
+            localStorage.setItem(LS+k, JSON.stringify(mini));
+            sauve=true;
+          }catch(e5){ sauve=false; }
+        }
+        if(sauve){
+          alertStorageFull('⚠️ Mémoire critique — tes HEURES sont sauvegardées, mais les photos et pièces jointes ont été retirées.', false);
+        }else{
+          alertStorageFull('⛔ SAUVEGARDE IMPOSSIBLE — mémoire pleine. Ne ferme pas l\'app : note tes heures et préviens le superviseur.', true);
+          return false;
+        }
       }
     }
   }
@@ -1769,6 +1793,46 @@ var VAULT_KEYS=['workorders','plan','planmatch','sites','flotte','inventaire','c
 var _vaultTimer=null;
 function scheduleVault(){ if(_vaultTimer)clearTimeout(_vaultTimer); _vaultTimer=setTimeout(doVault,1500); }
 // ➕ Mesure l'espace occupé par l'app (en octets)
+
+// ➕ DIAGNOSTIC MÉMOIRE — voir ce qui occupe l'appareil et purger manuellement
+function diagnosticMemoire(){
+  var lignes=[], total=0;
+  try{
+    var groupes={};
+    for(var i=0;i<localStorage.length;i++){
+      var k=localStorage.key(i); if(!k||k.indexOf(LS)!==0)continue;
+      var v=localStorage.getItem(k)||'';
+      var taille=(k.length+v.length)*2;
+      total+=taille;
+      var court=k.slice(LS.length);
+      var grp = court.indexOf('ft_week_')===0 ? 'Feuilles de temps'
+              : court.indexOf('ft_backup_')===0||court.indexOf('ft_lastgood_')===0||court.indexOf('ft_submitted_')===0 ? 'Sauvegardes internes'
+              : court==='__vault' ? 'Coffre de sécurité'
+              : court==='sitelog' ? 'Journal de chantier'
+              : court==='gpslog' ? 'Journal GPS'
+              : court;
+      groupes[grp]=(groupes[grp]||0)+taille;
+    }
+    Object.keys(groupes).sort(function(a,b){return groupes[b]-groupes[a];}).forEach(function(g){
+      if(groupes[g]>1024) lignes.push('  '+(groupes[g]/1024).toFixed(0).padStart(6)+' Ko — '+g);
+    });
+  }catch(e){}
+  var msg='Mémoire utilisée : '+(total/1024/1024).toFixed(2)+' Mo\n(limite du navigateur : environ 5 Mo)\n\n'+lignes.join('\n');
+  msg+='\n\nLa purge retire les photos et sauvegardes anciennes.\nLes HEURES et les données de travail sont toujours conservées.';
+  askConfirm(msg, function(){
+    var avant=storageUsedBytes();
+    freeUpStorage('');
+    purgeToutesLesPhotos();
+    var apres=storageUsedBytes();
+    var libere=(avant-apres)/1024/1024;
+    _lsQuotaAlerted=false; _lsQuotaBloquantAlerte=false;   // réarmer les alertes
+    toast('🧹 '+libere.toFixed(2)+' Mo libérés');
+    setTimeout(function(){
+      askConfirm('Mémoire libérée : '+libere.toFixed(2)+' Mo\nOccupation maintenant : '+(apres/1024/1024).toFixed(2)+' Mo\n\nTes heures et données de travail sont intactes.', function(){}, 'OK', '✅ Nettoyage terminé');
+    },600);
+  }, '🧹 Purger maintenant', '💾 Mémoire de l\'appareil');
+}
+
 function storageUsedBytes(){
   var total=0;
   try{
@@ -1824,6 +1888,35 @@ function purgeToutesLesPhotos(){
         if(mod){ localStorage.setItem(k,JSON.stringify(ft)); n++; }
       }catch(e){}
     }
+    // ➕ Sauvegardes/copies internes des feuilles de temps (jamais purgées avant — cause du blocage persistant)
+    for(var b=localStorage.length-1;b>=0;b--){
+      var kb=localStorage.key(b);
+      if(!kb)continue;
+      if(kb.indexOf(LS+'ft_backup_')===0 || kb.indexOf(LS+'ft_lastgood_')===0 || kb.indexOf(LS+'ft_submitted_')===0){
+        try{ localStorage.removeItem(kb); n++; }catch(e){}
+      }
+    }
+    // Journal de chantier : photos les plus lourdes (déjà rattachées aux fiches sites)
+    try{
+      var jrnl=lsGet('sitelog');
+      if(Array.isArray(jrnl)&&jrnl.length){
+        var modJ=false;
+        jrnl.forEach(function(e){
+          if(e&&Array.isArray(e.photos)&&e.photos.some(function(p){return p&&p.data;})){
+            e.photos=e.photos.map(function(p){ return (p&&p.data)?{name:p.name||'photo',_purged:true}:p; });
+            modJ=true;
+          }
+        });
+        if(modJ){ localStorage.setItem(LS+'sitelog', JSON.stringify(jrnl)); n++; }
+      }
+    }catch(e){}
+    // Journal GPS (peut grossir avec le temps) : ne garder que les 200 dernières entrées
+    try{
+      var gps=lsGet('gpslog');
+      if(Array.isArray(gps)&&gps.length>200){
+        localStorage.setItem(LS+'gpslog', JSON.stringify(gps.slice(-200))); n++;
+      }
+    }catch(e){}
     // Photos dans les tables métier
     ['workorders','livraison','sortie','sites','sitelog'].forEach(function(cle){
       try{
@@ -2125,7 +2218,16 @@ function mergeFTDay(localDay, serverDay){
     var prev = out[seen[k]];
     var prevScore = (prev.end?2:0) + (prev.hrs||0)/1000;
     var curScore  = (t.end?2:0)   + (t.hrs||0)/1000;
-    if(curScore > prevScore) out[seen[k]] = t;
+    if(curScore > prevScore){
+      // ➕ Le serveur ne stocke plus les vraies photos (allégées).
+      // Si la version locale a de VRAIES photos, on les conserve en fusionnant.
+      var photosLocales=(prev.files||[]).filter(function(f){return f&&f.data;});
+      var recusLocaux=(prev.stopFiles||[]).filter(function(f){return f&&f.data;});
+      var remplacant=Object.assign({},t);
+      if(photosLocales.length && !(t.files||[]).some(function(f){return f&&f.data;})) remplacant.files=prev.files;
+      if(recusLocaux.length && !(t.stopFiles||[]).some(function(f){return f&&f.data;})) remplacant.stopFiles=prev.stopFiles;
+      out[seen[k]] = remplacant;
+    }
   }
   lt.forEach(add);  // le local d'abord : ses punchs sont la référence
   st.forEach(add);  // le serveur complète, ne remplace jamais
@@ -2142,7 +2244,10 @@ function mergeFTDay(localDay, serverDay){
 
 function syncPullFT(cb){
   if(!sb){if(cb)cb();return;}
-  sb.from('feuilles_temps').select('*').then(function(res){
+  // ➕ PERFORMANCE : on ne télécharge QUE les semaines récentes (8 dernières).
+  // Avant : les 76 feuilles complètes (1,8 Mo, photos incluses) à chaque synchro → très lent en cellulaire.
+  var _limite=(function(){var d=new Date();d.setDate(d.getDate()-56);return localISO(d);})();
+  sb.from('feuilles_temps').select('*').gte('week',_limite).then(function(res){
     if(res.error){ reportSyncError('feuilles_temps', res.error); if(cb)cb(); return; }
     var rows=res.data||[];
     var idx=[];
@@ -2313,10 +2418,31 @@ function sbPushAll(localKey, list){
 }
 
 // PUSH feuille de temps
+// ➕ PERFORMANCE + CONFIDENTIALITÉ : les PHOTOS ne montent pas dans la feuille de temps.
+// Elles appartiennent au journal de chantier (fiche du site), pas au dossier de paie.
+// Avant : une seule feuille pesait 1,6 Mo à cause de 4 photos → synchro très lente en cellulaire.
+function alegerJoursPourServeur(days){
+  try{
+    return (days||[]).map(function(d){
+      if(!d)return d;
+      var copie=Object.assign({},d);
+      copie.tasks=(d.tasks||[]).map(function(t){
+        if(!t||!t.files||!t.files.length)return t;
+        var t2=Object.assign({},t);
+        t2.files=t.files.map(function(f){ return (f&&f.data)?{name:f.name||'photo',_local:true}:f; });
+        return t2;
+      });
+      if(copie.stopFiles&&copie.stopFiles.length){
+        copie.stopFiles=copie.stopFiles.map(function(f){ return (f&&f.data)?{name:f.name||'reçu',_local:true}:f; });
+      }
+      return copie;
+    });
+  }catch(e){ return days; }
+}
 function sbPushFT(uid, week, payload, totalH){
   if(!sb)return;
   var row={id:uid+'_'+week,uid:uid,emp:payload.emp,email:payload.email,week:week,
-    days:payload.days,total_h:totalH,saved_at:payload.savedAt||new Date().toISOString(),
+    days:alegerJoursPourServeur(payload.days),total_h:totalH,saved_at:payload.savedAt||new Date().toISOString(),
     updated_at:new Date().toISOString()};
   setSbStatus('syncing');
   sb.from('feuilles_temps').upsert(row).then(function(res){
@@ -2369,7 +2495,20 @@ function subscribeFTRealtime(){
     // (Notification retirée — désactivées à la demande)
     // Mettre à jour le cache local de la feuille modifiée
     syncPullFT(function(){
+      // ➕ Rafraîchir TOUS les écrans qui affichent des heures/punchs,
+      // pas seulement le Suivi (sinon un punch fait sur un autre appareil
+      // n'apparaît jamais quand on est sur Accueil / Plan de match / Temps).
       if(curMod==='suivi')renderSuivi();
+      else if(curMod==='accueil')renderAccueil();
+      else if(curMod==='planmatch')renderPlanMatch();
+      else if(curMod==='ft'){
+        try{
+          var wd=document.getElementById('weekDate');
+          var st=wd?loadFT(wd.value):null;
+          if(st){applyFT(st);buildDayTabs();renderDay(curDay);refreshCumul();}
+        }catch(e){}
+      }
+      if(document.getElementById('teBody'))dessinerTempsEquipe();
     });
   }).subscribe();
 }
@@ -2668,7 +2807,7 @@ document.addEventListener('DOMContentLoaded', function(){
   try{
     var vb=document.createElement('div');
     vb.id='__buildBadge';
-    vb.textContent='build F39 ⟲';
+    vb.textContent='build F41 ⟲';
     vb.title='Version de l\'app — toucher pour restaurer une sauvegarde';
     vb.style.cssText='position:fixed;bottom:4px;right:6px;font:11px/1.4 monospace;color:#fff;background:rgba(27,79,140,.85);padding:3px 8px;border-radius:8px;z-index:99999;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.2)';
     vb.addEventListener('click',function(){
@@ -7817,7 +7956,8 @@ function renderStats(){
     +'<button class="btn btn-primary btn-sm" id="statsCopyBtn">📋 Copier (pour Claude)</button>'
     +'<button class="btn btn-ghost btn-sm" id="statsDlBtn">⬇️ Télécharger</button>'
     +'<button class="btn btn-ghost btn-sm" id="statsEmailBtn">📧 Envoyer par courriel</button>'
-    +'<button class="btn btn-ghost btn-sm" id="statsDiagBtn" style="color:var(--orange)">🔍 Diagnostic synchro</button>';
+    +'<button class="btn btn-ghost btn-sm" id="statsDiagBtn" style="color:var(--orange)">🔍 Diagnostic synchro</button>'
+    +'<button class="btn btn-ghost btn-sm" id="statsMemBtn" style="color:var(--purple)">💾 Mémoire appareil</button>';
   wrap.appendChild(exportBar);
   var totalH=ftIdx.filter(function(e){return e.week===week;}).reduce(function(s,e){return s+(e.totalH||0);},0);
   var kpi=document.createElement('div');kpi.className='stat-grid';kpi.style.cssText='padding:0 0 10px;margin:0';
@@ -7862,6 +8002,7 @@ function renderStats(){
   document.getElementById('statsDlBtn').addEventListener('click',downloadWeekTeamReport);
   document.getElementById('statsEmailBtn').addEventListener('click',emailWeekTeamReport);
   var _diagBtn=document.getElementById('statsDiagBtn');if(_diagBtn)_diagBtn.addEventListener('click',runSyncDiagnostic);
+  var _memBtn=document.getElementById('statsMemBtn');if(_memBtn)_memBtn.addEventListener('click',diagnosticMemoire);
 }
 
 // ═══════════════════════════════════════════════════════
