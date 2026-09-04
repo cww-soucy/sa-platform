@@ -244,14 +244,17 @@ input,select,textarea{font-size:16px!important}
 /* Le Centre d'opérations affiche des grilles/tableaux larges (plusieurs colonnes de jours,
    Gantt sur plusieurs semaines) — il a besoin de bien plus que les 700px de .main (pensée mobile).
    .cop-main override le plafond de largeur uniquement pour ces 3 vues, en gardant .main pour
-   tout le reste de l'app (qui doit rester centré/étroit sur grand écran). */
-.cop-main{max-width:none}
+   tout le reste de l'app (qui doit rester centré/étroit sur grand écran).
+   Sur grand écran, on ne se contente pas d'élargir le conteneur : les cases, labels et
+   espacements grandissent aussi pour une vraie lecture confortable plutôt qu'une grille
+   mobile simplement étirée. */
+.cop-main{max-width:none;width:100%}
 @media(min-width:900px){
-  .cop-main{padding-left:20px;padding-right:20px}
+  .cop-main{padding-left:24px;padding-right:24px}
 }
-@media(min-width:1300px){
-  .cop-main{max-width:1400px;margin:0 auto;padding-left:28px;padding-right:28px}
-}
+/* La vue globale (cartes + listes) reste lisible sans s'étirer à l'infini, mais gagne
+   quand même en largeur utile par rapport à l'ancien plafond de 1400px */
+#globalDashContent{max-width:1600px;margin:0 auto}
 
 .plg-grid-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding:0 14px 20px}
 .plg-grid{display:table;border-collapse:separate;border-spacing:0 6px;min-width:100%}
@@ -289,6 +292,25 @@ input,select,textarea{font-size:16px!important}
 .plg-empty-s{font-size:12.5px;line-height:1.5;max-width:280px;margin:0 auto}
 .lbl{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px}
 .inp{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 10px;font-size:14px;outline:none;font-family:inherit}
+
+/* Centre d'opérations sur grand écran : les cases, labels et espacements grandissent aussi,
+   pas seulement le conteneur — pour une vraie lecture confortable plutôt qu'une grille mobile
+   simplement étirée. Placé APRÈS les règles de base .plg-* pour gagner la cascade CSS
+   (même spécificité + déclaré après = prioritaire, peu importe la media query). */
+@media(min-width:1300px){
+  .cop-main{padding-left:32px;padding-right:32px}
+  .plg-rowlabel{flex:0 0 190px;min-width:190px;padding:12px 16px;font-size:13.5px}
+  .plg-daycell{flex:0 0 148px;min-width:148px;padding:9px;min-height:82px}
+  .plg-chip{font-size:12px;padding:6px 9px}
+  .plg-dnum{font-size:15px}
+  .cop-seg-btn{padding:9px 18px;font-size:13.5px}
+}
+@media(min-width:1700px){
+  .cop-main{padding-left:44px;padding-right:44px}
+  .plg-rowlabel{flex:0 0 230px;min-width:230px;padding:14px 18px;font-size:14.5px}
+  .plg-daycell{flex:0 0 172px;min-width:172px;padding:10px;min-height:100px}
+  .plg-chip{font-size:12.5px;padding:7px 10px}
+}
 
 .pm-slot-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
 .pm-slot-name{font-size:13px;font-weight:700;color:var(--text)}
@@ -5698,6 +5720,13 @@ function renderJobsGantt(){
   var totalDays=JG_NB_SEMAINES*7;
   var rangeEnd=plgAddDays(monday,totalDays-1);
 
+  // Dimensions adaptées à la largeur d'écran — sur grand écran, lignes et barres plus hautes/lisibles
+  var vw=window.innerWidth||1024;
+  var rowH=vw>=1700?96:(vw>=1300?80:64);
+  var barH=vw>=1700?46:(vw>=1300?40:34);
+  var labelColW=vw>=1700?240:(vw>=1300?220:200);
+  var barFontSize=vw>=1300?12.5:11;
+
   // Agrégation : chaque WO ouvert/en cours devient un "job" ; regroupement par client+site
   var wos=getWOs().filter(function(w){return w.status!=='termine'&&w.status!=='annule';});
   var groups={}; var groupOrder=[];
@@ -5740,10 +5769,10 @@ function renderJobsGantt(){
       '<div style="font-size:12px">Les Work Orders ouverts et tâches planning liées à un site apparaîtront ici.</div></div>';
   }else{
     html+='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;padding:12px 14px 24px">';
-    html+='<div style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(11,46,82,.07);border:1px solid var(--line);min-width:'+(200+JG_NB_SEMAINES*110)+'px">';
+    html+='<div style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(11,46,82,.07);border:1px solid var(--line);min-width:'+(labelColW+JG_NB_SEMAINES*120)+'px">';
 
     // En-tête semaines
-    html+='<div style="display:grid;grid-template-columns:200px repeat('+JG_NB_SEMAINES+',1fr);border-bottom:2px solid var(--dk)">';
+    html+='<div style="display:grid;grid-template-columns:'+labelColW+'px repeat('+JG_NB_SEMAINES+',1fr);border-bottom:2px solid var(--dk)">';
     html+='<div style="padding:9px 12px;font-size:10px;font-weight:800;color:var(--hint);text-transform:uppercase;border-right:1px solid var(--line);display:flex;align-items:center">Job / chantier</div>';
     weeks.forEach(function(w,i){
       var isCur=(w<=todayISO()&&todayISO()<=plgAddDays(w,6));
@@ -5767,7 +5796,7 @@ function renderJobsGantt(){
         return '<span style="width:18px;height:18px;border-radius:50%;background:'+plgTechColor(a)+';display:inline-flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff;border:1.5px solid #fff;margin-left:-6px">'+esc((empName(a)||'?').slice(0,2).toUpperCase())+'</span>';
       }).join('');
 
-      html+='<div style="display:grid;grid-template-columns:200px repeat('+JG_NB_SEMAINES+',1fr);border-bottom:1px solid var(--line);min-height:64px">';
+      html+='<div style="display:grid;grid-template-columns:'+labelColW+'px repeat('+JG_NB_SEMAINES+',1fr);border-bottom:1px solid var(--line);min-height:'+rowH+'px">';
       html+='<div style="padding:10px 12px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:5px;justify-content:center">'+
         '<div style="font-size:12px;font-weight:800;color:var(--dk);line-height:1.25">'+esc(g.label)+'</div>'+
         '<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">'+
@@ -5789,10 +5818,13 @@ function renderJobsGantt(){
         var widthPct=(durDays/totalDays)*100;
         if(leftPct<0||leftPct>100)return;
         var barColor={wo:'var(--orange)',plan:'var(--blue)',tache:'var(--green)'}[b.t]||'var(--blue)';
-        html+='<div style="position:absolute;top:50%;transform:translateY(-50%);left:calc('+leftPct+'% + 3px);width:calc('+widthPct+'% - 6px);height:34px;'+
+        // Largeur minimale en pixels pour qu'un job court (1 jour) reste lisible même étiré sur
+        // une échelle de plusieurs semaines — sans ça le texte se coupe à quelques pixels.
+        var minBarPx=vw>=1300?92:72;
+        html+='<div style="position:absolute;top:50%;transform:translateY(-50%);left:calc('+leftPct+'% + 3px);width:max(calc('+widthPct+'% - 6px),'+minBarPx+'px);height:'+barH+'px;'+
           'background:'+barColor+';border-radius:8px;display:flex;align-items:center;padding:0 9px;overflow:hidden;box-shadow:0 1px 3px rgba(11,46,82,.15);cursor:pointer" '+
           'title="'+esc(b.lbl)+'">'+
-          '<span style="font-size:11px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(b.lbl)+'</span></div>';
+          '<span style="font-size:'+barFontSize+'px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(b.lbl)+'</span></div>';
       });
 
       // Ligne "aujourd'hui"

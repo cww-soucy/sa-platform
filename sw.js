@@ -1,7 +1,7 @@
 // SA Platform — Service Worker
-// NOTIFICATIONS DÉSACTIVÉES. Force la mise à jour du cache (v43 — correction largeur Centre d'opérations sur grand écran).
+// NOTIFICATIONS DÉSACTIVÉES. Force la mise à jour du cache (v44 — largeur+hauteur adaptatives réellement fonctionnelles, bug de cascade CSS corrigé).
 
-var CACHE_NAME = 'sa-platform-v43';
+var CACHE_NAME = 'sa-platform-v44';
 
 // Installation : s'activer tout de suite sans attendre
 self.addEventListener('install', function(event) {
