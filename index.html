@@ -212,14 +212,8 @@ input,select,textarea{font-size:16px!important}
 #screenLogin.active{display:flex}
 .login-logo{margin-bottom:30px;text-align:center}
 .login-logo img{width:140px;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.4)}
-.login-title{font-size:22px;font-weight:800;color:#fff;margin-top:14px;letter-spacing:.3px}
-.login-sub{font-size:13px;color:rgba(255,255,255,.6);margin-top:4px}
 .login-card{background:#fff;border-radius:20px;padding:24px;width:100%;max-width:400px}
 .login-card h3{font-size:16px;font-weight:700;color:var(--dk);margin-bottom:18px;text-align:center}
-.login-field{margin-bottom:14px}
-.login-field label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;display:block;margin-bottom:5px}
-.login-field input{width:100%;border:1.5px solid var(--line);border-radius:var(--rs);padding:13px 14px;font-size:16px;color:var(--text);outline:none}
-.login-field input:focus{border-color:var(--blue)}
 .login-btn{width:100%;background:var(--dk);color:#fff;border:none;border-radius:var(--rs);padding:15px;font-size:16px;font-weight:700;cursor:pointer;margin-top:6px}
 .login-btn:active{background:var(--blue)}
 .login-err{color:var(--red);font-size:13px;text-align:center;margin-top:10px;min-height:20px}
@@ -247,6 +241,17 @@ input,select,textarea{font-size:16px!important}
              color:var(--muted);cursor:pointer;font-family:inherit;white-space:nowrap}
 .cop-seg-btn.on{background:var(--brand);color:#fff}
 .cop-view{min-height:200px}
+/* Le Centre d'opérations affiche des grilles/tableaux larges (plusieurs colonnes de jours,
+   Gantt sur plusieurs semaines) — il a besoin de bien plus que les 700px de .main (pensée mobile).
+   .cop-main override le plafond de largeur uniquement pour ces 3 vues, en gardant .main pour
+   tout le reste de l'app (qui doit rester centré/étroit sur grand écran). */
+.cop-main{max-width:none}
+@media(min-width:900px){
+  .cop-main{padding-left:20px;padding-right:20px}
+}
+@media(min-width:1300px){
+  .cop-main{max-width:1400px;margin:0 auto;padding-left:28px;padding-right:28px}
+}
 
 .plg-grid-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding:0 14px 20px}
 .plg-grid{display:table;border-collapse:separate;border-spacing:0 6px;min-width:100%}
@@ -952,17 +957,17 @@ input,select,textarea{font-size:16px!important}
         </span>
         <button id="plgCalLinkBtn" class="btn btn-ghost btn-sm" style="background:rgba(255,255,255,.12);color:#fff;flex-shrink:0" title="Mon lien calendrier (Outlook/Gmail)">🔗 Mon calendrier</button>
       </div>
-      <div class="main" id="plgContent" style="padding-top:10px"></div>
+      <div class="main cop-main" id="plgContent" style="padding-top:10px"></div>
     </div>
 
     <!-- ═══ VUE JOBS (Gantt par chantier) ═══ -->
     <div id="copViewJobs" class="cop-view" style="display:none">
-      <div class="main" id="jobsGanttContent" style="padding-top:10px"></div>
+      <div class="main cop-main" id="jobsGanttContent" style="padding-top:10px"></div>
     </div>
 
     <!-- ═══ VUE GLOBALE (tableau de bord) ═══ -->
     <div id="copViewGlobal" class="cop-view" style="display:none">
-      <div class="main" id="globalDashContent" style="padding-top:10px"></div>
+      <div class="main cop-main" id="globalDashContent" style="padding-top:10px"></div>
     </div>
   </div>
 

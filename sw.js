@@ -1,7 +1,7 @@
 // SA Platform — Service Worker
-// NOTIFICATIONS DÉSACTIVÉES. Force la mise à jour du cache (v41 — SOUCY OPS : renommage + correction logo).
+// NOTIFICATIONS DÉSACTIVÉES. Force la mise à jour du cache (v43 — correction largeur Centre d'opérations sur grand écran).
 
-var CACHE_NAME = 'sa-platform-v41';
+var CACHE_NAME = 'sa-platform-v43';
 
 // Installation : s'activer tout de suite sans attendre
 self.addEventListener('install', function(event) {
