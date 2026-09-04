@@ -1,7 +1,7 @@
 // SA Platform — Service Worker
-// NOTIFICATIONS DÉSACTIVÉES. Force la mise à jour du cache (v40 — Centre d'opérations : 3 vues, logo et typo Soucy Aquatik).
+// NOTIFICATIONS DÉSACTIVÉES. Force la mise à jour du cache (v41 — SOUCY OPS : renommage + correction logo).
 
-var CACHE_NAME = 'sa-platform-v40';
+var CACHE_NAME = 'sa-platform-v41';
 
 // Installation : s'activer tout de suite sans attendre
 self.addEventListener('install', function(event) {
