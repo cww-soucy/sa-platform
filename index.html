@@ -2282,7 +2282,13 @@ function initNotifications(){
   // Le service worker reste enregistré pour le cache hors-ligne, mais aucune
   // notification n'est demandée ni envoyée.
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('sw.js').then(function(){}).catch(function(){});
+    // updateViaCache:'none' force le navigateur à toujours revalider sw.js sur le réseau plutôt que
+    // d'utiliser sa copie en cache HTTP — sans ça, certains navigateurs (surtout Safari/iOS) peuvent
+    // continuer à exécuter une TRÈS vieille version du service worker même après un nouveau déploiement,
+    // parce qu'ils ne redemandent jamais sw.js au serveur.
+    navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(function(reg){
+      if(reg && reg.update) reg.update(); // force une vérification immédiate au chargement
+    }).catch(function(){});
   }
   notifReady=false;
 }
