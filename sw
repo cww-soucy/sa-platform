@@ -1,9 +1,10 @@
 // SA Platform — Service Worker
-// NOTIFICATIONS DÉSACTIVÉES. Force la mise à jour du cache (v46 — Planning relié à Plan de Match/WO/Créneaux :
-// création d'un créneau et/ou Work Order lié depuis une tâche planning, grille Équipe et vue Jobs qui affichent
-// maintenant tout le travail assigné, pas seulement les tâches planning natives).
+// NOTIFICATIONS DÉSACTIVÉES. Force la mise à jour du cache (v48 — corrige un vrai bug de mise en cache :
+// sw.js et index.html n'étaient jamais explicitement marqués "no-cache", donc Cloudflare/le navigateur
+// pouvait continuer à servir une ancienne version indéfiniment malgré un nouveau déploiement. Ajout d'un
+// fichier _headers + updateViaCache:'none' à l'enregistrement du service worker pour empêcher ça à l'avenir).
 
-var CACHE_NAME = 'sa-platform-v46';
+var CACHE_NAME = 'sa-platform-v48';
 
 // Installation : s'activer tout de suite sans attendre
 self.addEventListener('install', function(event) {
