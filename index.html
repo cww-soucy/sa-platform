@@ -282,6 +282,8 @@ input,select,textarea{font-size:16px!important}
 .plg-chip-txt{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .plg-chip-h{font-size:9.5px;font-weight:800;color:var(--muted);flex-shrink:0}
 .plg-chip-flag{flex-shrink:0;font-size:10px}
+.plg-chip-virtual{cursor:pointer;background:repeating-linear-gradient(135deg,#fff,#fff 5px,var(--surface) 5px,var(--surface) 10px);opacity:.92}
+.plg-chip-src{flex-shrink:0;font-size:10px;opacity:.75}
 .plg-quickadd{align-self:stretch;flex:1;min-height:20px;border:none;background:transparent;color:var(--hint);
               font-size:14px;font-weight:800;border-radius:6px;cursor:pointer;opacity:0;transition:opacity .15s,background .15s}
 .plg-daycell:hover .plg-quickadd{opacity:1}
@@ -977,6 +979,7 @@ input,select,textarea{font-size:16px!important}
             <option value="">Tout afficher</option>
           </select>
         </span>
+        <button id="plgAutoLinkBtn" class="btn btn-ghost btn-sm" style="background:rgba(255,255,255,.12);color:#fff;flex-shrink:0;display:none" title="Relie automatiquement les tâches planning existantes à un créneau/WO existant (même date + site + technicien). Ignore les cas ambigus, ne modifie jamais le créneau/WO lui-même.">🔗 Lier les anciennes tâches</button>
         <button id="plgCalLinkBtn" class="btn btn-ghost btn-sm" style="background:rgba(255,255,255,.12);color:#fff;flex-shrink:0" title="Mon lien calendrier (Outlook/Gmail)">🔗 Mon calendrier</button>
       </div>
       <div class="main cop-main" id="plgContent" style="padding-top:10px"></div>
@@ -1106,6 +1109,15 @@ input,select,textarea{font-size:16px!important}
     <div class="main" id="livraisonList" style="padding-top:10px"></div>
   </div>
 
+  <!-- ── MODULE : RAPPORTS D'HIVERNAGE ── -->
+  <div id="modHivernage" class="module" style="display:none">
+    <div class="search-bar">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="hivernageSearch" placeholder="Rechercher un site, un client…"/>
+    </div>
+    <div class="main" id="hivernageList" style="padding-top:10px"></div>
+  </div>
+
 
   <!-- ── MODULE : COMPTES ── -->
   <div id="modComptes" class="module" style="display:none">
@@ -1147,6 +1159,7 @@ input,select,textarea{font-size:16px!important}
   <button class="fab" id="invAddBtn"     style="display:none">＋</button>
   <button class="fab" id="sortieAddBtn"  style="display:none">＋</button>
   <button class="fab" id="livraisonAddBtn" style="display:none">＋</button>
+  <button class="fab" id="hivernageAddBtn" style="display:none">＋</button>
   <button class="fab" id="comptesAddBtn" style="display:none">＋</button>
 
   <!-- NAVBAR dynamique -->
@@ -1623,6 +1636,74 @@ input,select,textarea{font-size:16px!important}
   </div>
 </div>
 
+<!-- Modal: Rapport d'hivernage -->
+<div class="modal-bg" id="hivernageModal">
+  <div class="modal-box" style="max-width:760px">
+    <div class="modal-hd"><h3 id="hivernageModalTitle">Rapport d'hivernage</h3><button class="modal-close" id="hivernageModalClose">✕</button></div>
+
+    <div class="m2">
+      <div class="mfield"><label>Client</label><input type="text" id="hivClient" placeholder="Nom du client" list="sitesList" autocomplete="off"/></div>
+      <div class="mfield"><label>Site / adresse</label><input type="text" id="hivSite" placeholder="Nom du site" list="sitesList" autocomplete="off"/></div>
+    </div>
+    <div class="mfield"><label>Objet</label><input type="text" id="hivObjet" placeholder="Ex. Inspection pré-hivernage après vidange du bassin"/></div>
+    <div class="m2">
+      <div class="mfield"><label>Date du rapport</label><input type="date" id="hivDateRapport"/></div>
+      <div class="mfield"><label>Date d'inspection terrain</label><input type="date" id="hivDateInspection"/></div>
+    </div>
+    <div class="m2">
+      <div class="mfield"><label>Préparé par</label><input type="text" id="hivPreparePar" placeholder="Soucy Aquatik"/></div>
+      <div class="mfield"><label>Technicien / inspecteur</label><input type="text" id="hivTechnicien" placeholder="Nom"/></div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 6px">
+      <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">🔎 Constats et travaux à prévoir</label>
+      <button class="pmm-mini-add" id="hivAddSection" type="button">➕ Ajouter une section</button>
+    </div>
+    <div id="hivSections"></div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 6px">
+      <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">📅 Prévisionnel d'entretien et de remplacement — 2027</label>
+      <button class="pmm-mini-add" id="hivAddPlanRow" type="button">➕ Ajouter une ligne</button>
+    </div>
+    <div id="hivPlanWrap" style="display:flex;flex-direction:column;gap:8px"></div>
+
+    <div class="mfield" style="margin-top:14px"><label>🗓 Calendrier prévisionnel par trimestre</label></div>
+    <div class="m2">
+      <div class="mfield"><label style="font-weight:400">T1 — Jan à Mars</label><input type="text" id="hivQ1" placeholder="Travaux prévus au T1"/></div>
+      <div class="mfield"><label style="font-weight:400">T2 — Avril à Juin</label><input type="text" id="hivQ2" placeholder="Travaux prévus au T2"/></div>
+    </div>
+    <div class="m2">
+      <div class="mfield"><label style="font-weight:400">T3 — Juillet à Sept.</label><input type="text" id="hivQ3" placeholder="Travaux prévus au T3"/></div>
+      <div class="mfield"><label style="font-weight:400">T4 — Oct. à Déc.</label><input type="text" id="hivQ4" placeholder="Travaux prévus au T4"/></div>
+    </div>
+
+    <div class="mfield" style="margin-top:10px"><label>💡 Recommandation générale</label>
+      <textarea id="hivCallout" rows="2" placeholder="Ex. Regrouper les travaux de béton, joints et peinture dans un même passage…"></textarea>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 6px">
+      <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">✅ Suivi des travaux — usage interne</label>
+      <button class="pmm-mini-add" id="hivAddSuiviRow" type="button">➕ Ajouter une ligne</button>
+    </div>
+    <div id="hivSuiviWrap" style="display:flex;flex-direction:column;gap:8px"></div>
+
+    <div class="m2" style="margin-top:10px">
+      <div class="mfield"><label>Préparé par — Soucy Aquatik</label><input type="text" id="hivSignSA" placeholder="Nom, chef d'équipe"/></div>
+      <div class="mfield"><label>Reçu par — Client</label><input type="text" id="hivSignClient" placeholder="Nom, signature et date"/></div>
+    </div>
+
+    <div class="mfield" style="margin-top:10px"><label>Statut</label>
+      <div id="hivStatusBadge" style="font-size:12px;font-weight:700;color:var(--muted)">Brouillon</div>
+    </div>
+
+    <button class="btn btn-ghost btn-full" id="hivSaveBtn" style="margin-top:10px">💾 Enregistrer le brouillon</button>
+    <button class="btn btn-ghost btn-full" id="hivPrintBtn" style="margin-top:8px">🖨️ Imprimer le rapport</button>
+    <button class="btn btn-success btn-full" id="hivCompleteBtn" style="margin-top:8px">✅ Marquer complété</button>
+    <button class="btn btn-danger btn-full" id="hivDeleteBtn" style="margin-top:8px;display:none">🗑 Supprimer</button>
+    <button class="btn btn-ghost btn-full" id="hivCancel" style="margin-top:8px">Fermer</button>
+  </div>
+</div>
+
 <!-- Modal: Compte utilisateur -->
 <div class="modal-bg" id="compteModal">
   <div class="modal-box">
@@ -1718,6 +1799,17 @@ input,select,textarea{font-size:16px!important}
         <div style="flex:1"><label class="lbl">Heure fin (optionnel)</label><input type="time" id="plgHeureFin" class="inp"/></div>
       </div>
       <div><label class="lbl">Statut</label><select id="plgStatut" class="inp"></select></div>
+      <div>
+        <label class="lbl">Lien avec les opérations</label>
+        <select id="plgLien" class="inp">
+          <option value="">Tâche planning seulement (libre)</option>
+          <option value="creneau">＋ Créer/lier un créneau (calendrier des interventions)</option>
+          <option value="wo">＋ Créer/lier un Work Order</option>
+          <option value="both">＋ Créer/lier un créneau ET un Work Order</option>
+        </select>
+        <div id="plgLienHint" style="font-size:11px;color:var(--muted);margin-top:4px">Nécessite un site — la tâche crée automatiquement l'entrée liée et reste synchronisée avec elle.</div>
+        <div id="plgLienInfo" style="display:none;margin-top:6px;gap:6px;flex-wrap:wrap"></div>
+      </div>
     </div>
     <div style="display:flex;gap:8px;margin-top:16px">
       <button class="btn btn-ghost" style="flex:1" onclick="closeModal('plgModal')">Annuler</button>
@@ -2213,7 +2305,7 @@ var SB_KEY='sb_publishable_qVd_6eoAvwrDGs9u81woAg_RrMpTJxn';
 var sb=null;
 var sbReady=false;
 var sbStatus='offline'; // offline | syncing | online
-var SB_TABLES={workorders:'workorders',sites:'sites',plan:'plan',planmatch:'plan_match',flotte:'flotte',inventaire:'inventaire',comptes:'comptes',sortie:'sorties_inventaire',livraison:'bons_livraison',gpslog:'punch_gps_log',sitelog:'site_journal',planning:'planning_tasks',calconn:'tech_calendar_connections'};
+var SB_TABLES={workorders:'workorders',sites:'sites',plan:'plan',planmatch:'plan_match',flotte:'flotte',inventaire:'inventaire',comptes:'comptes',sortie:'sorties_inventaire',livraison:'bons_livraison',gpslog:'punch_gps_log',sitelog:'site_journal',planning:'planning_tasks',calconn:'tech_calendar_connections',hivernage:'rapports_hivernage'};
 
 function initSupabase(){
   try{
@@ -2296,6 +2388,9 @@ function mapRowToDb(localKey,row){
   }
   if(localKey==='workorders'){
     if(row.assignes!==undefined){ if(row.assigne===undefined||row.assigne===null||row.assigne==='') row.assigne=Array.isArray(row.assignes)?row.assignes.join(', '):String(row.assignes); delete row.assignes; }
+    if(row.reqBassin!==undefined){row.req_bassin=row.reqBassin;delete row.reqBassin;}
+    if(row.reqPhoto!==undefined){row.req_photo=row.reqPhoto;delete row.reqPhoto;}
+    if(row.reqNotes!==undefined){row.req_notes=row.reqNotes;delete row.reqNotes;}
   }
   if(localKey==='gpslog'){
     if(row.siteId!==undefined){row.site_id=row.siteId;delete row.siteId;}
@@ -2319,6 +2414,7 @@ function mapRowToDb(localKey,row){
     if(row.siteId!==undefined){row.site_id=row.siteId;delete row.siteId;}
     if(row.siteNom!==undefined){row.site_nom=row.siteNom;delete row.siteNom;}
     if(row.woId!==undefined){row.wo_id=row.woId;delete row.woId;}
+    if(row.planId!==undefined){row.plan_id=row.planId;delete row.planId;}
     if(row.dateDebut!==undefined){row.date_debut=row.dateDebut;delete row.dateDebut;}
     if(row.dateFin!==undefined){row.date_fin=row.dateFin;delete row.dateFin;}
     if(row.heureDebut!==undefined){row.heure_debut=row.heureDebut;delete row.heureDebut;}
@@ -2326,6 +2422,16 @@ function mapRowToDb(localKey,row){
   }
   if(localKey==='calconn'){
     if(row.icsToken!==undefined){row.ics_token=row.icsToken;delete row.icsToken;}
+  }
+  if(localKey==='hivernage'){
+    if(row.siteId!==undefined){row.site_id=row.siteId;delete row.siteId;}
+    if(row.siteNom!==undefined){row.site_nom=row.siteNom;delete row.siteNom;}
+    if(row.dateRapport!==undefined){row.date_rapport=row.dateRapport;delete row.dateRapport;}
+    if(row.dateInspection!==undefined){row.date_inspection=row.dateInspection;delete row.dateInspection;}
+    if(row.preparePar!==undefined){row.prepare_par=row.preparePar;delete row.preparePar;}
+    if(row.sousTitre!==undefined){row.sous_titre=row.sousTitre;delete row.sousTitre;}
+    if(row.signataireSA!==undefined){row.signataire_sa=row.signataireSA;delete row.signataireSA;}
+    if(row.signataireClient!==undefined){row.signataire_client=row.signataireClient;delete row.signataireClient;}
   }
   return row;
 }
@@ -2340,6 +2446,9 @@ function mapRowFromDb(localKey,r){
   }
   if(localKey==='workorders'){
     r.assignes = r.assigne ? String(r.assigne).split(/,\s*/).filter(Boolean) : (Array.isArray(r.assignes)?r.assignes:[]);
+    if(r.req_bassin!==undefined){r.reqBassin=r.req_bassin;delete r.req_bassin;}
+    if(r.req_photo!==undefined){r.reqPhoto=r.req_photo;delete r.req_photo;}
+    if(r.req_notes!==undefined){r.reqNotes=r.req_notes;delete r.req_notes;}
   }
   if(localKey==='gpslog'){
     if(r.site_id!==undefined){r.siteId=r.site_id;delete r.site_id;}
@@ -2363,6 +2472,7 @@ function mapRowFromDb(localKey,r){
     if(r.site_id!==undefined){r.siteId=r.site_id;delete r.site_id;}
     if(r.site_nom!==undefined){r.siteNom=r.site_nom;delete r.site_nom;}
     if(r.wo_id!==undefined){r.woId=r.wo_id;delete r.wo_id;}
+    if(r.plan_id!==undefined){r.planId=r.plan_id;delete r.plan_id;}
     if(r.date_debut!==undefined){r.dateDebut=r.date_debut;delete r.date_debut;}
     if(r.date_fin!==undefined){r.dateFin=r.date_fin;delete r.date_fin;}
     if(r.heure_debut!==undefined){r.heureDebut=r.heure_debut;delete r.heure_debut;}
@@ -2370,6 +2480,16 @@ function mapRowFromDb(localKey,r){
   }
   if(localKey==='calconn'){
     if(r.ics_token!==undefined){r.icsToken=r.ics_token;delete r.ics_token;}
+  }
+  if(localKey==='hivernage'){
+    if(r.site_id!==undefined){r.siteId=r.site_id;delete r.site_id;}
+    if(r.site_nom!==undefined){r.siteNom=r.site_nom;delete r.site_nom;}
+    if(r.date_rapport!==undefined){r.dateRapport=r.date_rapport;delete r.date_rapport;}
+    if(r.date_inspection!==undefined){r.dateInspection=r.date_inspection;delete r.date_inspection;}
+    if(r.prepare_par!==undefined){r.preparePar=r.prepare_par;delete r.prepare_par;}
+    if(r.sous_titre!==undefined){r.sousTitre=r.sous_titre;delete r.sous_titre;}
+    if(r.signataire_sa!==undefined){r.signataireSA=r.signataire_sa;delete r.signataire_sa;}
+    if(r.signataire_client!==undefined){r.signataireClient=r.signataire_client;delete r.signataire_client;}
   }
   if(r.updated_at!==undefined && r.updatedAt===undefined) r.updatedAt=r.updated_at; // garde un horodatage pour la fusion
   if(r.created_at!==undefined && r.createdAt===undefined) r.createdAt=r.created_at;
@@ -2587,7 +2707,7 @@ function sbDelete(localKey, id){
 // ➕ Pousse TOUT le local vers le serveur (upsert). Exclut les feuilles de temps (gérées à part).
 function pushAllLocalToServer(){
   if(!sbReady||!sb)return;
-  ['comptes','sites','flotte','inventaire','workorders','plan','planmatch','sortie','livraison','planning','calconn'].forEach(function(localKey){
+  ['comptes','sites','flotte','inventaire','workorders','plan','planmatch','sortie','livraison','planning','calconn','hivernage'].forEach(function(localKey){
     try{
       var list=lsGet(localKey);
       if(Array.isArray(list)&&list.length>0){ sbPushAll(localKey,list); }
@@ -2745,6 +2865,8 @@ function getSorties(){return lsGet('sortie')||[];}
 function setSorties(d){lsSet('sortie',d);sbPushAll('sortie',d);}
 function getLivraisons(){return lsGet('livraison')||[];}
 function setLivraisons(d){lsSet('livraison',d);sbPushAll('livraison',d);}
+function getHivernage(){return lsGet('hivernage')||[];}
+function setHivernage(d){lsSet('hivernage',d);sbPushAll('hivernage',d);}
 function getComptes(){return lsGet('comptes')||COMPTES;}
 function setComptes(d){lsSet('comptes',d);sbPushAll('comptes',d);}
 function getFTIndex(){return lsGet('ft_index')||[];}
@@ -3106,6 +3228,14 @@ document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('invAddBtn').addEventListener('click', function(){openInvModal(null);});
   document.getElementById('sortieAddBtn').addEventListener('click', function(){openSortieModal(null);});
   document.getElementById('livraisonAddBtn').addEventListener('click', function(){openLivraisonModal(null);});
+  document.getElementById('hivernageAddBtn').addEventListener('click', function(){openHivernageModal(null);});
+  document.getElementById('hivAddSection').addEventListener('click', function(){hivAddSectionBlock();});
+  document.getElementById('hivAddPlanRow').addEventListener('click', function(){hivAddPlanRow();});
+  document.getElementById('hivAddSuiviRow').addEventListener('click', function(){hivAddSuiviRow();});
+  document.getElementById('hivSaveBtn').addEventListener('click', function(){saveHivernage(false);});
+  document.getElementById('hivPrintBtn').addEventListener('click', function(){printHivernage();});
+  document.getElementById('hivCompleteBtn').addEventListener('click', function(){completeHivernageFromModal();});
+  document.getElementById('hivDeleteBtn').addEventListener('click', function(){deleteHivernage();});
   document.getElementById('comptesAddBtn').addEventListener('click', function(){openCompteModal(null);});
 
   // ── CHRONO ──
@@ -3213,6 +3343,8 @@ document.addEventListener('DOMContentLoaded', function(){
 
   document.getElementById('livraisonModalClose').addEventListener('click', function(){closeModal('livraisonModal');});
   document.getElementById('livCancel').addEventListener('click', function(){closeModal('livraisonModal');});
+  document.getElementById('hivernageModalClose').addEventListener('click', function(){closeModal('hivernageModal');});
+  document.getElementById('hivCancel').addEventListener('click', function(){closeModal('hivernageModal');});
   document.getElementById('livAddLigneLiv').addEventListener('click', function(){livAddLigne('liv',null);});
   document.getElementById('livAddLigneRet').addEventListener('click', function(){livAddLigne('ret',null);});
   document.getElementById('livSaveBtn').addEventListener('click', function(){saveLivraison(false);});
@@ -3272,7 +3404,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // Avant : un tap sur le fond fermait le modal instantanément → toutes les données saisies perdues.
   // Maintenant : dès qu'on tape/coche quelque chose, le modal est marqué "modifié". Un tap sur le
   // fond ne ferme plus brutalement — il demande confirmation si des données ont été saisies.
-  ['jobModal','stopModal','woModal','siteModal','flotteModal','invModal','compteModal','pmModal','pmmModal','sortieModal','livraisonModal','ftEditModal','punchEditModal'].forEach(function(id){
+  ['jobModal','stopModal','woModal','siteModal','flotteModal','invModal','compteModal','pmModal','pmmModal','sortieModal','livraisonModal','hivernageModal','ftEditModal','punchEditModal'].forEach(function(id){
     var el=document.getElementById(id);
     if(!el)return;
     el.addEventListener('input', function(){el.dataset.dirty='1';});
@@ -3316,6 +3448,7 @@ var NAV_CONFIG=[
   {mod:'inventaire',icon:'📦',lbl:'Stock'},
   {mod:'sortie',icon:'📤',lbl:'Sortie Inv.'},
   {mod:'livraison',icon:'🚚',lbl:'Bon Livr.'},
+  {mod:'hivernage',icon:'❄️',lbl:'Hivernage'},
   {mod:'comptes',icon:'👥',lbl:'Comptes'},
   {mod:'stats', icon:'📊', lbl:'Stats'},
   {mod:'map',   icon:'🗺',  lbl:'Carte'},
@@ -3494,7 +3627,7 @@ function doLogout(){
 // ═══════════════════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════════════════
-var modMap={accueil:'modAccueil',plan:'modPlan',planmatch:'modPlanMatch',planning:'modPlanning',ft:'modFT',suivi:'modSuivi',wo:'modWO',sites:'modSites',flotte:'modFlotte',inventaire:'modInv',sortie:'modSortie',livraison:'modLivraison',comptes:'modComptes',stats:'modStats',map:'modMap'};
+var modMap={accueil:'modAccueil',plan:'modPlan',planmatch:'modPlanMatch',planning:'modPlanning',ft:'modFT',suivi:'modSuivi',wo:'modWO',sites:'modSites',flotte:'modFlotte',inventaire:'modInv',sortie:'modSortie',livraison:'modLivraison',hivernage:'modHivernage',comptes:'modComptes',stats:'modStats',map:'modMap'};
 
 function switchMod(mod){
   if(!hasDroit(mod))return;
@@ -3508,10 +3641,10 @@ function switchMod(mod){
   });
   document.querySelectorAll('.pmm-subtab').forEach(function(b){b.classList.toggle('on',b.dataset.mod===mod);});
   // Afficher le bon FAB selon le module
-  var fabMap={plan:'pmAddBtn',planmatch:'pmmAddBtn',planning:'planningAddBtn',wo:'woAddBtn',sites:'siteAddBtn',flotte:'flotteAddBtn',inventaire:'invAddBtn',comptes:'comptesAddBtn',sortie:'sortieAddBtn',livraison:'livraisonAddBtn'};
-  ['pmAddBtn','pmmAddBtn','planningAddBtn','woAddBtn','siteAddBtn','flotteAddBtn','invAddBtn','comptesAddBtn','sortieAddBtn','livraisonAddBtn'].forEach(function(id){
+  var fabMap={plan:'pmAddBtn',planmatch:'pmmAddBtn',planning:'planningAddBtn',wo:'woAddBtn',sites:'siteAddBtn',flotte:'flotteAddBtn',inventaire:'invAddBtn',comptes:'comptesAddBtn',sortie:'sortieAddBtn',livraison:'livraisonAddBtn',hivernage:'hivernageAddBtn'};
+  ['pmAddBtn','pmmAddBtn','planningAddBtn','woAddBtn','siteAddBtn','flotteAddBtn','invAddBtn','comptesAddBtn','sortieAddBtn','livraisonAddBtn','hivernageAddBtn'].forEach(function(id){
     var el=document.getElementById(id);if(!el)return;
-    var openToAll=(id==='sortieAddBtn'||id==='livraisonAddBtn'); // tous les employés peuvent créer une sortie/livraison
+    var openToAll=(id==='sortieAddBtn'||id==='livraisonAddBtn'||id==='hivernageAddBtn'); // tous les employés peuvent créer une sortie/livraison/rapport d'hivernage
     var show=fabMap[mod]===id&&(openToAll||canEdit())&&(id!=='comptesAddBtn'||isAdmin());
     el.style.display=show?'flex':'none';
   });
@@ -3527,6 +3660,7 @@ function switchMod(mod){
   else if(mod==='inventaire')renderInvList();
   else if(mod==='sortie')renderSortieList();
   else if(mod==='livraison')renderLivraisonList();
+  else if(mod==='hivernage')renderHivernageList();
   else if(mod==='comptes')renderComptesList();
   else if(mod==='stats')renderStats();
   else if(mod==='map')initMap();
@@ -5361,6 +5495,9 @@ function initPlanningUI(){
   if(vue&&!vue._bound){vue._bound=true;vue.addEventListener('change',renderPlanning);}
   if(filt&&!filt._bound){filt._bound=true;filt.addEventListener('change',renderPlanning);}
   if(calBtn&&!calBtn._bound){calBtn._bound=true;calBtn.addEventListener('click',openMonCalendrierModal);}
+  var autoLinkBtn=document.getElementById('plgAutoLinkBtn');
+  if(autoLinkBtn&&!autoLinkBtn._bound){autoLinkBtn._bound=true;autoLinkBtn.addEventListener('click',plgAutoLinkOld);}
+  if(autoLinkBtn)autoLinkBtn.style.display=canEdit()?'':'none';
   var fab=document.getElementById('planningAddBtn');
   if(fab&&!fab._bound){fab._bound=true;fab.addEventListener('click',function(){openPlanningModal(null);});}
   // Employé (non superviseur) : vue personnelle uniquement, sélecteurs de vue/filtre masqués (rien à choisir)
@@ -5373,6 +5510,95 @@ function initPlanningUI(){
     if(vueBar)vueBar.style.display='';
     if(filtWrap)filtWrap.style.display='';
   }
+}
+
+// Relie rétroactivement les tâches planning créées AVANT la liaison bidirectionnelle à un créneau et/ou
+// Work Order déjà existant, uniquement quand une correspondance NON AMBIGUË est trouvée (même site, même
+// date de début, et même technicien si la tâche en a un). Ne modifie JAMAIS le créneau/WO — pose seulement
+// le pointeur planId/woId sur la tâche planning. Un cas ambigu (plusieurs candidats) est ignoré plutôt que
+// deviné, et une tâche déjà partiellement liée n'est pas retouchée.
+function plgAutoLinkOld(){
+  if(!canEdit()){toast('🔒 Réservé aux superviseurs.');return;}
+  var list=getPlanning();
+  var linkedPlanIds={},linkedWoIds={};
+  list.forEach(function(pt){if(pt.planId)linkedPlanIds[pt.planId]=true;if(pt.woId)linkedWoIds[pt.woId]=true;});
+  var allPlan=getPlan(), allWO=getWOs();
+  var nLinked=0,nAmbig=0,changed=false;
+  list.forEach(function(t){
+    if(t.planId||t.woId)return; // déjà lié (même partiellement) — on n'y touche pas
+    if(!t.siteId||!t.dateDebut)return; // pas assez d'info pour apparier en confiance
+    var candPlan=allPlan.filter(function(p){
+      return !linkedPlanIds[p.id]&&p.siteId===t.siteId&&p.date===t.dateDebut&&(!t.emp||planAssignees(p).indexOf(t.emp)>=0);
+    });
+    var candWO=allWO.filter(function(w){
+      var site=findSiteByNameForSlot(w.site)||findSiteByNameForSlot(w.client);
+      return !linkedWoIds[w.id]&&site&&site.id===t.siteId&&w.date===t.dateDebut&&(!t.emp||woAssignees(w).indexOf(t.emp)>=0);
+    });
+    var did=false,ambig=false;
+    if(candPlan.length===1){t.planId=candPlan[0].id;linkedPlanIds[candPlan[0].id]=true;did=true;}
+    else if(candPlan.length>1)ambig=true;
+    if(candWO.length===1){t.woId=candWO[0].id;linkedWoIds[candWO[0].id]=true;did=true;}
+    else if(candWO.length>1)ambig=true;
+    if(did){nLinked++;changed=true;sbPush('planning',t);}
+    else if(ambig)nAmbig++;
+  });
+  if(changed)setPlanning(list);
+  renderPlanning();
+  toast('🔗 '+nLinked+' tâche(s) liée(s) automatiquement'+(nAmbig?' · '+nAmbig+' ambiguë(s) ignorée(s) (plusieurs correspondances possibles)':''));
+}
+
+// Agrège en lecture seule les créneaux, Work Orders et Plan de Match de la période affichée,
+// pour que la grille Équipe montre TOUT le travail d'un technicien/site (pas seulement les
+// tâches créées directement dans Planning). Exclut les créneaux/WO déjà liés à une tâche
+// planning existante (ils sont alors représentés par cette tâche, pas en double).
+function plgVirtualEntries(monday,lastDay,mode,passes){
+  var out=[];
+  var linkedPlanIds={},linkedWoIds={};
+  getPlanning().forEach(function(pt){if(pt.planId)linkedPlanIds[pt.planId]=true;if(pt.woId)linkedWoIds[pt.woId]=true;});
+
+  getPlan().filter(function(p){return p.date&&!linkedPlanIds[p.id]&&p.date>=monday&&p.date<=lastDay;}).forEach(function(p){
+    var titre=p.descr||p.client||'Créneau';
+    if(mode==='tech'){
+      var assignees=planAssignees(p);if(!assignees.length)assignees=[''];
+      assignees.forEach(function(empId){
+        if(!passes(empId,''))return;
+        out.push({id:'plan_'+p.id+'_'+(empId||'x'),titre:titre,dateDebut:p.date,dateFin:p.date,heureDebut:p.heure||'',
+          emp:empId,empNom:empId?empName(empId):'',siteId:p.siteId||'',siteNom:p.client||'',_src:'plan',_srcId:p.id});
+      });
+    }else{
+      if(!p.siteId||!passes('',p.siteId))return;
+      out.push({id:'plan_'+p.id,titre:titre,dateDebut:p.date,dateFin:p.date,heureDebut:p.heure||'',
+        emp:'',empNom:empNames(planAssignees(p)),siteId:p.siteId,siteNom:p.client||'',_src:'plan',_srcId:p.id});
+    }
+  });
+
+  getWOs().filter(function(w){return w.date&&!linkedWoIds[w.id]&&w.status!=='annule'&&w.date>=monday&&w.date<=lastDay;}).forEach(function(w){
+    var titre=w.desc||w.client||'Work Order';
+    var site=findSiteByNameForSlot(w.site)||findSiteByNameForSlot(w.client);
+    if(mode==='tech'){
+      var assignees=woAssignees(w);if(!assignees.length)assignees=[''];
+      assignees.forEach(function(empId){
+        if(!passes(empId,''))return;
+        out.push({id:'wo_'+w.id+'_'+(empId||'x'),titre:titre,dateDebut:w.date,dateFin:w.date,heureDebut:'',
+          emp:empId,empNom:empId?empName(empId):'',siteId:site?site.id:'',siteNom:w.site||w.client||'',_src:'wo',_srcId:w.id});
+      });
+    }else{
+      if(!site||!passes('',site.id))return;
+      out.push({id:'wo_'+w.id,titre:titre,dateDebut:w.date,dateFin:w.date,heureDebut:'',
+        emp:'',empNom:empNames(woAssignees(w)),siteId:site.id,siteNom:w.client||'',_src:'wo',_srcId:w.id});
+    }
+  });
+
+  if(mode==='tech'){
+    getPlanMatches().filter(function(pm){return pm.date&&pm.date>=monday&&pm.date<=lastDay;}).forEach(function(pm){
+      pmAssignees(pm).forEach(function(empId){
+        if(!empId||!passes(empId,''))return;
+        out.push({id:'pmm_'+pm.id+'_'+empId,titre:'Plan de Match',dateDebut:pm.date,dateFin:pm.date,heureDebut:'',
+          emp:empId,empNom:empName(empId),siteId:'',siteNom:'',_src:'pmm',_srcId:pm.id});
+      });
+    });
+  }
+  return out;
 }
 
 function renderPlanning(){
@@ -5415,12 +5641,30 @@ function renderPlanning(){
     return true;
   });
 
+  // Visibilité (identique à celle des tâches planning) — appliquée aux entrées lues depuis les autres sections
+  function plgPasses(empId,siteIdVal){
+    if(!sup&&empId!==filtVal)return false;
+    if(sup&&mode==='tech'&&filtVal&&empId!==filtVal)return false;
+    if(sup&&mode==='site'&&filtVal&&siteIdVal!==filtVal)return false;
+    return true;
+  }
+  var virtual=plgVirtualEntries(monday,lastDay,mode,plgPasses);
+
   var groups={}; var groupOrder=[];
   function ensureGroup(key,label,color){
     if(!(key in groups)){groups[key]={label:label,color:color,tasks:[]};groupOrder.push(key);}
     return groups[key];
   }
   tasks.forEach(function(t){
+    if(mode==='tech'){
+      var key=t.emp||'_none';
+      ensureGroup(key,t.empNom||empName(t.emp)||'(non assigné)',plgTechColor(t.emp)).tasks.push(t);
+    }else{
+      var key2=t.siteId||'_none';
+      ensureGroup(key2,t.siteNom||'(sans site)','#6B8CAE').tasks.push(t);
+    }
+  });
+  virtual.forEach(function(t){
     if(mode==='tech'){
       var key=t.emp||'_none';
       ensureGroup(key,t.empNom||empName(t.emp)||'(non assigné)',plgTechColor(t.emp)).tasks.push(t);
@@ -5460,13 +5704,17 @@ function renderPlanning(){
         var dayTasks=g.tasks.filter(function(t){return dayIso>=t.dateDebut&&dayIso<=t.dateFin;});
         html+='<div class="plg-daycell'+(isToday2?' plg-today':'')+'" data-jour="'+dayIso+'" data-key="'+esc(key)+'" data-mode="'+mode+'">';
         dayTasks.forEach(function(t){
-          var st=PLANNING_STATUTS[t.statut]||PLANNING_STATUTS.assigne;
-          var color=mode==='tech'?plgTechColor(t.emp):'#6B8CAE';
+          var isVirtual=!!t._src;
+          var color=isVirtual?({plan:'#0E9C86',wo:'#FF6B00',pmm:'#7C3AED'}[t._src]||'#6B8CAE'):(mode==='tech'?plgTechColor(t.emp):'#6B8CAE');
           var sub=mode==='tech'?(t.siteNom||''):(t.empNom||empName(t.emp)||'');
-          var canDrag=sup?'true':'false';
-          html+='<div class="plg-chip" draggable="'+canDrag+'" data-id="'+t.id+'" style="border-left-color:'+color+'" onclick="openPlanningModal(\''+t.id+'\')" title="'+esc(t.titre)+(sub?(' — '+esc(sub)):'')+'">'
+          var canDrag=(sup&&!isVirtual)?'true':'false';
+          var srcLbl={plan:'Créneau',wo:'Work Order',pmm:'Plan de Match'}[t._src]||'';
+          var srcIcon={plan:'🗓',wo:'🔧',pmm:'📋'}[t._src]||'';
+          var onclick=isVirtual?(t._src==='plan'?"plgOpenLinkedPlan('"+t._srcId+"')":(t._src==='wo'?"plgOpenLinkedWO('"+t._srcId+"')":"openPmmModal('"+t._srcId+"')")):"openPlanningModal('"+t.id+"')";
+          html+='<div class="plg-chip'+(isVirtual?' plg-chip-virtual':'')+'" draggable="'+canDrag+'" data-id="'+t.id+'" style="border-left-color:'+color+'" onclick="'+onclick+'" title="'+esc(t.titre)+(sub?(' — '+esc(sub)):'')+(isVirtual?' · depuis '+srcLbl:'')+'">'
+            +(isVirtual?'<span class="plg-chip-src">'+srcIcon+'</span>':'')
             +'<span class="plg-chip-txt">'+esc(t.titre)+'</span>'
-            +(t.statut==='en_attente'?'<span class="plg-chip-flag" title="En attente d\'approbation">⏳</span>':'')
+            +(!isVirtual&&t.statut==='en_attente'?'<span class="plg-chip-flag" title="En attente d\'approbation">⏳</span>':'')
             +(t.heureDebut?'<span class="plg-chip-h">'+esc(t.heureDebut)+'</span>':'')
             +'</div>';
         });
@@ -5582,9 +5830,31 @@ function openPlanningModal(taskId){
   }).join('');
   statutSel.value=t?t.statut:'assigne';
 
+  var lienSel=document.getElementById('plgLien');
+  var hasPlan=!!(t&&t.planId),hasWo=!!(t&&t.woId);
+  lienSel.value=(hasPlan&&hasWo)?'both':(hasPlan?'creneau':(hasWo?'wo':''));
+  plgRenderLienInfo(t);
+
   document.getElementById('plgDeleteBtn').style.display=t?'block':'none';
   openModal('plgModal');
 }
+
+// Affiche des raccourcis vers le créneau et/ou le Work Order liés à cette tâche planning (le cas échéant)
+function plgRenderLienInfo(t){
+  var wrap=document.getElementById('plgLienInfo');
+  if(!wrap)return;
+  var html='';
+  if(t&&t.planId&&getPlan().some(function(p){return p.id===t.planId;})){
+    html+='<button type="button" class="btn btn-ghost btn-sm" onclick="plgOpenLinkedPlan(\''+t.planId+'\')">🗓 Ouvrir le créneau lié</button>';
+  }
+  if(t&&t.woId&&getWOs().some(function(w){return w.id===t.woId;})){
+    html+='<button type="button" class="btn btn-ghost btn-sm" onclick="plgOpenLinkedWO(\''+t.woId+'\')">🔧 Ouvrir le Work Order lié</button>';
+  }
+  wrap.innerHTML=html;
+  wrap.style.display=html?'flex':'none';
+}
+function plgOpenLinkedPlan(planId){closeModal('plgModal');openPmModal(null,planId);}
+function plgOpenLinkedWO(woId){var wo=getWOs().find(function(w){return w.id===woId;});if(!wo)return;closeModal('plgModal');openWOModal(wo);}
 
 function savePlanningTask(){
   var titre=(document.getElementById('plgTitre').value||'').trim();
@@ -5610,6 +5880,60 @@ function savePlanningTask(){
   t.heureDebut=document.getElementById('plgHeureDebut').value||'';
   t.heureFin=document.getElementById('plgHeureFin').value||'';
   t.statut=document.getElementById('plgStatut').value||'assigne';
+
+  // ── Lien bidirectionnel : la tâche planning peut aussi créer/tenir à jour un créneau et/ou un Work Order ──
+  var lien=(document.getElementById('plgLien')||{}).value||'';
+  var wantCreneau=(lien==='creneau'||lien==='both');
+  var wantWO=(lien==='wo'||lien==='both');
+  if((wantCreneau||wantWO)&&!siteId){
+    toast('⚠️ Choisis un site pour créer '+(lien==='wo'?'le Work Order lié':(lien==='both'?'les entrées liées':'le créneau lié')));
+    return;
+  }
+  var site=siteId?(getSites().find(function(s){return s.id===siteId;})||null):null;
+
+  // Le WO est créé/mis à jour AVANT le créneau : si les deux sont demandés ("both"), le créneau
+  // doit pouvoir se lier au Work Order fraîchement créé dans la même sauvegarde.
+  if(wantWO){
+    var wos=getWOs();
+    var wo=t.woId?wos.find(function(w){return w.id===t.woId;}):null;
+    var isNewWO=!wo;
+    if(isNewWO){wo={id:uid(),type:'entretien',priorite:'normal',status:'ouvert',tasks:[],files:[],notes:'',createdAt:new Date().toISOString()};wos.unshift(wo);}
+    wo.client=t.siteNom||t.titre;
+    wo.site=(site&&site.addr)?site.addr:(wo.site||'');
+    wo.date=t.dateDebut;
+    wo.assignes=t.emp?[t.emp]:(wo.assignes||[]);
+    wo.assigne=empNames(wo.assignes);
+    wo.desc=t.descr||t.titre;
+    wo.updatedAt=new Date().toISOString();
+    if(!isNewWO){var widx=wos.findIndex(function(w){return w.id===wo.id;});if(widx>=0)wos[widx]=wo;}
+    setWOs(wos);sbPush('workorders',wo);auditLog(isNewWO?'CREATION':'MODIFICATION','workorders',wo.id);
+    t.woId=wo.id;
+  }else if(t.woId){
+    t.woId=''; // liaison retirée — le Work Order existant n'est PAS supprimé, seulement détaché
+  }
+
+  if(wantCreneau){
+    var plan=getPlan();
+    var slot=t.planId?plan.find(function(p){return p.id===t.planId;}):null;
+    var isNewSlot=!slot;
+    if(isNewSlot){slot={id:uid(),type:'entretien',status:'assigned',notes:''};plan.push(slot);}
+    slot.woId=t.woId||null;
+    slot.date=t.dateDebut;
+    slot.heure=t.heureDebut||'';
+    slot.emps=t.emp?[t.emp]:[];
+    slot.emp=t.empNom||'';
+    slot.client=t.siteNom||t.titre;
+    slot.addr=(site&&site.addr)?site.addr:(slot.addr||'');
+    slot.siteId=siteId||null;
+    slot.descr=t.descr||t.titre;
+    slot.updatedAt=new Date().toISOString();
+    if(!isNewSlot){var pidx=plan.findIndex(function(p){return p.id===slot.id;});if(pidx>=0)plan[pidx]=slot;}
+    setPlan(plan);sbPush('plan',slot);auditLog(isNewSlot?'CREATION':'MODIFICATION','plan',slot.id);
+    t.planId=slot.id;
+  }else if(t.planId){
+    t.planId=''; // liaison retirée — le créneau existant n'est PAS supprimé, seulement détaché
+  }
+
   setPlanning(list);
   sbPush('planning',t);
   closeModal('plgModal');
@@ -5734,6 +6058,11 @@ function renderJobsGantt(){
     if(!(key in groups)){groups[key]={label:label,bars:[],statuses:[]};groupOrder.push(key);}
     return groups[key];
   }
+  // Tâches planning déjà liées à un WO ou à un créneau : ne pas les compter en double, elles sont
+  // déjà représentées par la barre du WO/créneau lié.
+  var planningLinkedWoIds={},planningLinkedPlanIds={};
+  getPlanning().forEach(function(pt){if(pt.woId)planningLinkedWoIds[pt.woId]=true;if(pt.planId)planningLinkedPlanIds[pt.planId]=true;});
+
   wos.forEach(function(w){
     if(!w.date)return;
     var key=(w.client||'')+'|'+(w.site||'');
@@ -5745,8 +6074,16 @@ function renderJobsGantt(){
     g.statuses.push(statut);
     g.bars.push({t:w.priorite==='urgent'?'wo':'plan',lbl:w.type||'Work Order',start:start,end:end,statut:statut,assignes:w.assignes||[]});
   });
+  // Créneaux planifiés (calendrier des interventions) liés à un site, non déjà représentés par un WO
+  getPlan().filter(function(p){return p.siteId&&p.date&&!planningLinkedPlanIds[p.id]&&(!p.woId||!wos.some(function(w){return w.id===p.woId;}));}).forEach(function(p){
+    if(p.date<monday||p.date>rangeEnd)return;
+    var key='site|'+p.client;
+    var g=ensureGroup(key,p.client||'Site');
+    g.statuses.push('upcoming');
+    g.bars.push({t:'creneau',lbl:p.descr||'Créneau',start:p.date,end:p.date,statut:'upcoming',assignes:planAssignees(p)});
+  });
   // Ajouter aussi les tâches planning liées à un site (module Planning existant), regroupées par site
-  getPlanning().filter(function(t){return t.statut!=='annule'&&t.siteNom;}).forEach(function(t){
+  getPlanning().filter(function(t){return t.statut!=='annule'&&t.siteNom&&!t.woId&&!t.planId;}).forEach(function(t){
     if(t.dateFin<monday||t.dateDebut>rangeEnd)return;
     var key='site|'+t.siteNom;
     var g=ensureGroup(key,t.siteNom);
@@ -5817,7 +6154,7 @@ function renderJobsGantt(){
         var leftPct=(startOffset/totalDays)*100;
         var widthPct=(durDays/totalDays)*100;
         if(leftPct<0||leftPct>100)return;
-        var barColor={wo:'var(--orange)',plan:'var(--blue)',tache:'var(--green)'}[b.t]||'var(--blue)';
+        var barColor={wo:'var(--orange)',plan:'var(--blue)',tache:'var(--green)',creneau:'#0E9C86'}[b.t]||'var(--blue)';
         // Largeur minimale en pixels pour qu'un job court (1 jour) reste lisible même étiré sur
         // une échelle de plusieurs semaines — sans ça le texte se coupe à quelques pixels.
         var minBarPx=vw>=1300?92:72;
@@ -8315,6 +8652,363 @@ function livInfoBox(label,value,C){
 function livTh(w,label){return '<th style="width:'+w+';background:#eaf1fa;border:1px solid #2E6DA4;font-size:10px;padding:4px 6px;color:#1B4F8C;text-align:left">'+label+'</th>';}
 function livTd(content){return '<td style="border:1px solid #c9d7e5;padding:5px 6px;font-size:11px;height:20px">'+(content||'')+'</td>';}
 
+
+// ═══════════════════════════════════════════════════════
+// RAPPORTS D'HIVERNAGE — inspection pré-hivernage par site
+// Un rapport = 1 site visité : sections de constats (joints, peinture,
+// structure, échelles, marquage…), prévisionnel 2027, suivi interne,
+// calendrier trimestriel, recommandation, signatures.
+// ═══════════════════════════════════════════════════════
+var HIV_TAGS={urgent:'Urgent',eleve:'Priorité élevée',modere:'Modérée',reglementaire:'Réglementaire','':'Sans priorité'};
+function hivTagClass(t){var m={urgent:'badge-red',eleve:'badge-orange',modere:'badge-blue',reglementaire:'badge-purple'};return m[t]||'badge-blue';}
+function hivBlankSections(){
+  return ['Joints de céramique','Peinture du bassin','Structure en béton','Échelles en inox / accessoires','Marquage et visibilité']
+    .map(function(t){return {id:uid(),title:t,tag:'',items:[],photos:[]};});
+}
+
+var hivernageEditId=null;
+var hivBuilderSections=[];
+var hivPlanRows=[];
+var hivSuiviRows=[];
+
+function renderHivernageList(){
+  var list=document.getElementById('hivernageList');
+  list.innerHTML='';
+  var reps=getHivernage().slice().sort(function(a,b){return (b.updatedAt||b.createdAt||'').localeCompare(a.updatedAt||a.createdAt||'');});
+  var search=(document.getElementById('hivernageSearch').value||'').toLowerCase();
+  if(search){
+    reps=reps.filter(function(r){
+      var hay=((r.site||'')+' '+(r.client||'')+' '+(r.technicien||'')).toLowerCase();
+      return hay.indexOf(search)>=0;
+    });
+  }
+  if(reps.length===0){
+    list.innerHTML='<div class="empty"><div class="ei">❄️</div><h3>Aucun rapport d\'hivernage</h3><p>Créez-en un avec le bouton ＋</p></div>';
+    return;
+  }
+  reps.forEach(function(r){
+    var done=r.status==='complete';
+    var nbSec=(r.sections||[]).length;
+    var nbPhotos=(r.sections||[]).reduce(function(n,s){return n+((s.photos||[]).length);},0);
+    var card=document.createElement('div');card.className='sortie-card';
+    card.innerHTML='<div class="sc-hd"><div><div class="sc-bon">'+esc(r.site||'Site à préciser')+'</div><div class="sc-nom">'+esc(r.client||'—')+'</div></div>'+
+      '<span class="badge '+(done?'badge-green':'badge-orange')+'">'+(done?'✅ Complété':'📝 Brouillon')+'</span></div>'+
+      '<div class="sc-body">'+
+        '<span>📅 '+(r.dateInspection?fmtDate(r.dateInspection):(r.dateRapport?fmtDate(r.dateRapport):'—'))+'</span>'+
+        '<span>👷 '+esc(r.technicien||'—')+'</span>'+
+        '<span>🔎 '+nbSec+' section'+(nbSec>1?'s':'')+(nbPhotos>0?(' · 📸 '+nbPhotos):'')+'</span>'+
+      '</div>'+
+      '<div class="sc-body" style="padding-top:0;gap:8px">'+
+        '<button type="button" class="btn btn-ghost btn-sm hiv-quick-print">🖨️ Imprimer</button>'+
+      '</div>';
+    card.querySelector('.hiv-quick-print').addEventListener('click',function(e){e.stopPropagation();printHivernage(r);});
+    card.addEventListener('click',function(){openHivernageModal(r.id);});
+    list.appendChild(card);
+  });
+}
+
+function hivDrawSectionPhotos(zone,sec){
+  pmmRenderPhotos(zone,sec.photos,
+    function(i){sec.photos.splice(i,1);hivDrawSectionPhotos(zone,sec);},
+    function(dataUrl){sec.photos.push({data:dataUrl,name:'photo',addedBy:currentUser?currentUser.id:'',addedAt:new Date().toISOString()});hivDrawSectionPhotos(zone,sec);}
+  );
+}
+
+function hivRenderSections(){
+  var wrap=document.getElementById('hivSections');
+  wrap.innerHTML='';
+  hivBuilderSections.forEach(function(sec,sIdx){
+    var box=document.createElement('div');
+    box.className='pmm-builder-sec';
+    var top=document.createElement('div');
+    top.className='pbs-top';
+    var titleInp=document.createElement('input');
+    titleInp.type='text';titleInp.placeholder='Titre de la section (ex: Joints de céramique)';titleInp.value=sec.title||'';
+    titleInp.addEventListener('input',function(){sec.title=titleInp.value;});
+    var tagSel=document.createElement('select');
+    Object.keys(HIV_TAGS).forEach(function(k){var o=document.createElement('option');o.value=k;o.textContent=HIV_TAGS[k];if(k===(sec.tag||''))o.selected=true;tagSel.appendChild(o);});
+    tagSel.addEventListener('change',function(){sec.tag=tagSel.value;});
+    var xBtn=document.createElement('button');
+    xBtn.className='pmm-mini-x';xBtn.textContent='✕';xBtn.title='Supprimer la section';
+    xBtn.addEventListener('click',function(){hivBuilderSections.splice(sIdx,1);hivRenderSections();});
+    top.appendChild(titleInp);top.appendChild(tagSel);top.appendChild(xBtn);
+    box.appendChild(top);
+
+    var itemsWrap=document.createElement('div');
+    sec.items=sec.items||[];
+    sec.items.forEach(function(it,iIdx){
+      var row=document.createElement('div');
+      row.className='pmm-builder-task';row.style.marginBottom='6px';
+      var txtInp=document.createElement('input');
+      txtInp.type='text';txtInp.placeholder='Point à noter…';txtInp.value=it||'';
+      txtInp.addEventListener('input',function(){sec.items[iIdx]=txtInp.value;});
+      var xI=document.createElement('button');
+      xI.className='pmm-mini-x';xI.textContent='✕';
+      xI.addEventListener('click',function(){sec.items.splice(iIdx,1);hivRenderSections();});
+      row.appendChild(txtInp);row.appendChild(xI);
+      itemsWrap.appendChild(row);
+    });
+    box.appendChild(itemsWrap);
+
+    var addItemBtn=document.createElement('button');
+    addItemBtn.className='pmm-mini-add';addItemBtn.textContent='➕ Ajouter un point';
+    addItemBtn.addEventListener('click',function(){sec.items.push('');hivRenderSections();});
+    box.appendChild(addItemBtn);
+
+    sec.photos=sec.photos||[];
+    var photoZone=document.createElement('div');
+    hivDrawSectionPhotos(photoZone,sec);
+    box.appendChild(photoZone);
+
+    wrap.appendChild(box);
+  });
+}
+function hivAddSectionBlock(){
+  hivBuilderSections.push({id:uid(),title:'',tag:'',items:[],photos:[]});
+  hivRenderSections();
+}
+
+function hivRenderPlan(){
+  var wrap=document.getElementById('hivPlanWrap');
+  wrap.innerHTML='';
+  hivPlanRows.forEach(function(row,idx){
+    var el=document.createElement('div');
+    el.className='sortie-ligne-row';
+    el.innerHTML='<div class="sl-hd"><button type="button" class="pmm-mini-x">✕</button></div>'+
+      '<input type="text" placeholder="Élément" class="sl-full" data-k="element"/>'+
+      '<input type="text" placeholder="Travaux prévus" class="sl-full" data-k="travaux"/>'+
+      '<input type="text" placeholder="Période recommandée" data-k="periode"/>'+
+      '<input type="text" placeholder="Remarques" class="sl-full" data-k="remarques"/>';
+    var prioSel=document.createElement('select');
+    Object.keys(HIV_TAGS).forEach(function(k){var o=document.createElement('option');o.value=k;o.textContent=HIV_TAGS[k];if(k===(row.prio||''))o.selected=true;prioSel.appendChild(o);});
+    prioSel.addEventListener('change',function(){row.prio=prioSel.value;});
+    el.appendChild(prioSel);
+    el.querySelectorAll('input').forEach(function(inp){
+      inp.value=row[inp.dataset.k]||'';
+      inp.addEventListener('input',function(){row[inp.dataset.k]=inp.value;});
+    });
+    el.querySelector('.pmm-mini-x').addEventListener('click',function(){hivPlanRows.splice(idx,1);hivRenderPlan();});
+    wrap.appendChild(el);
+  });
+}
+function hivAddPlanRow(){
+  hivPlanRows.push({num:String(hivPlanRows.length+1),element:'',travaux:'',prio:'',periode:'',remarques:''});
+  hivRenderPlan();
+}
+
+function hivRenderSuivi(){
+  var wrap=document.getElementById('hivSuiviWrap');
+  wrap.innerHTML='';
+  hivSuiviRows.forEach(function(row,idx){
+    var el=document.createElement('div');
+    el.className='sortie-ligne-row';
+    var elInp=document.createElement('input');
+    elInp.type='text';elInp.placeholder='Élément';elInp.className='sl-full';elInp.value=row.element||'';
+    elInp.addEventListener('input',function(){row.element=elInp.value;});
+    var whoInp=document.createElement('input');
+    whoInp.type='text';whoInp.placeholder='Date / responsable';whoInp.className='sl-full';whoInp.value=row.who||'';
+    whoInp.addEventListener('input',function(){row.who=whoInp.value;});
+    function ckLabel(text,key){
+      var lbl=document.createElement('label');
+      lbl.style.cssText='display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted)';
+      var ck=document.createElement('input');ck.type='checkbox';ck.checked=!!row[key];
+      ck.addEventListener('change',function(){row[key]=ck.checked;});
+      lbl.appendChild(ck);lbl.appendChild(document.createTextNode(text));
+      return lbl;
+    }
+    var hd=document.createElement('div');hd.className='sl-hd';
+    var xBtn=document.createElement('button');xBtn.type='button';xBtn.className='pmm-mini-x';xBtn.textContent='✕';
+    xBtn.addEventListener('click',function(){hivSuiviRows.splice(idx,1);hivRenderSuivi();});
+    hd.appendChild(xBtn);
+    var cks=document.createElement('div');cks.style.cssText='display:flex;gap:10px;margin:4px 0';
+    cks.appendChild(ckLabel('Devis demandé','c1'));cks.appendChild(ckLabel('Devis reçu','c2'));cks.appendChild(ckLabel('Travaux complétés','c3'));
+    el.appendChild(hd);el.appendChild(elInp);el.appendChild(cks);el.appendChild(whoInp);
+    wrap.appendChild(el);
+  });
+}
+function hivAddSuiviRow(){
+  hivSuiviRows.push({element:'',c1:false,c2:false,c3:false,who:''});
+  hivRenderSuivi();
+}
+
+function openHivernageModal(hivId){
+  populateClientList();
+  hivernageEditId=hivId;
+  if(hivId){
+    var r=getHivernage().find(function(x){return x.id===hivId;});
+    if(!r){toast('Rapport introuvable');return;}
+    document.getElementById('hivernageModalTitle').textContent='Rapport d\'hivernage';
+    document.getElementById('hivClient').value=r.client||'';
+    document.getElementById('hivSite').value=r.site||'';
+    document.getElementById('hivObjet').value=r.objet||'Inspection pré-hivernage après vidange du bassin';
+    document.getElementById('hivDateRapport').value=r.dateRapport||todayISO();
+    document.getElementById('hivDateInspection').value=r.dateInspection||'';
+    document.getElementById('hivPreparePar').value=r.preparePar||'Soucy Aquatik';
+    document.getElementById('hivTechnicien').value=r.technicien||'';
+    document.getElementById('hivQ1').value=(r.timeline&&r.timeline.q1)||'';
+    document.getElementById('hivQ2').value=(r.timeline&&r.timeline.q2)||'';
+    document.getElementById('hivQ3').value=(r.timeline&&r.timeline.q3)||'';
+    document.getElementById('hivQ4').value=(r.timeline&&r.timeline.q4)||'';
+    document.getElementById('hivCallout').value=r.callout||'';
+    document.getElementById('hivSignSA').value=r.signataireSA||'';
+    document.getElementById('hivSignClient').value=r.signataireClient||'';
+    hivBuilderSections=JSON.parse(JSON.stringify(r.sections&&r.sections.length?r.sections:hivBlankSections()));
+    hivPlanRows=JSON.parse(JSON.stringify(r.plan||[]));
+    hivSuiviRows=JSON.parse(JSON.stringify(r.suivi||[]));
+    document.getElementById('hivStatusBadge').textContent=r.status==='complete'?'✅ Complété':'📝 Brouillon';
+    var canDelete=isSup()||r.createdBy===(currentUser&&currentUser.id);
+    document.getElementById('hivDeleteBtn').style.display=canDelete?'block':'none';
+  }else{
+    document.getElementById('hivernageModalTitle').textContent='Nouveau rapport d\'hivernage';
+    document.getElementById('hivClient').value='';
+    document.getElementById('hivSite').value='';
+    document.getElementById('hivObjet').value='Inspection pré-hivernage après vidange du bassin';
+    document.getElementById('hivDateRapport').value=todayISO();
+    document.getElementById('hivDateInspection').value='';
+    document.getElementById('hivPreparePar').value='Soucy Aquatik';
+    document.getElementById('hivTechnicien').value=fullName();
+    document.getElementById('hivQ1').value='';document.getElementById('hivQ2').value='';
+    document.getElementById('hivQ3').value='';document.getElementById('hivQ4').value='';
+    document.getElementById('hivCallout').value='';
+    document.getElementById('hivSignSA').value=fullName();
+    document.getElementById('hivSignClient').value='';
+    hivBuilderSections=hivBlankSections();
+    hivPlanRows=[];
+    hivSuiviRows=[];
+    document.getElementById('hivStatusBadge').textContent='📝 Brouillon';
+    document.getElementById('hivDeleteBtn').style.display='none';
+  }
+  hivRenderSections();hivRenderPlan();hivRenderSuivi();
+  openModal('hivernageModal');
+}
+
+function hivCollectSiteId(siteNom){
+  var s=getSites().find(function(x){return x.nom===siteNom;});
+  return s?s.id:null;
+}
+
+function saveHivernage(marquerComplete){
+  var site=document.getElementById('hivSite').value.trim();
+  if(!site){document.getElementById('hivSite').focus();toast('⚠️ Site requis');return null;}
+  var list=getHivernage();
+  var r;
+  if(hivernageEditId){
+    r=list.find(function(x){return x.id===hivernageEditId;})||{id:uid(),createdBy:currentUser.id,createdAt:new Date().toISOString()};
+  }else{
+    r={id:uid(),createdBy:currentUser.id,createdAt:new Date().toISOString()};
+  }
+  r.client=document.getElementById('hivClient').value.trim();
+  r.site=site;
+  r.siteId=hivCollectSiteId(site);
+  r.objet=document.getElementById('hivObjet').value.trim();
+  r.dateRapport=document.getElementById('hivDateRapport').value;
+  r.dateInspection=document.getElementById('hivDateInspection').value;
+  r.preparePar=document.getElementById('hivPreparePar').value.trim();
+  r.technicien=document.getElementById('hivTechnicien').value.trim();
+  r.sections=hivBuilderSections;
+  r.plan=hivPlanRows;
+  r.suivi=hivSuiviRows;
+  r.timeline={q1:document.getElementById('hivQ1').value,q2:document.getElementById('hivQ2').value,q3:document.getElementById('hivQ3').value,q4:document.getElementById('hivQ4').value};
+  r.callout=document.getElementById('hivCallout').value;
+  r.signataireSA=document.getElementById('hivSignSA').value.trim();
+  r.signataireClient=document.getElementById('hivSignClient').value.trim();
+  r.updatedAt=new Date().toISOString();
+  if(marquerComplete){r.status='complete';}
+  else if(!r.status)r.status='brouillon';
+  var idx=list.findIndex(function(x){return x.id===r.id;});
+  if(idx>=0)list[idx]=r;else list.push(r);
+  setHivernage(list);
+  hivernageEditId=r.id;
+  toast(marquerComplete?'✅ Rapport marqué complété':'💾 Brouillon enregistré');
+  closeModal('hivernageModal');
+  renderHivernageList();
+  return r;
+}
+function completeHivernageFromModal(){
+  var r=saveHivernage(true);
+  if(r)toast('✅ Rapport complété — '+esc(r.site));
+}
+function deleteHivernage(){
+  if(!hivernageEditId)return;
+  askConfirm('Supprimer ce rapport d\'hivernage ?',_deleteHivernageDo,'🗑 Supprimer','Supprimer le rapport');
+}
+function _deleteHivernageDo(){
+  setHivernage(getHivernage().filter(function(r){return r.id!==hivernageEditId;}));
+  sbDelete('hivernage',hivernageEditId);
+  closeModal('hivernageModal');renderHivernageList();toast('🗑 Rapport supprimé');
+}
+
+function printHivernage(r){
+  if(!r){
+    r=saveHivernage(false);
+    if(!r)return;
+  }
+  document.getElementById('pmmPrintArea').innerHTML=hivernageBuildPrintHTML(r);
+  window.print();
+}
+
+function hivernageBuildPrintHTML(r){
+  var C={bleu:'#1B4F8C',bleuMed:'#2E6DA4',vert:'#1a7a4a',amber:'#b06800',rouge:'#8b1a1a'};
+  var TAGCOL={urgent:C.rouge,eleve:C.amber,modere:C.bleuMed,reglementaire:'#6a3fa0','':'#888'};
+  var h='<div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;font-size:12px;padding:6px">';
+
+  h+='<div style="display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid '+C.bleu+';padding-bottom:8px;margin-bottom:10px">';
+  h+='<div><div style="font-size:22px;font-weight:800;color:'+C.bleu+';letter-spacing:.5px">SOUCY <span style="font-weight:400">AQUATIK</span></div>';
+  h+='<div style="font-size:10px;color:#555">Services aquatiques professionnels</div></div>';
+  h+='<div style="text-align:right"><h1 style="margin:0;font-size:18px;color:'+C.bleu+'">RAPPORT D\'INSPECTION PRÉ-HIVERNAGE</h1>';
+  h+='<div style="font-size:11px;color:#555;margin-top:2px">'+esc(r.objet||'')+'</div></div>';
+  h+='</div>';
+
+  h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px">';
+  h+=livInfoBox('Client',esc(r.client||'—'),C);
+  h+=livInfoBox('Site',esc(r.site||'—'),C);
+  h+=livInfoBox('Date d\'inspection',r.dateInspection?fmtDate(r.dateInspection):'—',C);
+  h+=livInfoBox('Technicien',esc(r.technicien||'—'),C);
+  h+='</div>';
+
+  (r.sections||[]).forEach(function(sec){
+    h+='<div style="background:'+C.bleu+';color:#fff;font-weight:bold;font-size:11px;padding:4px 8px;border-radius:4px;margin-top:10px;display:flex;justify-content:space-between;align-items:center">'+
+      '<span>'+esc(sec.title||'')+'</span>'+(sec.tag?('<span style="background:'+(TAGCOL[sec.tag]||'#888')+';padding:2px 8px;border-radius:10px;font-size:9px">'+esc(HIV_TAGS[sec.tag]||'')+'</span>'):'')+'</div>';
+    if((sec.items||[]).filter(function(x){return x;}).length){
+      h+='<ul style="margin:6px 0 4px 18px;padding:0;font-size:11.5px">'+
+        sec.items.filter(function(x){return x;}).map(function(it){return '<li style="margin-bottom:3px">'+esc(it)+'</li>';}).join('')+'</ul>';
+    }
+    if((sec.photos||[]).length){
+      h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 6px">'+sec.photos.map(function(p){return '<img src="'+p.data+'" style="width:90px;height:90px;object-fit:cover;border-radius:4px;border:1px solid #c9d7e5"/>';}).join('')+'</div>';
+    }
+  });
+
+  if((r.plan||[]).length){
+    h+='<div style="background:'+C.bleu+';color:#fff;font-weight:bold;font-size:11px;padding:4px 8px;border-radius:4px;margin-top:12px">Prévisionnel d\'entretien et de remplacement — 2027</div>';
+    h+='<table style="width:100%;border-collapse:collapse;margin-bottom:4px"><tr>'+
+      livTh('20%','Élément')+livTh('28%','Travaux prévus')+livTh('14%','Priorité')+livTh('18%','Période')+livTh('20%','Remarques')+'</tr>';
+    r.plan.forEach(function(p){
+      h+='<tr>'+livTd(esc(p.element))+livTd(esc(p.travaux))+livTd(esc(HIV_TAGS[p.prio]||''))+livTd(esc(p.periode))+livTd(esc(p.remarques))+'</tr>';
+    });
+    h+='</table>';
+  }
+
+  if(r.timeline&&(r.timeline.q1||r.timeline.q2||r.timeline.q3||r.timeline.q4)){
+    h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px">';
+    [['T1 — Jan-Mars',r.timeline.q1],['T2 — Avril-Juin',r.timeline.q2],['T3 — Juil-Sept',r.timeline.q3],['T4 — Oct-Déc',r.timeline.q4]].forEach(function(q){
+      h+='<div style="border:1px solid '+C.bleuMed+';border-radius:5px;padding:6px"><div style="font-size:9px;text-transform:uppercase;color:'+C.bleuMed+';font-weight:bold">'+q[0]+'</div><div style="font-size:11px;margin-top:3px">'+esc(q[1]||'—')+'</div></div>';
+    });
+    h+='</div>';
+  }
+
+  if(r.callout)h+='<div style="background:#f4f8fc;border:1px solid '+C.bleuMed+';border-radius:5px;padding:8px;margin-top:10px;font-size:11.5px">💡 '+esc(r.callout)+'</div>';
+
+  h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:14px">';
+  h+='<div style="border:1px solid #c9d7e5;border-radius:5px;padding:8px">'+
+    '<div style="font-size:9px;text-transform:uppercase;color:'+C.bleuMed+';font-weight:bold">Préparé par — Soucy Aquatik</div>'+
+    '<div style="margin-top:10px;font-size:11px">'+esc(r.signataireSA||'—')+'</div>'+
+    '<div style="margin-top:12px;border-top:1px solid #999;font-size:9px;color:#666;padding-top:2px">Signature / date</div></div>';
+  h+='<div style="border:1px solid #c9d7e5;border-radius:5px;padding:8px">'+
+    '<div style="font-size:9px;text-transform:uppercase;color:'+C.bleuMed+';font-weight:bold">Reçu par — Client'+(r.client?(' ('+esc(r.client)+')'):'')+'</div>'+
+    '<div style="margin-top:22px;border-top:1px solid #999;font-size:9px;color:#666;padding-top:2px">Nom / Signature / Heure</div></div>';
+  h+='</div></div>';
+  return h;
+}
 
 // ═══════════════════════════════════════════════════════
 // GESTION COMPTES
