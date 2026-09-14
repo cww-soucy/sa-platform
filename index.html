@@ -3148,10 +3148,15 @@ document.addEventListener('DOMContentLoaded', function(){
   setTimeout(initSupabase, 500);
 
   // ── Badge de version + accès restauration (toujours visible) ──
+  // ➕ CORRECTIF : ce badge affichait le texte figé "build F43" depuis longtemps, sans AUCUN lien avec la
+  // vraie version déployée (CACHE_NAME dans sw.js) — impossible de s'y fier pour savoir si un déploiement
+  // a bien pris effet. Il reflète maintenant APP_BUILD ci-dessous, à mettre à jour à CHAQUE fois que
+  // CACHE_NAME change dans sw.js (même valeur, ex: 'v48').
   try{
+    var APP_BUILD='v49';
     var vb=document.createElement('div');
     vb.id='__buildBadge';
-    vb.textContent='build F43 ⟲';
+    vb.textContent='build '+APP_BUILD+' ⟲';
     vb.title='Version de l\'app — toucher pour restaurer une sauvegarde';
     vb.style.cssText='position:fixed;bottom:4px;right:6px;font:11px/1.4 monospace;color:#fff;background:rgba(27,79,140,.85);padding:3px 8px;border-radius:8px;z-index:99999;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.2)';
     vb.addEventListener('click',function(){
