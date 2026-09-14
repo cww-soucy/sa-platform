@@ -1,10 +1,10 @@
 // SA Platform — Service Worker
-// NOTIFICATIONS DÉSACTIVÉES. Force la mise à jour du cache (v48 — corrige un vrai bug de mise en cache :
-// sw.js et index.html n'étaient jamais explicitement marqués "no-cache", donc Cloudflare/le navigateur
-// pouvait continuer à servir une ancienne version indéfiniment malgré un nouveau déploiement. Ajout d'un
-// fichier _headers + updateViaCache:'none' à l'enregistrement du service worker pour empêcher ça à l'avenir).
+// NOTIFICATIONS DÉSACTIVÉES. Force la mise à jour du cache (v49 — corrige le badge de version en bas à
+// droite de l'app : il affichait le texte figé "build F43" depuis longtemps, sans AUCUN lien avec la
+// vraie version déployée — donc impossible de s'y fier pour vérifier un déploiement. Il reflète
+// maintenant la variable APP_BUILD, à garder synchronisée avec ce CACHE_NAME à chaque changement).
 
-var CACHE_NAME = 'sa-platform-v48';
+var CACHE_NAME = 'sa-platform-v49';
 
 // Installation : s'activer tout de suite sans attendre
 self.addEventListener('install', function(event) {
