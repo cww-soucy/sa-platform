@@ -1,7 +1,9 @@
 // SA Platform — Service Worker
-// NOTIFICATIONS DÉSACTIVÉES. Force la mise à jour du cache (v44 — largeur+hauteur adaptatives réellement fonctionnelles, bug de cascade CSS corrigé).
+// NOTIFICATIONS DÉSACTIVÉES. Force la mise à jour du cache (v47 — bouton "Lier les anciennes tâches" dans
+// Planning : relie rétroactivement les tâches planning existantes à un créneau/WO existant quand la
+// correspondance date+site+technicien est non ambiguë).
 
-var CACHE_NAME = 'sa-platform-v44';
+var CACHE_NAME = 'sa-platform-v47';
 
 // Installation : s'activer tout de suite sans attendre
 self.addEventListener('install', function(event) {
