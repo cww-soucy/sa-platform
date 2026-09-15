@@ -1,10 +1,16 @@
 // SA Platform — Service Worker
-// NOTIFICATIONS DÉSACTIVÉES. Force la mise à jour du cache (v49 — corrige le badge de version en bas à
-// droite de l'app : il affichait le texte figé "build F43" depuis longtemps, sans AUCUN lien avec la
-// vraie version déployée — donc impossible de s'y fier pour vérifier un déploiement. Il reflète
-// maintenant la variable APP_BUILD, à garder synchronisée avec ce CACHE_NAME à chaque changement).
+// v50 — Le module Planning n'affichait nulle part les tâches "libres" (non liées à un créneau/WO) dans
+// le Plan de Match des employés : renderPlanMatch() (vue employé), renderPmmAll() (vue superviseur
+// "Tout le monde") et les impressions (pmmBuildPrintHTML/printTeamDay/printOneEmployeeDay) ne lisaient
+// jamais planning_tasks. Résultat : TOUTES les anciennes tâches Planning de Charles, jamais liées à un
+// créneau/WO, restaient invisibles dans le Plan de Match. Elles s'affichent maintenant automatiquement,
+// exactement comme les WO et créneaux le font déjà (section "🗓 Tâches planning").
+// (v49 — corrige le badge de version en bas à droite de l'app : il affichait le texte figé "build F43"
+// depuis longtemps, sans AUCUN lien avec la vraie version déployée — donc impossible de s'y fier pour
+// vérifier un déploiement. Il reflète maintenant la variable APP_BUILD, à garder synchronisée avec ce
+// CACHE_NAME à chaque changement).
 
-var CACHE_NAME = 'sa-platform-v49';
+var CACHE_NAME = 'sa-platform-v50';
 
 // Installation : s'activer tout de suite sans attendre
 self.addEventListener('install', function(event) {

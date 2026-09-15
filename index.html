@@ -3153,7 +3153,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // a bien pris effet. Il reflète maintenant APP_BUILD ci-dessous, à mettre à jour à CHAQUE fois que
   // CACHE_NAME change dans sw.js (même valeur, ex: 'v48').
   try{
-    var APP_BUILD='v49';
+    var APP_BUILD='v50';
     var vb=document.createElement('div');
     vb.id='__buildBadge';
     vb.textContent='build '+APP_BUILD+' ⟲';
@@ -4265,6 +4265,13 @@ function pmmTargetUid(){
   return currentUser?currentUser.id:null;
 }
 
+// Tâches planning NON liées à un créneau/WO (donc pas déjà représentées par les sections
+// Work Orders/Créneaux ci-dessus) assignées à un employé pour un jour donné.
+function pmmPlanningNonLiees(day,uidP){
+  return getPlanning().filter(function(t){
+    return t.emp===uidP&&t.statut!=='annule'&&!t.planId&&!t.woId&&t.dateDebut<=day&&day<=t.dateFin;
+  });
+}
 // Imprime la journée de TOUTE l'équipe : une page par employé (WO + créneaux + Plan de Match), en lisant les préassignations
 function printTeamDay(day){
   var pms=getPlanMatches().filter(function(p){return p.date===day;});
@@ -4272,6 +4279,7 @@ function printTeamDay(day){
   getWOs().forEach(function(w){if(w.date===day)woAssignees(w).forEach(function(i){ids[i]=1;});});
   getPlan().forEach(function(p){if(p.date===day)planAssignees(p).forEach(function(i){ids[i]=1;});});
   pms.forEach(function(p){pmAssignees(p).forEach(function(i){ids[i]=1;});});
+  getPlanning().forEach(function(t){if(t.emp&&t.statut!=='annule'&&!t.planId&&!t.woId&&t.dateDebut<=day&&day<=t.dateFin)ids[t.emp]=1;});
   var list=Object.keys(ids).sort(function(a,b){return (empName(a)||'').localeCompare(empName(b)||'');});
   if(list.length===0){toast('Rien à imprimer pour ce jour');return;}
   var h='';
@@ -4279,8 +4287,9 @@ function printTeamDay(day){
     var plan=pms.find(function(p){return pmAssignees(p).indexOf(uidP)>=0;});
     var wos=getWOs().filter(function(w){return w.date===day&&woAssignees(w).indexOf(uidP)>=0;});
     var slots=getPlan().filter(function(p){return p.date===day&&planAssignees(p).indexOf(uidP)>=0;});
+    var planningT=pmmPlanningNonLiees(day,uidP);
     // ➕ Plus de saut de page forcé par employé (ça gaspillait du papier) — flux naturel, coupure seulement si le contenu déborde
-    h+='<div class="pmm-print-emp-block">'+pmmBuildPrintHTML(plan,wos,slots,uidP,day)+'</div>';
+    h+='<div class="pmm-print-emp-block">'+pmmBuildPrintHTML(plan,wos,slots,uidP,day,planningT)+'</div>';
   });
   document.getElementById('pmmPrintArea').innerHTML=h;
   window.print();
@@ -4290,13 +4299,15 @@ function printOneEmployeeDay(day,uidP){
   var plan=getPlanMatches().find(function(p){return p.date===day&&pmAssignees(p).indexOf(uidP)>=0;});
   var wos=getWOs().filter(function(w){return w.date===day&&woAssignees(w).indexOf(uidP)>=0;});
   var slots=getPlan().filter(function(p){return p.date===day&&planAssignees(p).indexOf(uidP)>=0;});
-  if(!plan&&!wos.length&&!slots.length){toast('Rien à imprimer pour cet employé ce jour');return;}
-  document.getElementById('pmmPrintArea').innerHTML=pmmBuildPrintHTML(plan,wos,slots,uidP,day);
+  var planningT=pmmPlanningNonLiees(day,uidP);
+  if(!plan&&!wos.length&&!slots.length&&!planningT.length){toast('Rien à imprimer pour cet employé ce jour');return;}
+  document.getElementById('pmmPrintArea').innerHTML=pmmBuildPrintHTML(plan,wos,slots,uidP,day,planningT);
   window.print();
 }
 
 // Construit un document propre (texte figé, pas d'inputs) pour l'impression
-function pmmBuildPrintHTML(plan,wosToday,slotsToday,uidT,dayFallback){
+function pmmBuildPrintHTML(plan,wosToday,slotsToday,uidT,dayFallback,planningToday){
+  planningToday=planningToday||[];
   wosToday=wosToday||[];slotsToday=slotsToday||[];
   // ➕ Repli fiable de la date : plan → 1er WO → 1er créneau → jour demandé — ne reste jamais vide
   var dateShown=(plan&&plan.date)||(wosToday[0]&&wosToday[0].date)||(slotsToday[0]&&slotsToday[0].date)||dayFallback||'';
@@ -4331,6 +4342,16 @@ function pmmBuildPrintHTML(plan,wosToday,slotsToday,uidT,dayFallback){
       var travail=slot.descr||(wo?('WO: '+(wo.descr||wo.desc||'')):'')||slot.notes||'';
       h+='<tr><td class="ctr">'+esc(slot.heure||'—')+'</td><td><b>'+esc(cli)+'</b>'+(addr?'<br><span class="addr" style="color:#6B8CAE;font-size:10.5px">'+esc(addr)+'</span>':'')+'</td>'
         +'<td>'+(typ?esc(typ):'—')+'</td><td>'+esc(travail||'—')+(slot.notes&&slot.descr?'<br><span style="color:#6B8CAE;font-style:italic">'+esc(slot.notes)+'</span>':'')+'</td></tr>';
+    });
+    h+='</tbody></table></div>';
+  }
+
+  if(planningToday.length>0){
+    h+='<div class="pmm-print-sec"><div class="pmm-print-sec-hd c-vert">🗓 Tâches planning ('+planningToday.length+')</div>';
+    h+='<table class="pmm-print-table"><thead><tr><th style="width:55px">Heure</th><th>Tâche / Site</th><th>Description</th></tr></thead><tbody>';
+    planningToday.forEach(function(t){
+      h+='<tr><td class="ctr">'+esc(t.heureDebut||'—')+'</td><td><b>'+esc(t.titre)+'</b>'+(t.siteNom?'<br><span class="addr" style="color:#6B8CAE;font-size:10.5px">'+esc(t.siteNom)+'</span>':'')+'</td>'
+        +'<td>'+esc(t.descr||'—')+'</td></tr>';
     });
     h+='</tbody></table></div>';
   }
@@ -5027,6 +5048,8 @@ function renderPmmAll(content){
   var slJour=plan.filter(function(x){return x.date===day;});
   var livJour=livs.filter(function(l){return l.date===day;});
   var recJour=recurrencesPourDate(day);
+  // Tâches planning non liées à un créneau/WO (celles-là sont déjà comptées via wosJour/slJour)
+  var plJour=getPlanning().filter(function(t){return t.emp&&t.statut!=='annule'&&!t.planId&&!t.woId&&t.dateDebut<=day&&day<=t.dateFin;});
   var nonAssignes=wosJour.filter(function(w){return woAssignees(w).length===0;}).length
                  +slJour.filter(function(x){return planAssignees(x).length===0;}).length;
   var synth=document.createElement('div');
@@ -5037,6 +5060,7 @@ function renderPmmAll(content){
   synth.innerHTML=tuile(techs.length,'Équipe','var(--blue)')
     +tuile(wosJour.length,'Work orders','var(--orange)')
     +tuile(slJour.length,'Créneaux','var(--blue-md)')
+    +tuile(plJour.length,'Planning','var(--dk)')
     +tuile(livJour.length,'Livraisons','var(--purple)')
     +tuile(recJour.length,'Récurrences','var(--teal)')
     +tuile(nonAssignes,'Non assigné',nonAssignes>0?'var(--red)':'var(--green)');
@@ -5065,7 +5089,8 @@ function renderPmmAll(content){
     var pm=pms.find(function(x){return x.date===day&&pmAssignees(x).indexOf(c.id)>=0;});
     var lv=livJour.filter(function(l){return (l.technicien||'').toLowerCase().indexOf((c.prenom||'').toLowerCase())>=0;});
     var rc=recJour.filter(function(r){return (r.emps||[]).indexOf(c.id)>=0;});
-    var total=w.length+sl.length+lv.length+rc.length;
+    var pl=plJour.filter(function(x){return x.emp===c.id;});
+    var total=w.length+sl.length+lv.length+rc.length+pl.length;
 
     // Heures pointées du jour (lecture seule, depuis la feuille de temps)
     var heures=0, punchs=0, actif=false;
@@ -5106,6 +5131,7 @@ function renderPmmAll(content){
       w.forEach(function(x){renderWOAsSlot(sec,x);});
       rc.forEach(function(r){renderRecurrenceLigne(sec,r,day);});
       lv.forEach(function(l){renderLivraisonLigne(sec,l);});
+      pl.forEach(function(t){renderPlanningTaskLigne(sec,t);});
     }
     content.appendChild(sec);
   });
@@ -5159,6 +5185,17 @@ function renderLivraisonLigne(container,l){
     +'<div class="pm-slot-meta">'+esc(l.adresse||'')+' · '+nb+' item'+(nb>1?'s':'')
     +(l.status==='livre'?' · ✅ livré':' · 📝 à livrer')+'</div>';
   div.addEventListener('click',function(){openLivraisonModal(l.id);});
+  container.appendChild(div);
+}
+// Ligne compacte pour une tâche Planning non liée à un créneau/WO (visible désormais dans Plan de Match)
+function renderPlanningTaskLigne(container,t){
+  var div=document.createElement('div');
+  div.className='pm-slot assigned';
+  div.style.borderLeftColor='var(--dk)';
+  div.innerHTML='<div class="pm-slot-top"><span class="pm-slot-name">🗓 '+esc(t.titre||'Tâche')+(t.siteNom?' — '+esc(t.siteNom):'')+'</span>'
+    +'<span class="pm-slot-time">'+esc(t.heureDebut||'')+'</span></div>'
+    +(t.descr?'<div class="pm-slot-meta">'+esc(t.descr)+'</div>':'');
+  div.addEventListener('click',function(){switchMod('planning');setTimeout(function(){openPlanningModal(t.id);},50);});
   container.appendChild(div);
 }
 // Ligne compacte pour une tâche récurrente
@@ -5224,15 +5261,19 @@ function renderPlanMatch(){
   // ➕ Work Orders assignés à cet employé pour ce jour, intégrés directement dans le Plan de Match
   var wosToday=getWOs().filter(function(w){return w.date===pmmDay&&woAssignees(w).indexOf(uidT)>=0;});
   var slotsToday=getPlan().filter(function(p){return p.date===pmmDay&&planAssignees(p).indexOf(uidT)>=0;});
+  // ➕ Tâches planning (module Planning) assignées à cet employé pour ce jour, PAS déjà liées à un
+  // créneau/WO (celles-là sont déjà représentées par les sections ci-dessus) — affichées automatiquement,
+  // exactement comme les WO et créneaux le sont déjà.
+  var planningToday=pmmPlanningNonLiees(pmmDay,uidT);
 
-  // Barre d'actions — imprimer fonctionne même s'il n'y a pas encore de checklist Plan de Match (WO/créneaux seuls)
-  if(plan||wosToday.length>0||slotsToday.length>0){
+  // Barre d'actions — imprimer fonctionne même s'il n'y a pas encore de checklist Plan de Match (WO/créneaux/planning seuls)
+  if(plan||wosToday.length>0||slotsToday.length>0||planningToday.length>0){
     var actions=document.createElement('div');
     actions.className='pmm-actions';
     var printBtn=document.createElement('button');
     printBtn.className='btn btn-ghost';printBtn.style.flex='1';printBtn.innerHTML='🖨️ Imprimer la journée';
     printBtn.addEventListener('click',function(){
-      document.getElementById('pmmPrintArea').innerHTML=pmmBuildPrintHTML(plan,wosToday,slotsToday,uidT,pmmDay);
+      document.getElementById('pmmPrintArea').innerHTML=pmmBuildPrintHTML(plan,wosToday,slotsToday,uidT,pmmDay,planningToday);
       window.print();
     });
     actions.appendChild(printBtn);
@@ -5277,6 +5318,29 @@ function renderPlanMatch(){
     slSec.appendChild(slHd);
     slotsToday.forEach(function(slot){ renderPMSlot(slSec, slot); });
     content.appendChild(slSec);
+  }
+
+  // ➕ Tâches planning (module Planning) assignées à cet employé — affichées automatiquement, comme
+  // les WO et créneaux ci-dessus. Un clic ouvre directement la tâche dans le module Planning.
+  if(planningToday.length>0){
+    var plSec=document.createElement('div');
+    plSec.className='pmm-section';
+    var plHd=document.createElement('div');
+    plHd.className='pmm-sec-hd c-vert';
+    plHd.textContent='🗓 Tâches planning ('+planningToday.length+')';
+    plSec.appendChild(plHd);
+    planningToday.forEach(function(t){
+      var row=document.createElement('div');
+      row.className='pmm-task';row.style.cursor='pointer';
+      row.innerHTML='<div class="pmm-t-main">'+
+        '<span class="pmm-t-label">'+esc(t.titre)+(t.siteNom?' — '+esc(t.siteNom):'')+'</span>'+
+        (t.heureDebut?'<span class="pmm-t-est">'+esc(t.heureDebut)+'</span>':'')+
+        (t.descr?'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+esc(t.descr)+'</div>':'')+
+        '</div><div style="color:var(--muted);align-self:center">›</div>';
+      row.addEventListener('click',function(){switchMod('planning');setTimeout(function(){openPlanningModal(t.id);},50);});
+      plSec.appendChild(row);
+    });
+    content.appendChild(plSec);
   }
 
   // ➕ TÂCHES RÉCURRENTES du jour pour cet employé — cochables par lui-même
