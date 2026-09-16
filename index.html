@@ -2793,25 +2793,44 @@ function sbPushFT(uid, week, payload, totalH){
 }
 
 // REALTIME : écoute les changements des autres appareils
+// ➕ PERFORMANCE (lenteur signalée sur cellulaire, toute l'équipe, à l'ouverture ET dans les actions) :
+// un évènement realtime transporte déjà la ligne modifiée (payload.new) — avant, on ignorait cette donnée
+// et on relançait un syncPull() COMPLET (select('*') de TOUTE la table, photos incluses) à chaque
+// changement. Résultat : le punch/WO/tâche d'UN SEUL employé déclenchait un re-téléchargement complet
+// de la table sur TOUS les téléphones connectés en même temps, en boucle toute la journée — très lourd
+// en cellulaire. Maintenant : on fusionne seulement la ligne concernée en local (même logique de fusion
+// par id/horodatage que le pull complet, juste appliquée à une seule ligne, donc AUCUN risque de perte de
+// donnée). Seules les suppressions (rares) repassent par le pull complet existant, inchangé.
+function applyRealtimeRow(localKey, payload){
+  if(!payload || payload.eventType==='DELETE'){
+    syncPull(localKey,function(){ refreshIfCurrentMod(localKey); });
+    return;
+  }
+  var row=payload.new; if(!row)return;
+  mapRowFromDb(localKey,row);
+  var existing=lsGet(localKey)||[];
+  lsSet(localKey, mergeById(existing,[row]));
+  refreshIfCurrentMod(localKey);
+}
+function refreshIfCurrentMod(localKey){
+  if((localKey==='workorders'&&curMod==='wo')||
+     (localKey==='sites'&&curMod==='sites')||
+     (localKey==='plan'&&curMod==='plan')||
+     (localKey==='planmatch'&&curMod==='planmatch')||
+     (localKey==='flotte'&&curMod==='flotte')||
+     (localKey==='inventaire'&&curMod==='inventaire')||
+     (localKey==='sortie'&&curMod==='sortie')||
+     (localKey==='livraison'&&curMod==='livraison')||
+     (localKey==='comptes'&&curMod==='comptes')){
+    refreshCurrentMod();
+  }
+}
 function subscribeRealtime(){
   if(!sb)return;
   Object.keys(SB_TABLES).forEach(function(localKey){
     var table=SB_TABLES[localKey];
     sb.channel('rt_'+table).on('postgres_changes',{event:'*',schema:'public',table:table},function(payload){
-      // Re-pull la table et rafraîchir le module actif si concerné
-      syncPull(localKey,function(){
-        if((localKey==='workorders'&&curMod==='wo')||
-           (localKey==='sites'&&curMod==='sites')||
-           (localKey==='plan'&&curMod==='plan')||
-           (localKey==='planmatch'&&curMod==='planmatch')||
-           (localKey==='flotte'&&curMod==='flotte')||
-           (localKey==='inventaire'&&curMod==='inventaire')||
-           (localKey==='sortie'&&curMod==='sortie')||
-           (localKey==='livraison'&&curMod==='livraison')||
-           (localKey==='comptes'&&curMod==='comptes')){
-          refreshCurrentMod();
-        }
-      });
+      applyRealtimeRow(localKey,payload);
     }).subscribe();
   });
 }
@@ -3153,7 +3172,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // a bien pris effet. Il reflète maintenant APP_BUILD ci-dessous, à mettre à jour à CHAQUE fois que
   // CACHE_NAME change dans sw.js (même valeur, ex: 'v48').
   try{
-    var APP_BUILD='v50';
+    var APP_BUILD='v52';
     var vb=document.createElement('div');
     vb.id='__buildBadge';
     vb.textContent='build '+APP_BUILD+' ⟲';
@@ -6995,7 +7014,7 @@ function recentDetails(){
   }catch(e){}
   return out.slice(0,20);
 }
-// Source unique : jobs assignés à l'employé connecté pour AUJOURD'HUI (WO + Plan + Plan de Match)
+// Source unique : jobs assignés à l'employé connecté pour AUJOURD'HUI (WO + Plan + Planning + Plan de Match)
 // Utilisé par le widget Accueil ET par le sélecteur rapide dans Temps (aucune donnée d'heures/cumul ici)
 function getTodayAssignedJobs(uid){
   uid=uid||currentUser.id;
@@ -7009,6 +7028,12 @@ function getTodayAssignedJobs(uid){
     var wo=getWOs().find(function(x){return x.id===p.woId;});
     items.push({mod:'plan',id:p.id,icon:'📅',label:wo?wo.client:'Intervention planifiée',sub:'Plan'+(p.heure?(' · '+p.heure):''),
       lieu:wo?(wo.site||wo.client):'',odt:wo?wo.id.slice(0,6).toUpperCase():'',detail:p.notes||'',addr:wo&&woSiteAddr?woSiteAddr(wo):''});
+  });
+  // ➕ Tâches Planning (module Centre d'opérations) assignées aujourd'hui, pas déjà liées à un WO/Plan
+  // (celles-là sont déjà représentées ci-dessus) — même logique d'exclusion que dans Plan de Match.
+  getPlanning().filter(function(t){return t.emp===uid&&t.statut!=='annule'&&!t.planId&&!t.woId&&t.dateDebut<=today&&today<=t.dateFin;}).forEach(function(t){
+    items.push({mod:'planning',id:t.id,icon:'🗓',label:t.titre+(t.siteNom?' — '+t.siteNom:''),sub:'Planning'+(t.heureDebut?(' · '+t.heureDebut):''),
+      lieu:t.siteNom||t.titre,odt:'',detail:t.descr||'',addr:''});
   });
   var pm=getPlanMatches().find(function(p){return p.date===today&&pmAssignees(p).indexOf(uid)>=0;});
   if(pm){
@@ -7032,7 +7057,7 @@ function accTodayJobsHTML(){
   if(items.length===0)return '';
   var h='<div class="acc-seclbl">📌 Assigné aujourd\'hui</div><div style="display:flex;flex-direction:column;gap:8px;margin-bottom:6px">';
   items.forEach(function(it,i){
-    var canPunch=(it.mod==='wo'||it.mod==='plan'); // le Plan de Match reste une navigation (checklist)
+    var canPunch=(it.mod==='wo'||it.mod==='plan'||it.mod==='planning'); // le Plan de Match reste une navigation (checklist)
     h+='<div style="display:flex;align-items:stretch;gap:8px">'+
       '<button class="acc-job-item" data-mod="'+it.mod+'" style="flex:1;display:flex;align-items:center;gap:10px;background:#fff;border:none;border-radius:12px;padding:12px 14px;text-align:left;cursor:pointer;box-shadow:0 1px 4px rgba(13,59,110,.08);min-width:0">'+
         '<div style="font-size:20px;flex-shrink:0">'+it.icon+'</div>'+
