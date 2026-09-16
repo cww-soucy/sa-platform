@@ -1,8 +1,20 @@
+# Cloudflare Pages — règles de cache.
+# sw.js et index.html doivent TOUJOURS être revérifiés sur le réseau : ce sont eux qui décident si une
+# nouvelle version de l'app est disponible. Sans ça, Cloudflare (ou le navigateur) peut continuer à servir
+# une très vieille copie en cache indéfiniment, même après un nouveau déploiement (c'est ce qui causait le
+# blocage sur d'anciennes versions malgré des pushs GitHub réussis).
+#
+# ➕ CORRIGÉ : "no-store" (en plus de "no-cache") interdisait TOUTE mise en cache, même conditionnelle —
+# donc le fichier complet (index.html, ~700 Ko) devait être re-téléchargé EN ENTIER à chaque ouverture de
+# l'app, même quand rien n'avait changé. Sur cellulaire, ça se traduisait par une lenteur marquée à
+# l'ouverture. "no-cache" seul suffit à garantir la fraîcheur : le navigateur revalide TOUJOURS auprès du
+# serveur avant d'utiliser sa copie, mais si rien n'a changé, Cloudflare répond 304 (quasi instantané, sans
+# retélécharger le fichier) au lieu de renvoyer les ~700 Ko à chaque fois.
 /sw.js
-  Cache-Control: no-cache, no-store, must-revalidate
+  Cache-Control: no-cache, must-revalidate
 
 /index.html
-  Cache-Control: no-cache, no-store, must-revalidate
+  Cache-Control: no-cache, must-revalidate
 
 /
-  Cache-Control: no-cache, no-store, must-revalidate
+  Cache-Control: no-cache, must-revalidate
