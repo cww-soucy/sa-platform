@@ -1,5 +1,24 @@
 // SA Platform — Service Worker
-// v53 — Deux demandes : (1) Gantt Jobs : bouton "🖨️ Imprimer / Envoyer" (génère une liste imprimable
+// v54 — Quatre demandes groupées en un seul dépôt : (1) Planning Équipe : bouton "🖨️ Imprimer" — liste
+// propre par technicien/site pour la période affichée, même circuit d'impression que le reste de l'app ;
+// le format d'impression de TOUTE l'app passe de Letter à A4 (demande explicite). (2) Comptes : un compte
+// peut maintenant être marqué "Inactif" (login bloqué côté serveur ET client, exclu des statistiques, des
+// listes d'attribution, de Planning/Plan de Match/Suivi) et/ou "Saisonnier" (étiquette informative) —
+// aucune donnée historique supprimée, juste masquée du fonctionnement quotidien tant qu'inactif. Colonnes
+// `statut`/`saisonnier` ajoutées à la table comptes, fonction serveur verifier_connexion mise à jour pour
+// bloquer aussi les comptes désactivés (sécurité : jamais seulement côté client). (3) Navigation : Sortie
+// Inventaire + Bon de Livraison regroupés sous un seul onglet "Logistique" avec sous-onglets (même principe
+// déjà utilisé pour Plan de Match/WO/Créneaux) — moins d'onglets dans la barre de nav. (4) Temps : correctif
+// du dépunch automatique de 20h00 — il ne vérifiait QUE le jour actuellement affiché à l'écran, et seulement
+// pendant qu'une session avec l'app ouverte tournait exactement à ce moment-là ; un employé qui fermait
+// l'app avant 20h (cas normal) restait donc "punché" indéfiniment sur ce jour, invisible pour toujours une
+// fois le calendrier passé au lendemain. Corrigé : la vérification balaie maintenant tous les jours de la
+// semaine chargée et ferme tout jour déjà passé encore actif, en plus du jour courant à 20h — vérifiée
+// aussi une fois immédiatement à la connexion, pas seulement toutes les 60s. Suivi affiche désormais aussi
+// un avertissement si un punch reste actif sur un AUTRE jour que celui affiché, avec accès direct à la
+// correction. Vérifié par comparaison automatique de fonctions avec la v53 : seules les fonctions
+// listées ci-dessus ont changé, aucune autre (dont aucune fonction de calcul Temps/Suivi/Cumul).
+// (v53 — Deux demandes : (1) Gantt Jobs : bouton "🖨️ Imprimer / Envoyer" (génère une liste imprimable
 // propre, réutilise le circuit d'impression déjà en place ailleurs dans l'app — sur iPhone, la boîte de
 // dialogue d'impression permet d'enregistrer/partager en PDF directement) + les barres du Gantt sont
 // maintenant cliquables et ouvrent directement le WO/créneau/tâche planning correspondant. (2) Les tâches
@@ -39,7 +58,7 @@
 // vérifier un déploiement. Il reflète maintenant la variable APP_BUILD, à garder synchronisée avec ce
 // CACHE_NAME à chaque changement).
 
-var CACHE_NAME = 'sa-platform-v53';
+var CACHE_NAME = 'sa-platform-v54';
 
 // Installation : s'activer tout de suite sans attendre
 self.addEventListener('install', function(event) {

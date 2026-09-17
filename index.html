@@ -408,7 +408,8 @@ input,select,textarea{font-size:16px!important}
   #pmmPrintArea{display:block!important;position:absolute;top:0;left:0;width:100%;padding:10px}
   body{background:#fff!important}
   /* ➕ Portrait au lieu de paysage : beaucoup plus de hauteur utile pour les listes de tâches → nettement moins de pages */
-  @page{size:letter portrait;margin:10mm}
+  /* ➕ A4 (au lieu de letter) sur demande explicite, pour un rendu optimal à l'impression — s'applique à toutes les impressions de l'app (Planning, Gantt, Plan de Match, WO, etc.) pour un format cohérent partout */
+  @page{size:A4 portrait;margin:10mm}
   .pmm-print-emp-block{page-break-inside:avoid}
 }
 
@@ -964,6 +965,7 @@ input,select,textarea{font-size:16px!important}
         <button id="plgTodayBtn" class="btn btn-ghost btn-sm">Aujourd'hui</button>
         <button id="plgNextWeek" class="btn btn-ghost btn-sm" title="Semaine suivante">▶</button>
         <span id="plgRangeLabel" style="margin-left:auto;font-size:12px;font-weight:700;color:var(--dk)"></span>
+        <button id="plgPrintBtn" class="btn btn-primary btn-sm" onclick="printPlanning()" title="Imprimer ou envoyer en PDF le planning affiché">🖨️ Imprimer</button>
       </div>
       <div id="plgVueBar" style="background:#fff;border-bottom:1px solid var(--line);padding:8px 14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.3px">Regrouper par</span>
@@ -1093,6 +1095,10 @@ input,select,textarea{font-size:16px!important}
 
   <!-- ── MODULE : SORTIE D'INVENTAIRE (entrepôt) ── -->
   <div id="modSortie" class="module" style="display:none">
+    <div style="background:#fff;border-bottom:1px solid var(--line);padding:8px 14px;display:flex;gap:6px">
+      <button class="pmm-subtab on" data-mod="sortie">📤 Sortie Inventaire</button>
+      <button class="pmm-subtab" data-mod="livraison">🚚 Bon de Livraison</button>
+    </div>
     <div class="search-bar">
       <span class="search-icon">🔍</span>
       <input type="text" id="sortieSearch" placeholder="Rechercher un bon, un nom, un projet…"/>
@@ -1102,6 +1108,10 @@ input,select,textarea{font-size:16px!important}
 
   <!-- ── MODULE : BONS DE LIVRAISON ── -->
   <div id="modLivraison" class="module" style="display:none">
+    <div style="background:#fff;border-bottom:1px solid var(--line);padding:8px 14px;display:flex;gap:6px">
+      <button class="pmm-subtab" data-mod="sortie">📤 Sortie Inventaire</button>
+      <button class="pmm-subtab on" data-mod="livraison">🚚 Bon de Livraison</button>
+    </div>
     <div class="search-bar">
       <span class="search-icon">🔍</span>
       <input type="text" id="livraisonSearch" placeholder="Rechercher un bon, un client…"/>
@@ -1728,6 +1738,20 @@ input,select,textarea{font-size:16px!important}
         <option value="admin">🔑 Administrateur</option>
       </select>
     </div>
+    <div class="m2">
+      <div class="mfield"><label>Statut</label>
+        <select id="cStatut">
+          <option value="actif">🟢 Actif</option>
+          <option value="inactif">⛔ Inactif (désactivé)</option>
+        </select>
+      </div>
+      <div class="mfield"><label>&nbsp;</label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:11px 0;font-size:14px;color:var(--text)">
+          <input type="checkbox" id="cSaisonnier" style="width:18px;height:18px"/> 🍂 Employé saisonnier
+        </label>
+      </div>
+    </div>
+    <div id="cStatutHint" style="font-size:11px;color:var(--muted);margin:-6px 0 4px">Inactif : le compte est exclu des statistiques, des listes d'attribution et du fonctionnement quotidien (le login est aussi bloqué). Rien n'est supprimé — repasse-le à Actif à tout moment.</div>
     <div class="mfield" id="droitsSection">
       <label>Droits d'accès</label>
       <div id="droitsList" style="display:flex;flex-direction:column;gap:10px;margin-top:8px"></div>
@@ -3058,6 +3082,11 @@ function hasDroit(d){
 }
 function canEdit(){return isSup();}
 function empName(id){if(!id)return '';var c=getComptes().find(function(x){return x.id===id;});return c?(c.prenom+' '+c.nom).trim():id;}
+// ➕ Statut de compte (actif/inactif) — un compte sans statut enregistré est considéré actif (rétrocompatible).
+// À utiliser pour toute liste "fonctionnement quotidien" (attribution, plan de match, planning, stats) : un
+// employé désactivé ou saisonnier hors-saison n'y apparaît plus, sans que ses données historiques soient touchées.
+function compteEstActif(c){return !c||c.statut!=='inactif';}
+function getActiveComptes(){return getComptes().filter(compteEstActif);}
 
 // ═══════════════════════════════════════════════════════
 // ASSIGNATION MULTI-EMPLOYÉS (WO + Plan)
@@ -3122,7 +3151,10 @@ function buildEmpChecklist(containerId,selectedIds,excludeAdmin){
   if(!el)return;
   el.innerHTML='';
   selectedIds=selectedIds||[];
-  getComptes().slice().filter(function(c){return !excludeAdmin||c.role!=='admin'||selectedIds.indexOf(c.id)>=0;}).sort(function(a,b){return (a.prenom+a.nom).localeCompare(b.prenom+b.nom);}).forEach(function(c){
+  // ➕ Un compte désactivé/saisonnier hors-saison n'apparaît plus dans les listes d'attribution — sauf s'il
+  // est déjà assigné (ex: tâche existante créée avant la désactivation), pour ne jamais faire disparaître
+  // silencieusement une assignation déjà faite.
+  getComptes().slice().filter(function(c){return (compteEstActif(c)||selectedIds.indexOf(c.id)>=0)&&(!excludeAdmin||c.role!=='admin'||selectedIds.indexOf(c.id)>=0);}).sort(function(a,b){return (a.prenom+a.nom).localeCompare(b.prenom+b.nom);}).forEach(function(c){
     var row=document.createElement('label');
     row.style.cssText='display:flex;align-items:center;gap:8px;padding:7px 2px;font-size:13px;color:var(--text);cursor:pointer;border-bottom:.5px solid var(--line2)';
     var inp=document.createElement('input');
@@ -3189,7 +3221,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // a bien pris effet. Il reflète maintenant APP_BUILD ci-dessous, à mettre à jour à CHAQUE fois que
   // CACHE_NAME change dans sw.js (même valeur, ex: 'v48').
   try{
-    var APP_BUILD='v53';
+    var APP_BUILD='v54';
     var vb=document.createElement('div');
     vb.id='__buildBadge';
     vb.textContent='build '+APP_BUILD+' ⟲';
@@ -3493,8 +3525,7 @@ var NAV_CONFIG=[
   {mod:'sites', icon:'🏗',  lbl:'Sites'},
   {mod:'flotte',icon:'🚗', lbl:'Flotte'},
   {mod:'inventaire',icon:'📦',lbl:'Stock'},
-  {mod:'sortie',icon:'📤',lbl:'Sortie Inv.'},
-  {mod:'livraison',icon:'🚚',lbl:'Bon Livr.'},
+  {mod:'sortie',icon:'🏭',lbl:'Logistique'}, // ➕ regroupe Sortie Inv. + Bon de Livraison (sous-onglets) — un seul item de nav, moins encombré
   {mod:'hivernage',icon:'❄️',lbl:'Hivernage'},
   {mod:'comptes',icon:'👥',lbl:'Comptes'},
   {mod:'stats', icon:'📊', lbl:'Stats'},
@@ -3600,7 +3631,7 @@ function doLogin(){
       // Conserver le compte localement SANS aucun secret
       var comptes=getComptes();
       var idx=comptes.findIndex(function(c){return c.id===compte.id;});
-      var propre={id:compte.id,prenom:compte.prenom,nom:compte.nom,role:compte.role,dept:compte.dept,email:compte.email,tel:compte.tel,droits:compte.droits||undefined};
+      var propre={id:compte.id,prenom:compte.prenom,nom:compte.nom,role:compte.role,dept:compte.dept,email:compte.email,tel:compte.tel,droits:compte.droits||undefined,statut:compte.statut||'actif',saisonnier:!!compte.saisonnier};
       if(idx>=0)comptes[idx]=Object.assign({},comptes[idx],propre,{mdp:undefined});
       else comptes.push(propre);
       lsSet('comptes',comptes);
@@ -3623,6 +3654,7 @@ function ouvrirSession(compte, doitChangerMdp){
   tid=0;
   var stored=loadFT(document.getElementById('weekDate').value);
   if(stored) applyFT(stored);
+  checkEndOfDay(); // ➕ rattrape immédiatement un punch resté actif d'un jour déjà passé (voir commentaire de la fonction)
   buildNavbar();
   switchMod('accueil');
   toast('Bienvenue, '+fullName()+' !');
@@ -3637,6 +3669,7 @@ function doLoginCheck(user,pass){
   var compte=null;
   for(var i=0;i<comptes.length;i++){if(comptes[i].id===user&&comptes[i].mdp===pass){compte=comptes[i];break;}}
   if(!compte){document.getElementById('loginErr').textContent='Identifiant ou mot de passe incorrect';return;}
+  if(!compteEstActif(compte)){document.getElementById('loginErr').textContent='Identifiant ou mot de passe incorrect';return;} // ➕ compte désactivé : même message générique (pas d'info exposée)
   currentUser=compte;
   viewingUid=null;
   document.getElementById('loginErr').textContent='';
@@ -3649,6 +3682,7 @@ function doLoginCheck(user,pass){
   tid=0;
   var stored=loadFT(document.getElementById('weekDate').value);
   if(stored) applyFT(stored);
+  checkEndOfDay(); // ➕ rattrape immédiatement un punch resté actif d'un jour déjà passé (voir commentaire de la fonction)
   // FABs gérés par switchMod()
   buildNavbar();
   switchMod('accueil');
@@ -3682,7 +3716,7 @@ function switchMod(mod){
   document.querySelectorAll('.module').forEach(function(m){m.style.display='none';});
   if(modMap[mod]){var el=document.getElementById(modMap[mod]);if(el)el.style.display='block';}
   document.querySelectorAll('.nav-btn').forEach(function(b){
-    var on=(b.dataset.mod===mod)||(b.dataset.mod==='planmatch'&&(mod==='wo'||mod==='plan'));
+    var on=(b.dataset.mod===mod)||(b.dataset.mod==='planmatch'&&(mod==='wo'||mod==='plan'))||(b.dataset.mod==='sortie'&&mod==='livraison');
     b.classList.toggle('on',on);
     if(on&&b.scrollIntoView)b.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'});
   });
@@ -5066,7 +5100,7 @@ function sauverCorrectionPunch(){
 function renderPmmAll(content){
   var day=pmmDay;
   var wos=getWOs(), plan=getPlan(), pms=getPlanMatches(), livs=getLivraisons();
-  var techs=getComptes().filter(function(c){return c.role!=='admin';});
+  var techs=getActiveComptes().filter(function(c){return c.role!=='admin';});
 
   // ── BARRE D'ACTIONS — tout est créable depuis ici ──
   var bar=document.createElement('div');
@@ -5715,6 +5749,81 @@ function plgVirtualEntries(monday,lastDay,mode,passes){
   return out;
 }
 
+// Construit une version imprimable (liste propre par technicien/site, sans grille) du planning actuellement
+// affiché — même période, même regroupement (tech/site) et même filtre que ce qui est à l'écran. Réutilise
+// le même circuit d'impression que le reste de l'app (#pmmPrintArea + window.print()).
+function plgBuildPrintHTML(){
+  var sup=plgIsSup();
+  var mode=sup?((document.getElementById('plgVueMode')||{}).value||'tech'):'tech';
+  var monday=plgMondayOf(plgAnchor);
+  var totalDays=plgNbSemaines*7;
+  var lastDay=plgAddDays(monday,totalDays-1);
+  var filtSel=document.getElementById('plgFilterSel');
+  var filtVal=(sup&&filtSel)?filtSel.value:(sup?'':(currentUser?currentUser.id:''));
+
+  function plgPassesPrint(empId,siteIdVal){
+    if(!sup&&empId!==filtVal)return false;
+    if(sup&&mode==='tech'&&filtVal&&empId!==filtVal)return false;
+    if(sup&&mode==='site'&&filtVal&&siteIdVal!==filtVal)return false;
+    return true;
+  }
+  var tasks=getPlanning().filter(function(t){
+    if(t.dateFin<monday||t.dateDebut>lastDay)return false;
+    if(t.statut==='annule')return false;
+    var a=planningAssignees(t);
+    if(!sup&&a.indexOf(filtVal)<0)return false;
+    if(sup&&mode==='tech'&&filtVal&&a.indexOf(filtVal)<0)return false;
+    if(sup&&mode==='site'&&filtVal&&t.siteId!==filtVal)return false;
+    return true;
+  });
+  var virtual=plgVirtualEntries(monday,lastDay,mode,plgPassesPrint);
+
+  var groups={};var groupOrder=[];
+  function ensureGroup(key,label){ if(!(key in groups)){groups[key]={label:label,rows:[]};groupOrder.push(key);} return groups[key]; }
+  function addRow(key,label,t,srcLbl){
+    ensureGroup(key,label).rows.push({date:t.dateDebut,heure:t.heureDebut||'',titre:t.titre,site:t.siteNom||'',
+      statut:srcLbl||(PLANNING_STATUTS[t.statut]?PLANNING_STATUTS[t.statut].lbl:(t.statut||''))});
+  }
+  tasks.forEach(function(t){
+    if(mode==='tech'){
+      var a=planningAssignees(t); if(!a.length)a=[''];
+      a.forEach(function(eid){ if(!plgPassesPrint(eid,''))return; addRow(eid||'_none', eid?empName(eid):'(non assigné)', t); });
+    }else{
+      addRow(t.siteId||'_none', t.siteNom||'(sans site)', t);
+    }
+  });
+  virtual.forEach(function(t){
+    var srcLbl={plan:'Créneau',wo:'Work Order',pmm:'Plan de Match'}[t._src]||'';
+    if(mode==='tech'){ addRow(t.emp||'_none', t.empNom||empName(t.emp)||'(non assigné)', t, srcLbl); }
+    else{ addRow(t.siteId||'_none', t.siteNom||'(sans site)', t, srcLbl); }
+  });
+  groupOrder.sort(function(a,b){return (groups[a].label||'').localeCompare(groups[b].label||'');});
+
+  var h='<div class="pmm-print-doc">';
+  h+='<div class="pmm-print-hd"><h1>🗓 PLANNING ÉQUIPE'+(mode==='site'?' — PAR SITE':' — PAR TECHNICIEN')+'</h1>';
+  h+='<div class="pmm-print-meta"><span><b>Période :</b> '+fmtDate(monday)+' → '+fmtDate(lastDay)+'</span></div></div>';
+  if(!groupOrder.length){
+    h+='<div style="padding:20px;color:#6B8CAE">Rien de planifié sur cette période.</div>';
+  }else{
+    groupOrder.forEach(function(key){
+      var g=groups[key];
+      g.rows.sort(function(a,b){return (a.date+a.heure).localeCompare(b.date+b.heure);});
+      h+='<div class="pmm-print-sec"><div class="pmm-print-sec-hd c-bleu">'+esc(g.label)+'</div>';
+      h+='<table class="pmm-print-table"><thead><tr><th style="width:70px">Date</th><th style="width:45px">Heure</th><th>Tâche</th><th>Site</th><th style="width:85px">Statut</th></tr></thead><tbody>';
+      g.rows.forEach(function(r){
+        h+='<tr><td>'+esc(fmtDate(r.date))+'</td><td class="ctr">'+esc(r.heure||'—')+'</td><td>'+esc(r.titre)+'</td><td>'+esc(r.site||'—')+'</td><td>'+esc(r.statut||'—')+'</td></tr>';
+      });
+      h+='</tbody></table></div>';
+    });
+  }
+  h+='</div>';
+  return h;
+}
+function printPlanning(){
+  document.getElementById('pmmPrintArea').innerHTML=plgBuildPrintHTML();
+  window.print();
+}
+
 function renderPlanning(){
   initPlanningUI();
   var sup=plgIsSup();
@@ -5734,7 +5843,7 @@ function renderPlanning(){
     var opts='<option value="">👥 Toute l\'équipe</option>';
     if(mode==='tech'){
       if(filtLblEl)filtLblEl.textContent='Technicien';
-      getComptes().forEach(function(c){opts+='<option value="'+esc(c.id)+'">'+esc((c.prenom+' '+c.nom).trim())+'</option>';});
+      getActiveComptes().forEach(function(c){opts+='<option value="'+esc(c.id)+'">'+esc((c.prenom+' '+c.nom).trim())+'</option>';});
     }else{
       if(filtLblEl)filtLblEl.textContent='Site';
       getSites().forEach(function(s){opts+='<option value="'+esc(s.id)+'">'+esc(s.nom)+'</option>';});
@@ -5795,7 +5904,7 @@ function renderPlanning(){
     }
   });
   if(sup&&mode==='tech'&&!filtVal){
-    getComptes().forEach(function(c){ensureGroup(c.id,(c.prenom+' '+c.nom).trim(),plgTechColor(c.id));});
+    getActiveComptes().forEach(function(c){ensureGroup(c.id,(c.prenom+' '+c.nom).trim(),plgTechColor(c.id));});
   }else if(!sup&&currentUser&&!groups[currentUser.id]){
     ensureGroup(currentUser.id,fullName(),plgTechColor(currentUser.id));
   }
@@ -6403,7 +6512,7 @@ function renderGlobalDash(){
 
   // Charge par technicien (nb de jours occupés cette semaine / 5)
   var monday=plgMondayOf(today), friday=plgAddDays(monday,4);
-  var comptes=getComptes();
+  var comptes=getActiveComptes();
   var charge=comptes.map(function(c){
     var joursOccupes=0;
     for(var d=0;d<5;d++){
@@ -8031,37 +8140,50 @@ function confirmStop(){
   }, '✅ Valider la journée', '📋 Validation de la journée');
 }
 
-// ── FIN DE JOURNÉE FORCÉE À 20h00 ──
-// Si un punch tourne encore à 20h, on le ferme automatiquement à 20h00 et on sauvegarde.
+// ── FIN DE JOURNÉE FORCÉE À 20h00 (+ RATTRAPAGE DES JOURS PASSÉS) ──
+// Si un punch tourne encore à 20h AUJOURD'HUI, on le ferme automatiquement à 20h00 et on sauvegarde.
 // L'employé doit repuncher manuellement s'il continue de travailler.
+// ➕ CORRECTIF (demande explicite de Charles) : cette vérification ne portait QUE sur l'onglet jour
+// actuellement affiché (curDay), et seulement pendant qu'une session avec l'app ouverte tournait
+// exactement au bon moment. Un employé qui ferme l'app avant 20h (le cas normal) ou qui ne la rouvre
+// pas avant le lendemain voyait son punch rester "actif" indéfiniment sur ce jour-là, personne ne le
+// revérifiant plus jamais une fois que le calendrier était passé au jour suivant — d'où des punchs
+// restés ouverts toute la nuit, voire plusieurs jours. Corrigé : on balaie maintenant TOUS les jours de
+// la semaine actuellement chargée en mémoire à chaque passage ; tout jour dont la date réelle est déjà
+// passée et encore "running" est fermé immédiatement (peu importe l'heure actuelle) à 20:00 de CE
+// jour-là — le jour réel d'aujourd'hui garde exactement l'ancien comportement (fermeture seulement une
+// fois 20h00 atteint). Appelé aussi une fois immédiatement à l'ouverture de session (en plus de
+// l'intervalle 60s existant), pour rattraper un oubli dès la prochaine connexion plutôt que d'attendre.
 function checkEndOfDay(){
-  if(!currentUser)return;
+  if(!currentUser||!_loadedWeekKey)return;
   var now=new Date();
-  // Seulement pour le jour réel en cours
-  var realDayIdx=now.getDay()===0?6:now.getDay()-1;
-  if(curDay!==realDayIdx)return;
-  var st=chronoState[curDay];
-  if(!st||st.status!=='running')return;
-  // 20h00 = 1200 minutes depuis minuit
-  var nowMin=now.getHours()*60+now.getMinutes();
-  if(nowMin<1200)return; // pas encore 20h
-  // Fermer toutes les tâches actives à 20:00
-  var closed=false;
-  st.tasks.forEach(function(t){
-    if(t.active){
-      t.end='20:00';
-      t.hrs=hrsFrom(t.start,'20:00');
-      t.active=false;
-      t.autoClosed=true;
-      closed=true;
-    }
-  });
-  if(closed){
-    st.status='done';st.activeTask=null;
+  var todayIso=todayISO();
+  var nowMin=now.getHours()*60+now.getMinutes(); // 20h00 = 1200 minutes depuis minuit
+  var closedAny=false;
+  for(var i=0;i<7;i++){
+    var st=chronoState[i];
+    if(!st||st.status!=='running')continue;
+    var dayIso=plgAddDays(_loadedWeekKey,i);
+    var isPastDay=dayIso<todayIso;
+    var isTodayAfter20h=(dayIso===todayIso)&&nowMin>=1200;
+    if(!isPastDay&&!isTodayAfter20h)continue; // jour futur, ou aujourd'hui avant 20h : rien à faire
+    var closed=false;
+    st.tasks.forEach(function(t){
+      if(t.active){
+        t.end='20:00';
+        t.hrs=hrsFrom(t.start,'20:00');
+        t.active=false;
+        t.autoClosed=true;
+        closed=true;
+      }
+    });
+    if(closed){st.status='done';st.activeTask=null;closedAny=true;}
+  }
+  if(closedAny){
     if(clockTimer){clearInterval(clockTimer);clockTimer=null;}
     saveFT();
     renderChrono();renderTaskLog();refreshCumul();buildDayTabs();refreshWkStatus();
-    toast('⏰ Journée fermée automatiquement à 20h00. Repunche si tu travailles encore.');
+    toast('⏰ Une ou plusieurs journées ont été fermées automatiquement à 20h00 (punch resté actif). Repunche si tu travailles encore.');
   }
 }
 function saveDayFT(){
@@ -9239,10 +9361,15 @@ function renderComptesList(){
   var card=document.createElement('div');card.className='card';
   comptes.forEach(function(c){
     var row=document.createElement('div');row.className='ac-row';
+    var inactif=!compteEstActif(c);
+    if(inactif)row.style.opacity='.55';
     var avCls='ac-av'+(c.role==='admin'?' adm':c.role==='superviseur'?' sup':'');
+    var badges=roleBadge(c.role)
+      +(c.saisonnier?'<span style="background:var(--obg);color:#CC4E00;border-radius:20px;padding:1px 8px;font-size:10px;font-weight:800;margin-left:4px">🍂 Saisonnier</span>':'')
+      +(inactif?'<span style="background:var(--rbg);color:var(--red);border-radius:20px;padding:1px 8px;font-size:10px;font-weight:800;margin-left:4px">⛔ Inactif</span>':'');
     row.innerHTML='<div class="'+avCls+'">'+(c.prenom?c.prenom[0]:'')+(c.nom?c.nom[0]:'')+'</div>'+
       '<div style="flex:1"><div class="ac-name">'+(c.prenom+' '+c.nom).trim()+'</div>'+
-      '<div class="ac-meta">'+roleBadge(c.role)+'<span>'+c.id+'</span>'+(c.dept?' · '+c.dept:'')+'</div></div>';
+      '<div class="ac-meta">'+badges+'<span>'+c.id+'</span>'+(c.dept?' · '+c.dept:'')+'</div></div>';
     var editBtn=document.createElement('button');
     editBtn.style.cssText='border:none;background:var(--surface);border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:14px';
     editBtn.textContent='✏️';
@@ -9306,6 +9433,8 @@ function openCompteModal(c){
   document.getElementById('cMdp').value='';document.getElementById('cDept').value=c?c.dept:'Terrain';
   document.getElementById('cEmail').value=c?c.email:'';document.getElementById('cTel').value=c?c.tel||'':'';
   document.getElementById('cRole').value=c?c.role:'employe';
+  document.getElementById('cStatut').value=(c&&c.statut==='inactif')?'inactif':'actif';
+  document.getElementById('cSaisonnier').checked=!!(c&&c.saisonnier);
   document.getElementById('cDeleteBtn').style.display=(c&&c.id!=='admin')?'flex':'none';
   renderDroitsForm(c?c.droits:null);openModal('compteModal');
 }
@@ -9335,7 +9464,8 @@ function saveCompte(){
   var role=document.getElementById('cRole').value;if(role==='admin')Object.keys(droits).forEach(function(k){droits[k]=true;});
   var compte={id:id,nom:document.getElementById('cNom').value.trim(),prenom:document.getElementById('cPrenom').value.trim(),
     dept:document.getElementById('cDept').value.trim(),email:document.getElementById('cEmail').value.trim(),
-    tel:document.getElementById('cTel').value.trim(),role:role,mdp:mdp||(existing?existing.mdp:'1234'),droits:droits};
+    tel:document.getElementById('cTel').value.trim(),role:role,mdp:mdp||(existing?existing.mdp:'1234'),droits:droits,
+    statut:document.getElementById('cStatut').value||'actif',saisonnier:!!document.getElementById('cSaisonnier').checked};
   if(cEditId){var idx=comptes.findIndex(function(c){return c.id===cEditId;});if(idx>=0)comptes[idx]=compte;else comptes.push(compte);}
   else comptes.push(compte);
   setComptes(comptes);closeModal('compteModal');renderComptesList();toast('Compte sauvegardé !');
@@ -9360,7 +9490,7 @@ var suiviMapObj=null, suiviLayer=null, _geoCache={}, suiviMapCard=null;
 // Dernière tâche du jour par employé (peu importe le GPS) + points GPS pour le trajet
 function empLatestPunches(){
   var week=weekKey(), out=[];
-  getComptes().filter(function(c){return c.role!=='admin';}).forEach(function(c){
+  getActiveComptes().filter(function(c){return c.role!=='admin';}).forEach(function(c){
     var ft=getFTWeek(c.id+'_'+week);
     var day=ft&&ft.days&&ft.days[curDay]?ft.days[curDay]:null;
     if(!day||!day.tasks||!day.tasks.length)return;
@@ -9514,7 +9644,7 @@ function renderSuivi(){
   if(suiviMapCard&&suiviMapCard.parentNode){suiviMapCard.parentNode.removeChild(suiviMapCard);} // garder la carte vivante
   el.innerHTML='';
   var week=weekKey();
-  var comptes=getComptes().filter(function(c){return c.role!=='admin';});
+  var comptes=getActiveComptes().filter(function(c){return c.role!=='admin';});
   var actifs=[],termines=[],inactifs=[];
   comptes.forEach(function(c){
     var ft=getFTWeek(c.id+'_'+week);
@@ -9530,10 +9660,36 @@ function renderSuivi(){
       termines.push(info);
     }else{inactifs.push(info);}
   });
+  // ➕ Détection de punchs restés actifs sur un AUTRE jour que celui affiché ici — purement additif, ne
+  // touche à aucun calcul existant. Sans ça, un punch bloqué sur un jour déjà passé (voir checkEndOfDay)
+  // reste invisible pour Charles tant qu'il ne pense pas à changer manuellement d'onglet jour dans Suivi.
+  var punchsBloques=[];
+  comptes.forEach(function(c){
+    var ft=getFTWeek(c.id+'_'+week);
+    if(!ft||!ft.days)return;
+    ft.days.forEach(function(d,di){
+      if(di===curDay)return; // déjà couvert par la section "En activité" ci-dessous
+      if(d&&d.status==='running')punchsBloques.push({nom:(c.prenom+' '+c.nom).trim(),id:c.id,jour:DL[di]});
+    });
+  });
   var hdr=document.createElement('div');hdr.style.cssText='padding:0 2px 12px';
   hdr.innerHTML='<div style="font-size:18px;font-weight:800;color:var(--dk)">Opérations en cours</div>'+
     '<div style="font-size:12px;color:var(--muted);margin-top:2px">'+DL[curDay]+' · mise à jour auto · '+actifs.length+' actif'+(actifs.length>1?'s':'')+'</div>';
   el.appendChild(hdr);
+  if(punchsBloques.length>0){
+    var sB=document.createElement('div');
+    sB.style.cssText='background:#fff8e0;border:1.5px solid var(--orange);border-radius:var(--r);padding:12px;margin-bottom:12px';
+    sB.innerHTML='<div style="font-size:13px;font-weight:800;color:#CC4E00;margin-bottom:6px">⚠️ Punch(s) resté(s) actif(s) sur un autre jour ('+punchsBloques.length+')</div>'
+      +punchsBloques.map(function(p){return '<div style="font-size:12px;color:#7a4e00;padding:2px 0">• '+esc(p.nom)+' — '+esc(p.jour)+'</div>';}).join('');
+    punchsBloques.slice(0,1).forEach(function(p0){
+      var fixBtn=document.createElement('button');
+      fixBtn.className='btn btn-ghost btn-sm';fixBtn.style.cssText='margin-top:8px;border:1px solid var(--orange);color:#CC4E00';
+      fixBtn.textContent='✏️ Corriger';
+      fixBtn.addEventListener('click',function(){gotoEmpFT(p0.id);});
+      sB.appendChild(fixBtn);
+    });
+    el.appendChild(sB);
+  }
   // ── CARTE DE LOCALISATION (div persistant : survit au rafraîchissement auto) ──
   if(!suiviMapCard){
     suiviMapCard=document.createElement('div');
@@ -9765,7 +9921,7 @@ function renderStats(){
   var c1=document.createElement('div');c1.className='card';c1.style.marginBottom='10px';
   c1.innerHTML='<div class="card-hd"><div class="card-hd-t">⏱ Heures par employé — Semaine du '+fmtDate(week)+'</div></div>';
   var body1=document.createElement('div');body1.style.padding='12px';
-  var emps=getComptes().filter(function(c){return c.role!=='admin';});
+  var emps=getActiveComptes().filter(function(c){return c.role!=='admin';});
   var maxH=0;
   var empHrs=emps.map(function(c){var e=ftIdx.find(function(f){return f.uid===c.id&&f.week===week;});var h=e?e.totalH:0;if(h>maxH)maxH=h;return{nom:(c.prenom+' '+c.nom).trim(),h:h};});
   if(maxH<8)maxH=8;
