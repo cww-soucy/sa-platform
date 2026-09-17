@@ -1788,7 +1788,16 @@ input,select,textarea{font-size:16px!important}
     <div style="display:flex;flex-direction:column;gap:10px;max-height:65vh;overflow-y:auto">
       <div><label class="lbl">Titre</label><input id="plgTitre" class="inp" placeholder="Ex: Entretien mécanique"/></div>
       <div><label class="lbl">Description</label><textarea id="plgDescr" class="inp" rows="2"></textarea></div>
-      <div><label class="lbl">Technicien</label><select id="plgEmp" class="inp"></select></div>
+      <div><label class="lbl">Technicien(s)</label>
+        <div id="plgEmpList" style="max-height:180px;overflow-y:auto;border:1px solid var(--line2);border-radius:8px;padding:2px 8px"></div>
+      </div>
+      <div id="plgAssignModeWrap" style="display:none;background:var(--lt);border-radius:var(--rs);padding:9px 10px">
+        <label class="lbl" style="margin-bottom:6px">Plusieurs employés sélectionnés — comment attribuer ?</label>
+        <div style="display:flex;flex-direction:column;gap:7px;font-size:13px">
+          <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer"><input type="radio" name="plgAssignMode" value="partage" checked style="margin-top:2px"/> <span>👥 Tâche partagée — un seul enregistrement, même statut pour tous</span></label>
+          <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer"><input type="radio" name="plgAssignMode" value="independant" style="margin-top:2px"/> <span>📑 Copies indépendantes — une tâche par employé, statut séparé pour chacun</span></label>
+        </div>
+      </div>
       <div><label class="lbl">Site (optionnel)</label><select id="plgSite" class="inp"></select></div>
       <div style="display:flex;gap:8px">
         <div style="flex:1"><label class="lbl">Date début</label><input type="date" id="plgDateDebut" class="inp"/></div>
@@ -3072,6 +3081,14 @@ function pmAssignees(pm){
   return pm.emp?[pm.emp]:[];
 }
 function empNames(ids){return (ids||[]).map(empName).filter(Boolean).join(', ');}
+// Assignés d'une tâche Planning (multi). Le champ emp reste un simple texte (compatible ancien format
+// 1 seul id) mais peut désormais contenir plusieurs ids séparés par virgule — même convention que pmAssignees.
+function planningAssignees(t){
+  if(!t)return [];
+  if(Array.isArray(t.emps))return t.emps;
+  if(typeof t.emp==='string'&&t.emp.indexOf(',')>=0)return t.emp.split(/,\s*/).filter(Boolean);
+  return t.emp?[t.emp]:[];
+}
 
 // ➕ Regroupe TOUTE la journée par employé, en lisant les préassignations déjà faites
 // sur les WO (woAssignees) ET sur les créneaux planifiés (planAssignees).
@@ -3172,7 +3189,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // a bien pris effet. Il reflète maintenant APP_BUILD ci-dessous, à mettre à jour à CHAQUE fois que
   // CACHE_NAME change dans sw.js (même valeur, ex: 'v48').
   try{
-    var APP_BUILD='v52';
+    var APP_BUILD='v53';
     var vb=document.createElement('div');
     vb.id='__buildBadge';
     vb.textContent='build '+APP_BUILD+' ⟲';
@@ -4288,7 +4305,7 @@ function pmmTargetUid(){
 // Work Orders/Créneaux ci-dessus) assignées à un employé pour un jour donné.
 function pmmPlanningNonLiees(day,uidP){
   return getPlanning().filter(function(t){
-    return t.emp===uidP&&t.statut!=='annule'&&!t.planId&&!t.woId&&t.dateDebut<=day&&day<=t.dateFin;
+    return planningAssignees(t).indexOf(uidP)>=0&&t.statut!=='annule'&&!t.planId&&!t.woId&&t.dateDebut<=day&&day<=t.dateFin;
   });
 }
 // Imprime la journée de TOUTE l'équipe : une page par employé (WO + créneaux + Plan de Match), en lisant les préassignations
@@ -4298,7 +4315,7 @@ function printTeamDay(day){
   getWOs().forEach(function(w){if(w.date===day)woAssignees(w).forEach(function(i){ids[i]=1;});});
   getPlan().forEach(function(p){if(p.date===day)planAssignees(p).forEach(function(i){ids[i]=1;});});
   pms.forEach(function(p){pmAssignees(p).forEach(function(i){ids[i]=1;});});
-  getPlanning().forEach(function(t){if(t.emp&&t.statut!=='annule'&&!t.planId&&!t.woId&&t.dateDebut<=day&&day<=t.dateFin)ids[t.emp]=1;});
+  getPlanning().forEach(function(t){if(t.statut!=='annule'&&!t.planId&&!t.woId&&t.dateDebut<=day&&day<=t.dateFin)planningAssignees(t).forEach(function(id){ids[id]=1;});});
   var list=Object.keys(ids).sort(function(a,b){return (empName(a)||'').localeCompare(empName(b)||'');});
   if(list.length===0){toast('Rien à imprimer pour ce jour');return;}
   var h='';
@@ -5068,7 +5085,7 @@ function renderPmmAll(content){
   var livJour=livs.filter(function(l){return l.date===day;});
   var recJour=recurrencesPourDate(day);
   // Tâches planning non liées à un créneau/WO (celles-là sont déjà comptées via wosJour/slJour)
-  var plJour=getPlanning().filter(function(t){return t.emp&&t.statut!=='annule'&&!t.planId&&!t.woId&&t.dateDebut<=day&&day<=t.dateFin;});
+  var plJour=getPlanning().filter(function(t){return planningAssignees(t).length&&t.statut!=='annule'&&!t.planId&&!t.woId&&t.dateDebut<=day&&day<=t.dateFin;});
   var nonAssignes=wosJour.filter(function(w){return woAssignees(w).length===0;}).length
                  +slJour.filter(function(x){return planAssignees(x).length===0;}).length;
   var synth=document.createElement('div');
@@ -5108,7 +5125,7 @@ function renderPmmAll(content){
     var pm=pms.find(function(x){return x.date===day&&pmAssignees(x).indexOf(c.id)>=0;});
     var lv=livJour.filter(function(l){return (l.technicien||'').toLowerCase().indexOf((c.prenom||'').toLowerCase())>=0;});
     var rc=recJour.filter(function(r){return (r.emps||[]).indexOf(c.id)>=0;});
-    var pl=plJour.filter(function(x){return x.emp===c.id;});
+    var pl=plJour.filter(function(x){return planningAssignees(x).indexOf(c.id)>=0;});
     var total=w.length+sl.length+lv.length+rc.length+pl.length;
 
     // Heures pointées du jour (lecture seule, depuis la feuille de temps)
@@ -5621,12 +5638,15 @@ function plgAutoLinkOld(){
   list.forEach(function(t){
     if(t.planId||t.woId)return; // déjà lié (même partiellement) — on n'y touche pas
     if(!t.siteId||!t.dateDebut)return; // pas assez d'info pour apparier en confiance
+    var tAssignees=planningAssignees(t); // ➕ multi-employés : exige que TOUS les assignés de la tâche soient présents sur le candidat
     var candPlan=allPlan.filter(function(p){
-      return !linkedPlanIds[p.id]&&p.siteId===t.siteId&&p.date===t.dateDebut&&(!t.emp||planAssignees(p).indexOf(t.emp)>=0);
+      var pa=planAssignees(p);
+      return !linkedPlanIds[p.id]&&p.siteId===t.siteId&&p.date===t.dateDebut&&(!tAssignees.length||tAssignees.every(function(id){return pa.indexOf(id)>=0;}));
     });
     var candWO=allWO.filter(function(w){
       var site=findSiteByNameForSlot(w.site)||findSiteByNameForSlot(w.client);
-      return !linkedWoIds[w.id]&&site&&site.id===t.siteId&&w.date===t.dateDebut&&(!t.emp||woAssignees(w).indexOf(t.emp)>=0);
+      var wa=woAssignees(w);
+      return !linkedWoIds[w.id]&&site&&site.id===t.siteId&&w.date===t.dateDebut&&(!tAssignees.length||tAssignees.every(function(id){return wa.indexOf(id)>=0;}));
     });
     var did=false,ambig=false;
     if(candPlan.length===1){t.planId=candPlan[0].id;linkedPlanIds[candPlan[0].id]=true;did=true;}
@@ -5729,8 +5749,9 @@ function renderPlanning(){
   var tasks=getPlanning().filter(function(t){
     if(t.dateFin<monday||t.dateDebut>lastDay)return false;
     if(t.statut==='annule')return false;
-    if(!sup&&t.emp!==filtVal)return false; // employé : uniquement ses propres tâches, jamais celles des autres
-    if(sup&&mode==='tech'&&filtVal&&t.emp!==filtVal)return false;
+    var a=planningAssignees(t);
+    if(!sup&&a.indexOf(filtVal)<0)return false; // employé : uniquement ses propres tâches, jamais celles des autres
+    if(sup&&mode==='tech'&&filtVal&&a.indexOf(filtVal)<0)return false;
     if(sup&&mode==='site'&&filtVal&&t.siteId!==filtVal)return false;
     return true;
   });
@@ -5751,8 +5772,14 @@ function renderPlanning(){
   }
   tasks.forEach(function(t){
     if(mode==='tech'){
-      var key=t.emp||'_none';
-      ensureGroup(key,t.empNom||empName(t.emp)||'(non assigné)',plgTechColor(t.emp)).tasks.push(t);
+      // ➕ Multi-employés : une tâche partagée par plusieurs techniciens apparaît dans CHACUNE de leurs lignes
+      // (même principe que les créneaux/WO multi-assignés déjà agrégés par plgVirtualEntries ci-dessus).
+      var a=planningAssignees(t); if(!a.length)a=[''];
+      a.forEach(function(eid){
+        if(!plgPasses(eid,''))return;
+        var key=eid||'_none';
+        ensureGroup(key,eid?empName(eid):'(non assigné)',plgTechColor(eid)).tasks.push(t);
+      });
     }else{
       var key2=t.siteId||'_none';
       ensureGroup(key2,t.siteNom||'(sans site)','#6B8CAE').tasks.push(t);
@@ -5901,11 +5928,12 @@ function openPlanningModal(taskId){
   document.getElementById('plgTitre').value=t?t.titre:'';
   document.getElementById('plgDescr').value=t?t.descr:'';
 
-  var empSel=document.getElementById('plgEmp');
-  empSel.innerHTML='<option value="">— Choisir —</option>'+getComptes().map(function(c){
-    return '<option value="'+esc(c.id)+'">'+esc((c.prenom+' '+c.nom).trim())+'</option>';
-  }).join('');
-  empSel.value=t?(t.emp||''):'';
+  var empListEl=document.getElementById('plgEmpList');
+  buildEmpChecklist('plgEmpList', t?planningAssignees(t):[], false);
+  if(empListEl&&!empListEl._bound){empListEl._bound=true;empListEl.addEventListener('change',plgUpdateAssignModeUI);}
+  var modeRadios=document.querySelectorAll('input[name="plgAssignMode"]');
+  modeRadios.forEach(function(r){r.checked=(r.value==='partage');});
+  plgUpdateAssignModeUI();
 
   var siteSel=document.getElementById('plgSite');
   siteSel.innerHTML='<option value="">— Aucun site —</option>'+getSites().map(function(s){
@@ -5950,6 +5978,15 @@ function plgRenderLienInfo(t){
 function plgOpenLinkedPlan(planId){closeModal('plgModal');openPmModal(null,planId);}
 function plgOpenLinkedWO(woId){var wo=getWOs().find(function(w){return w.id===woId;});if(!wo)return;closeModal('plgModal');openWOModal(wo);}
 
+// Affiche/masque le choix "tâche partagée / copies indépendantes" — seulement pertinent quand on
+// CRÉE une nouvelle tâche avec 2+ employés cochés (en édition, on modifie toujours l'enregistrement existant).
+function plgUpdateAssignModeUI(){
+  var wrap=document.getElementById('plgAssignModeWrap');
+  if(!wrap)return;
+  var n=getCheckedEmp('plgEmpList').length;
+  wrap.style.display=(!plgEditingId&&n>=2)?'':'none';
+}
+
 function savePlanningTask(){
   var titre=(document.getElementById('plgTitre').value||'').trim();
   if(!titre){toast('⚠️ Le titre est requis.');return;}
@@ -5957,16 +5994,45 @@ function savePlanningTask(){
   var dateFin=document.getElementById('plgDateFin').value;
   if(!dateDebut||!dateFin){toast('⚠️ Dates requises.');return;}
   if(dateFin<dateDebut){toast('⚠️ La date de fin doit être après la date de début.');return;}
-  var empId=document.getElementById('plgEmp').value;
+  var empIds=getCheckedEmp('plgEmpList');
   var siteId=document.getElementById('plgSite').value;
+
+  var lien=(document.getElementById('plgLien')||{}).value||'';
+  if((lien==='creneau'||lien==='wo'||lien==='both')&&!siteId){
+    toast('⚠️ Choisis un site pour créer '+(lien==='wo'?'le Work Order lié':(lien==='both'?'les entrées liées':'le créneau lié')));
+    return;
+  }
+
+  var mode=(!plgEditingId&&empIds.length>=2)?((document.querySelector('input[name="plgAssignMode"]:checked')||{}).value||'partage'):'partage';
+
+  if(mode==='independant'){
+    // ➕ Copies indépendantes : une tâche complète (et son éventuel créneau/WO lié) par employé sélectionné,
+    // chacune avec son propre statut — comme si on avait rempli le formulaire séparément pour chacun.
+    empIds.forEach(function(eid){ plgSaveOneTask(null,[eid],titre,dateDebut,dateFin,siteId); });
+    closeModal('plgModal');
+    renderPlanning();
+    toast('✅ '+empIds.length+' tâches créées (copies indépendantes).');
+    return;
+  }
+
+  var isNew=!plgEditingId;
+  plgSaveOneTask(plgEditingId,empIds,titre,dateDebut,dateFin,siteId);
+  closeModal('plgModal');
+  renderPlanning();
+  toast(isNew?'✅ Tâche planifiée !':'✅ Tâche mise à jour.');
+}
+
+// Crée/met à jour UN enregistrement planning_tasks (et son créneau/WO lié le cas échéant) pour la
+// liste d'employés donnée. Lit les autres champs (description, dates, statut, lien) directement dans le
+// modal — factorisé hors de savePlanningTask() pour pouvoir être appelé plusieurs fois (mode "copies indépendantes").
+function plgSaveOneTask(taskId,empIds,titre,dateDebut,dateFin,siteId){
   var list=getPlanning();
-  var t=plgEditingId?list.find(function(x){return x.id===plgEditingId;}):null;
-  var isNew=!t;
-  if(isNew){t={id:uid(),createdBy:currentUser?currentUser.id:'',createdAt:new Date().toISOString()};list.push(t);}
+  var t=taskId?list.find(function(x){return x.id===taskId;}):null;
+  if(!t){t={id:uid(),createdBy:currentUser?currentUser.id:'',createdAt:new Date().toISOString()};list.push(t);}
   t.titre=titre;
   t.descr=(document.getElementById('plgDescr').value||'').trim();
-  t.emp=empId||'';
-  t.empNom=empId?empName(empId):'';
+  t.emp=empIds.join(', ');
+  t.empNom=empNames(empIds);
   t.siteId=siteId||'';
   t.siteNom=siteId?(getSites().find(function(s){return s.id===siteId;})||{}).nom||'':'';
   t.dateDebut=dateDebut;
@@ -5979,10 +6045,6 @@ function savePlanningTask(){
   var lien=(document.getElementById('plgLien')||{}).value||'';
   var wantCreneau=(lien==='creneau'||lien==='both');
   var wantWO=(lien==='wo'||lien==='both');
-  if((wantCreneau||wantWO)&&!siteId){
-    toast('⚠️ Choisis un site pour créer '+(lien==='wo'?'le Work Order lié':(lien==='both'?'les entrées liées':'le créneau lié')));
-    return;
-  }
   var site=siteId?(getSites().find(function(s){return s.id===siteId;})||null):null;
 
   // Le WO est créé/mis à jour AVANT le créneau : si les deux sont demandés ("both"), le créneau
@@ -5995,7 +6057,7 @@ function savePlanningTask(){
     wo.client=t.siteNom||t.titre;
     wo.site=(site&&site.addr)?site.addr:(wo.site||'');
     wo.date=t.dateDebut;
-    wo.assignes=t.emp?[t.emp]:(wo.assignes||[]);
+    wo.assignes=empIds.length?empIds.slice():(wo.assignes||[]);
     wo.assigne=empNames(wo.assignes);
     wo.desc=t.descr||t.titre;
     wo.updatedAt=new Date().toISOString();
@@ -6014,7 +6076,7 @@ function savePlanningTask(){
     slot.woId=t.woId||null;
     slot.date=t.dateDebut;
     slot.heure=t.heureDebut||'';
-    slot.emps=t.emp?[t.emp]:[];
+    slot.emps=empIds.length?empIds.slice():[];
     slot.emp=t.empNom||'';
     slot.client=t.siteNom||t.titre;
     slot.addr=(site&&site.addr)?site.addr:(slot.addr||'');
@@ -6030,9 +6092,7 @@ function savePlanningTask(){
 
   setPlanning(list);
   sbPush('planning',t);
-  closeModal('plgModal');
-  renderPlanning();
-  toast(isNew?'✅ Tâche planifiée !':'✅ Tâche mise à jour.');
+  return t;
 }
 
 function deletePlanningTask(){
@@ -6131,21 +6191,10 @@ function jgWeekRange(iso){
   return start.getDate()+' – '+end.getDate();
 }
 
-function renderJobsGantt(){
-  var monday=jgAnchorMonday;
-  var weeks=[];
-  for(var i=0;i<JG_NB_SEMAINES;i++)weeks.push(plgAddDays(monday,i*7));
-  var totalDays=JG_NB_SEMAINES*7;
-  var rangeEnd=plgAddDays(monday,totalDays-1);
-
-  // Dimensions adaptées à la largeur d'écran — sur grand écran, lignes et barres plus hautes/lisibles
-  var vw=window.innerWidth||1024;
-  var rowH=vw>=1700?96:(vw>=1300?80:64);
-  var barH=vw>=1700?46:(vw>=1300?40:34);
-  var labelColW=vw>=1700?240:(vw>=1300?220:200);
-  var barFontSize=vw>=1300?12.5:11;
-
-  // Agrégation : chaque WO ouvert/en cours devient un "job" ; regroupement par client+site
+// Agrège WO ouverts/en cours + créneaux + tâches planning liées à un site en "jobs" groupés par client/site,
+// pour la période [monday, rangeEnd]. Factorisé hors de renderJobsGantt() pour être réutilisé par l'impression
+// (jgBuildPrintHTML) sans dupliquer la logique d'agrégation.
+function jgBuildGroups(monday,rangeEnd){
   var wos=getWOs().filter(function(w){return w.status!=='termine'&&w.status!=='annule';});
   var groups={}; var groupOrder=[];
   function ensureGroup(key,label){
@@ -6166,7 +6215,7 @@ function renderJobsGantt(){
     var joursRetard=Math.floor((new Date(todayISO())-new Date(w.date))/86400000);
     var statut=w.status==='en_cours'?'active':(joursRetard>0&&w.status!=='termine'?'late':'upcoming');
     g.statuses.push(statut);
-    g.bars.push({t:w.priorite==='urgent'?'wo':'plan',lbl:w.type||'Work Order',start:start,end:end,statut:statut,assignes:w.assignes||[]});
+    g.bars.push({t:w.priorite==='urgent'?'wo':'plan',lbl:w.type||'Work Order',start:start,end:end,statut:statut,assignes:w.assignes||[],srcType:'wo',srcId:w.id});
   });
   // Créneaux planifiés (calendrier des interventions) liés à un site, non déjà représentés par un WO
   getPlan().filter(function(p){return p.siteId&&p.date&&!planningLinkedPlanIds[p.id]&&(!p.woId||!wos.some(function(w){return w.id===p.woId;}));}).forEach(function(p){
@@ -6174,24 +6223,83 @@ function renderJobsGantt(){
     var key='site|'+p.client;
     var g=ensureGroup(key,p.client||'Site');
     g.statuses.push('upcoming');
-    g.bars.push({t:'creneau',lbl:p.descr||'Créneau',start:p.date,end:p.date,statut:'upcoming',assignes:planAssignees(p)});
+    g.bars.push({t:'creneau',lbl:p.descr||'Créneau',start:p.date,end:p.date,statut:'upcoming',assignes:planAssignees(p),srcType:'plan',srcId:p.id});
   });
   // Ajouter aussi les tâches planning liées à un site (module Planning existant), regroupées par site
   getPlanning().filter(function(t){return t.statut!=='annule'&&t.siteNom&&!t.woId&&!t.planId;}).forEach(function(t){
     if(t.dateFin<monday||t.dateDebut>rangeEnd)return;
     var key='site|'+t.siteNom;
     var g=ensureGroup(key,t.siteNom);
-    g.bars.push({t:'tache',lbl:t.titre,start:t.dateDebut,end:t.dateFin,statut:'upcoming',assignes:t.emp?[t.emp]:[]});
+    g.bars.push({t:'tache',lbl:t.titre,start:t.dateDebut,end:t.dateFin,statut:'upcoming',assignes:planningAssignees(t),srcType:'planning',srcId:t.id});
   });
 
   groupOrder.sort(function(a,b){return (groups[a].label||'').localeCompare(groups[b].label||'');});
+  return {groups:groups,groupOrder:groupOrder};
+}
+function jgOpenWO(woId){var wo=getWOs().find(function(w){return w.id===woId;});if(!wo)return;openWOModal(wo);}
+
+// Construit une version imprimable/PDF de la vue Jobs (liste propre, sans barres) — même document type
+// que les autres impressions de l'app (Plan de Match, WO, etc.), affiché dans #pmmPrintArea puis window.print().
+function jgBuildPrintHTML(monday,rangeEnd){
+  var agg=jgBuildGroups(monday,rangeEnd);
+  var groups=agg.groups, groupOrder=agg.groupOrder;
+  var h='<div class="pmm-print-doc">';
+  h+='<div class="pmm-print-hd"><h1>🔧 JOBS / CHANTIERS EN COURS</h1>';
+  h+='<div class="pmm-print-meta"><span><b>Période :</b> '+fmtDate(monday)+' → '+fmtDate(rangeEnd)+'</span></div></div>';
+  if(!groupOrder.length){
+    h+='<div style="padding:20px;color:#6B8CAE">Aucun job actif sur cette période.</div>';
+  }else{
+    var typeLbl={wo:'Work Order',plan:'WO',creneau:'Créneau',tache:'Tâche'};
+    groupOrder.forEach(function(key){
+      var g=groups[key];
+      var overallStatus=g.statuses.indexOf('late')>=0?'late':(g.statuses.indexOf('active')>=0?'active':'upcoming');
+      var statusLbl={active:'En cours',late:'En retard',upcoming:'À venir'}[overallStatus];
+      h+='<div class="pmm-print-sec"><div class="pmm-print-sec-hd c-bleu">'+esc(g.label)+' — '+statusLbl+'</div>';
+      h+='<table class="pmm-print-table"><thead><tr><th style="width:80px">Type</th><th>Description</th><th style="width:140px">Période</th><th>Assigné(s)</th></tr></thead><tbody>';
+      g.bars.forEach(function(b){
+        var periode=(b.start===b.end)?fmtDate(b.start):(fmtDate(b.start)+' → '+fmtDate(b.end));
+        h+='<tr><td>'+esc(typeLbl[b.t]||b.t)+'</td><td>'+esc(b.lbl)+'</td><td>'+esc(periode)+'</td><td>'+esc(empNames(b.assignes)||'—')+'</td></tr>';
+      });
+      h+='</tbody></table></div>';
+    });
+  }
+  h+='</div>';
+  return h;
+}
+// ➕ Imprime (ou "Enregistrer en PDF" / Partager depuis la boîte de dialogue système sur iPhone) la liste
+// des jobs actuellement affichés dans le Gantt, pour la période visible à l'écran.
+function printJobsGantt(){
+  var monday=jgAnchorMonday;
+  var rangeEnd=plgAddDays(monday,JG_NB_SEMAINES*7-1);
+  document.getElementById('pmmPrintArea').innerHTML=jgBuildPrintHTML(monday,rangeEnd);
+  window.print();
+}
+
+function renderJobsGantt(){
+  var monday=jgAnchorMonday;
+  var weeks=[];
+  for(var i=0;i<JG_NB_SEMAINES;i++)weeks.push(plgAddDays(monday,i*7));
+  var totalDays=JG_NB_SEMAINES*7;
+  var rangeEnd=plgAddDays(monday,totalDays-1);
+
+  // Dimensions adaptées à la largeur d'écran — sur grand écran, lignes et barres plus hautes/lisibles
+  var vw=window.innerWidth||1024;
+  var rowH=vw>=1700?96:(vw>=1300?80:64);
+  var barH=vw>=1700?46:(vw>=1300?40:34);
+  var labelColW=vw>=1700?240:(vw>=1300?220:200);
+  var barFontSize=vw>=1300?12.5:11;
+
+  // Agrégation : chaque WO ouvert/en cours devient un "job" ; regroupement par client+site
+  var agg=jgBuildGroups(monday,rangeEnd);
+  var groups=agg.groups, groupOrder=agg.groupOrder;
 
   var html='';
-  html+='<div style="background:#fff;border-bottom:1px solid var(--line);padding:8px 14px;display:flex;align-items:center;gap:8px">'+
+  html+='<div style="background:#fff;border-bottom:1px solid var(--line);padding:8px 14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
     '<button class="btn btn-ghost btn-sm" onclick="jgShiftWeeks(-4)">◀</button>'+
     '<button class="btn btn-ghost btn-sm" onclick="jgGoToday()">Aujourd\'hui</button>'+
     '<button class="btn btn-ghost btn-sm" onclick="jgShiftWeeks(4)">▶</button>'+
-    '<span style="margin-left:auto;font-size:12px;font-weight:700;color:var(--dk)">'+plgFmtCourt(monday)+' → '+plgFmtCourt(rangeEnd)+'</span>'+
+    '<span style="font-size:12px;font-weight:700;color:var(--dk)">'+plgFmtCourt(monday)+' → '+plgFmtCourt(rangeEnd)+'</span>'+
+    '<button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="printJobsGantt()" title="Ouvre la boîte de dialogue d\'impression — sur iPhone, utilise le bouton Partager pour l\'envoyer en PDF">🖨️ Imprimer / Envoyer</button>'+
     '</div>';
 
   if(!groupOrder.length){
@@ -6252,8 +6360,11 @@ function renderJobsGantt(){
         // Largeur minimale en pixels pour qu'un job court (1 jour) reste lisible même étiré sur
         // une échelle de plusieurs semaines — sans ça le texte se coupe à quelques pixels.
         var minBarPx=vw>=1300?92:72;
+        // ➕ Barre cliquable → ouvre directement le WO / créneau / tâche planning à l'origine du job.
+        var onclick=b.srcType==='wo'?"jgOpenWO('"+b.srcId+"')":(b.srcType==='plan'?"plgOpenLinkedPlan('"+b.srcId+"')":(b.srcType==='planning'?"openPlanningModal('"+b.srcId+"')":''));
         html+='<div style="position:absolute;top:50%;transform:translateY(-50%);left:calc('+leftPct+'% + 3px);width:max(calc('+widthPct+'% - 6px),'+minBarPx+'px);height:'+barH+'px;'+
           'background:'+barColor+';border-radius:8px;display:flex;align-items:center;padding:0 9px;overflow:hidden;box-shadow:0 1px 3px rgba(11,46,82,.15);cursor:pointer" '+
+          (onclick?'onclick="'+onclick+'" ':'')+
           'title="'+esc(b.lbl)+'">'+
           '<span style="font-size:'+barFontSize+'px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(b.lbl)+'</span></div>';
       });
@@ -7031,7 +7142,7 @@ function getTodayAssignedJobs(uid){
   });
   // ➕ Tâches Planning (module Centre d'opérations) assignées aujourd'hui, pas déjà liées à un WO/Plan
   // (celles-là sont déjà représentées ci-dessus) — même logique d'exclusion que dans Plan de Match.
-  getPlanning().filter(function(t){return t.emp===uid&&t.statut!=='annule'&&!t.planId&&!t.woId&&t.dateDebut<=today&&today<=t.dateFin;}).forEach(function(t){
+  getPlanning().filter(function(t){return planningAssignees(t).indexOf(uid)>=0&&t.statut!=='annule'&&!t.planId&&!t.woId&&t.dateDebut<=today&&today<=t.dateFin;}).forEach(function(t){
     items.push({mod:'planning',id:t.id,icon:'🗓',label:t.titre+(t.siteNom?' — '+t.siteNom:''),sub:'Planning'+(t.heureDebut?(' · '+t.heureDebut):''),
       lieu:t.siteNom||t.titre,odt:'',detail:t.descr||'',addr:''});
   });

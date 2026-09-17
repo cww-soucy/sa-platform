@@ -1,5 +1,17 @@
 // SA Platform — Service Worker
-// v52 — Lenteur signalée par toute l'équipe sur cellulaire, à l'ouverture ET dans les actions. Cause
+// v53 — Deux demandes : (1) Gantt Jobs : bouton "🖨️ Imprimer / Envoyer" (génère une liste imprimable
+// propre, réutilise le circuit d'impression déjà en place ailleurs dans l'app — sur iPhone, la boîte de
+// dialogue d'impression permet d'enregistrer/partager en PDF directement) + les barres du Gantt sont
+// maintenant cliquables et ouvrent directement le WO/créneau/tâche planning correspondant. (2) Les tâches
+// Planning peuvent maintenant être attribuées à PLUSIEURS employés à la fois, au choix : "tâche partagée"
+// (un seul enregistrement, statut commun, visible dans le Plan de Match/Temps/Gantt de chacun) ou "copies
+// indépendantes" (une tâche séparée par employé, statut propre à chacun). Tous les endroits qui lisaient
+// l'ancien champ simple emp (Planning, Plan de Match, Temps, auto-liaison rétroactive, Gantt) ont été mis
+// à jour via une fonction commune planningAssignees(), compatible avec les anciennes tâches à 1 seul
+// employé — aucune donnée existante à migrer. Aucune fonction protégée de Temps/Suivi/Cumul touchée
+// (vérifié : aucune fonction existante modifiée hors de celles listées ci-dessus, par comparaison
+// automatique avec la v52).
+// (v52 — Lenteur signalée par toute l'équipe sur cellulaire, à l'ouverture ET dans les actions. Cause
 // racine trouvée : (1) chaque évènement realtime Supabase (un punch, un WO, une tâche modifiée PAR
 // N'IMPORTE QUI de l'équipe) déclenchait un re-téléchargement COMPLET de la table concernée (photos
 // incluses) sur TOUS les téléphones connectés, en boucle toute la journée — corrigé en fusionnant
@@ -27,7 +39,7 @@
 // vérifier un déploiement. Il reflète maintenant la variable APP_BUILD, à garder synchronisée avec ce
 // CACHE_NAME à chaque changement).
 
-var CACHE_NAME = 'sa-platform-v52';
+var CACHE_NAME = 'sa-platform-v53';
 
 // Installation : s'activer tout de suite sans attendre
 self.addEventListener('install', function(event) {
