@@ -280,6 +280,7 @@ input,select,textarea{font-size:16px!important}
 .plg-chip:hover{transform:translateY(-1px);box-shadow:0 3px 8px rgba(11,46,82,.16)}
 .plg-chip.dragging{opacity:.35}
 .plg-chip-txt{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.plg-chip-txt-done{text-decoration:line-through}
 .plg-chip-h{font-size:9.5px;font-weight:800;color:var(--muted);flex-shrink:0}
 .plg-chip-flag{flex-shrink:0;font-size:10px}
 .plg-chip-virtual{cursor:pointer;background:repeating-linear-gradient(135deg,#fff,#fff 5px,var(--surface) 5px,var(--surface) 10px);opacity:.92}
@@ -1350,6 +1351,7 @@ input,select,textarea{font-size:16px!important}
         <input type="checkbox" id="woReqNotes" style="width:auto"/> 📝 Notes écrites
       </label>
     </div>
+    <div class="mfield" id="woTermineBar" style="display:none;background:var(--lt);border-radius:var(--rs);padding:10px 12px"></div>
     <button class="btn btn-success btn-full" id="woSaveBtn" style="margin-top:4px">💾 Sauvegarder WO</button>
     <button class="btn btn-ghost btn-full" id="woPrintBtn" style="margin-top:8px;display:none">🖨️ Imprimer ce WO</button>
     <button id="woDeleteBtn" class="btn btn-danger btn-full" style="margin-top:8px;display:none">🗑 Supprimer ce WO</button>
@@ -1361,6 +1363,7 @@ input,select,textarea{font-size:16px!important}
 <div class="modal-bg" id="siteModal">
   <div class="modal-box">
     <div class="modal-hd"><h3 id="siteModalTitle">Fiche Site/Client</h3><button class="modal-close" id="siteModalClose">✕</button></div>
+    <div class="mfield" id="siteValidBar" style="display:none;background:var(--obg);border:1.5px solid #f5d5b8;border-radius:var(--rs);padding:10px 12px"></div>
     <div class="mfield"><label>Nom du client</label><input type="text" id="sNom" placeholder="Famille Tremblay"/></div>
     <div class="mfield"><label>Adresse complète</label><input type="text" id="sAddr" placeholder="123 rue de la Piscine, Québec, QC G1A 1A1"/></div>
     <div class="m2">
@@ -1454,6 +1457,7 @@ input,select,textarea{font-size:16px!important}
     <div class="mfield" id="pmWoLinkWrap"><label>🔗 Lier à un Work Order existant <span style="font-weight:600;color:var(--muted);font-size:11px">(optionnel — pour une checklist détaillée)</span></label>
       <select id="pmWoSel"><option value="">Aucun — ce créneau se suffit à lui-même</option></select>
     </div>
+    <div class="mfield" id="pmTermineBar" style="display:none;background:var(--lt);border-radius:var(--rs);padding:10px 12px"></div>
     <button class="btn btn-success btn-full" id="pmSaveBtn" style="margin-top:4px">💾 Planifier</button>
     <button class="btn btn-ghost btn-full" id="pmCancel" style="margin-top:8px">Annuler</button>
   </div>
@@ -1791,6 +1795,13 @@ input,select,textarea{font-size:16px!important}
       </div>
       <div style="font-size:11px;color:var(--muted);margin-top:4px">Chlore libre, pH, alcalinité, température… Sauvegardé sur la fiche du site.</div>
     </div>
+    <div class="mfield" id="peValidField" style="display:none;background:var(--obg);border:1.5px solid #f5d5b8;border-radius:var(--rs);padding:10px 12px">
+      <label style="color:#a35400">⏳ En attente de validation</label>
+      <div id="peValidReason" style="font-size:11.5px;color:var(--muted);margin-bottom:8px"></div>
+      <label id="peValidApproveWrap" style="display:none;align-items:center;gap:8px;font-size:13px;font-weight:600">
+        <input type="checkbox" id="peValidApprove" style="width:auto"/> ✅ Approuver ce punch
+      </label>
+    </div>
     <div class="mfield"><label>📝 Notes / résultats de tests <span style="font-weight:600;color:var(--muted);font-size:11px">— consultables sur la fiche du site, jamais sur la feuille de temps</span></label><textarea id="peNotes" placeholder="Ex: chlore 3ppm, pH 7.4, filtre nettoyé…" rows="2"></textarea></div>
     <div class="mfield">
       <label>📷 Photos du chantier <span style="font-weight:600;color:var(--muted);font-size:11px">— sauvegardées sur la fiche du site</span></label>
@@ -1843,6 +1854,7 @@ input,select,textarea{font-size:16px!important}
         <div id="plgLienHint" style="font-size:11px;color:var(--muted);margin-top:4px">Nécessite un site — la tâche crée automatiquement l'entrée liée et reste synchronisée avec elle.</div>
         <div id="plgLienInfo" style="display:none;margin-top:6px;gap:6px;flex-wrap:wrap"></div>
       </div>
+      <div id="plgTermineBar" style="display:none;background:var(--lt);border-radius:var(--rs);padding:9px 10px"></div>
     </div>
     <div style="display:flex;gap:8px;margin-top:16px">
       <button class="btn btn-ghost" style="flex:1" onclick="closeModal('plgModal')">Annuler</button>
@@ -3119,6 +3131,65 @@ function planningAssignees(t){
   return t.emp?[t.emp]:[];
 }
 
+// ═══════════════════════════════════════════════════════
+// ➕ STATUT DEUX ÉTAPES « TERMINÉ » (employé) → « VALIDÉ » (superviseur), commun à WO/créneaux/planning.
+// Purement additif : nouveaux champs (termine/termineBy/termineAt/valide/valideBy/valideAt), n'altère
+// jamais le champ status/statut existant ni aucun calcul. Utilisé par Planning, Gantt Jobs, Opérations, Stats.
+// ═══════════════════════════════════════════════════════
+var ENT_STATUT_CFG={
+  wo:{get:getWOs,set:setWOs,tbl:'workorders'},
+  plan:{get:getPlan,set:setPlan,tbl:'plan'},
+  planning:{get:getPlanning,set:setPlanning,tbl:'planning'}
+};
+function marquerTermineEntite(kind,id){
+  var cfg=ENT_STATUT_CFG[kind];if(!cfg)return null;
+  var list=cfg.get();var e=list.find(function(x){return x.id===id;});if(!e)return null;
+  e.termine=!e.termine;
+  if(e.termine){e.termineBy=currentUser?currentUser.id:'';e.termineAt=new Date().toISOString();}
+  else{e.valide=false;e.valideBy='';e.valideAt='';} // retirer "terminé" retire aussi une validation déjà donnée
+  e.updatedAt=new Date().toISOString();
+  cfg.set(list);sbPush(cfg.tbl,e);auditLog(e.termine?'TERMINE':'MODIFICATION',cfg.tbl,e.id);
+  return e;
+}
+function validerEntite(kind,id){
+  if(!isSup())return null;
+  var cfg=ENT_STATUT_CFG[kind];if(!cfg)return null;
+  var list=cfg.get();var e=list.find(function(x){return x.id===id;});if(!e||!e.termine)return null;
+  e.valide=true;e.valideBy=currentUser.id;e.valideAt=new Date().toISOString();e.updatedAt=new Date().toISOString();
+  cfg.set(list);sbPush(cfg.tbl,e);auditLog('VALIDATION',cfg.tbl,e.id);
+  return e;
+}
+function entStatutBadgeHTML(e){
+  if(!e)return '';
+  if(e.valide)return '<span class="badge badge-green">✅ Validé</span>';
+  if(e.termine)return '<span class="badge badge-blue">☑️ Terminé — à valider</span>';
+  return '';
+}
+// Construit + insère la barre « Marquer terminé / Valider » dans un modal ; refreshFn() est rappelée
+// après chaque action pour réafficher le modal à jour (chaque appelant fournit sa propre fonction d'ouverture).
+function renderTermineValideBar(hostId,kind,id,refreshFn){
+  var host=document.getElementById(hostId);if(!host)return;
+  if(!id){host.style.display='none';host.innerHTML='';return;}
+  var cfg=ENT_STATUT_CFG[kind];var e=cfg?cfg.get().find(function(x){return x.id===id;}):null;
+  if(!e){host.style.display='none';host.innerHTML='';return;}
+  host.style.display='block';
+  var who=e.valide?e.valideBy:e.termineBy;
+  var whoTxt=who?(' <span style="font-size:11px;color:var(--muted)">par '+esc(empName(who))+'</span>'):'';
+  var h='<label>Statut d\'avancement</label>';
+  h+='<div style="margin-bottom:8px">'+(entStatutBadgeHTML(e)||'<span style="font-size:12px;color:var(--muted)">En cours</span>')+whoTxt+'</div>';
+  h+='<div style="display:flex;gap:8px">';
+  h+='<button type="button" class="btn btn-ghost btn-sm" style="flex:1" id="'+hostId+'TBtn">'+(e.termine?'↩️ Retirer « Terminé »':'☑️ Marquer terminé')+'</button>';
+  if(isSup()&&e.termine&&!e.valide){
+    h+='<button type="button" class="btn btn-success btn-sm" style="flex:1" id="'+hostId+'VBtn">🔒 Valider</button>';
+  }
+  h+='</div>';
+  host.innerHTML=h;
+  var tBtn=document.getElementById(hostId+'TBtn');
+  if(tBtn)tBtn.addEventListener('click',function(){marquerTermineEntite(kind,id);if(refreshFn)refreshFn();});
+  var vBtn=document.getElementById(hostId+'VBtn');
+  if(vBtn)vBtn.addEventListener('click',function(){validerEntite(kind,id);if(refreshFn)refreshFn();toast('🔒 Validé !');});
+}
+
 // ➕ Regroupe TOUTE la journée par employé, en lisant les préassignations déjà faites
 // sur les WO (woAssignees) ET sur les créneaux planifiés (planAssignees).
 // Un WO déjà transformé en créneau ce jour n'est pas compté deux fois.
@@ -3221,7 +3292,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // a bien pris effet. Il reflète maintenant APP_BUILD ci-dessous, à mettre à jour à CHAQUE fois que
   // CACHE_NAME change dans sw.js (même valeur, ex: 'v48').
   try{
-    var APP_BUILD='v54';
+    var APP_BUILD='v55';
     var vb=document.createElement('div');
     vb.id='__buildBadge';
     vb.textContent='build '+APP_BUILD+' ⟲';
@@ -4051,6 +4122,7 @@ function renderPMSlot(container,slot){
   div.className='pm-slot '+cls;
   div.innerHTML='<div class="pm-slot-top">'+
     '<span class="pm-slot-name">'+woTypeIcon(typ)+' '+esc(cli)+'</span>'+
+    entStatutBadgeHTML(slot)+
     '<span class="pm-slot-time">'+(slot.heure||'')+'</span></div>'+
     '<div class="pm-slot-meta">'+esc(addr)+(planAssignees(slot).length?'<br/>':'')+'</div>'+
     (slot.descr?'<div class="pm-slot-meta" style="margin-top:4px">📋 '+esc(slot.descr)+'</div>':'')+
@@ -4115,6 +4187,7 @@ function openPmModal(woId, slotId){
   }
   buildEmpChecklist('pmEmpList',preSelected);
   document.getElementById('pmSaveBtn').dataset.slotId=slotId||'';
+  renderTermineValideBar('pmTermineBar','plan',slotId||null,function(){openPmModal(null,slotId);});
   openModal('pmModal');
 }
 function savePlan(){
@@ -4133,7 +4206,8 @@ function savePlan(){
     var chk=document.getElementById('pmAddrSave');
     if(!chk||chk.checked){
       var sites=getSites();
-      var newSite={id:uid(),nom:client,addr:addr,tel:'',email:'',type:'',annee:'',equips:[],notes:'Ajouté automatiquement depuis un créneau',files:[],updatedAt:new Date().toISOString()};
+      var newSite={id:uid(),nom:client,addr:addr,tel:'',email:'',type:'',annee:'',equips:[],notes:'Ajouté automatiquement depuis un créneau',files:[],updatedAt:new Date().toISOString(),
+        aValider:true,creePar:currentUser?currentUser.id:'',creeLe:new Date().toISOString()};
       sites.unshift(newSite);setSites(sites);
       siteId=newSite.id;
     }
@@ -5499,7 +5573,7 @@ function renderPlanMatch(){
       row.className='pmm-task'+(t.done?' done':'');
       var cb=document.createElement('input');
       cb.type='checkbox';cb.className='pmm-cbx';cb.checked=!!t.done;
-      cb.addEventListener('change',function(){t.done=cb.checked;if(t.done&&!t.status)t.status='✅ Fait';row.classList.toggle('done',t.done);pmmScheduleSave(plan);renderPlanMatchProgressOnly(plan);});
+      cb.addEventListener('change',function(){t.done=cb.checked;if(t.done&&!t.status)t.status='✅ Fait';if(!t.done){t.valide=false;t.valideBy='';t.valideAt='';}row.classList.toggle('done',t.done);pmmScheduleSave(plan);renderPlanMatchProgressOnly(plan);renderPlanMatch();});
       row.appendChild(cb);
       var main=document.createElement('div');
       main.className='pmm-t-main';
@@ -5514,8 +5588,20 @@ function renderPlanMatch(){
         if((t.status||'À faire')===opt)o.selected=true;
         status.appendChild(o);
       });
-      status.addEventListener('change',function(){t.status=status.value;t.done=(status.value==='✅ Fait');cb.checked=t.done;row.classList.toggle('done',t.done);pmmScheduleSave(plan);renderPlanMatchProgressOnly(plan);});
+      status.addEventListener('change',function(){t.status=status.value;t.done=(status.value==='✅ Fait');if(!t.done){t.valide=false;t.valideBy='';t.valideAt='';}cb.checked=t.done;row.classList.toggle('done',t.done);pmmScheduleSave(plan);renderPlanMatchProgressOnly(plan);renderPlanMatch();});
       main.appendChild(notes);main.appendChild(status);
+      // ➕ Validation superviseur (2e étape, après que l'employé ait coché "terminé") — purement additive
+      if(t.valide){
+        var vBadge=document.createElement('span');vBadge.className='badge badge-green';vBadge.style.marginLeft='6px';vBadge.textContent='✅ Validé';
+        main.appendChild(vBadge);
+      }else if(t.done&&isSup()){
+        var vBtn=document.createElement('button');vBtn.type='button';vBtn.className='btn btn-success btn-sm';vBtn.style.marginLeft='6px';vBtn.textContent='🔒 Valider';
+        vBtn.addEventListener('click',function(e){e.stopPropagation();t.valide=true;t.valideBy=currentUser.id;t.valideAt=new Date().toISOString();pmmScheduleSave(plan);renderPlanMatch();toast('🔒 Tâche validée !');});
+        main.appendChild(vBtn);
+      }else if(t.done){
+        var pBadge=document.createElement('span');pBadge.className='badge badge-blue';pBadge.style.marginLeft='6px';pBadge.textContent='☑️ Terminé — à valider';
+        main.appendChild(pBadge);
+      }
       var photoZone=document.createElement('div');
       t.photos=t.photos||[];
       pmmDrawTaskPhotos(photoZone,t,plan);
@@ -5941,9 +6027,10 @@ function renderPlanning(){
           var srcLbl={plan:'Créneau',wo:'Work Order',pmm:'Plan de Match'}[t._src]||'';
           var srcIcon={plan:'🗓',wo:'🔧',pmm:'📋'}[t._src]||'';
           var onclick=isVirtual?(t._src==='plan'?"plgOpenLinkedPlan('"+t._srcId+"')":(t._src==='wo'?"plgOpenLinkedWO('"+t._srcId+"')":"openPmmModal('"+t._srcId+"')")):"openPlanningModal('"+t.id+"')";
-          html+='<div class="plg-chip'+(isVirtual?' plg-chip-virtual':'')+'" draggable="'+canDrag+'" data-id="'+t.id+'" style="border-left-color:'+color+'" onclick="'+onclick+'" title="'+esc(t.titre)+(sub?(' — '+esc(sub)):'')+(isVirtual?' · depuis '+srcLbl:'')+'">'
+          html+='<div class="plg-chip'+(isVirtual?' plg-chip-virtual':'')+(!isVirtual&&t.termine?' plg-chip-done':'')+'" draggable="'+canDrag+'" data-id="'+t.id+'" style="border-left-color:'+color+(!isVirtual&&t.termine?';opacity:.55':'')+'" onclick="'+onclick+'" title="'+esc(t.titre)+(sub?(' — '+esc(sub)):'')+(isVirtual?' · depuis '+srcLbl:'')+'">'
             +(isVirtual?'<span class="plg-chip-src">'+srcIcon+'</span>':'')
-            +'<span class="plg-chip-txt">'+esc(t.titre)+'</span>'
+            +(!isVirtual&&t.termine?'<span class="plg-chip-src">'+(t.valide?'✅':'☑️')+'</span>':'')
+            +'<span class="plg-chip-txt'+(!isVirtual&&t.termine?' plg-chip-txt-done':'')+'">'+esc(t.titre)+'</span>'
             +(!isVirtual&&t.statut==='en_attente'?'<span class="plg-chip-flag" title="En attente d\'approbation">⏳</span>':'')
             +(t.heureDebut?'<span class="plg-chip-h">'+esc(t.heureDebut)+'</span>':'')
             +'</div>';
@@ -6067,6 +6154,7 @@ function openPlanningModal(taskId){
   plgRenderLienInfo(t);
 
   document.getElementById('plgDeleteBtn').style.display=t?'block':'none';
+  renderTermineValideBar('plgTermineBar','planning',t?t.id:null,function(){openPlanningModal(t.id);});
   openModal('plgModal');
 }
 
@@ -6288,6 +6376,7 @@ function revoquerLienCalendrier(){
 // ═══════════════════════════════════════════════════════
 var jgAnchorMonday=plgMondayOf(todayISO());
 var JG_NB_SEMAINES=8;
+var jgHideTermine=false; // ➕ affiche les jobs terminés par défaut (grisés) — bascule via la case à cocher du Gantt
 
 function jgWeekLabel(iso){
   var d=new Date(iso+'T00:00:00');
@@ -6324,7 +6413,7 @@ function jgBuildGroups(monday,rangeEnd){
     var joursRetard=Math.floor((new Date(todayISO())-new Date(w.date))/86400000);
     var statut=w.status==='en_cours'?'active':(joursRetard>0&&w.status!=='termine'?'late':'upcoming');
     g.statuses.push(statut);
-    g.bars.push({t:w.priorite==='urgent'?'wo':'plan',lbl:w.type||'Work Order',start:start,end:end,statut:statut,assignes:w.assignes||[],srcType:'wo',srcId:w.id});
+    g.bars.push({t:w.priorite==='urgent'?'wo':'plan',lbl:w.type||'Work Order',start:start,end:end,statut:statut,assignes:w.assignes||[],srcType:'wo',srcId:w.id,termine:!!w.termine,valide:!!w.valide});
   });
   // Créneaux planifiés (calendrier des interventions) liés à un site, non déjà représentés par un WO
   getPlan().filter(function(p){return p.siteId&&p.date&&!planningLinkedPlanIds[p.id]&&(!p.woId||!wos.some(function(w){return w.id===p.woId;}));}).forEach(function(p){
@@ -6332,14 +6421,14 @@ function jgBuildGroups(monday,rangeEnd){
     var key='site|'+p.client;
     var g=ensureGroup(key,p.client||'Site');
     g.statuses.push('upcoming');
-    g.bars.push({t:'creneau',lbl:p.descr||'Créneau',start:p.date,end:p.date,statut:'upcoming',assignes:planAssignees(p),srcType:'plan',srcId:p.id});
+    g.bars.push({t:'creneau',lbl:p.descr||'Créneau',start:p.date,end:p.date,statut:'upcoming',assignes:planAssignees(p),srcType:'plan',srcId:p.id,termine:!!p.termine,valide:!!p.valide});
   });
   // Ajouter aussi les tâches planning liées à un site (module Planning existant), regroupées par site
   getPlanning().filter(function(t){return t.statut!=='annule'&&t.siteNom&&!t.woId&&!t.planId;}).forEach(function(t){
     if(t.dateFin<monday||t.dateDebut>rangeEnd)return;
     var key='site|'+t.siteNom;
     var g=ensureGroup(key,t.siteNom);
-    g.bars.push({t:'tache',lbl:t.titre,start:t.dateDebut,end:t.dateFin,statut:'upcoming',assignes:planningAssignees(t),srcType:'planning',srcId:t.id});
+    g.bars.push({t:'tache',lbl:t.titre,start:t.dateDebut,end:t.dateFin,statut:'upcoming',assignes:planningAssignees(t),srcType:'planning',srcId:t.id,termine:!!t.termine,valide:!!t.valide});
   });
 
   groupOrder.sort(function(a,b){return (groups[a].label||'').localeCompare(groups[b].label||'');});
@@ -6408,6 +6497,7 @@ function renderJobsGantt(){
     '<button class="btn btn-ghost btn-sm" onclick="jgGoToday()">Aujourd\'hui</button>'+
     '<button class="btn btn-ghost btn-sm" onclick="jgShiftWeeks(4)">▶</button>'+
     '<span style="font-size:12px;font-weight:700;color:var(--dk)">'+plgFmtCourt(monday)+' → '+plgFmtCourt(rangeEnd)+'</span>'+
+    '<label style="display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;color:var(--muted);margin-left:8px;cursor:pointer"><input type="checkbox" id="jgHideTermineChk" style="width:auto"'+(jgHideTermine?' checked':'')+'/> Masquer les terminés</label>'+
     '<button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="printJobsGantt()" title="Ouvre la boîte de dialogue d\'impression — sur iPhone, utilise le bouton Partager pour l\'envoyer en PDF">🖨️ Imprimer / Envoyer</button>'+
     '</div>';
 
@@ -6460,22 +6550,26 @@ function renderJobsGantt(){
       html+='</div>';
 
       g.bars.forEach(function(b){
+        if(jgHideTermine&&b.termine)return; // ➕ case "Masquer les terminés" cochée
         var startOffset=(new Date(b.start)-new Date(monday))/86400000;
         var durDays=Math.max(1,(new Date(b.end)-new Date(b.start))/86400000+1);
         var leftPct=(startOffset/totalDays)*100;
         var widthPct=(durDays/totalDays)*100;
         if(leftPct<0||leftPct>100)return;
         var barColor={wo:'var(--orange)',plan:'var(--blue)',tache:'var(--green)',creneau:'#0E9C86'}[b.t]||'var(--blue)';
+        // ➕ Job marqué "terminé" : reste visible mais grisé (validé = coché vert), jamais masqué par défaut.
+        if(b.termine)barColor=b.valide?'var(--green)':'#9AA7B4';
         // Largeur minimale en pixels pour qu'un job court (1 jour) reste lisible même étiré sur
         // une échelle de plusieurs semaines — sans ça le texte se coupe à quelques pixels.
         var minBarPx=vw>=1300?92:72;
         // ➕ Barre cliquable → ouvre directement le WO / créneau / tâche planning à l'origine du job.
         var onclick=b.srcType==='wo'?"jgOpenWO('"+b.srcId+"')":(b.srcType==='plan'?"plgOpenLinkedPlan('"+b.srcId+"')":(b.srcType==='planning'?"openPlanningModal('"+b.srcId+"')":''));
         html+='<div style="position:absolute;top:50%;transform:translateY(-50%);left:calc('+leftPct+'% + 3px);width:max(calc('+widthPct+'% - 6px),'+minBarPx+'px);height:'+barH+'px;'+
-          'background:'+barColor+';border-radius:8px;display:flex;align-items:center;padding:0 9px;overflow:hidden;box-shadow:0 1px 3px rgba(11,46,82,.15);cursor:pointer" '+
+          'background:'+barColor+';border-radius:8px;display:flex;align-items:center;padding:0 9px;overflow:hidden;box-shadow:0 1px 3px rgba(11,46,82,.15);cursor:pointer;'+(b.termine?'opacity:.85':'')+'" '+
           (onclick?'onclick="'+onclick+'" ':'')+
-          'title="'+esc(b.lbl)+'">'+
-          '<span style="font-size:'+barFontSize+'px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(b.lbl)+'</span></div>';
+          'title="'+esc(b.lbl)+(b.termine?(b.valide?' · ✅ Validé':' · ☑️ Terminé — à valider'):'')+'">'+
+          (b.termine?'<span style="margin-right:4px">'+(b.valide?'✅':'☑️')+'</span>':'')+
+          '<span style="font-size:'+barFontSize+'px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'+(b.termine?'text-decoration:line-through':'')+'">'+esc(b.lbl)+'</span></div>';
       });
 
       // Ligne "aujourd'hui"
@@ -6492,6 +6586,8 @@ function renderJobsGantt(){
 
   var content=document.getElementById('jobsGanttContent');
   if(content)content.innerHTML=html;
+  var hideChk=document.getElementById('jgHideTermineChk');
+  if(hideChk)hideChk.addEventListener('change',function(){jgHideTermine=hideChk.checked;renderJobsGantt();});
 }
 function jgShiftWeeks(n){jgAnchorMonday=plgAddDays(jgAnchorMonday,n*7);renderJobsGantt();}
 function jgGoToday(){jgAnchorMonday=plgMondayOf(todayISO());renderJobsGantt();}
@@ -6509,6 +6605,10 @@ function renderGlobalDash(){
   var absencesActives=planningTasks.filter(function(t){return t.statut==='assigne'&&t.dateDebut<=today&&t.dateFin>=today&&/vacance|absen|maladie|cong/i.test(t.titre||'');});
 
   var jobsActifsCount=tachesActives.length+wosOuverts.filter(function(w){return w.status==='en_cours';}).length;
+  // ➕ Compte des tâches (WO/créneaux/planning) marquées "terminé" par l'employé, en attente de validation superviseur
+  var aValiderCount=wos.filter(function(w){return w.termine&&!w.valide;}).length
+    +getPlan().filter(function(p){return p.termine&&!p.valide;}).length
+    +getPlanning().filter(function(t){return t.termine&&!t.valide;}).length;
 
   // Charge par technicien (nb de jours occupés cette semaine / 5)
   var monday=plgMondayOf(today), friday=plgAddDays(monday,4);
@@ -6534,6 +6634,9 @@ function renderGlobalDash(){
   charge.filter(function(c){return c.pct>=90&&!c.absent;}).slice(0,2).forEach(function(c){
     alertes.push({icon:'🔶',bg:'var(--obg)',color:'var(--orange)',title:c.nom+' — charge élevée',sub:c.pct+'% cette semaine'});
   });
+  if(aValiderCount>0){
+    alertes.push({icon:'🔒',bg:'var(--blue-lt)',color:'var(--blue)',title:aValiderCount+' tâche'+(aValiderCount>1?'s':'')+' terminée'+(aValiderCount>1?'s':'')+' à valider',sub:'WO / créneaux / planning marqués terminés par l\'équipe'});
+  }
   if(!alertes.length)alertes.push({icon:'✅',bg:'var(--gbg)',color:'var(--green)',title:'Aucune alerte',sub:'Tout est sous contrôle cette semaine.'});
 
   // Prochains jobs (7 prochains jours)
@@ -6555,6 +6658,7 @@ function renderGlobalDash(){
   html+=copKpiCard('🛠','var(--obg)','var(--orange)',wosOuverts.length,'Work Orders ouverts');
   html+=copKpiCard('⏰','var(--rbg)','var(--red)',wosEnRetard.length,'Jobs en retard');
   html+=copKpiCard('🌴','var(--gbg)','var(--green)',absencesActives.length,'Absences actives');
+  html+=copKpiCard('🔒','var(--blue-lt)','var(--blue)',aValiderCount,'À valider');
   html+='</div>';
 
   // Charge + Alertes
@@ -6794,7 +6898,7 @@ function renderWOList(){
     card.innerHTML='<div class="wo-hd">'+
       '<div class="wo-hd-top">'+
         '<span class="badge '+woPrioClass(wo.priorite)+'">'+wo.priorite+'</span>'+
-        '<span class="badge '+woStatusClass(wo.status)+'">'+wo.status.replace('_',' ')+'</span></div>'+
+        '<span class="badge '+woStatusClass(wo.status)+'">'+wo.status.replace('_',' ')+'</span>'+entStatutBadgeHTML(wo)+'</div>'+
       '<div class="wo-client">'+woTypeIcon(wo.type)+' '+wo.client+'</div>'+
       '<div class="wo-site">📍 '+wo.site+(woSiteAddr(wo)?' <a href="https://maps.google.com/?q='+encodeURIComponent(woSiteAddr(wo))+'" target="_blank" onclick="event.stopPropagation()" style="color:var(--blue);font-weight:700;text-decoration:none">🗺</a>':'')+'</div></div>'+
       '<div class="wo-body">'+
@@ -6829,6 +6933,7 @@ function openWOModal(wo){
   document.getElementById('woDeleteBtn').style.display=wo&&canEdit()?'flex':'none';
   document.getElementById('woPrintBtn').style.display=wo?'block':'none';
   renderWOTaskList();renderWOPj();
+  renderTermineValideBar('woTermineBar','wo',wo?wo.id:null,function(){openWOModal(getWOs().find(function(w){return w.id===wo.id;}));});
   openModal('woModal');
 }
 // Imprime la liste complète des WO actuellement affichés (filtre/recherche appliqués)
@@ -6961,14 +7066,17 @@ function renderSiteList(){
   if(sites.length===0){
     list.innerHTML='<div class="empty"><div class="ei">🏗</div><h3>Aucun site</h3><p>'+(isAdmin()?'Créez votre première fiche client avec le bouton +':'Aucune fiche disponible')+'</p></div>';return;
   }
+  // ➕ Sites créés automatiquement (punch/créneau) en attente de validation superviseur → remontés en premier
+  sites=sites.slice().sort(function(a,b){return (b.aValider?1:0)-(a.aValider?1:0);});
   sites.forEach(function(site){
     var card=document.createElement('div');card.className='site-card';
     var wos=getWOs().filter(function(w){return w.site&&w.site.indexOf(site.nom)>=0;});
     var logoUrl=siteLogoUrl(site.siteweb);
     var nbBassins=(site.bassins||[]).length;
+    if(site.aValider)card.style.cssText='border:1.5px solid var(--orange);background:var(--obg)';
     card.innerHTML='<div class="site-hd">'+
       (logoUrl?'<img src="'+logoUrl+'" class="site-avatar" style="object-fit:contain;background:#fff" onerror="this.style.display=\'none\'"/>':'<div class="site-avatar">'+siteTypeIcon(site.type)+'</div>')+
-      '<div class="site-info"><div class="site-name">'+site.nom+'</div><div class="site-addr">📍 '+site.addr+'</div></div>'+
+      '<div class="site-info"><div class="site-name">'+site.nom+(site.aValider?' <span class="badge badge-orange">🕓 À valider</span>':'')+'</div><div class="site-addr">📍 '+site.addr+'</div></div>'+
       '<div class="li-right"><span class="badge badge-blue">'+wos.length+' WO'+(wos.length!==1?'s':'')+'</span>'+(nbBassins>1?'<span class="badge badge-orange" style="margin-top:2px">🏊 '+nbBassins+' bassins</span>':'')+(site.annee?'<span style="font-size:11px;color:var(--muted)">'+site.annee+'</span>':'')+'</div></div>'+
       (site.equips&&site.equips.length?'<div class="site-body">'+site.equips.map(function(e){return '<span class="equip-tag">'+e+'</span>';}).join('')+'</div>':'');
     card.addEventListener('click',function(){openSiteModal(site);});
@@ -6995,7 +7103,68 @@ function openSiteModal(site){
   });
   document.getElementById('siteDeleteBtn').style.display=site&&canEdit()?'flex':'none';
   renderSEquips();renderSitePj();renderSBassins();updateSLogoPreview();renderSiteJournalPanel(site);
+  renderSiteValidBar(site);
   openModal('siteModal');
+}
+// ➕ Bandeau de validation (sites créés automatiquement depuis un punch/créneau) : Approuver / Fusionner / Rejeter.
+// N'agit jamais tant qu'un superviseur ne l'a pas explicitement décidé — le site reste utilisable entre-temps.
+function renderSiteValidBar(site){
+  var host=document.getElementById('siteValidBar');
+  if(!host)return;
+  if(!site||!site.aValider||!isSup()){host.style.display='none';host.innerHTML='';return;}
+  host.style.display='block';
+  var autres=getSites().filter(function(s){return s.id!==site.id;});
+  var h='<label style="color:#a35400">🕓 Site créé automatiquement — à valider</label>';
+  h+='<div style="font-size:11.5px;color:var(--muted);margin-bottom:8px">Ajouté par '+esc(empName(site.creePar)||'un employé')+(site.creeLe?(' · '+fmtDate(site.creeLe.slice(0,10))):'')+'. Approuve-le, fusionne-le avec un site existant, ou rejette-le.</div>';
+  if(autres.length){
+    h+='<select id="siteValidMergeSel" style="width:100%;margin-bottom:8px;font-size:13px;padding:8px;border:1.5px solid var(--line);border-radius:var(--rs)"><option value="">— Fusionner avec... —</option>'+
+      autres.map(function(s){return '<option value="'+esc(s.id)+'">'+esc(s.nom)+' — '+esc(s.addr||'')+'</option>';}).join('')+'</select>';
+  }
+  h+='<div style="display:flex;gap:8px;flex-wrap:wrap">';
+  h+='<button type="button" class="btn btn-success btn-sm" style="flex:1" id="siteValidApproveBtn">✅ Approuver</button>';
+  if(autres.length)h+='<button type="button" class="btn btn-ghost btn-sm" style="flex:1" id="siteValidMergeBtn">🔀 Fusionner</button>';
+  h+='<button type="button" class="btn btn-danger btn-sm" style="flex:1" id="siteValidRejectBtn">🗑 Rejeter</button>';
+  h+='</div>';
+  host.innerHTML=h;
+  document.getElementById('siteValidApproveBtn').addEventListener('click',function(){approveSite(site.id);});
+  var mBtn=document.getElementById('siteValidMergeBtn');
+  if(mBtn)mBtn.addEventListener('click',function(){
+    var sel=document.getElementById('siteValidMergeSel');
+    var targetId=sel?sel.value:'';
+    if(!targetId){toast('⚠️ Choisis le site cible dans la liste');return;}
+    mergeSiteInto(site.id,targetId);
+  });
+  document.getElementById('siteValidRejectBtn').addEventListener('click',function(){rejectSite(site.id);});
+}
+function approveSite(siteId){
+  var sites=getSites();var s=sites.find(function(x){return x.id===siteId;});if(!s)return;
+  s.aValider=false;s.valideBy=currentUser.id;s.valideAt=new Date().toISOString();
+  setSites(sites);auditLog('VALIDATION','sites',siteId);closeModal('siteModal');renderSiteList();toast('✅ Site approuvé !');
+}
+function rejectSite(siteId){
+  askConfirm('Rejeter ce site ? Il sera supprimé du répertoire (les punchs déjà enregistrés gardent leur lieu tel quel, en texte).', function(){
+    var sites=getSites().filter(function(s){return s.id!==siteId;});
+    setSites(sites);sbDelete('sites',siteId);auditLog('SUPPRESSION','sites',siteId);closeModal('siteModal');renderSiteList();toast('🗑 Site rejeté');
+  },'Rejeter','Confirmation');
+}
+// Fusionne un site en double (pendingId) dans un site existant (targetId) : réattribue les WO/créneaux/
+// planning qui pointaient dessus par siteId, puis supprime le doublon. Les punchs (Temps) référencent le
+// lieu par texte libre, pas par siteId : ils gardent leur texte historique tel quel, jamais réécrit.
+function mergeSiteInto(pendingId,targetId){
+  if(pendingId===targetId)return;
+  askConfirm('Fusionner ce site avec le site sélectionné ? Ce doublon sera supprimé et toutes les interventions liées seront réattribuées au site conservé.', function(){
+    var target=getSites().find(function(s){return s.id===targetId;});
+    if(!target){toast('⚠️ Site cible introuvable');return;}
+    var plans=getPlan();var chg1=false;
+    plans.forEach(function(p){if(p.siteId===pendingId){p.siteId=targetId;p.client=target.nom;if(target.addr)p.addr=target.addr;chg1=true;}});
+    if(chg1){setPlan(plans);}
+    var planning=getPlanning();var chg2=false;
+    planning.forEach(function(t){if(t.siteId===pendingId){t.siteId=targetId;t.siteNom=target.nom;chg2=true;}});
+    if(chg2){setPlanning(planning);}
+    var sites=getSites().filter(function(s){return s.id!==pendingId;});
+    setSites(sites);sbDelete('sites',pendingId);auditLog('FUSION','sites',pendingId,{fusionneAvec:targetId});
+    closeModal('siteModal');renderSiteList();toast('🔀 Sites fusionnés !');
+  },'Fusionner','Confirmation');
 }
 // ➕ Journal de chantier : notes/photos prises par l'équipe pendant leurs punchs sur ce site — consultable dans le temps
 function renderSiteJournalPanel(site){
@@ -7633,6 +7802,20 @@ function openPunchEdit(idx){
   refreshPeBassinSection(t);
   document.getElementById('peModalTitle').textContent=(t.active?'✏️ Modifier (en cours) — ':'Corriger — ')+(t.lieu||'Tâche');
   document.getElementById('peDeleteBtn').style.display='block';
+  // ➕ Punch en attente de validation (nouveau site ou Entrepôt/Bureau) — visible pour tous, approbation réservée aux superviseurs
+  var pvField=document.getElementById('peValidField');
+  if(pvField){
+    if(t.pendingValidation){
+      pvField.style.display='block';
+      var reasonTxt={nouveau_site:'Ce punch utilise un nouveau lieu qui vient d\'être ajouté au répertoire de sites.',entrepot_bureau:'Ce punch est sur l\'Entrepôt/le Bureau (lieu interne).'}[t.pendingReason]||'Ce punch attend une confirmation.';
+      document.getElementById('peValidReason').textContent=reasonTxt;
+      var apWrap=document.getElementById('peValidApproveWrap');
+      apWrap.style.display=isSup()?'flex':'none';
+      document.getElementById('peValidApprove').checked=false;
+    }else{
+      pvField.style.display='none';
+    }
+  }
   openModal('punchEditModal');
 }
 // Ajout manuel d'un punch (mode création)
@@ -7650,6 +7833,7 @@ function openPunchAdd(){
   peBassins=[];refreshPeBassinSection(null);
   document.getElementById('peModalTitle').textContent='Ajouter un punch — '+DL[curDay];
   document.getElementById('peDeleteBtn').style.display='none';
+  var pvField2=document.getElementById('peValidField');if(pvField2)pvField2.style.display='none';
   openModal('punchEditModal');
   setTimeout(function(){document.getElementById('peLieu').focus();},300);
 }
@@ -7713,6 +7897,11 @@ function savePunchEdit(){
   t.bassins=peBassins.slice(); // ➕ relevés de bassin (paramètres fontainier)
   if(t.start&&t.end){t.hrs=hrsFrom(t.start,t.end);t.active=false;}
   t.correctedBy=currentUser.id;t.correctedAt=new Date().toISOString();
+  // ➕ Approbation superviseur d'un punch en attente (nouveau site / Entrepôt-Bureau) — ne touche jamais aux heures
+  if(t.pendingValidation&&isSup()){
+    var apChk=document.getElementById('peValidApprove');
+    if(apChk&&apChk.checked){t.pendingValidation=false;t.valideBy=currentUser.id;t.valideAt=new Date().toISOString();}
+  }
   syncTaskToSiteJournal(t); // ➕ notes/photos → fiche du site (jamais sur la feuille de temps)
 
   // ── DÉPLACEMENT vers un autre jour ──
@@ -8010,6 +8199,12 @@ function findSiteExact(lieu){
   if(!lieu)return null;
   return getSites().find(function(s){return (s.nom||'').trim().toLowerCase()===lieu;})||null;
 }
+// ➕ Détecte un punch "Entrepôt"/"Bureau" (lieu interne, pas un chantier client) — insensible aux accents/majuscules.
+// Ces punchs restent 100% autorisés (jamais bloqués) mais sont marqués en attente de validation superviseur/directeur.
+function isBureauEntrepotLieu(lieu){
+  var n=(lieu||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+  return /\b(entrepot|bureau|shop|garage)\b/.test(n);
+}
 function onLieuChange(){
   var lieu=document.getElementById('mLieu').value.trim();
   var site=findSiteExact(lieu);
@@ -8065,23 +8260,33 @@ function confirmJob(){
   var hasActive=false;var prevLieu='';
   st.tasks.forEach(function(t){if(t.active){hasActive=true;prevLieu=t.lieu;}});
   function doStart(){
-    // ➕ Nouveau lieu (pas dans le répertoire) + case cochée → on l'ajoute au répertoire de sites (additif, jamais de suppression/écrasement)
+    // ➕ Nouveau lieu (pas dans le répertoire) + case cochée → on l'ajoute au répertoire de sites, MAIS
+    // marqué "à valider" (aValider) : le punch continue normalement (jamais bloqué), un superviseur
+    // approuve/fusionne/rejette ensuite depuis la fiche Sites. Jamais de suppression/écrasement d'un site existant.
     var siteId=site?site.id:null;
+    var siteEstNouveauAValider=false;
     if(!site && addr){
       var chk=document.getElementById('mAddrSave');
       if(!chk||chk.checked){
         var sites=getSites();
-        var newSite={id:uid(),nom:lieu,addr:addr,tel:'',email:'',type:'',annee:'',equips:[],notes:'Ajouté automatiquement depuis un punch',files:[]};
+        var newSite={id:uid(),nom:lieu,addr:addr,tel:'',email:'',type:'',annee:'',equips:[],notes:'Ajouté automatiquement depuis un punch',files:[],
+          aValider:true,creePar:currentUser?currentUser.id:'',creeLe:new Date().toISOString()};
         sites.unshift(newSite);setSites(sites);renderSiteList&&(document.getElementById('siteList')&&renderSiteList());
-        siteId=newSite.id;
+        siteId=newSite.id;siteEstNouveauAValider=true;
       }
     }
     st.tasks.forEach(function(t){
       if(t.active){t.end=now;t.hrs=hrsFrom(t.start,now);t.active=false;}
     });
+    // ➕ Punch "en attente de validation" (jamais bloquant) : soit parce que le site vient d'être créé
+    // automatiquement (nouveau lieu), soit parce que le lieu tapé est l'Entrepôt/le Bureau — ces punchs
+    // internes doivent être confirmés par un superviseur/directeur. N'affecte NI le calcul NI l'enregistrement
+    // des heures : seulement un drapeau additif consulté dans Suivi.
+    var pendingReason=siteEstNouveauAValider?'nouveau_site':(isBureauEntrepotLieu(lieu)?'entrepot_bureau':null);
     var task={id:++tid,lieu:lieu,odt:document.getElementById('mOdt').value.trim(),detail:document.getElementById('mDetail').value.trim(),
       addr:addr,siteId:siteId,
       start:now,startTs:Date.now(),end:'',hrs:0,active:true,kmDep:kmDep,kmArr:'',files:mPjFiles.slice(),gps:null,
+      pendingValidation:!!pendingReason,pendingReason:pendingReason||null,
       sourceType:pendingJobSource?pendingJobSource.type:null,sourceId:pendingJobSource?pendingJobSource.id:null,sourceLabel:pendingJobSource?pendingJobSource.label:null};
     pendingJobSource=null; // ➕ le lien n'est valable que pour ce punch ; on le réinitialise aussitôt utilisé
     st.tasks.push(task);st.activeTask=task;st.status='running';
@@ -9664,12 +9869,18 @@ function renderSuivi(){
   // touche à aucun calcul existant. Sans ça, un punch bloqué sur un jour déjà passé (voir checkEndOfDay)
   // reste invisible pour Charles tant qu'il ne pense pas à changer manuellement d'onglet jour dans Suivi.
   var punchsBloques=[];
+  // ➕ Punchs "en attente de validation" (nouveau site tapé au punch, ou Entrepôt/Bureau) — purement additif,
+  // même source de données (getFTWeek de la semaine courante) que la détection des punchs restés actifs ci-dessus.
+  var punchsAValider=[];
   comptes.forEach(function(c){
     var ft=getFTWeek(c.id+'_'+week);
     if(!ft||!ft.days)return;
     ft.days.forEach(function(d,di){
-      if(di===curDay)return; // déjà couvert par la section "En activité" ci-dessous
-      if(d&&d.status==='running')punchsBloques.push({nom:(c.prenom+' '+c.nom).trim(),id:c.id,jour:DL[di]});
+      if(di!==curDay&&d&&d.status==='running')punchsBloques.push({nom:(c.prenom+' '+c.nom).trim(),id:c.id,jour:DL[di]});
+      (d&&d.tasks||[]).forEach(function(t){
+        if(t.pendingValidation)punchsAValider.push({nom:(c.prenom+' '+c.nom).trim(),id:c.id,jour:DL[di],lieu:t.lieu,
+          raison:t.pendingReason==='entrepot_bureau'?'Entrepôt/Bureau':'Nouveau site'});
+      });
     });
   });
   var hdr=document.createElement('div');hdr.style.cssText='padding:0 2px 12px';
@@ -9689,6 +9900,18 @@ function renderSuivi(){
       sB.appendChild(fixBtn);
     });
     el.appendChild(sB);
+  }
+  if(punchsAValider.length>0&&isSup()){
+    var sV=document.createElement('div');
+    sV.style.cssText='background:var(--blue-lt);border:1.5px solid var(--blue);border-radius:var(--r);padding:12px;margin-bottom:12px';
+    sV.innerHTML='<div style="font-size:13px;font-weight:800;color:var(--blue);margin-bottom:6px">🔒 Punchs en attente de validation ('+punchsAValider.length+')</div>'
+      +punchsAValider.slice(0,8).map(function(p){return '<div style="font-size:12px;color:var(--dk);padding:2px 0">• '+esc(p.nom)+' — '+esc(p.jour)+' · '+esc(p.lieu)+' <span style="color:var(--muted)">('+esc(p.raison)+')</span></div>';}).join('');
+    var vBtn2=document.createElement('button');
+    vBtn2.className='btn btn-ghost btn-sm';vBtn2.style.cssText='margin-top:8px;border:1px solid var(--blue);color:var(--blue)';
+    vBtn2.textContent='👁 Vérifier';
+    vBtn2.addEventListener('click',function(){gotoEmpFT(punchsAValider[0].id);});
+    sV.appendChild(vBtn2);
+    el.appendChild(sV);
   }
   // ── CARTE DE LOCALISATION (div persistant : survit au rafraîchissement auto) ──
   if(!suiviMapCard){
@@ -9946,6 +10169,20 @@ function renderStats(){
     body2.appendChild(div);
   });
   c2.appendChild(body2);wrap.appendChild(c2);
+  // ➕ Validation des tâches (statut 2 étapes Terminé/Validé — WO + créneaux + planning), purement additif
+  var c3=document.createElement('div');c3.className='card';c3.style.marginBottom='10px';
+  c3.innerHTML='<div class="card-hd"><div class="card-hd-t">🔒 Validation des tâches (WO, créneaux, planning)</div></div>';
+  var body3=document.createElement('div');body3.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px';
+  var _allEnt=wos.concat(getPlan()).concat(getPlanning());
+  [{f:function(e){return !e.termine;},l:'En cours',c:'var(--muted)'},
+   {f:function(e){return e.termine&&!e.valide;},l:'Terminé — à valider',c:'var(--blue)'},
+   {f:function(e){return e.termine&&e.valide;},l:'Validé',c:'var(--green)'}].forEach(function(st){
+    var ct=_allEnt.filter(st.f).length;
+    var div=document.createElement('div');div.style.cssText='background:var(--surface);border-radius:var(--rs);padding:12px';
+    div.innerHTML='<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:4px">'+st.l+'</div><div style="font-size:24px;font-weight:800;color:'+st.c+'">'+ct+'</div>';
+    body3.appendChild(div);
+  });
+  c3.appendChild(body3);wrap.appendChild(c3);
   el.appendChild(wrap);
   document.getElementById('statsPrevWk').addEventListener('click',function(){var d=new Date(statsWeek+'T12:00:00');d.setDate(d.getDate()-7);statsWeek=localISO(d);renderStats();});
   document.getElementById('statsNextWk').addEventListener('click',function(){var d=new Date(statsWeek+'T12:00:00');d.setDate(d.getDate()+7);statsWeek=localISO(d);renderStats();});

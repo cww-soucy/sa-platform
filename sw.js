@@ -1,5 +1,25 @@
 // SA Platform — Service Worker
-// v54 — Quatre demandes groupées en un seul dépôt : (1) Planning Équipe : bouton "🖨️ Imprimer" — liste
+// v55 — Quatre demandes groupées en un seul dépôt : (1) Statut deux étapes « Terminé » (employé) →
+// « Validé » (superviseur), ajouté à TOUS les types de tâches (Work Orders, créneaux/calendrier des
+// interventions, tâches Planning, sous-tâches du Plan de Match) — visible dans les fiches (bandeau avec
+// boutons), dans Planning (chip grisé/coché), dans le Gantt Jobs (barre grisée + icône, RESTE VISIBLE —
+// ne disparaît plus comme avant — avec une case "Masquer les terminés" pour qui veut filtrer), dans
+// Opérations/Vue Globale (KPI + alerte "à valider") et dans Stats (compteur En cours / À valider / Validé).
+// Purement additif : nouveaux champs termine/termineBy/termineAt/valide/valideBy/valideAt, aucun champ
+// existant modifié, aucun calcul touché. (2) Sites en double : un site créé automatiquement depuis un
+// punch ou un créneau (nouveau lieu tapé) est maintenant marqué "🕓 À valider" au lieu de rejoindre le
+// répertoire sans supervision — le module Sites permet à un superviseur de l'Approuver, le Fusionner avec
+// un site existant (réattribue automatiquement les créneaux/tâches planning liés puis supprime le
+// doublon) ou le Rejeter. (3) Un employé qui tape un lieu/site qui n'est pas dans le répertoire peut
+// toujours puncher normalement — jamais bloqué — mais ce punch est marqué "en attente de validation" et
+// remonte dans Suivi pour confirmation par un superviseur/directeur (bouton "✏️ Corriger" existant, avec
+// une case "Approuver ce punch"). (4) Un punch sur l'Entrepôt ou le Bureau reste entièrement accessible à
+// tous les employés (jamais cachés/restreints) mais suit exactement le même mécanisme de validation que
+// (3) : le punch est enregistré tout de suite, puis attend l'approbation d'un superviseur/directeur.
+// Vérifié par comparaison automatique de fonctions avec la v54 : seules les fonctions listées ci-dessus
+// ont changé (dont openPunchEdit/savePunchEdit, modifiées uniquement pour AJOUTER la case d'approbation —
+// aucun calcul d'heures touché), aucune autre fonction protégée de Temps/Suivi/Cumul.
+// (v54 — Quatre demandes groupées en un seul dépôt : (1) Planning Équipe : bouton "🖨️ Imprimer" — liste
 // propre par technicien/site pour la période affichée, même circuit d'impression que le reste de l'app ;
 // le format d'impression de TOUTE l'app passe de Letter à A4 (demande explicite). (2) Comptes : un compte
 // peut maintenant être marqué "Inactif" (login bloqué côté serveur ET client, exclu des statistiques, des
@@ -58,7 +78,7 @@
 // vérifier un déploiement. Il reflète maintenant la variable APP_BUILD, à garder synchronisée avec ce
 // CACHE_NAME à chaque changement).
 
-var CACHE_NAME = 'sa-platform-v54';
+var CACHE_NAME = 'sa-platform-v55';
 
 // Installation : s'activer tout de suite sans attendre
 self.addEventListener('install', function(event) {
