@@ -1833,7 +1833,13 @@ input,select,textarea{font-size:16px!important}
           <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer"><input type="radio" name="plgAssignMode" value="independant" style="margin-top:2px"/> <span>📑 Copies indépendantes — une tâche par employé, statut séparé pour chacun</span></label>
         </div>
       </div>
-      <div><label class="lbl">Site (optionnel)</label><select id="plgSite" class="inp"></select></div>
+      <div><label class="lbl">Site (optionnel) <span id="plgSiteBadge" style="font-size:10px;font-weight:800;padding:1px 7px;border-radius:20px;margin-left:4px"></span></label>
+        <input type="text" id="plgSite" class="inp" placeholder="ex: CCNQ" list="sitesList" autocomplete="off"/>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px">Choisis un site du répertoire, ou tape un nouveau nom — il sera ajouté « à valider ».</div>
+        <label id="plgSiteSaveWrap" style="display:none;align-items:center;gap:6px;margin-top:6px;font-size:12px;color:var(--muted);font-weight:600">
+          <input type="checkbox" id="plgSiteSave" checked style="width:auto"/> ➕ Ajouter ce site au répertoire
+        </label>
+      </div>
       <div style="display:flex;gap:8px">
         <div style="flex:1"><label class="lbl">Date début</label><input type="date" id="plgDateDebut" class="inp"/></div>
         <div style="flex:1"><label class="lbl">Date fin</label><input type="date" id="plgDateFin" class="inp"/></div>
@@ -2356,7 +2362,7 @@ var SB_KEY='sb_publishable_qVd_6eoAvwrDGs9u81woAg_RrMpTJxn';
 var sb=null;
 var sbReady=false;
 var sbStatus='offline'; // offline | syncing | online
-var SB_TABLES={workorders:'workorders',sites:'sites',plan:'plan',planmatch:'plan_match',flotte:'flotte',inventaire:'inventaire',comptes:'comptes',sortie:'sorties_inventaire',livraison:'bons_livraison',gpslog:'punch_gps_log',sitelog:'site_journal',planning:'planning_tasks',calconn:'tech_calendar_connections',hivernage:'rapports_hivernage'};
+var SB_TABLES={workorders:'workorders',sites:'sites',plan:'plan',planmatch:'plan_match',flotte:'flotte',inventaire:'inventaire',comptes:'comptes',sortie:'sorties_inventaire',livraison:'bons_livraison',gpslog:'punch_gps_log',sitelog:'site_journal',planning:'planning_tasks',calconn:'tech_calendar_connections',hivernage:'rapports_hivernage',ftenvois:'feuilles_temps_envois'};
 
 function initSupabase(){
   try{
@@ -3292,7 +3298,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // a bien pris effet. Il reflète maintenant APP_BUILD ci-dessous, à mettre à jour à CHAQUE fois que
   // CACHE_NAME change dans sw.js (même valeur, ex: 'v48').
   try{
-    var APP_BUILD='v55';
+    var APP_BUILD='v57';
     var vb=document.createElement('div');
     vb.id='__buildBadge';
     vb.textContent='build '+APP_BUILD+' ⟲';
@@ -3467,6 +3473,7 @@ document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('pmCancel').addEventListener('click', function(){closeModal('pmModal');});
   document.getElementById('pmSaveBtn').addEventListener('click', savePlan);
   var _pmClientInp=document.getElementById('pmClient');if(_pmClientInp)_pmClientInp.addEventListener('input',onPmClientChange);
+  var _plgSiteInp=document.getElementById('plgSite');if(_plgSiteInp)_plgSiteInp.addEventListener('input',onPlgSiteChange);
 
   document.getElementById('pmmModalClose').addEventListener('click', function(){closeModal('pmmModal');});
   document.getElementById('pmmCancel').addEventListener('click', function(){closeModal('pmmModal');});
@@ -4151,6 +4158,20 @@ function onPmClientChange(){
     if(saveWrap)saveWrap.style.display=client?'flex':'none';
   }
 }
+// ➕ Même badge « 📁 Répertoire / 🆕 Nouveau site » que pmClient/mLieu, pour le champ Site du modal Planning.
+function onPlgSiteChange(){
+  var nom=document.getElementById('plgSite').value.trim();
+  var site=findSiteByNameForSlot(nom);
+  var badge=document.getElementById('plgSiteBadge');
+  var saveWrap=document.getElementById('plgSiteSaveWrap');
+  if(site){
+    if(badge){badge.textContent='📁 Répertoire';badge.style.background='var(--gbg,#E1F5EE)';badge.style.color='var(--green,#1D9E75)';}
+    if(saveWrap)saveWrap.style.display='none';
+  }else{
+    if(badge){badge.textContent=nom?'🆕 Nouveau site':'';badge.style.background='var(--obg,#FFF3E8)';badge.style.color='var(--orange,#FF6B00)';}
+    if(saveWrap)saveWrap.style.display=nom?'flex':'none';
+  }
+}
 function openPmModal(woId, slotId){
   woTasks=[];
   populateClientList();
@@ -4185,7 +4206,7 @@ function openPmModal(woId, slotId){
     var wo0=wos.find(function(w){return w.id===woId;});
     if(wo0){document.getElementById('pmClient').value=wo0.client||'';document.getElementById('pmAddr').value=woSiteAddr(wo0)||'';document.getElementById('pmType').value=wo0.type||'entretien';onPmClientChange();}
   }
-  buildEmpChecklist('pmEmpList',preSelected);
+  buildEmpChecklist('pmEmpList',preSelected,true);
   document.getElementById('pmSaveBtn').dataset.slotId=slotId||'';
   renderTermineValideBar('pmTermineBar','plan',slotId||null,function(){openPmModal(null,slotId);});
   openModal('pmModal');
@@ -4574,6 +4595,20 @@ function renderAccueilSuperviseur(el){
   if(livAFaire>0)alertes.push({t:'🚚 '+livAFaire+' livraison'+(livAFaire>1?'s':'')+' à compléter',c:'var(--purple)',go:'livraison'});
   var recNonFaites=recurrencesPourDate(jour).filter(function(r){return !recurrenceEstFaite(r.id,jour);}).length;
   if(recNonFaites>0)alertes.push({t:'🔁 '+recNonFaites+' tâche'+(recNonFaites>1?'s':'')+' récurrente'+(recNonFaites>1?'s':'')+' non complétée'+(recNonFaites>1?'s':''),c:'var(--teal)',go:'planmatch'});
+  // ➕ Punchs "en attente de validation" (nouveau site tapé au punch, ou Entrepôt/Bureau) — remonté ici,
+  // sur le "poste de commande" que le superviseur voit en PREMIER en ouvrant l'app, pas seulement dans
+  // Suivi (qu'il faut aller consulter). Il n'existe pas de notification push serveur dans cette app
+  // (désactivée volontairement, voir sw.js) — ceci est donc l'équivalent le plus visible possible tant
+  // que l'app est ouverte.
+  var punchsAValiderCount=0;
+  techs.forEach(function(c){
+    var ft=getFTWeek(c.id+'_'+semaine);
+    if(!ft||!ft.days)return;
+    ft.days.forEach(function(d){(d&&d.tasks||[]).forEach(function(t){if(t.pendingValidation)punchsAValiderCount++;});});
+  });
+  if(punchsAValiderCount>0)alertes.push({t:'🔒 '+punchsAValiderCount+' punch'+(punchsAValiderCount>1?'s':'')+' en attente de validation',c:'var(--blue)',go:'suivi'});
+  var sitesAValiderCount=getSites().filter(function(s){return s.aValider;}).length;
+  if(sitesAValiderCount>0)alertes.push({t:'🕓 '+sitesAValiderCount+' site'+(sitesAValiderCount>1?'s':'')+' à valider',c:'var(--orange)',go:'sites'});
 
   var h='<div style="padding:14px 14px 80px">';
   h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'
@@ -4622,8 +4657,10 @@ function renderAccueilSuperviseur(el){
       +'<div style="font-size:11px;color:var(--muted);margin-top:2px">📋 '+e.taches+' tâche'+(e.taches>1?'s':'')+' assignée'+(e.taches>1?'s':'')+'</div></div>';
   });
 
-  h+='<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:14px">'
-    +'<button class="btn btn-primary btn-sm" id="spvGoPlan" style="flex:1">📋 Plan de match</button>'
+  h+='<button class="btn btn-primary btn-full" id="spvGoFeuilles" style="margin-top:14px;display:flex;align-items:center;justify-content:center;gap:8px">📄 Feuilles de temps équipe</button>';
+  h+='<div style="font-size:10.5px;color:var(--muted);text-align:center;margin-top:5px;font-weight:600">Sortir et envoyer les feuilles de toute l\'équipe pour la semaine</div>';
+  h+='<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:12px">'
+    +'<button class="btn btn-ghost btn-sm" id="spvGoPlan" style="flex:1">📋 Plan de match</button>'
     +'<button class="btn btn-ghost btn-sm" id="spvGoSuivi" style="flex:1">📍 Suivi carte</button>'
     +'<button class="btn btn-ghost btn-sm" id="spvGoTemps" style="flex:1">⏱ Heures équipe</button></div>';
   h+='</div>';
@@ -4635,6 +4672,7 @@ function renderAccueilSuperviseur(el){
   el.querySelectorAll('.spv-emp').forEach(function(x){
     x.addEventListener('click',function(){ouvrirHeuresEmploye(x.dataset.emp,todayISO());});
   });
+  var g0=document.getElementById('spvGoFeuilles'); if(g0)g0.addEventListener('click',ouvrirFeuillesEquipe);
   var g1=document.getElementById('spvGoPlan'); if(g1)g1.addEventListener('click',function(){switchMod('planmatch');});
   var g2=document.getElementById('spvGoSuivi');if(g2)g2.addEventListener('click',function(){switchMod('suivi');});
   var g3=document.getElementById('spvGoTemps');if(g3)g3.addEventListener('click',function(){switchMod('ft');ouvrirVueTempsEquipe();});
@@ -4712,8 +4750,11 @@ function dessinerTempsEquipe(){
   });
   h='<div style="background:var(--blue);color:#fff;border-radius:var(--rs);padding:10px 12px;margin-bottom:12px">'
     +'<div style="font-size:20px;font-weight:800">'+fmtH(totalEquipe)+'</div>'
-    +'<div style="font-size:11px;opacity:.85;font-weight:700">Total équipe cette semaine</div></div>'+h;
+    +'<div style="font-size:11px;opacity:.85;font-weight:700">Total équipe cette semaine</div></div>'
+    +'<button class="btn btn-primary btn-full" id="teGoFeuilles" style="margin-bottom:12px">📄 Sortir les feuilles de temps de la semaine</button>'+h;
   body.innerHTML=h;
+  var gf=document.getElementById('teGoFeuilles');
+  if(gf)gf.addEventListener('click',function(){_fteSemaine=sem;_fteSelInit=null;closeModal('tempsEquipeModal');ouvrirFeuillesEquipe();});
   body.querySelectorAll('.te-jour').forEach(function(j){
     j.addEventListener('click',function(){
       var d=new Date(sem+'T12:00:00');d.setDate(d.getDate()+(+j.dataset.jour));
@@ -4746,6 +4787,561 @@ function approuverSemaine(empId, semaine){
     toast('✅ Semaine approuvée ('+n+' punchs)');
     if(document.getElementById('teBody'))dessinerTempsEquipe();
   },'✅ Approuver la semaine','Approbation hebdomadaire');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FEUILLES DE TEMPS ÉQUIPE — sortie hebdomadaire de TOUTES les feuilles de temps
+// Remplace la sortie une-par-une du lundi matin : un seul écran regroupe les employés punchés de la
+// semaine, le détail COMPLET de leurs punchs (plusieurs punchs par jour, chacun sur son site/ODT),
+// le total de chaque journée, le total par job et le total hebdomadaire, la validation des punchs en
+// attente, puis la génération des feuilles à imprimer et d'un brouillon de courriel par employé.
+// Purement additif : aucune fonction de calcul Temps/Suivi/Cumul existante n'est modifiée — cet écran
+// LIT les mêmes données (getFTWeek) et n'écrit que via les mécanismes déjà en place (sbPushFT/auditLog).
+// ═══════════════════════════════════════════════════════════════
+var _fteSemaine=null, _fteSel={}, _fteDeplie={}, _fteVue='liste', _fteSelInit=null, _fteHookCorr=false;
+
+// Le lundi matin, on sort les feuilles de la semaine QUI VIENT DE FINIR (usage réel de Charles) ;
+// les autres jours, la semaine courante. Les flèches ◀ ▶ permettent d'aller où on veut.
+function fteSemaineParDefaut(){
+  var lundi=mondayOf(todayISO());
+  if(new Date().getDay()===1){var d=new Date(lundi+'T12:00:00');d.setDate(d.getDate()-7);return localISO(d);}
+  return lundi;
+}
+function fteInitiales(c){
+  var p=(c.prenom||'').trim(), n=(c.nom||'').trim();
+  return (((p?p.charAt(0):'')+(n?n.charAt(0):'')).toUpperCase())||'?';
+}
+
+// ── Journal des envois (synchronisé Supabase : table feuilles_temps_envois) ──
+function getFtEnvois(){return lsGet('ftenvois')||[];}
+function setFtEnvois(d){lsSet('ftenvois',d);sbPushAll('ftenvois',d);}
+function ftEnvoiFor(uid,semaine){
+  return getFtEnvois().find(function(e){return e.uid===uid&&e.semaine===semaine;})||null;
+}
+function ftMarquerEnvoi(emp,semaine,methode){
+  var liste=getFtEnvois();
+  var id=emp.id+'_'+semaine;
+  var row={id:id,uid:emp.id,emp:emp.nom,semaine:semaine,email:emp.email||'',methode:methode,
+    punchs:emp.nbPunchs,heures:Math.round(emp.totalSem*100)/100,
+    par:currentUser?currentUser.id:'',le:new Date().toISOString()};
+  var i=liste.findIndex(function(e){return e.id===id;});
+  if(i>=0)liste[i]=row; else liste.push(row);
+  setFtEnvois(liste);
+  if(typeof markWeekSubmitted==='function')markWeekSubmitted(emp.id,semaine);
+  if(typeof auditLog==='function')auditLog('EXPORT','feuilles_temps',id,{action:'sortie_feuille_temps',methode:methode,heures:row.heures});
+}
+
+// ── Agrégation (fonction pure, testable) ──
+// Renvoie, pour une semaine : un bloc par employé AYANT punché, avec ses journées, ses punchs
+// (plusieurs par jour possible), le total de chaque journée, le cumul par job et le total hebdo.
+function fteBuildSemaine(semaine){
+  var comptes=getComptes().filter(function(c){return c.role!=='admin';});
+  var employes=[], totalEquipe=0, nbAValiderTotal=0, nbActifs=0;
+  comptes.forEach(function(c){
+    var ft=getFTWeek(c.id+'_'+semaine);
+    if(!ft||!ft.days)return;
+    var jours=[], jobsMap={}, jobsOrdre=[];
+    var totalSem=0, nbPunchs=0, nbAValider=0, enCours=false;
+    for(var i=0;i<7;i++){
+      var d=ft.days[i];
+      if(!d||!d.tasks||!d.tasks.length)continue;
+      var punchs=[], totalJour=0, jourEnCours=false;
+      d.tasks.forEach(function(t,ti){
+        var actif=!!(t.active||!t.end);
+        var h=t.hrs||0;
+        var lieu=(t.lieu||'—');
+        nbPunchs++;
+        if(actif){jourEnCours=true;enCours=true;}
+        else{totalJour+=h;totalSem+=h;}
+        if(t.pendingValidation){nbAValider++;nbAValiderTotal++;}
+        var cle=siteNormName(lieu)||lieu;
+        if(!jobsMap[cle]){jobsMap[cle]={lieu:lieu,refs:[],heures:0,enCours:false};jobsOrdre.push(cle);}
+        if(actif)jobsMap[cle].enCours=true; else jobsMap[cle].heures+=h;
+        if(t.odt&&jobsMap[cle].refs.indexOf(t.odt)<0)jobsMap[cle].refs.push(t.odt);
+        punchs.push({jourIdx:i,taskIdx:ti,lieu:lieu,odt:t.odt||'',detail:t.detail||'',
+          start:t.start||'',end:t.end||'',hrs:h,actif:actif,
+          aValider:!!t.pendingValidation,
+          raison:t.pendingReason==='entrepot_bureau'?'Entrepôt / Bureau':'Nouveau site',
+          approuve:!!t.approuve});
+      });
+      jours.push({idx:i,label:DL[i],total:totalJour,enCours:jourEnCours,punchs:punchs});
+    }
+    if(!nbPunchs)return;
+    if(enCours)nbActifs++;
+    totalEquipe+=totalSem;
+    employes.push({id:c.id,nom:(c.prenom+' '+c.nom).trim(),initiales:fteInitiales(c),email:c.email||'',
+      jours:jours,jobs:jobsOrdre.map(function(k){return jobsMap[k];}),
+      totalSem:totalSem,nbPunchs:nbPunchs,nbJours:jours.length,nbJobs:jobsOrdre.length,
+      nbAValider:nbAValider,enCours:enCours,envoi:ftEnvoiFor(c.id,semaine),
+      statut:enCours?'actif':(nbAValider>0?'attention':'pret')});
+  });
+  return {semaine:semaine,employes:employes,totalEquipe:totalEquipe,
+    nbAValiderTotal:nbAValiderTotal,nbActifs:nbActifs,
+    nbSitesAValider:getSites().filter(function(s){return s.aValider;}).length};
+}
+
+function fteRefLigne(p){
+  var bouts=[];
+  if(p.odt)bouts.push('ODT '+p.odt);
+  if(p.detail)bouts.push(p.detail);
+  return bouts.length?bouts.join(' · '):'Sans ODT';
+}
+function fteJobRef(j){
+  if(j.refs&&j.refs.length)return 'ODT '+j.refs.join(', ');
+  return 'Sans ODT';
+}
+function fteHeuresJob(j){return j.enCours?(j.heures>0?fmtH(j.heures)+' +':'en cours'):fmtH(j.heures);}
+
+// ── Ouverture ──
+function ouvrirFeuillesEquipe(){
+  var modal=document.getElementById('fteModal');
+  if(!modal){
+    modal=document.createElement('div');modal.className='modal-bg';modal.id='fteModal';
+    modal.innerHTML='<div class="modal-box" style="max-width:960px">'
+      +'<div class="modal-hd"><h3 id="fteTitre">📄 Feuilles de temps équipe</h3>'
+      +'<button class="modal-close" id="fteClose">✕</button></div>'
+      +'<div id="fteBody"></div></div>';
+    document.body.appendChild(modal);
+    document.getElementById('fteClose').addEventListener('click',function(){closeModal('fteModal');});
+  }
+  document.body.appendChild(modal); // toujours au-dessus des modales créées avant
+  if(!_fteSemaine)_fteSemaine=fteSemaineParDefaut();
+  _fteVue='liste';
+  dessinerFeuillesEquipe();
+  openModal('fteModal');
+}
+function fteChangerSemaine(n){
+  var d=new Date(_fteSemaine+'T12:00:00');d.setDate(d.getDate()+n*7);
+  _fteSemaine=localISO(d);_fteSelInit=null;_fteDeplie={};_fteVue='liste';
+  dessinerFeuillesEquipe();
+}
+// Sélection par défaut : tout le monde SAUF ceux encore en punch (leur semaine n'est pas finie)
+function fteInitSel(data){
+  if(_fteSelInit===data.semaine)return;
+  _fteSel={};
+  data.employes.forEach(function(e){_fteSel[e.id]=!e.enCours;});
+  _fteSelInit=data.semaine;
+}
+function fteSelectionnes(data){
+  return data.employes.filter(function(e){return _fteSel[e.id];});
+}
+
+// ── Écran principal ──
+function dessinerFeuillesEquipe(){
+  var body=document.getElementById('fteBody');
+  if(!body)return;
+  if(_fteVue==='envoi'){fteDessinerEnvoi();return;}
+  var data=fteBuildSemaine(_fteSemaine);
+  fteInitSel(data);
+  var fin=new Date(_fteSemaine+'T12:00:00');fin.setDate(fin.getDate()+6);
+  var h='';
+
+  // Bandeau de marque Soucy + navigation de semaine
+  h+='<div style="background:linear-gradient(135deg,var(--brand) 0%,var(--brand-dk) 100%);border-radius:var(--rs);padding:12px 14px;margin-bottom:12px;color:#fff;display:flex;align-items:center;gap:11px">'
+    +'<div id="fteLogo" style="width:38px;height:38px;border-radius:9px;overflow:hidden;flex-shrink:0;background:#fff"></div>'
+    +'<div style="flex:1;min-width:0">'
+      +'<div class="brand-title" style="font-size:16px;font-weight:800;line-height:1.15">Feuilles de temps équipe</div>'
+      +'<div style="font-size:11.5px;opacity:.9;font-weight:600">Semaine du '+fmtDate(_fteSemaine)+' au '+fmtDate(localISO(fin))+'</div>'
+    +'</div>'
+    +'<div style="text-align:right"><div style="font-size:18px;font-weight:800">'+fmtH(data.totalEquipe)+'</div>'
+    +'<div style="font-size:9.5px;opacity:.85;font-weight:700;text-transform:uppercase;letter-spacing:.3px">Total équipe</div></div>'
+  +'</div>';
+
+  h+='<div style="display:flex;align-items:center;gap:7px;margin-bottom:11px">'
+    +'<button class="btn btn-ghost btn-sm" id="ftePrev">◀</button>'
+    +'<button class="btn btn-ghost btn-sm" id="fteAuj" style="flex:1">Semaine à sortir</button>'
+    +'<button class="btn btn-ghost btn-sm" id="fteNext">▶</button></div>';
+
+  if(!data.employes.length){
+    h+='<div style="background:var(--surface);border-radius:var(--rs);padding:22px;text-align:center;color:var(--muted);font-size:13px;font-weight:600">Aucun employé n\'a punché cette semaine.</div>';
+    body.innerHTML=h;
+    fteBrancherLogo();
+    document.getElementById('ftePrev').addEventListener('click',function(){fteChangerSemaine(-1);});
+    document.getElementById('fteNext').addEventListener('click',function(){fteChangerSemaine(1);});
+    document.getElementById('fteAuj').addEventListener('click',function(){_fteSemaine=fteSemaineParDefaut();_fteSelInit=null;dessinerFeuillesEquipe();});
+    return;
+  }
+
+  // Pastilles de synthèse
+  h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px">';
+  function pastille(txt,bg,col){return '<div style="background:'+bg+';color:'+col+';border-radius:20px;padding:5px 11px;font-size:11.5px;font-weight:700">'+txt+'</div>';}
+  h+=pastille(data.employes.length+' employé'+(data.employes.length>1?'s':'')+' punché'+(data.employes.length>1?'s':''),'var(--blue-lt)','var(--blue)');
+  if(data.nbAValiderTotal>0)h+=pastille(data.nbAValiderTotal+' punch'+(data.nbAValiderTotal>1?'s':'')+' à valider','var(--obg)','#a35400');
+  if(data.nbSitesAValider>0)h+=pastille(data.nbSitesAValider+' site'+(data.nbSitesAValider>1?'s':'')+' à valider','var(--obg)','#a35400');
+  if(data.nbActifs>0)h+=pastille(data.nbActifs+' encore en punch','var(--rbg)','var(--red)');
+  h+='</div>';
+
+  h+='<div style="background:var(--blue-lt);border-radius:var(--rs);padding:9px 11px;margin-bottom:11px;font-size:11.5px;color:var(--blue);font-weight:600">🔎 La vérification des doublons de sites est faite automatiquement à la génération des feuilles.</div>';
+
+  // En-tête de liste + tout sélectionner
+  var selectionnables=data.employes.filter(function(e){return !e.enCours;});
+  var toutCoche=selectionnables.length>0&&selectionnables.every(function(e){return _fteSel[e.id];});
+  h+='<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:var(--surface);border-radius:var(--rs) var(--rs) 0 0;border:1px solid var(--line);border-bottom:none;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">'
+    +'<input type="checkbox" id="fteTout" '+(toutCoche?'checked':'')+' style="width:17px;height:17px"/>'
+    +'<div style="flex:1">Employé</div><div style="width:64px;text-align:right">Total sem.</div><div style="width:26px"></div></div>';
+
+  h+='<div style="border:1px solid var(--line);border-radius:0 0 var(--rs) var(--rs);overflow:hidden;margin-bottom:12px">';
+  data.employes.forEach(function(e,ei){
+    var deplie=!!_fteDeplie[e.id];
+    var badge='';
+    if(e.statut==='pret')badge='<span style="background:var(--gbg);color:var(--green);border-radius:20px;padding:3px 9px;font-size:10.5px;font-weight:800">✓ Prêt</span>';
+    else if(e.statut==='attention')badge='<span style="background:var(--obg);color:#a35400;border-radius:20px;padding:3px 9px;font-size:10.5px;font-weight:800">⚠ '+e.nbAValider+' à valider</span>';
+    else badge='<span style="background:var(--rbg);color:var(--red);border-radius:20px;padding:3px 9px;font-size:10.5px;font-weight:800">🕐 En punch</span>';
+    var envoye=e.envoi?'<div style="font-size:10.5px;color:var(--green);font-weight:700;margin-top:1px">✅ Sortie le '+fmtDate((e.envoi.le||'').slice(0,10))+'</div>':'';
+
+    h+='<div style="border-bottom:1px solid var(--line2);background:'+(ei%2?'#fff':'#fff')+'">'
+      +'<div style="display:flex;align-items:center;gap:10px;padding:10px">'
+      +'<input type="checkbox" class="fte-sel" data-emp="'+e.id+'" '+(_fteSel[e.id]?'checked':'')+(e.enCours?' disabled':'')+' style="width:17px;height:17px"/>'
+      +'<div style="width:32px;height:32px;border-radius:50%;background:var(--blue-lt);color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:800;flex-shrink:0">'+esc(e.initiales)+'</div>'
+      +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:13.5px;font-weight:800">'+esc(e.nom)+'</div>'
+        +'<div style="font-size:11px;color:var(--muted);font-weight:600">'+e.nbPunchs+' punch'+(e.nbPunchs>1?'s':'')+' · '+e.nbJours+' jour'+(e.nbJours>1?'s':'')+' · '+e.nbJobs+' job'+(e.nbJobs>1?'s':'')+'</div>'
+        +(e.enCours?'<div style="font-size:10.5px;color:var(--red);font-weight:700;margin-top:1px">Sera inclus une fois le quart terminé</div>':'')
+        +envoye
+      +'</div>'
+      +'<div style="width:64px;text-align:right;font-size:13.5px;font-weight:800;color:var(--blue)">'+fmtH(e.totalSem)+'</div>'
+      +'<div style="display:flex;align-items:center;gap:7px">'+badge
+      +'<button class="fte-deplier btn btn-ghost btn-sm" data-emp="'+e.id+'" style="padding:3px 8px">'+(deplie?'▲':'▼')+'</button></div>'
+      +'</div>';
+
+    if(deplie){
+      h+='<div style="background:var(--surface);padding:4px 10px 12px 10px">';
+      e.jours.forEach(function(j){
+        var lbl=j.enCours?(j.total>0?fmtH(j.total)+' + en cours':'en cours'):fmtH(j.total);
+        h+='<div style="display:flex;align-items:center;gap:8px;margin:9px 0 5px">'
+          +'<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">'+j.label+'</div>'
+          +'<div style="flex:1;height:1px;background:var(--line)"></div>'
+          +'<div style="font-size:11px;font-weight:800;color:var(--text)">Journée : '+lbl+'</div></div>';
+        j.punchs.forEach(function(p){
+          h+='<div style="background:#fff;border:1px solid var(--line);border-radius:9px;padding:8px 10px;margin-bottom:5px">'
+            +'<div style="display:flex;align-items:center;gap:9px">'
+              +'<div style="flex:1;min-width:0">'
+                +'<div style="font-size:12.5px;font-weight:700">'+esc(p.lieu)+'</div>'
+                +'<div style="font-size:10.5px;color:var(--muted);font-weight:600">'+esc(fteRefLigne(p))+'</div>'
+              +'</div>'
+              +'<div style="font-size:11px;color:var(--muted);text-align:right;white-space:nowrap">'+esc(p.start||'—')+' – '+(p.actif?'en cours':esc(p.end||'—'))+'</div>'
+              +'<div style="width:54px;text-align:right;font-size:12.5px;font-weight:800">'+(p.actif?'—':fmtH(p.hrs))+'</div>'
+            +'</div>';
+          if(p.aValider){
+            h+='<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:7px;padding-top:7px;border-top:1px dashed var(--line)">'
+              +'<span style="background:var(--obg);color:#a35400;border-radius:20px;padding:3px 9px;font-size:10.5px;font-weight:800">🔒 '+esc(p.raison)+'</span>'
+              +'<button class="fte-appr btn btn-success btn-sm" data-emp="'+e.id+'" data-jour="'+p.jourIdx+'" data-task="'+p.taskIdx+'" style="padding:4px 10px;font-size:11px">✅ Approuver</button>'
+              +'<button class="fte-corr btn btn-ghost btn-sm" data-emp="'+e.id+'" data-jour="'+p.jourIdx+'" data-task="'+p.taskIdx+'" style="padding:4px 10px;font-size:11px">✏️ Corriger</button>'
+              +'</div>';
+          }
+          h+='</div>';
+        });
+      });
+      // Total par job
+      h+='<div style="background:#fff;border:1px solid var(--line);border-radius:9px;padding:10px 11px;margin-top:9px">'
+        +'<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:6px">Total par job — site / ODT</div>';
+      e.jobs.forEach(function(j){
+        h+='<div style="display:flex;align-items:baseline;gap:8px;font-size:12px;margin-bottom:4px">'
+          +'<div style="font-weight:600">'+esc(j.lieu)+'</div>'
+          +'<div style="flex:1;border-bottom:1px dotted var(--line)"></div>'
+          +'<div style="font-size:10.5px;color:var(--muted)">'+esc(fteJobRef(j))+'</div>'
+          +'<div style="width:62px;text-align:right;font-weight:800">'+fteHeuresJob(j)+'</div></div>';
+      });
+      h+='<div style="display:flex;align-items:baseline;gap:8px;font-size:13px;font-weight:800;border-top:1px solid var(--line);padding-top:7px;margin-top:5px">'
+        +'<div>Total de la semaine</div><div style="flex:1"></div>'
+        +'<div style="width:62px;text-align:right;color:var(--blue)">'+fmtH(e.totalSem)+'</div></div>';
+      if(e.totalSem>40){
+        h+='<div style="font-size:10.5px;color:var(--muted);font-weight:600;margin-top:4px">Régulier '+fmtH(40)+' · Supplémentaire '+fmtH(e.totalSem-40)+'</div>';
+      }
+      h+='</div></div>';
+    }
+    h+='</div>';
+  });
+  h+='</div>';
+
+  var nSel=fteSelectionnes(data).length;
+  h+='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+    +'<div style="flex:1;font-size:12px;color:var(--muted);font-weight:700">'+nSel+' feuille'+(nSel>1?'s':'')+' sélectionnée'+(nSel>1?'s':'')+' sur '+data.employes.length+'</div>'
+    +'<button class="btn btn-ghost btn-sm" id="fteImprimer">🖨️ Imprimer</button>'
+    +'<button class="btn btn-primary btn-sm" id="fteGenerer">📄 Générer les feuilles</button></div>';
+
+  body.innerHTML=h;
+  fteBrancherLogo();
+  fteBrancherListe(data);
+}
+
+// Réutilise le VRAI logo Soucy déjà chargé dans la barre du haut (jamais de filtre CSS dessus :
+// il a son propre fond bleu — voir note de conception).
+function fteBrancherLogo(){
+  var hote=document.getElementById('fteLogo');
+  if(!hote)return;
+  var src=document.querySelector('.tb-logomark img');
+  if(src&&src.src){
+    var img=document.createElement('img');
+    img.src=src.src;img.alt='Soucy Aquatik';
+    img.style.cssText='width:100%;height:100%;object-fit:cover;display:block';
+    hote.innerHTML='';hote.appendChild(img);
+  }else{
+    hote.style.display='none';
+  }
+}
+
+function fteBrancherListe(data){
+  var body=document.getElementById('fteBody');
+  document.getElementById('ftePrev').addEventListener('click',function(){fteChangerSemaine(-1);});
+  document.getElementById('fteNext').addEventListener('click',function(){fteChangerSemaine(1);});
+  document.getElementById('fteAuj').addEventListener('click',function(){_fteSemaine=fteSemaineParDefaut();_fteSelInit=null;_fteDeplie={};dessinerFeuillesEquipe();});
+  var tout=document.getElementById('fteTout');
+  if(tout)tout.addEventListener('change',function(){
+    var on=tout.checked;
+    data.employes.forEach(function(e){if(!e.enCours)_fteSel[e.id]=on;});
+    dessinerFeuillesEquipe();
+  });
+  body.querySelectorAll('.fte-sel').forEach(function(cb){
+    cb.addEventListener('change',function(){_fteSel[cb.dataset.emp]=cb.checked;dessinerFeuillesEquipe();});
+  });
+  body.querySelectorAll('.fte-deplier').forEach(function(b){
+    b.addEventListener('click',function(){_fteDeplie[b.dataset.emp]=!_fteDeplie[b.dataset.emp];dessinerFeuillesEquipe();});
+  });
+  body.querySelectorAll('.fte-appr').forEach(function(b){
+    b.addEventListener('click',function(){fteApprouverPunch(b.dataset.emp,+b.dataset.jour,+b.dataset.task);});
+  });
+  body.querySelectorAll('.fte-corr').forEach(function(b){
+    b.addEventListener('click',function(){fteCorrigerPunch(b.dataset.emp,+b.dataset.jour,+b.dataset.task);});
+  });
+  document.getElementById('fteImprimer').addEventListener('click',fteImprimer);
+  document.getElementById('fteGenerer').addEventListener('click',fteGenerer);
+}
+
+// ── Validation d'un punch en attente (même mécanisme que la case « Approuver ce punch » du modal
+// de correction : on ne touche QUE les champs de validation, jamais les heures) ──
+function fteApprouverPunch(empId,jourIdx,taskIdx){
+  if(!isSup()){toast('⛔ Réservé au superviseur');return;}
+  var cle=empId+'_'+_fteSemaine;
+  var ft=getFTWeek(cle);
+  var t=(ft&&ft.days&&ft.days[jourIdx]&&ft.days[jourIdx].tasks)?ft.days[jourIdx].tasks[taskIdx]:null;
+  if(!t){toast('Punch introuvable');return;}
+  t.pendingValidation=false;
+  t.valideBy=currentUser?currentUser.id:'';
+  t.valideAt=new Date().toISOString();
+  ft.savedAt=new Date().toISOString();
+  lsSet('ft_week_'+cle,ft);
+  if(typeof sbPushFT==='function'){
+    var totalH=0;(ft.days||[]).forEach(function(d){((d&&d.tasks)||[]).forEach(function(x){totalH+=(x.hrs||0);});});
+    try{sbPushFT(empId,_fteSemaine,{emp:ft.emp,email:ft.email,days:ft.days,savedAt:ft.savedAt},totalH);}catch(e){}
+  }
+  if(typeof auditLog==='function')auditLog('MODIFICATION','feuilles_temps',cle,{action:'validation_punch',jour:jourIdx,lieu:t.lieu});
+  toast('✅ Punch validé');
+  dessinerFeuillesEquipe();
+}
+function fteCorrigerPunch(empId,jourIdx,taskIdx){
+  ouvrirCorrectionPunch(empId,_fteSemaine,jourIdx,taskIdx);
+  var m=document.getElementById('corrPunchModal');
+  if(m)document.body.appendChild(m); // au-dessus de l'écran équipe
+  if(!_fteHookCorr){
+    var b=document.getElementById('cpSave');
+    if(b){b.addEventListener('click',function(){setTimeout(function(){if(document.getElementById('fteBody'))dessinerFeuillesEquipe();},80);});}
+    _fteHookCorr=true;
+  }
+}
+
+// ── Génération : réconciliation des doublons de sites PUIS écran d'envoi ──
+function fteGenerer(){
+  var data=fteBuildSemaine(_fteSemaine);
+  var sel=fteSelectionnes(data);
+  if(!sel.length){toast('⚠️ Aucune feuille sélectionnée');return;}
+  var aValider=sel.reduce(function(s,e){return s+e.nbAValider;},0);
+  if(aValider>0){
+    askConfirm(aValider+' punch'+(aValider>1?'s':'')+' encore en attente de validation dans les feuilles sélectionnées.\n\nSortir les feuilles quand même ?',function(){
+      _fteVue='envoi';dessinerFeuillesEquipe();
+    },'📄 Sortir quand même','Punchs à valider');
+    return;
+  }
+  _fteVue='envoi';
+  dessinerFeuillesEquipe();
+}
+
+function fteDessinerEnvoi(){
+  var body=document.getElementById('fteBody');
+  var data=fteBuildSemaine(_fteSemaine);
+  var sel=fteSelectionnes(data);
+  var doublons=(typeof siteFindDuplicatePairs==='function')?siteFindDuplicatePairs():[];
+  var h='';
+  h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">'
+    +'<button class="btn btn-ghost btn-sm" id="fteRetour">◀ Retour</button>'
+    +'<div style="flex:1;font-size:13px;font-weight:800">Sortie des feuilles — semaine du '+fmtDate(_fteSemaine)+'</div></div>';
+
+  // Réconciliation des doublons de sites, faite À LA SORTIE des feuilles (demande de Charles)
+  if(doublons.length){
+    h+='<div style="background:var(--obg);border-radius:var(--rs);padding:10px 12px;margin-bottom:11px">'
+      +'<div style="font-size:12px;font-weight:800;color:#a35400;margin-bottom:5px">🔎 '+doublons.length+' doublon'+(doublons.length>1?'s':'')+' de site probable'+(doublons.length>1?'s':'')+' détecté'+(doublons.length>1?'s':'')+'</div>';
+    doublons.slice(0,5).forEach(function(p){
+      h+='<div style="font-size:11.5px;color:#7a4100;font-weight:600">• '+esc(p.a.nom)+' ↔ '+esc(p.b.nom)+'</div>';
+    });
+    h+='<button class="btn btn-ghost btn-sm" id="fteGoSites" style="margin-top:7px">Ouvrir le module Sites pour fusionner</button></div>';
+  }else{
+    h+='<div style="background:var(--gbg);border-radius:var(--rs);padding:9px 12px;margin-bottom:11px;font-size:11.5px;color:var(--green);font-weight:700">✅ Aucun doublon de site détecté au répertoire.</div>';
+  }
+
+  h+='<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:7px">'+sel.length+' feuille'+(sel.length>1?'s':'')+' à sortir</div>';
+
+  sel.forEach(function(e){
+    var sansCourriel=!e.email;
+    h+='<div style="border:1px solid var(--line);border-radius:var(--rs);padding:10px 11px;margin-bottom:8px">'
+      +'<div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">'
+        +'<div style="flex:1;min-width:150px">'
+          +'<div style="font-size:13px;font-weight:800">'+esc(e.nom)+'</div>'
+          +'<div style="font-size:11px;color:'+(sansCourriel?'var(--red)':'var(--muted)')+';font-weight:600">'+(sansCourriel?'⚠️ Aucun courriel au dossier (module Comptes)':esc(e.email))+'</div>'
+        +'</div>'
+        +'<div style="font-size:13px;font-weight:800;color:var(--blue)">'+fmtH(e.totalSem)+'</div>'
+      +'</div>'
+      +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">'
+        +'<button class="fte-brouillon btn btn-primary btn-sm" data-emp="'+e.id+'" '+(sansCourriel?'disabled style="opacity:.5"':'')+'>📧 Brouillon courriel</button>'
+        +'<button class="fte-copier btn btn-ghost btn-sm" data-emp="'+e.id+'">📋 Copier</button>'
+        +(e.envoi?'<span style="font-size:11px;color:var(--green);font-weight:800;align-self:center">✅ Sortie le '+fmtDate((e.envoi.le||'').slice(0,10))+'</span>':'')
+      +'</div></div>';
+  });
+
+  h+='<div style="display:flex;gap:7px;flex-wrap:wrap;margin:12px 0">'
+    +'<button class="btn btn-ghost btn-sm" id="fteImprimer2" style="flex:1">🖨️ Imprimer toutes les feuilles</button>'
+    +'<button class="btn btn-ghost btn-sm" id="fteSynthese" style="flex:1">📧 Synthèse équipe pour moi</button></div>';
+
+  h+='<div style="background:var(--surface);border-radius:var(--rs);padding:10px 12px;font-size:11.5px;color:var(--muted);font-weight:600">'
+    +'⚙️ <b>Envoi automatique</b> (l\'app envoie elle-même, sans passer par vos courriels) : demande de brancher un service d\'envoi au serveur Supabase. Non activé pour l\'instant — les brouillons ci-dessus partent de votre boîte Outlook/Gmail comme le reste de l\'app.</div>';
+
+  body.innerHTML=h;
+
+  document.getElementById('fteRetour').addEventListener('click',function(){_fteVue='liste';dessinerFeuillesEquipe();});
+  var gs=document.getElementById('fteGoSites');
+  if(gs)gs.addEventListener('click',function(){closeModal('fteModal');switchMod('sites');});
+  document.getElementById('fteImprimer2').addEventListener('click',fteImprimer);
+  document.getElementById('fteSynthese').addEventListener('click',fteEnvoyerSynthese);
+  body.querySelectorAll('.fte-brouillon').forEach(function(b){
+    b.addEventListener('click',function(){fteOuvrirBrouillon(b.dataset.emp);});
+  });
+  body.querySelectorAll('.fte-copier').forEach(function(b){
+    b.addEventListener('click',function(){fteCopierFeuille(b.dataset.emp);});
+  });
+}
+
+// ── Corps de la feuille de temps d'un employé (même structure que l'écran : jour → punchs → job → semaine) ──
+function fteBuildCorpsEmploye(e,semaine){
+  var fin=new Date(semaine+'T12:00:00');fin.setDate(fin.getDate()+6);
+  var b='';
+  b+='FEUILLE DE TEMPS — '+e.nom+'\n';
+  b+='Semaine du '+fmtDate(semaine)+' au '+fmtDate(localISO(fin))+'\n';
+  b+='─────────────────────────────────────\n\n';
+  e.jours.forEach(function(j){
+    b+=j.label.toUpperCase()+'\n';
+    j.punchs.forEach(function(p){
+      b+='  → '+p.lieu;
+      if(p.odt)b+=' ['+p.odt+']';
+      if(p.detail)b+=' — '+p.detail;
+      b+=' : '+(p.actif?'en cours':fmtH(p.hrs));
+      b+='  ('+(p.start||'—')+' – '+(p.actif?'en cours':(p.end||'—'))+')';
+      if(p.aValider)b+='  [en attente de validation]';
+      b+='\n';
+    });
+    b+='  Total jour : '+(j.enCours?(j.total>0?fmtH(j.total)+' + en cours':'en cours'):fmtH(j.total))+'\n\n';
+  });
+  b+='── TOTAL PAR JOB ──\n';
+  e.jobs.forEach(function(j){
+    b+='  '+j.lieu+' ('+fteJobRef(j)+') : '+fteHeuresJob(j)+'\n';
+  });
+  b+='\n─────────────────────────────────────\n';
+  b+='➡️ TOTAL SEMAINE : '+fmtH(e.totalSem)+'\n';
+  b+='   Régulier (≤40h) : '+fmtH(Math.min(e.totalSem,40))+'\n';
+  if(e.totalSem>40)b+='   Supplémentaire : '+fmtH(e.totalSem-40)+'\n';
+  b+='\n---\nSoucy Ops — sortie par '+(currentUser?((currentUser.prenom||'')+' '+(currentUser.nom||'')).trim():'superviseur');
+  return b;
+}
+function fteComposeUrl(to,sujet,corps){
+  var sub=encodeURIComponent(sujet), be=encodeURIComponent(corps), t=encodeURIComponent(to||'');
+  return (EMAIL_TYPE==='gmail')
+    ? 'https://mail.google.com/mail/?view=cm&to='+t+'&su='+sub+'&body='+be
+    : 'https://outlook.office.com/mail/deeplink/compose?to='+t+'&subject='+sub+'&body='+be;
+}
+function fteEmpParId(id,data){
+  var d=data||fteBuildSemaine(_fteSemaine);
+  return d.employes.find(function(x){return x.id===id;})||null;
+}
+function fteOuvrirBrouillon(empId){
+  var e=fteEmpParId(empId);
+  if(!e){toast('Employé introuvable');return;}
+  if(!e.email){toast('⚠️ Aucun courriel au dossier pour '+e.nom);return;}
+  var corps=fteBuildCorpsEmploye(e,_fteSemaine);
+  window.open(fteComposeUrl(e.email,'Feuille de temps — '+e.nom+' — Sem. '+fmtDate(_fteSemaine),corps),'_blank');
+  ftMarquerEnvoi(e,_fteSemaine,'brouillon_courriel');
+  toast('📧 Brouillon prêt pour '+e.nom);
+  dessinerFeuillesEquipe();
+}
+function fteCopierFeuille(empId){
+  var e=fteEmpParId(empId);
+  if(!e)return;
+  var corps=fteBuildCorpsEmploye(e,_fteSemaine);
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(corps).then(function(){toast('📋 Feuille copiée');}).catch(function(){toast('⚠️ Copie impossible');});
+  }else{toast('⚠️ Copie non supportée');}
+}
+function fteEnvoyerSynthese(){
+  var data=fteBuildSemaine(_fteSemaine);
+  var sel=fteSelectionnes(data);
+  if(!sel.length){toast('⚠️ Aucune feuille sélectionnée');return;}
+  var fin=new Date(_fteSemaine+'T12:00:00');fin.setDate(fin.getDate()+6);
+  var b='SYNTHÈSE DES FEUILLES DE TEMPS — ÉQUIPE\n';
+  b+='Semaine du '+fmtDate(_fteSemaine)+' au '+fmtDate(localISO(fin))+'\n\n';
+  var tot=0;
+  sel.forEach(function(e){
+    tot+=e.totalSem;
+    b+=e.nom+' : '+fmtH(e.totalSem)+' ('+e.nbPunchs+' punchs, '+e.nbJobs+' jobs)';
+    if(e.totalSem>40)b+=' — supp. '+fmtH(e.totalSem-40);
+    if(e.nbAValider>0)b+=' — '+e.nbAValider+' punch(s) à valider';
+    b+='\n';
+  });
+  b+='\nTOTAL ÉQUIPE : '+fmtH(tot)+'\n';
+  b+='\n---\nSoucy Ops';
+  window.open(fteComposeUrl(SUP_EMAIL,'Feuilles de temps équipe — Sem. '+fmtDate(_fteSemaine),b),'_blank');
+  toast('📧 Synthèse prête');
+}
+
+// ── Impression : un document par employé sélectionné, même circuit d'impression que le reste de l'app ──
+function fteBuildPrintHTML(){
+  var data=fteBuildSemaine(_fteSemaine);
+  var sel=fteSelectionnes(data);
+  var fin=new Date(_fteSemaine+'T12:00:00');fin.setDate(fin.getDate()+6);
+  var h='';
+  sel.forEach(function(e,i){
+    h+='<div class="pmm-print-doc"'+(i>0?' style="page-break-before:always"':'')+'>';
+    h+='<div class="pmm-print-hd"><h1>FEUILLE DE TEMPS — '+esc(e.nom.toUpperCase())+'</h1>';
+    h+='<div class="pmm-print-sub">Semaine du '+fmtDate(_fteSemaine)+' au '+fmtDate(localISO(fin))+' · '+e.nbPunchs+' punchs · '+e.nbJobs+' jobs</div></div>';
+    h+='<table class="pmm-print-table"><thead><tr><th style="width:80px">Jour</th><th>Site / lieu</th><th style="width:110px">ODT / détail</th><th style="width:96px">Heures</th><th style="width:60px">Durée</th></tr></thead><tbody>';
+    e.jours.forEach(function(j){
+      j.punchs.forEach(function(p,pi){
+        h+='<tr><td>'+(pi===0?esc(j.label):'')+'</td><td>'+esc(p.lieu)+'</td><td>'+esc(fteRefLigne(p))+'</td>'
+          +'<td>'+esc(p.start||'—')+' – '+(p.actif?'en cours':esc(p.end||'—'))+'</td>'
+          +'<td style="text-align:right">'+(p.actif?'—':fmtH(p.hrs))+'</td></tr>';
+      });
+      h+='<tr><td></td><td colspan="3" style="text-align:right;font-weight:700">Total '+esc(j.label)+'</td>'
+        +'<td style="text-align:right;font-weight:700">'+(j.enCours?(j.total>0?fmtH(j.total)+'+':'—'):fmtH(j.total))+'</td></tr>';
+    });
+    h+='</tbody></table>';
+    h+='<table class="pmm-print-table" style="margin-top:10px"><thead><tr><th>Total par job — site</th><th style="width:120px">ODT</th><th style="width:70px">Heures</th></tr></thead><tbody>';
+    e.jobs.forEach(function(j){
+      h+='<tr><td>'+esc(j.lieu)+'</td><td>'+esc(fteJobRef(j))+'</td><td style="text-align:right">'+fteHeuresJob(j)+'</td></tr>';
+    });
+    h+='<tr><td colspan="2" style="text-align:right;font-weight:800">TOTAL SEMAINE</td><td style="text-align:right;font-weight:800">'+fmtH(e.totalSem)+'</td></tr>';
+    if(e.totalSem>40){
+      h+='<tr><td colspan="2" style="text-align:right">Régulier / Supplémentaire</td><td style="text-align:right">'+fmtH(40)+' / '+fmtH(e.totalSem-40)+'</td></tr>';
+    }
+    h+='</tbody></table>';
+    h+='<div style="margin-top:22px;display:flex;gap:30px"><div style="flex:1;border-top:1px solid #333;padding-top:4px;font-size:11px">Signature employé</div>'
+      +'<div style="flex:1;border-top:1px solid #333;padding-top:4px;font-size:11px">Signature superviseur</div></div>';
+    h+='</div>';
+  });
+  return h;
+}
+function fteImprimer(){
+  var data=fteBuildSemaine(_fteSemaine);
+  var sel=fteSelectionnes(data);
+  if(!sel.length){toast('⚠️ Aucune feuille sélectionnée');return;}
+  document.getElementById('pmmPrintArea').innerHTML=fteBuildPrintHTML();
+  sel.forEach(function(e){ftMarquerEnvoi(e,_fteSemaine,'impression');});
+  window.print();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -4835,7 +5431,7 @@ function ouvrirCreationPlage(){
   document.getElementById('plAu').value=todayISO();
   document.getElementById('plClient').value='';
   document.getElementById('plDescr').value='';
-  buildEmpChecklist('plEmpList',[]);
+  buildEmpChecklist('plEmpList',[],true);
   if(typeof populateClientList==='function')populateClientList();
   majApercuPlage();
   openModal('plageModal');
@@ -4999,7 +5595,7 @@ function ouvrirRecurrence(id){
   if(r&&r.jours){ jw.querySelectorAll('.rc-jour').forEach(function(b){
     if(r.jours.indexOf(+b.dataset.j)>=0){b.dataset.on='1';b.style.background='var(--blue)';b.style.color='#fff';}
   }); }
-  buildEmpChecklist('rcEmpList', r?(r.emps||[]):[]);
+  buildEmpChecklist('rcEmpList', r?(r.emps||[]):[], true);
   document.getElementById('rcSave').dataset.id=id||'';
   document.getElementById('rcDel').style.display=id?'flex':'none';
   majChampsFrequence();
@@ -5373,7 +5969,7 @@ function renderPlanMatch(){
     if(!sel.dataset.built){
       sel.innerHTML='';
       var oAll=document.createElement('option');oAll.value='__ALL__';oAll.textContent='👥 Tout le monde';sel.appendChild(oAll);
-      getComptes().forEach(function(c){
+      getComptes().filter(function(c){return c.role!=='admin';}).forEach(function(c){
         var o=document.createElement('option');o.value=c.id;o.textContent=(c.prenom+' '+c.nom).trim();
         sel.appendChild(o);
       });
@@ -5929,7 +6525,7 @@ function renderPlanning(){
     var opts='<option value="">👥 Toute l\'équipe</option>';
     if(mode==='tech'){
       if(filtLblEl)filtLblEl.textContent='Technicien';
-      getActiveComptes().forEach(function(c){opts+='<option value="'+esc(c.id)+'">'+esc((c.prenom+' '+c.nom).trim())+'</option>';});
+      getActiveComptes().filter(function(c){return c.role!=='admin';}).forEach(function(c){opts+='<option value="'+esc(c.id)+'">'+esc((c.prenom+' '+c.nom).trim())+'</option>';});
     }else{
       if(filtLblEl)filtLblEl.textContent='Site';
       getSites().forEach(function(s){opts+='<option value="'+esc(s.id)+'">'+esc(s.nom)+'</option>';});
@@ -5990,7 +6586,7 @@ function renderPlanning(){
     }
   });
   if(sup&&mode==='tech'&&!filtVal){
-    getActiveComptes().forEach(function(c){ensureGroup(c.id,(c.prenom+' '+c.nom).trim(),plgTechColor(c.id));});
+    getActiveComptes().filter(function(c){return c.role!=='admin';}).forEach(function(c){ensureGroup(c.id,(c.prenom+' '+c.nom).trim(),plgTechColor(c.id));});
   }else if(!sup&&currentUser&&!groups[currentUser.id]){
     ensureGroup(currentUser.id,fullName(),plgTechColor(currentUser.id));
   }
@@ -6125,17 +6721,15 @@ function openPlanningModal(taskId){
   document.getElementById('plgDescr').value=t?t.descr:'';
 
   var empListEl=document.getElementById('plgEmpList');
-  buildEmpChecklist('plgEmpList', t?planningAssignees(t):[], false);
+  buildEmpChecklist('plgEmpList', t?planningAssignees(t):[], true);
   if(empListEl&&!empListEl._bound){empListEl._bound=true;empListEl.addEventListener('change',plgUpdateAssignModeUI);}
   var modeRadios=document.querySelectorAll('input[name="plgAssignMode"]');
   modeRadios.forEach(function(r){r.checked=(r.value==='partage');});
   plgUpdateAssignModeUI();
 
-  var siteSel=document.getElementById('plgSite');
-  siteSel.innerHTML='<option value="">— Aucun site —</option>'+getSites().map(function(s){
-    return '<option value="'+esc(s.id)+'">'+esc(s.nom)+'</option>';
-  }).join('');
-  siteSel.value=t?(t.siteId||''):'';
+  populateClientList();
+  document.getElementById('plgSite').value=t?(t.siteNom||''):'';
+  onPlgSiteChange();
 
   document.getElementById('plgDateDebut').value=t?t.dateDebut:todayISO();
   document.getElementById('plgDateFin').value=t?t.dateFin:todayISO();
@@ -6192,31 +6786,58 @@ function savePlanningTask(){
   if(!dateDebut||!dateFin){toast('⚠️ Dates requises.');return;}
   if(dateFin<dateDebut){toast('⚠️ La date de fin doit être après la date de début.');return;}
   var empIds=getCheckedEmp('plgEmpList');
-  var siteId=document.getElementById('plgSite').value;
-
+  var siteNom=document.getElementById('plgSite').value.trim();
   var lien=(document.getElementById('plgLien')||{}).value||'';
-  if((lien==='creneau'||lien==='wo'||lien==='both')&&!siteId){
-    toast('⚠️ Choisis un site pour créer '+(lien==='wo'?'le Work Order lié':(lien==='both'?'les entrées liées':'le créneau lié')));
-    return;
-  }
 
-  var mode=(!plgEditingId&&empIds.length>=2)?((document.querySelector('input[name="plgAssignMode"]:checked')||{}).value||'partage'):'partage';
-
-  if(mode==='independant'){
-    // ➕ Copies indépendantes : une tâche complète (et son éventuel créneau/WO lié) par employé sélectionné,
-    // chacune avec son propre statut — comme si on avait rempli le formulaire séparément pour chacun.
-    empIds.forEach(function(eid){ plgSaveOneTask(null,[eid],titre,dateDebut,dateFin,siteId); });
+  // ➕ Résout le site tapé : existe déjà → utilisé tel quel ; nouveau nom qui ressemble à un site existant
+  // → on prévient avant de créer un doublon probable (le superviseur choisit) ; sinon → créé « à valider »
+  // (même mécanisme que le punch/créneau), jamais bloquant.
+  plgResolveSiteForSave(siteNom,function(siteId){
+    if((lien==='creneau'||lien==='wo'||lien==='both')&&!siteId){
+      toast('⚠️ Choisis un site pour créer '+(lien==='wo'?'le Work Order lié':(lien==='both'?'les entrées liées':'le créneau lié')));
+      return;
+    }
+    var mode=(!plgEditingId&&empIds.length>=2)?((document.querySelector('input[name="plgAssignMode"]:checked')||{}).value||'partage'):'partage';
+    if(mode==='independant'){
+      // ➕ Copies indépendantes : une tâche complète (et son éventuel créneau/WO lié) par employé sélectionné,
+      // chacune avec son propre statut — comme si on avait rempli le formulaire séparément pour chacun.
+      empIds.forEach(function(eid){ plgSaveOneTask(null,[eid],titre,dateDebut,dateFin,siteId); });
+      closeModal('plgModal');
+      renderPlanning();
+      toast('✅ '+empIds.length+' tâches créées (copies indépendantes).');
+      return;
+    }
+    var isNew=!plgEditingId;
+    plgSaveOneTask(plgEditingId,empIds,titre,dateDebut,dateFin,siteId);
     closeModal('plgModal');
     renderPlanning();
-    toast('✅ '+empIds.length+' tâches créées (copies indépendantes).');
+    toast(isNew?'✅ Tâche planifiée !':'✅ Tâche mise à jour.');
+  });
+}
+// Résout le nom de site tapé dans le modal Planning en un siteId, en créant le site si besoin — appelle
+// cb(siteId) une fois la décision prise (synchrone si pas d'ambiguïté, ou après confirmation superviseur
+// s'il existe un site au nom très proche, pour éviter les doublons).
+function plgResolveSiteForSave(siteNom,cb){
+  if(!siteNom){cb(null);return;}
+  var exact=findSiteByNameForSlot(siteNom);
+  if(exact){cb(exact.id);return;}
+  var chk=document.getElementById('plgSiteSave');
+  if(chk&&!chk.checked){cb(null);return;} // employé/sup ne veut pas l'ajouter au répertoire — tâche libre, sans siteId
+  var similar=findSimilarSites(siteNom,null,0.6);
+  if(similar.length){
+    // ➕ Nom proche d'un site déjà existant → on propose de le réutiliser plutôt que d'en créer un doublon.
+    // "Annuler" laisse la tâche sans site rattaché (jamais bloquant) ; pour vraiment créer un nouveau site
+    // au nom si proche, le plus sûr est de le faire depuis le module Sites, en toute connaissance de cause.
+    askConfirm('« '+siteNom+' » ressemble à un site déjà existant : « '+similar[0].nom+' » ('+similar[0].addr+'). Utiliser ce site existant pour éviter un doublon ?\n\nAnnuler = la tâche sera enregistrée sans site rattaché (tu pourras en créer un nouveau depuis le module Sites si c\'est vraiment un site différent).',
+      function(){ cb(similar[0].id); },
+      '📁 Utiliser « '+similar[0].nom+' »','⚠️ Doublon possible');
     return;
   }
-
-  var isNew=!plgEditingId;
-  plgSaveOneTask(plgEditingId,empIds,titre,dateDebut,dateFin,siteId);
-  closeModal('plgModal');
-  renderPlanning();
-  toast(isNew?'✅ Tâche planifiée !':'✅ Tâche mise à jour.');
+  var sites=getSites();
+  var newSite={id:uid(),nom:siteNom,addr:'',tel:'',email:'',type:'',annee:'',equips:[],notes:'Ajouté automatiquement depuis Planning',files:[],
+    aValider:true,creePar:currentUser?currentUser.id:'',creeLe:new Date().toISOString()};
+  sites.unshift(newSite);setSites(sites);
+  cb(newSite.id);
 }
 
 // Crée/met à jour UN enregistrement planning_tasks (et son créneau/WO lié le cas échéant) pour la
@@ -6612,7 +7233,7 @@ function renderGlobalDash(){
 
   // Charge par technicien (nb de jours occupés cette semaine / 5)
   var monday=plgMondayOf(today), friday=plgAddDays(monday,4);
-  var comptes=getActiveComptes();
+  var comptes=getActiveComptes().filter(function(c){return c.role!=='admin';}); // ➕ admin = compte de gestion, jamais un technicien
   var charge=comptes.map(function(c){
     var joursOccupes=0;
     for(var d=0;d<5;d++){
@@ -6725,7 +7346,7 @@ function openPmmModal(planId){
     var plan=getPlanMatches().find(function(p){return p.id===planId;});
     if(!plan){toast('Plan introuvable');return;}
     document.getElementById('pmmModalTitle').textContent='Modifier le Plan de Match';
-    buildEmpChecklist('pmmEmpList',pmAssignees(plan),false);
+    buildEmpChecklist('pmmEmpList',pmAssignees(plan),true);
     document.getElementById('pmmDate').value=plan.date;
     document.getElementById('pmmVehicule').value=plan.vehicule||'';
     document.getElementById('pmmSuperviseur').value=plan.superviseur||'';
@@ -6733,7 +7354,7 @@ function openPmmModal(planId){
     pmmBuilderSections=JSON.parse(JSON.stringify(plan.sections||[]));
   }else{
     document.getElementById('pmmModalTitle').textContent='Créer un Plan de Match';
-    buildEmpChecklist('pmmEmpList',[currentUser.id],false);
+    buildEmpChecklist('pmmEmpList',[currentUser.id],true);
     document.getElementById('pmmDate').value=pmmDay||todayISO();
     document.getElementById('pmmVehicule').value='';
     document.getElementById('pmmSuperviseur').value=isSup()?fullName():'';
@@ -7068,6 +7689,28 @@ function renderSiteList(){
   }
   // ➕ Sites créés automatiquement (punch/créneau) en attente de validation superviseur → remontés en premier
   sites=sites.slice().sort(function(a,b){return (b.aValider?1:0)-(a.aValider?1:0);});
+  // ➕ Réconciliation des doublons (item 5) : repère TOUT le répertoire (pas seulement les sites "à valider")
+  // pour des noms qui se ressemblent fortement — sup/admin seulement, jamais automatique/bloquant.
+  if(isSup()&&!search){
+    var pairs=siteFindDuplicatePairs();
+    if(pairs.length){
+      var recCard=document.createElement('div');
+      recCard.style.cssText='background:var(--blue-lt);border:1.5px solid var(--blue);border-radius:var(--r);padding:12px;margin-bottom:12px';
+      recCard.innerHTML='<div style="font-size:13px;font-weight:800;color:var(--blue);margin-bottom:6px">🔍 '+pairs.length+' doublon'+(pairs.length>1?'s':'')+' probable'+(pairs.length>1?'s':'')+' détecté'+(pairs.length>1?'s':'')+'</div>';
+      pairs.slice(0,6).forEach(function(p){
+        var row=document.createElement('div');
+        row.style.cssText='display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;color:var(--dk)';
+        row.innerHTML='<span style="flex:1">« '+esc(p.a.nom)+' » ≈ « '+esc(p.b.nom)+' »</span>';
+        var mBtn=document.createElement('button');
+        mBtn.className='btn btn-ghost btn-sm';mBtn.style.cssText='border:1px solid var(--blue);color:var(--blue);flex-shrink:0';
+        mBtn.textContent='🔀 Fusionner';
+        mBtn.addEventListener('click',function(e){e.stopPropagation();mergeSiteInto(p.b.id,p.a.id);});
+        row.appendChild(mBtn);
+        recCard.appendChild(row);
+      });
+      list.appendChild(recCard);
+    }
+  }
   sites.forEach(function(site){
     var card=document.createElement('div');card.className='site-card';
     var wos=getWOs().filter(function(w){return w.site&&w.site.indexOf(site.nom)>=0;});
@@ -7605,6 +8248,17 @@ function renderFieldView(){
     else html+='<div style="background:var(--lt);border-radius:var(--r);padding:14px;text-align:center;font-size:13px;color:var(--blue);font-weight:600;margin-bottom:12px">📅 Consultation — punch possible uniquement aujourd\'hui</div>';
   }
 
+  // ➕ « Assigné aujourd'hui » directement sur la page Temps (pas seulement caché dans le modal de punch
+  // ou sur l'Accueil) — un WO/créneau/tâche planning assigné doit être visible ET cliquable ici pour
+  // puncher dessus en un clic, sans avoir à d'abord ouvrir "Arriver" puis chercher dans le sélecteur.
+  // Purement additif (affichage + réutilise openPrefilledPunch déjà existant) — aucun calcul touché.
+  if(st.status!=='running'&&isPunchAllowed()){
+    var assignedToday=getTodayAssignedJobs();
+    if(assignedToday.length>0){
+      html+='<div class="card" style="padding:14px;margin-bottom:12px"><div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:10px">📌 Assigné aujourd\'hui</div><div id="ftAssignedToday" style="display:flex;flex-direction:column;gap:8px"></div></div>';
+    }
+  }
+
   // ── TIMELINE des chantiers du jour ──
   if(nbChantiers>0){
     html+='<div class="card" style="padding:14px"><div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:12px">📋 Journée — '+DL[curDay]+'</div><div class="tl">';
@@ -7627,6 +8281,27 @@ function renderFieldView(){
   }
 
   el.innerHTML=html;
+
+  // ➕ Remplit + câble la section « Assigné aujourd'hui » (voir bloc HTML ci-dessus) — un clic pré-remplit
+  // et ouvre directement le modal de punch sur ce job (openPrefilledPunch, déjà utilisé par l'Accueil).
+  var ftAssignedBox=document.getElementById('ftAssignedToday');
+  if(ftAssignedBox){
+    var assignedToday2=getTodayAssignedJobs();
+    assignedToday2.forEach(function(it,i){
+      var canPunch=(it.mod==='wo'||it.mod==='plan'||it.mod==='planning');
+      var row=document.createElement('div');
+      row.style.cssText='display:flex;align-items:stretch;gap:8px';
+      row.innerHTML='<div style="flex:1;display:flex;align-items:center;gap:10px;background:var(--lt);border-radius:12px;padding:10px 12px;min-width:0">'
+        +'<div style="font-size:18px;flex-shrink:0">'+it.icon+'</div>'
+        +'<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:12.5px;color:var(--text)">'+esc(it.label)+'</div><div style="font-size:10.5px;color:var(--muted)">'+esc(it.sub)+'</div></div></div>'
+        +(canPunch?'<button type="button" style="flex-shrink:0;display:flex;align-items:center;gap:5px;background:var(--green);color:#fff;border:none;border-radius:12px;padding:0 14px;font-weight:800;font-size:12.5px;cursor:pointer">▶ Puncher</button>':'');
+      if(canPunch){
+        var btn=row.querySelector('button');
+        btn.addEventListener('click',function(){openPrefilledPunch(it);});
+      }
+      ftAssignedBox.appendChild(row);
+    });
+  }
 
   // ── Listeners ──
   var faStart=document.getElementById('faStart');
@@ -8204,6 +8879,51 @@ function findSiteExact(lieu){
 function isBureauEntrepotLieu(lieu){
   var n=(lieu||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
   return /\b(entrepot|bureau|shop|garage)\b/.test(n);
+}
+
+// ═══════════════════════════════════════════════════════
+// ➕ DÉTECTION DE SITES EN DOUBLE — normalisation + similarité simple (sans librairie), réutilisée par :
+// la création de site depuis Planning (avertit avant de créer un doublon probable), et l'outil de
+// réconciliation manuel du module Sites (repère les doublons déjà existants dans le répertoire).
+// ═══════════════════════════════════════════════════════
+function siteNormName(s){
+  return (s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+}
+function siteNameSimilarity(a,b){
+  var na=siteNormName(a),nb=siteNormName(b);
+  if(!na||!nb)return 0;
+  if(na===nb)return 1;
+  if(na.indexOf(nb)>=0||nb.indexOf(na)>=0)return 0.9;
+  var ta=na.split(' ').filter(Boolean),tb=nb.split(' ').filter(Boolean);
+  if(!ta.length||!tb.length)return 0;
+  var common=ta.filter(function(w){return tb.indexOf(w)>=0;}).length;
+  return common/Math.max(ta.length,tb.length);
+}
+// Sites du répertoire dont le nom ressemble à `name` (score >= seuil), triés du plus proche au moins proche.
+function findSimilarSites(name,excludeId,seuil){
+  var n=siteNormName(name);
+  if(!n)return [];
+  seuil=seuil==null?0.6:seuil;
+  return getSites().filter(function(s){return s.id!==excludeId&&siteNameSimilarity(name,s.nom)>=seuil;})
+    .sort(function(a,b){return siteNameSimilarity(name,b.nom)-siteNameSimilarity(name,a.nom);});
+}
+// Réconciliation manuelle : toutes les paires de sites du répertoire dont les noms se ressemblent
+// fortement (score >= 0.72, seuil plus strict que la simple suggestion à la création pour éviter le bruit).
+// `a` = le plus ancien des deux (probablement l'original), `b` = le doublon probable à fusionner dans `a`.
+function siteFindDuplicatePairs(){
+  var sites=getSites();
+  var pairs=[];
+  for(var i=0;i<sites.length;i++){
+    for(var j=i+1;j<sites.length;j++){
+      var score=siteNameSimilarity(sites[i].nom,sites[j].nom);
+      if(score>=0.72){
+        var older=(sites[i].creeLe||'')<=(sites[j].creeLe||'')?sites[i]:sites[j];
+        var newer=older===sites[i]?sites[j]:sites[i];
+        pairs.push({a:older,b:newer,score:score});
+      }
+    }
+  }
+  return pairs.sort(function(x,y){return y.score-x.score;});
 }
 function onLieuChange(){
   var lieu=document.getElementById('mLieu').value.trim();

@@ -1,5 +1,48 @@
 // SA Platform — Service Worker
-// v55 — Quatre demandes groupées en un seul dépôt : (1) Statut deux étapes « Terminé » (employé) →
+// v57 — Nouveau module « Feuilles de temps équipe » (demande : plus besoin d'attendre que chaque employé
+// pense à faire « envoyer » — le superviseur sort lui-même toutes les feuilles de la semaine d'un seul
+// écran). Accessible depuis le Poste de commande (bouton principal) et depuis « Heures équipe ». L'écran
+// regroupe les employés AYANT punché dans la semaine et, pour chacun : le détail complet de ses punchs
+// avec PLUSIEURS PUNCHS PAR JOUR (chacun sur son site/ODT, avec sa plage horaire), le total de CHAQUE
+// JOURNÉE, le total PAR JOB (site/ODT) et le TOTAL HEBDOMADAIRE (avec régulier/supplémentaire au-delà de
+// 40 h) — les quatre niveaux demandés. Les punchs en attente de validation (nouveau site ou
+// Entrepôt/Bureau, mécanisme v55) se valident ou se corrigent directement dans cet écran, sans aller
+// ailleurs. Sélection par employé (ceux encore en punch sont exclus tant que leur quart n'est pas
+// terminé), impression d'un document signable par employé (A4, même circuit d'impression que le reste de
+// l'app) et génération d'un brouillon de courriel par employé vers SON adresse (Outlook/Gmail, exactement
+// le même mécanisme que l'envoi employé existant) + une synthèse équipe pour le superviseur. La
+// réconciliation des doublons de sites est exécutée AUTOMATIQUEMENT à la sortie des feuilles, comme
+// demandé, avec accès direct au module Sites pour fusionner. Envoi 100 % automatique (sans passer par la
+// boîte courriel) volontairement NON activé : il demande de brancher un service d'envoi au serveur —
+// l'écran le dit clairement plutôt que de faire semblant. Côté serveur : nouvelle table
+// feuilles_temps_envois (traçabilité Loi 25 : qui a sorti quelle feuille, quand, par quel moyen),
+// synchronisée comme les autres tables, pour que l'information « feuille déjà sortie » soit visible sur
+// TOUS les appareils et non seulement sur le téléphone du superviseur. Aucune fonction de calcul
+// Temps/Suivi/Cumul existante n'a été modifiée (vérifié par comparaison automatique avec la v56) : le
+// nouvel écran LIT les mêmes données et n'écrit que par les mécanismes déjà en place.
+// (v56 — Corrections suite aux retours sur la v55, groupées en un seul dépôt : (1) Le compte "admin" est un
+// compte de gestion, pas un technicien — il n'apparaît plus dans AUCUNE liste d'employés assignables
+// (Planning, créneaux, Plan de Match, tâches récurrentes) ni dans la "charge par technicien"/les lignes
+// auto-générées de Planning Équipe/le sélecteur "Tout le monde" du Plan de Match — seul le module WO
+// l'excluait déjà correctement, les autres non. (2) Une tâche Planning assignée à un employé n'apparaissait
+// nulle part sur SA page Temps tant qu'il n'avait pas déjà cliqué "Arriver" pour ouvrir le modal de punch —
+// ajouté une section "📌 Assigné aujourd'hui" directement sur la page Temps (visible avant même de démarrer
+// un punch), cliquable pour puncher en un geste, réutilisant les fonctions déjà existantes et testées
+// (getTodayAssignedJobs/openPrefilledPunch) — purement additif, aucun calcul touché. (3) Un punch en
+// attente de validation (nouveau site ou Entrepôt/Bureau) ne remontait que dans Suivi, qu'il fallait
+// penser à consulter — ajouté une alerte sur le "Poste de commande" (page d'accueil du superviseur, la
+// toute première chose vue en ouvrant l'app) pour les punchs ET les sites en attente de validation. Cette
+// app n'a pas de notification push serveur (désactivée volontairement, voir historique ci-dessous) — c'est
+// l'équivalent le plus visible possible sans construire une vraie infrastructure de notifications. (4)
+// Depuis le modal Planning, un nouveau site peut maintenant être créé directement si celui qu'on cherche
+// n'existe pas (comme au punch/créneau) — avec protection anti-doublon : si le nom tapé ressemble fortement
+// à un site déjà au répertoire, le système propose de réutiliser ce site existant plutôt que d'en créer un
+// nouveau, sans jamais bloquer la sauvegarde de la tâche. (5) Ajouté un outil de réconciliation dans le
+// module Sites (visible en haut de la liste pour un superviseur/admin) qui repère automatiquement les
+// paires de sites déjà au répertoire dont les noms se ressemblent fortement, avec un bouton "Fusionner"
+// direct pour chaque paire détectée. Vérifié par comparaison automatique de fonctions avec la v55 : seules
+// les fonctions visées ont changé, aucune autre (dont aucune fonction protégée de calcul Temps/Suivi/Cumul).
+// (v55 — Quatre demandes groupées en un seul dépôt : (1) Statut deux étapes « Terminé » (employé) →
 // « Validé » (superviseur), ajouté à TOUS les types de tâches (Work Orders, créneaux/calendrier des
 // interventions, tâches Planning, sous-tâches du Plan de Match) — visible dans les fiches (bandeau avec
 // boutons), dans Planning (chip grisé/coché), dans le Gantt Jobs (barre grisée + icône, RESTE VISIBLE —
@@ -78,7 +121,7 @@
 // vérifier un déploiement. Il reflète maintenant la variable APP_BUILD, à garder synchronisée avec ce
 // CACHE_NAME à chaque changement).
 
-var CACHE_NAME = 'sa-platform-v55';
+var CACHE_NAME = 'sa-platform-v57';
 
 // Installation : s'activer tout de suite sans attendre
 self.addEventListener('install', function(event) {
