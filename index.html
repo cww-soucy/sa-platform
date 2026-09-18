@@ -3298,7 +3298,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // a bien pris effet. Il reflète maintenant APP_BUILD ci-dessous, à mettre à jour à CHAQUE fois que
   // CACHE_NAME change dans sw.js (même valeur, ex: 'v48').
   try{
-    var APP_BUILD='v57';
+    var APP_BUILD='v59';
     var vb=document.createElement('div');
     vb.id='__buildBadge';
     vb.textContent='build '+APP_BUILD+' ⟲';
@@ -4792,15 +4792,25 @@ function approuverSemaine(empId, semaine){
 // ═══════════════════════════════════════════════════════════════
 // FEUILLES DE TEMPS ÉQUIPE — sortie hebdomadaire de TOUTES les feuilles de temps
 // Remplace la sortie une-par-une du lundi matin : un seul écran regroupe les employés punchés de la
-// semaine, le détail COMPLET de leurs punchs (plusieurs punchs par jour, chacun sur son site/ODT),
-// le total de chaque journée, le total par job et le total hebdomadaire, la validation des punchs en
-// attente, puis la génération des feuilles à imprimer et d'un brouillon de courriel par employé.
+// semaine, le détail de leurs punchs, la validation de ce qui est en attente, puis la sortie des
+// fichiers (Excel paie + impression) et des courriels.
+//
+// DEUX LECTURES DIFFÉRENTES DES MÊMES DONNÉES (demande explicite) :
+//  • SYNTHÈSE (par défaut, c'est LA feuille de temps) : les punchs d'une MÊME journée sur un MÊME job
+//    (même site + même ODT) sont REGROUPÉS EN UNE SEULE LIGNE — heures additionnées, de la première
+//    arrivée au dernier départ, avec le nombre de punchs d'origine indiqué. Un employé qui repunche
+//    3 fois sur le même chantier dans la journée (même pour 1 minute) ne produit plus 3 lignes.
+//  • JOURNAL DES PUNCHS : la liste brute, punch par punch, telle que saisie — pour l'audit et la
+//    correction, jamais pour la paie.
+// Les heures ne sont JAMAIS modifiées par le regroupement : c'est la même somme, présentée autrement.
+//
 // Purement additif : aucune fonction de calcul Temps/Suivi/Cumul existante n'est modifiée — cet écran
 // LIT les mêmes données (getFTWeek) et n'écrit que via les mécanismes déjà en place (sbPushFT/auditLog).
 // ═══════════════════════════════════════════════════════════════
 var _fteSemaine=null, _fteSel={}, _fteDeplie={}, _fteVue='liste', _fteSelInit=null, _fteHookCorr=false;
+var _fteMode='synthese'; // 'synthese' (feuille de temps) | 'journal' (log brut)
 
-// Le lundi matin, on sort les feuilles de la semaine QUI VIENT DE FINIR (usage réel de Charles) ;
+// Le lundi matin, on sort les feuilles de la semaine QUI VIENT DE FINIR (usage réel) ;
 // les autres jours, la semaine courante. Les flèches ◀ ▶ permettent d'aller où on veut.
 function fteSemaineParDefaut(){
   var lundi=mondayOf(todayISO());
@@ -4811,8 +4821,15 @@ function fteInitiales(c){
   var p=(c.prenom||'').trim(), n=(c.nom||'').trim();
   return (((p?p.charAt(0):'')+(n?n.charAt(0):'')).toUpperCase())||'?';
 }
+function fteDateDuJour(semaine,idx){
+  var d=new Date(semaine+'T12:00:00');d.setDate(d.getDate()+idx);return localISO(d);
+}
+// Heures en décimal pour la paie (7,25) — la paie calcule en décimal, jamais en 7h15.
+function fteDec(h){return Math.round((h||0)*100)/100;}
+// Même chiffre, écrit à la française pour les textes affichés (les cellules de calcul restent numériques)
+function fteDecTxt(h){return (Math.round((h||0)*100)/100).toFixed(2).replace('.',',');}
 
-// ── Journal des envois (synchronisé Supabase : table feuilles_temps_envois) ──
+// ── Journal des sorties (synchronisé Supabase : table feuilles_temps_envois) ──
 function getFtEnvois(){return lsGet('ftenvois')||[];}
 function setFtEnvois(d){lsSet('ftenvois',d);sbPushAll('ftenvois',d);}
 function ftEnvoiFor(uid,semaine){
@@ -4822,7 +4839,7 @@ function ftMarquerEnvoi(emp,semaine,methode){
   var liste=getFtEnvois();
   var id=emp.id+'_'+semaine;
   var row={id:id,uid:emp.id,emp:emp.nom,semaine:semaine,email:emp.email||'',methode:methode,
-    punchs:emp.nbPunchs,heures:Math.round(emp.totalSem*100)/100,
+    punchs:emp.nbPunchs,heures:fteDec(emp.totalSem),
     par:currentUser?currentUser.id:'',le:new Date().toISOString()};
   var i=liste.findIndex(function(e){return e.id===id;});
   if(i>=0)liste[i]=row; else liste.push(row);
@@ -4831,9 +4848,36 @@ function ftMarquerEnvoi(emp,semaine,methode){
   if(typeof auditLog==='function')auditLog('EXPORT','feuilles_temps',id,{action:'sortie_feuille_temps',methode:methode,heures:row.heures});
 }
 
+// ── REGROUPEMENT : plusieurs punchs du même jour sur le même job = UNE ligne de feuille de temps ──
+// Clé de regroupement : site normalisé + ODT (un ODT différent = un job différent, donc jamais fusionné).
+function fteGrouperJour(punchs){
+  var map={}, ordre=[];
+  punchs.forEach(function(p){
+    var cle=(siteNormName(p.lieu)||p.lieu)+'|'+(p.odt||'');
+    if(!map[cle]){
+      map[cle]={lieu:p.lieu,odt:p.odt||'',detail:p.detail||'',debut:p.start||'',fin:p.end||'',
+        heures:0,nb:0,actif:false,aValider:false,raisons:[],refs:[]};
+      ordre.push(cle);
+    }
+    var l=map[cle];
+    l.nb++;
+    l.refs.push({j:p.jourIdx,t:p.taskIdx});
+    if(p.actif){l.actif=true;} else {l.heures+=(p.hrs||0);}
+    if(p.start&&(!l.debut||p.start<l.debut))l.debut=p.start;
+    if(p.end&&(!l.fin||p.end>l.fin))l.fin=p.end;
+    if(!l.detail&&p.detail)l.detail=p.detail;
+    if(p.aValider){l.aValider=true;if(l.raisons.indexOf(p.raison)<0)l.raisons.push(p.raison);}
+  });
+  var lignes=ordre.map(function(k){
+    var l=map[k];
+    l.court=(!l.actif&&l.heures>0&&l.heures<0.1); // moins de 6 minutes au total sur ce job : à vérifier
+    return l;
+  });
+  lignes.sort(function(a,b){return (a.debut||'').localeCompare(b.debut||'');});
+  return lignes;
+}
+
 // ── Agrégation (fonction pure, testable) ──
-// Renvoie, pour une semaine : un bloc par employé AYANT punché, avec ses journées, ses punchs
-// (plusieurs par jour possible), le total de chaque journée, le cumul par job et le total hebdo.
 function fteBuildSemaine(semaine){
   var comptes=getComptes().filter(function(c){return c.role!=='admin';});
   var employes=[], totalEquipe=0, nbAValiderTotal=0, nbActifs=0;
@@ -4841,7 +4885,7 @@ function fteBuildSemaine(semaine){
     var ft=getFTWeek(c.id+'_'+semaine);
     if(!ft||!ft.days)return;
     var jours=[], jobsMap={}, jobsOrdre=[];
-    var totalSem=0, nbPunchs=0, nbAValider=0, enCours=false;
+    var totalSem=0, nbPunchs=0, nbLignes=0, nbAValider=0, nbCourts=0, enCours=false;
     for(var i=0;i<7;i++){
       var d=ft.days[i];
       if(!d||!d.tasks||!d.tasks.length)continue;
@@ -4854,25 +4898,30 @@ function fteBuildSemaine(semaine){
         if(actif){jourEnCours=true;enCours=true;}
         else{totalJour+=h;totalSem+=h;}
         if(t.pendingValidation){nbAValider++;nbAValiderTotal++;}
-        var cle=siteNormName(lieu)||lieu;
-        if(!jobsMap[cle]){jobsMap[cle]={lieu:lieu,refs:[],heures:0,enCours:false};jobsOrdre.push(cle);}
+        var cle=(siteNormName(lieu)||lieu)+'|'+(t.odt||'');
+        if(!jobsMap[cle]){jobsMap[cle]={lieu:lieu,odt:t.odt||'',heures:0,nb:0,enCours:false};jobsOrdre.push(cle);}
         if(actif)jobsMap[cle].enCours=true; else jobsMap[cle].heures+=h;
-        if(t.odt&&jobsMap[cle].refs.indexOf(t.odt)<0)jobsMap[cle].refs.push(t.odt);
+        jobsMap[cle].nb++;
         punchs.push({jourIdx:i,taskIdx:ti,lieu:lieu,odt:t.odt||'',detail:t.detail||'',
           start:t.start||'',end:t.end||'',hrs:h,actif:actif,
           aValider:!!t.pendingValidation,
           raison:t.pendingReason==='entrepot_bureau'?'Entrepôt / Bureau':'Nouveau site',
           approuve:!!t.approuve});
       });
-      jours.push({idx:i,label:DL[i],total:totalJour,enCours:jourEnCours,punchs:punchs});
+      var lignes=fteGrouperJour(punchs);
+      nbLignes+=lignes.length;
+      lignes.forEach(function(l){if(l.court)nbCourts++;});
+      jours.push({idx:i,label:DL[i],date:fteDateDuJour(semaine,i),total:totalJour,
+        enCours:jourEnCours,punchs:punchs,lignes:lignes});
     }
     if(!nbPunchs)return;
     if(enCours)nbActifs++;
     totalEquipe+=totalSem;
     employes.push({id:c.id,nom:(c.prenom+' '+c.nom).trim(),initiales:fteInitiales(c),email:c.email||'',
       jours:jours,jobs:jobsOrdre.map(function(k){return jobsMap[k];}),
-      totalSem:totalSem,nbPunchs:nbPunchs,nbJours:jours.length,nbJobs:jobsOrdre.length,
-      nbAValider:nbAValider,enCours:enCours,envoi:ftEnvoiFor(c.id,semaine),
+      totalSem:totalSem,reg:Math.min(totalSem,40),supp:Math.max(0,totalSem-40),
+      nbPunchs:nbPunchs,nbLignes:nbLignes,nbJours:jours.length,nbJobs:jobsOrdre.length,
+      nbAValider:nbAValider,nbCourts:nbCourts,enCours:enCours,envoi:ftEnvoiFor(c.id,semaine),
       statut:enCours?'actif':(nbAValider>0?'attention':'pret')});
   });
   return {semaine:semaine,employes:employes,totalEquipe:totalEquipe,
@@ -4886,18 +4935,16 @@ function fteRefLigne(p){
   if(p.detail)bouts.push(p.detail);
   return bouts.length?bouts.join(' · '):'Sans ODT';
 }
-function fteJobRef(j){
-  if(j.refs&&j.refs.length)return 'ODT '+j.refs.join(', ');
-  return 'Sans ODT';
-}
+function fteJobRef(j){return j.odt?('ODT '+j.odt):'Sans ODT';}
 function fteHeuresJob(j){return j.enCours?(j.heures>0?fmtH(j.heures)+' +':'en cours'):fmtH(j.heures);}
+function fteLblJournee(j){return j.enCours?(j.total>0?fmtH(j.total)+' + en cours':'en cours'):fmtH(j.total);}
 
 // ── Ouverture ──
 function ouvrirFeuillesEquipe(){
   var modal=document.getElementById('fteModal');
   if(!modal){
     modal=document.createElement('div');modal.className='modal-bg';modal.id='fteModal';
-    modal.innerHTML='<div class="modal-box" style="max-width:960px">'
+    modal.innerHTML='<div class="modal-box" style="max-width:980px">'
       +'<div class="modal-hd"><h3 id="fteTitre">📄 Feuilles de temps équipe</h3>'
       +'<button class="modal-close" id="fteClose">✕</button></div>'
       +'<div id="fteBody"></div></div>';
@@ -4923,6 +4970,7 @@ function fteInitSel(data){
   _fteSelInit=data.semaine;
 }
 function fteSelectionnes(data){
+  fteInitSel(data); // garantit une sélection par défaut même si l'écran n'a pas encore été dessiné
   return data.employes.filter(function(e){return _fteSel[e.id];});
 }
 
@@ -4936,7 +4984,6 @@ function dessinerFeuillesEquipe(){
   var fin=new Date(_fteSemaine+'T12:00:00');fin.setDate(fin.getDate()+6);
   var h='';
 
-  // Bandeau de marque Soucy + navigation de semaine
   h+='<div style="background:linear-gradient(135deg,var(--brand) 0%,var(--brand-dk) 100%);border-radius:var(--rs);padding:12px 14px;margin-bottom:12px;color:#fff;display:flex;align-items:center;gap:11px">'
     +'<div id="fteLogo" style="width:38px;height:38px;border-radius:9px;overflow:hidden;flex-shrink:0;background:#fff"></div>'
     +'<div style="flex:1;min-width:0">'
@@ -4962,7 +5009,6 @@ function dessinerFeuillesEquipe(){
     return;
   }
 
-  // Pastilles de synthèse
   h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px">';
   function pastille(txt,bg,col){return '<div style="background:'+bg+';color:'+col+';border-radius:20px;padding:5px 11px;font-size:11.5px;font-weight:700">'+txt+'</div>';}
   h+=pastille(data.employes.length+' employé'+(data.employes.length>1?'s':'')+' punché'+(data.employes.length>1?'s':''),'var(--blue-lt)','var(--blue)');
@@ -4971,9 +5017,17 @@ function dessinerFeuillesEquipe(){
   if(data.nbActifs>0)h+=pastille(data.nbActifs+' encore en punch','var(--rbg)','var(--red)');
   h+='</div>';
 
-  h+='<div style="background:var(--blue-lt);border-radius:var(--rs);padding:9px 11px;margin-bottom:11px;font-size:11.5px;color:var(--blue);font-weight:600">🔎 La vérification des doublons de sites est faite automatiquement à la génération des feuilles.</div>';
+  // Bascule Feuille de temps (regroupée) ↔ Journal des punchs (brut)
+  h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:11px">'
+    +'<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">Affichage</div>'
+    +'<button class="btn btn-sm '+(_fteMode==='synthese'?'btn-primary':'btn-ghost')+'" id="fteModeSyn">📋 Feuille de temps</button>'
+    +'<button class="btn btn-sm '+(_fteMode==='journal'?'btn-primary':'btn-ghost')+'" id="fteModeJrn">🧾 Journal des punchs</button></div>';
+  h+='<div style="background:var(--blue-lt);border-radius:var(--rs);padding:9px 11px;margin-bottom:11px;font-size:11.5px;color:var(--blue);font-weight:600">'
+    +(_fteMode==='synthese'
+      ? '📋 Les punchs d\'une même journée sur un même job sont regroupés en une seule ligne (heures additionnées). C\'est cette version qui sort en Excel et à l\'impression.'
+      : '🧾 Liste brute, punch par punch, telle que saisie sur le terrain — pour vérifier et corriger. Ce n\'est pas la feuille de temps.')
+    +'</div>';
 
-  // En-tête de liste + tout sélectionner
   var selectionnables=data.employes.filter(function(e){return !e.enCours;});
   var toutCoche=selectionnables.length>0&&selectionnables.every(function(e){return _fteSel[e.id];});
   h+='<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:var(--surface);border-radius:var(--rs) var(--rs) 0 0;border:1px solid var(--line);border-bottom:none;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">'
@@ -4981,75 +5035,33 @@ function dessinerFeuillesEquipe(){
     +'<div style="flex:1">Employé</div><div style="width:64px;text-align:right">Total sem.</div><div style="width:26px"></div></div>';
 
   h+='<div style="border:1px solid var(--line);border-radius:0 0 var(--rs) var(--rs);overflow:hidden;margin-bottom:12px">';
-  data.employes.forEach(function(e,ei){
+  data.employes.forEach(function(e){
     var deplie=!!_fteDeplie[e.id];
     var badge='';
     if(e.statut==='pret')badge='<span style="background:var(--gbg);color:var(--green);border-radius:20px;padding:3px 9px;font-size:10.5px;font-weight:800">✓ Prêt</span>';
     else if(e.statut==='attention')badge='<span style="background:var(--obg);color:#a35400;border-radius:20px;padding:3px 9px;font-size:10.5px;font-weight:800">⚠ '+e.nbAValider+' à valider</span>';
     else badge='<span style="background:var(--rbg);color:var(--red);border-radius:20px;padding:3px 9px;font-size:10.5px;font-weight:800">🕐 En punch</span>';
     var envoye=e.envoi?'<div style="font-size:10.5px;color:var(--green);font-weight:700;margin-top:1px">✅ Sortie le '+fmtDate((e.envoi.le||'').slice(0,10))+'</div>':'';
+    var resume=e.nbLignes+' ligne'+(e.nbLignes>1?'s':'')+' · '+e.nbJours+' jour'+(e.nbJours>1?'s':'')+' · '+e.nbJobs+' job'+(e.nbJobs>1?'s':'')
+      +(e.nbPunchs>e.nbLignes?' <span style="color:var(--blue)">('+e.nbPunchs+' punchs regroupés)</span>':'');
 
-    h+='<div style="border-bottom:1px solid var(--line2);background:'+(ei%2?'#fff':'#fff')+'">'
+    h+='<div style="border-bottom:1px solid var(--line2)">'
       +'<div style="display:flex;align-items:center;gap:10px;padding:10px">'
       +'<input type="checkbox" class="fte-sel" data-emp="'+e.id+'" '+(_fteSel[e.id]?'checked':'')+(e.enCours?' disabled':'')+' style="width:17px;height:17px"/>'
       +'<div style="width:32px;height:32px;border-radius:50%;background:var(--blue-lt);color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:800;flex-shrink:0">'+esc(e.initiales)+'</div>'
       +'<div style="flex:1;min-width:0">'
         +'<div style="font-size:13.5px;font-weight:800">'+esc(e.nom)+'</div>'
-        +'<div style="font-size:11px;color:var(--muted);font-weight:600">'+e.nbPunchs+' punch'+(e.nbPunchs>1?'s':'')+' · '+e.nbJours+' jour'+(e.nbJours>1?'s':'')+' · '+e.nbJobs+' job'+(e.nbJobs>1?'s':'')+'</div>'
+        +'<div style="font-size:11px;color:var(--muted);font-weight:600">'+resume+'</div>'
         +(e.enCours?'<div style="font-size:10.5px;color:var(--red);font-weight:700;margin-top:1px">Sera inclus une fois le quart terminé</div>':'')
         +envoye
       +'</div>'
-      +'<div style="width:64px;text-align:right;font-size:13.5px;font-weight:800;color:var(--blue)">'+fmtH(e.totalSem)+'</div>'
+      +'<div style="width:64px;text-align:right"><div style="font-size:13.5px;font-weight:800;color:var(--blue)">'+fmtH(e.totalSem)+'</div>'
+      +(e.supp>0?'<div style="font-size:10px;color:var(--red);font-weight:700">+'+fmtH(e.supp)+'</div>':'')+'</div>'
       +'<div style="display:flex;align-items:center;gap:7px">'+badge
       +'<button class="fte-deplier btn btn-ghost btn-sm" data-emp="'+e.id+'" style="padding:3px 8px">'+(deplie?'▲':'▼')+'</button></div>'
       +'</div>';
 
-    if(deplie){
-      h+='<div style="background:var(--surface);padding:4px 10px 12px 10px">';
-      e.jours.forEach(function(j){
-        var lbl=j.enCours?(j.total>0?fmtH(j.total)+' + en cours':'en cours'):fmtH(j.total);
-        h+='<div style="display:flex;align-items:center;gap:8px;margin:9px 0 5px">'
-          +'<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">'+j.label+'</div>'
-          +'<div style="flex:1;height:1px;background:var(--line)"></div>'
-          +'<div style="font-size:11px;font-weight:800;color:var(--text)">Journée : '+lbl+'</div></div>';
-        j.punchs.forEach(function(p){
-          h+='<div style="background:#fff;border:1px solid var(--line);border-radius:9px;padding:8px 10px;margin-bottom:5px">'
-            +'<div style="display:flex;align-items:center;gap:9px">'
-              +'<div style="flex:1;min-width:0">'
-                +'<div style="font-size:12.5px;font-weight:700">'+esc(p.lieu)+'</div>'
-                +'<div style="font-size:10.5px;color:var(--muted);font-weight:600">'+esc(fteRefLigne(p))+'</div>'
-              +'</div>'
-              +'<div style="font-size:11px;color:var(--muted);text-align:right;white-space:nowrap">'+esc(p.start||'—')+' – '+(p.actif?'en cours':esc(p.end||'—'))+'</div>'
-              +'<div style="width:54px;text-align:right;font-size:12.5px;font-weight:800">'+(p.actif?'—':fmtH(p.hrs))+'</div>'
-            +'</div>';
-          if(p.aValider){
-            h+='<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:7px;padding-top:7px;border-top:1px dashed var(--line)">'
-              +'<span style="background:var(--obg);color:#a35400;border-radius:20px;padding:3px 9px;font-size:10.5px;font-weight:800">🔒 '+esc(p.raison)+'</span>'
-              +'<button class="fte-appr btn btn-success btn-sm" data-emp="'+e.id+'" data-jour="'+p.jourIdx+'" data-task="'+p.taskIdx+'" style="padding:4px 10px;font-size:11px">✅ Approuver</button>'
-              +'<button class="fte-corr btn btn-ghost btn-sm" data-emp="'+e.id+'" data-jour="'+p.jourIdx+'" data-task="'+p.taskIdx+'" style="padding:4px 10px;font-size:11px">✏️ Corriger</button>'
-              +'</div>';
-          }
-          h+='</div>';
-        });
-      });
-      // Total par job
-      h+='<div style="background:#fff;border:1px solid var(--line);border-radius:9px;padding:10px 11px;margin-top:9px">'
-        +'<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:6px">Total par job — site / ODT</div>';
-      e.jobs.forEach(function(j){
-        h+='<div style="display:flex;align-items:baseline;gap:8px;font-size:12px;margin-bottom:4px">'
-          +'<div style="font-weight:600">'+esc(j.lieu)+'</div>'
-          +'<div style="flex:1;border-bottom:1px dotted var(--line)"></div>'
-          +'<div style="font-size:10.5px;color:var(--muted)">'+esc(fteJobRef(j))+'</div>'
-          +'<div style="width:62px;text-align:right;font-weight:800">'+fteHeuresJob(j)+'</div></div>';
-      });
-      h+='<div style="display:flex;align-items:baseline;gap:8px;font-size:13px;font-weight:800;border-top:1px solid var(--line);padding-top:7px;margin-top:5px">'
-        +'<div>Total de la semaine</div><div style="flex:1"></div>'
-        +'<div style="width:62px;text-align:right;color:var(--blue)">'+fmtH(e.totalSem)+'</div></div>';
-      if(e.totalSem>40){
-        h+='<div style="font-size:10.5px;color:var(--muted);font-weight:600;margin-top:4px">Régulier '+fmtH(40)+' · Supplémentaire '+fmtH(e.totalSem-40)+'</div>';
-      }
-      h+='</div></div>';
-    }
+    if(deplie)h+=fteDetailHTML(e);
     h+='</div>';
   });
   h+='</div>';
@@ -5058,15 +5070,99 @@ function dessinerFeuillesEquipe(){
   h+='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
     +'<div style="flex:1;font-size:12px;color:var(--muted);font-weight:700">'+nSel+' feuille'+(nSel>1?'s':'')+' sélectionnée'+(nSel>1?'s':'')+' sur '+data.employes.length+'</div>'
     +'<button class="btn btn-ghost btn-sm" id="fteImprimer">🖨️ Imprimer</button>'
-    +'<button class="btn btn-primary btn-sm" id="fteGenerer">📄 Générer les feuilles</button></div>';
+    +'<button class="btn btn-primary btn-sm" id="fteGenerer">📄 Sortir les feuilles</button></div>';
 
   body.innerHTML=h;
   fteBrancherLogo();
   fteBrancherListe(data);
 }
 
-// Réutilise le VRAI logo Soucy déjà chargé dans la barre du haut (jamais de filtre CSS dessus :
-// il a son propre fond bleu — voir note de conception).
+// Détail d'un employé : synthèse regroupée (feuille de temps) ou journal brut
+function fteDetailHTML(e){
+  var h='<div style="background:var(--surface);padding:4px 10px 12px 10px">';
+  e.jours.forEach(function(j){
+    h+='<div style="display:flex;align-items:center;gap:8px;margin:9px 0 5px">'
+      +'<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">'+j.label+' '+fmtDate(j.date)+'</div>'
+      +'<div style="flex:1;height:1px;background:var(--line)"></div>'
+      +'<div style="font-size:11px;font-weight:800;color:var(--text)">Journée : '+fteLblJournee(j)+'</div></div>';
+
+    if(_fteMode==='synthese'){
+      j.lignes.forEach(function(l,li){
+        h+='<div style="background:#fff;border:1px solid var(--line);border-radius:9px;padding:8px 10px;margin-bottom:5px">'
+          +'<div style="display:flex;align-items:center;gap:9px">'
+            +'<div style="flex:1;min-width:0">'
+              +'<div style="font-size:12.5px;font-weight:700">'+esc(l.lieu)
+              +(l.nb>1?' <span style="background:var(--blue-lt);color:var(--blue);border-radius:20px;padding:1px 7px;font-size:10px;font-weight:800">×'+l.nb+' punchs</span>':'')
+              +(l.court?' <span style="background:var(--obg);color:#a35400;border-radius:20px;padding:1px 7px;font-size:10px;font-weight:800">très court</span>':'')
+              +'</div>'
+              +'<div style="font-size:10.5px;color:var(--muted);font-weight:600">'+esc(fteRefLigne(l))+'</div>'
+            +'</div>'
+            +'<div style="font-size:11px;color:var(--muted);text-align:right;white-space:nowrap">'+esc(l.debut||'—')+' – '+(l.actif?'en cours':esc(l.fin||'—'))+'</div>'
+            +'<div style="width:54px;text-align:right;font-size:12.5px;font-weight:800">'+(l.actif&&l.heures===0?'—':fmtH(l.heures))+'</div>'
+          +'</div>';
+        if(l.aValider){
+          h+='<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:7px;padding-top:7px;border-top:1px dashed var(--line)">'
+            +'<span style="background:var(--obg);color:#a35400;border-radius:20px;padding:3px 9px;font-size:10.5px;font-weight:800">🔒 '+esc(l.raisons.join(' / '))+'</span>'
+            +'<button class="fte-appr-ligne btn btn-success btn-sm" data-emp="'+e.id+'" data-jour="'+j.idx+'" data-ligne="'+li+'" style="padding:4px 10px;font-size:11px">✅ Approuver</button>'
+            // Une seule ligne = un seul punch : on peut le corriger directement. Plusieurs punchs
+            // regroupés : on renvoie au journal, où chaque punch se corrige individuellement.
+            +(l.nb===1
+              ? '<button class="fte-corr btn btn-ghost btn-sm" data-emp="'+e.id+'" data-jour="'+l.refs[0].j+'" data-task="'+l.refs[0].t+'" style="padding:4px 10px;font-size:11px">✏️ Corriger</button>'
+              : '<button class="fte-voir-journal btn btn-ghost btn-sm" data-emp="'+e.id+'" style="padding:4px 10px;font-size:11px">🧾 Voir les '+l.nb+' punchs</button>')
+            +'</div>';
+        }
+        h+='</div>';
+      });
+    }else{
+      j.punchs.forEach(function(p){
+        h+='<div style="background:#fff;border:1px solid var(--line);border-radius:9px;padding:8px 10px;margin-bottom:5px">'
+          +'<div style="display:flex;align-items:center;gap:9px">'
+            +'<div style="flex:1;min-width:0">'
+              +'<div style="font-size:12.5px;font-weight:700">'+esc(p.lieu)+'</div>'
+              +'<div style="font-size:10.5px;color:var(--muted);font-weight:600">'+esc(fteRefLigne(p))+'</div>'
+            +'</div>'
+            +'<div style="font-size:11px;color:var(--muted);text-align:right;white-space:nowrap">'+esc(p.start||'—')+' – '+(p.actif?'en cours':esc(p.end||'—'))+'</div>'
+            +'<div style="width:54px;text-align:right;font-size:12.5px;font-weight:800">'+(p.actif?'—':fmtH(p.hrs))+'</div>'
+          +'</div>';
+        if(p.aValider){
+          h+='<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:7px;padding-top:7px;border-top:1px dashed var(--line)">'
+            +'<span style="background:var(--obg);color:#a35400;border-radius:20px;padding:3px 9px;font-size:10.5px;font-weight:800">🔒 '+esc(p.raison)+'</span>'
+            +'<button class="fte-appr btn btn-success btn-sm" data-emp="'+e.id+'" data-jour="'+p.jourIdx+'" data-task="'+p.taskIdx+'" style="padding:4px 10px;font-size:11px">✅ Approuver</button>'
+            +'<button class="fte-corr btn btn-ghost btn-sm" data-emp="'+e.id+'" data-jour="'+p.jourIdx+'" data-task="'+p.taskIdx+'" style="padding:4px 10px;font-size:11px">✏️ Corriger</button>'
+            +'</div>';
+        }else{
+          h+='<div style="margin-top:6px"><button class="fte-corr btn btn-ghost btn-sm" data-emp="'+e.id+'" data-jour="'+p.jourIdx+'" data-task="'+p.taskIdx+'" style="padding:3px 9px;font-size:10.5px">✏️ Corriger</button></div>';
+        }
+        h+='</div>';
+      });
+    }
+  });
+
+  h+='<div style="background:#fff;border:1px solid var(--line);border-radius:9px;padding:10px 11px;margin-top:9px">'
+    +'<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:6px">Total par job — site / ODT</div>';
+  e.jobs.forEach(function(j){
+    h+='<div style="display:flex;align-items:baseline;gap:8px;font-size:12px;margin-bottom:4px">'
+      +'<div style="font-weight:600">'+esc(j.lieu)+'</div>'
+      +'<div style="flex:1;border-bottom:1px dotted var(--line)"></div>'
+      +'<div style="font-size:10.5px;color:var(--muted)">'+esc(fteJobRef(j))+'</div>'
+      +'<div style="width:62px;text-align:right;font-weight:800">'+fteHeuresJob(j)+'</div></div>';
+  });
+  h+='<div style="display:flex;align-items:baseline;gap:8px;font-size:13px;font-weight:800;border-top:1px solid var(--line);padding-top:7px;margin-top:5px">'
+    +'<div>Total de la semaine</div><div style="flex:1"></div>'
+    +'<div style="width:62px;text-align:right;color:var(--blue)">'+fmtH(e.totalSem)+'</div></div>';
+  if(e.supp>0){
+    h+='<div style="font-size:10.5px;color:var(--muted);font-weight:600;margin-top:4px">Régulier '+fmtH(e.reg)+' · Supplémentaire '+fmtH(e.supp)+'</div>';
+  }
+  h+='</div>';
+
+  h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px">'
+    +'<button class="fte-xls-emp btn btn-ghost btn-sm" data-emp="'+e.id+'">⬇️ Excel de cet employé</button>'
+    +'<button class="fte-mail-emp btn btn-ghost btn-sm" data-emp="'+e.id+'">📧 Courriel</button></div>';
+  h+='</div>';
+  return h;
+}
+
+// Réutilise le VRAI logo Soucy déjà chargé dans la barre du haut (jamais de filtre CSS dessus).
 function fteBrancherLogo(){
   var hote=document.getElementById('fteLogo');
   if(!hote)return;
@@ -5076,9 +5172,7 @@ function fteBrancherLogo(){
     img.src=src.src;img.alt='Soucy Aquatik';
     img.style.cssText='width:100%;height:100%;object-fit:cover;display:block';
     hote.innerHTML='';hote.appendChild(img);
-  }else{
-    hote.style.display='none';
-  }
+  }else{hote.style.display='none';}
 }
 
 function fteBrancherListe(data){
@@ -5086,6 +5180,9 @@ function fteBrancherListe(data){
   document.getElementById('ftePrev').addEventListener('click',function(){fteChangerSemaine(-1);});
   document.getElementById('fteNext').addEventListener('click',function(){fteChangerSemaine(1);});
   document.getElementById('fteAuj').addEventListener('click',function(){_fteSemaine=fteSemaineParDefaut();_fteSelInit=null;_fteDeplie={};dessinerFeuillesEquipe();});
+  var ms=document.getElementById('fteModeSyn'), mj=document.getElementById('fteModeJrn');
+  if(ms)ms.addEventListener('click',function(){_fteMode='synthese';dessinerFeuillesEquipe();});
+  if(mj)mj.addEventListener('click',function(){_fteMode='journal';dessinerFeuillesEquipe();});
   var tout=document.getElementById('fteTout');
   if(tout)tout.addEventListener('change',function(){
     var on=tout.checked;
@@ -5101,38 +5198,72 @@ function fteBrancherListe(data){
   body.querySelectorAll('.fte-appr').forEach(function(b){
     b.addEventListener('click',function(){fteApprouverPunch(b.dataset.emp,+b.dataset.jour,+b.dataset.task);});
   });
+  body.querySelectorAll('.fte-appr-ligne').forEach(function(b){
+    b.addEventListener('click',function(){fteApprouverLigne(b.dataset.emp,+b.dataset.jour,+b.dataset.ligne);});
+  });
+  body.querySelectorAll('.fte-voir-journal').forEach(function(b){
+    b.addEventListener('click',function(){_fteMode='journal';dessinerFeuillesEquipe();});
+  });
   body.querySelectorAll('.fte-corr').forEach(function(b){
     b.addEventListener('click',function(){fteCorrigerPunch(b.dataset.emp,+b.dataset.jour,+b.dataset.task);});
+  });
+  body.querySelectorAll('.fte-xls-emp').forEach(function(b){
+    b.addEventListener('click',function(){fteExcelEmploye(b.dataset.emp);});
+  });
+  body.querySelectorAll('.fte-mail-emp').forEach(function(b){
+    b.addEventListener('click',function(){fteEnvoyerEmploye(b.dataset.emp);});
   });
   document.getElementById('fteImprimer').addEventListener('click',fteImprimer);
   document.getElementById('fteGenerer').addEventListener('click',fteGenerer);
 }
 
-// ── Validation d'un punch en attente (même mécanisme que la case « Approuver ce punch » du modal
-// de correction : on ne touche QUE les champs de validation, jamais les heures) ──
-function fteApprouverPunch(empId,jourIdx,taskIdx){
-  if(!isSup()){toast('⛔ Réservé au superviseur');return;}
-  var cle=empId+'_'+_fteSemaine;
-  var ft=getFTWeek(cle);
+// ── Validation (n'écrit QUE les champs de validation, jamais les heures) ──
+function fteValiderTache(empId,jourIdx,taskIdx,ft){
   var t=(ft&&ft.days&&ft.days[jourIdx]&&ft.days[jourIdx].tasks)?ft.days[jourIdx].tasks[taskIdx]:null;
-  if(!t){toast('Punch introuvable');return;}
+  if(!t)return false;
   t.pendingValidation=false;
   t.valideBy=currentUser?currentUser.id:'';
   t.valideAt=new Date().toISOString();
+  return true;
+}
+function fteSauverFT(empId,ft,detailsAudit){
+  var cle=empId+'_'+_fteSemaine;
   ft.savedAt=new Date().toISOString();
   lsSet('ft_week_'+cle,ft);
   if(typeof sbPushFT==='function'){
     var totalH=0;(ft.days||[]).forEach(function(d){((d&&d.tasks)||[]).forEach(function(x){totalH+=(x.hrs||0);});});
     try{sbPushFT(empId,_fteSemaine,{emp:ft.emp,email:ft.email,days:ft.days,savedAt:ft.savedAt},totalH);}catch(e){}
   }
-  if(typeof auditLog==='function')auditLog('MODIFICATION','feuilles_temps',cle,{action:'validation_punch',jour:jourIdx,lieu:t.lieu});
+  if(typeof auditLog==='function')auditLog('MODIFICATION','feuilles_temps',cle,detailsAudit);
+}
+function fteApprouverPunch(empId,jourIdx,taskIdx){
+  if(!isSup()){toast('⛔ Réservé au superviseur');return;}
+  var ft=getFTWeek(empId+'_'+_fteSemaine);
+  if(!fteValiderTache(empId,jourIdx,taskIdx,ft)){toast('Punch introuvable');return;}
+  fteSauverFT(empId,ft,{action:'validation_punch',jour:jourIdx});
   toast('✅ Punch validé');
+  dessinerFeuillesEquipe();
+}
+// Approuve d'un coup TOUS les punchs regroupés dans une ligne de la feuille de temps
+function fteApprouverLigne(empId,jourIdx,ligneIdx){
+  if(!isSup()){toast('⛔ Réservé au superviseur');return;}
+  var data=fteBuildSemaine(_fteSemaine);
+  var e=data.employes.find(function(x){return x.id===empId;});
+  var j=e?e.jours.find(function(x){return x.idx===jourIdx;}):null;
+  var l=j?j.lignes[ligneIdx]:null;
+  if(!l){toast('Ligne introuvable');return;}
+  var ft=getFTWeek(empId+'_'+_fteSemaine);
+  var n=0;
+  l.refs.forEach(function(r){if(fteValiderTache(empId,r.j,r.t,ft))n++;});
+  if(!n){toast('Aucun punch à valider');return;}
+  fteSauverFT(empId,ft,{action:'validation_ligne',jour:jourIdx,lieu:l.lieu,punchs:n});
+  toast('✅ '+n+' punch'+(n>1?'s validés':' validé'));
   dessinerFeuillesEquipe();
 }
 function fteCorrigerPunch(empId,jourIdx,taskIdx){
   ouvrirCorrectionPunch(empId,_fteSemaine,jourIdx,taskIdx);
   var m=document.getElementById('corrPunchModal');
-  if(m)document.body.appendChild(m); // au-dessus de l'écran équipe
+  if(m)document.body.appendChild(m);
   if(!_fteHookCorr){
     var b=document.getElementById('cpSave');
     if(b){b.addEventListener('click',function(){setTimeout(function(){if(document.getElementById('fteBody'))dessinerFeuillesEquipe();},80);});}
@@ -5140,7 +5271,421 @@ function fteCorrigerPunch(empId,jourIdx,taskIdx){
   }
 }
 
-// ── Génération : réconciliation des doublons de sites PUIS écran d'envoi ──
+// ═══ EXCEL — un classeur clair, pensé pour être LU (et pour la paie) ═══
+// La librairie de style (xlsx-js-style) est chargée à la demande, seulement au premier export, pour ne
+// pas ralentir l'ouverture de l'app. Si le CDN ne répond pas, on retombe sur la librairie déjà présente :
+// même fichier, même structure, sans les couleurs.
+var _fteXlsxLib=null;
+function fteXlsx(cb){
+  if(_fteXlsxLib){cb(_fteXlsxLib);return;}
+  if(typeof XLSX==='undefined'){toast('⚠️ Librairie Excel non disponible');return;}
+  var base=window.XLSX, fini=false;
+  function termine(lib){
+    if(fini)return;fini=true;
+    window.XLSX=base;            // on rend à l'app sa librairie d'origine (export employé existant)
+    _fteXlsxLib=lib||base;
+    cb(_fteXlsxLib);
+  }
+  var s=document.createElement('script');
+  s.src='https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js';
+  s.onload=function(){var st=window.XLSX;termine(st&&st.style_version?st:base);};
+  s.onerror=function(){termine(base);};
+  setTimeout(function(){termine(base);},7000);
+  toast('⏳ Préparation du fichier…');
+  document.head.appendChild(s);
+}
+
+var FTE_BORD={style:'thin',color:{rgb:'FFD3DCE6'}};
+var FTE_STYLES={
+  titre:{font:{bold:true,sz:15,color:{rgb:'FFFFFFFF'}},fill:{patternType:'solid',fgColor:{rgb:'FF004987'}},alignment:{vertical:'center',horizontal:'left'}},
+  soustitre:{font:{sz:11,color:{rgb:'FF4A4738'}},alignment:{vertical:'center'}},
+  entete:{font:{bold:true,sz:11,color:{rgb:'FFFFFFFF'}},fill:{patternType:'solid',fgColor:{rgb:'FF1A5C9A'}},alignment:{horizontal:'center',vertical:'center',wrapText:true},border:{top:FTE_BORD,bottom:FTE_BORD,left:FTE_BORD,right:FTE_BORD}},
+  cell:{font:{sz:11},alignment:{vertical:'center'},border:{top:FTE_BORD,bottom:FTE_BORD,left:FTE_BORD,right:FTE_BORD}},
+  cellNum:{font:{sz:11},alignment:{vertical:'center',horizontal:'right'},border:{top:FTE_BORD,bottom:FTE_BORD,left:FTE_BORD,right:FTE_BORD}},
+  bloc:{font:{bold:true,sz:12,color:{rgb:'FF0B2E52'}},fill:{patternType:'solid',fgColor:{rgb:'FFE8F2FB'}},alignment:{vertical:'center'}},
+  jour:{font:{bold:true,sz:11,color:{rgb:'FF0B2E52'}},alignment:{vertical:'center'}},
+  total:{font:{bold:true,sz:11,color:{rgb:'FF0B2E52'}},fill:{patternType:'solid',fgColor:{rgb:'FFF4F6FA'}},alignment:{vertical:'center'},border:{top:FTE_BORD,bottom:FTE_BORD,left:FTE_BORD,right:FTE_BORD}},
+  totalNum:{font:{bold:true,sz:11,color:{rgb:'FF0B2E52'}},fill:{patternType:'solid',fgColor:{rgb:'FFF4F6FA'}},alignment:{vertical:'center',horizontal:'right'},border:{top:FTE_BORD,bottom:FTE_BORD,left:FTE_BORD,right:FTE_BORD}},
+  alerte:{font:{sz:11,color:{rgb:'FF9C2F22'}},alignment:{vertical:'center'},border:{top:FTE_BORD,bottom:FTE_BORD,left:FTE_BORD,right:FTE_BORD}},
+  titreNum:{font:{bold:true,sz:15,color:{rgb:'FFFFFFFF'}},fill:{patternType:'solid',fgColor:{rgb:'FF004987'}},alignment:{vertical:'center',horizontal:'right'}},
+  sousBandeau:{font:{sz:11,color:{rgb:'FF33506F'}},alignment:{vertical:'center'}},
+  sousBandeauNum:{font:{bold:true,sz:11,color:{rgb:'FF33506F'}},alignment:{vertical:'center',horizontal:'right'}},
+  kpiLbl:{font:{bold:true,sz:9.5,color:{rgb:'FF55607A'}},fill:{patternType:'solid',fgColor:{rgb:'FFF7F9FC'}},alignment:{vertical:'center'},border:{top:FTE_BORD,left:FTE_BORD,right:FTE_BORD}},
+  kpiVal:{font:{bold:true,sz:16,color:{rgb:'FF0B2E52'}},fill:{patternType:'solid',fgColor:{rgb:'FFF7F9FC'}},alignment:{vertical:'center'},border:{bottom:FTE_BORD,left:FTE_BORD,right:FTE_BORD}},
+  enteteFort:{font:{bold:true,sz:11,color:{rgb:'FFFFFFFF'}},fill:{patternType:'solid',fgColor:{rgb:'FF0F4B85'}},alignment:{horizontal:'right',vertical:'center'},border:{top:FTE_BORD,bottom:FTE_BORD,left:FTE_BORD,right:FTE_BORD}},
+  cellFort:{font:{bold:true,sz:11,color:{rgb:'FF1F2A37'}},alignment:{vertical:'center'},border:{top:FTE_BORD,bottom:FTE_BORD,left:FTE_BORD,right:FTE_BORD}},
+  cellCle:{font:{bold:true,sz:11,color:{rgb:'FF0B2E52'}},fill:{patternType:'solid',fgColor:{rgb:'FFE8F2FB'}},alignment:{vertical:'center',horizontal:'right'},border:{top:FTE_BORD,bottom:FTE_BORD,left:FTE_BORD,right:FTE_BORD}},
+  cellAtt:{font:{sz:11,color:{rgb:'FF1F2A37'}},fill:{patternType:'solid',fgColor:{rgb:'FFFFF8EE'}},alignment:{vertical:'center'},border:{top:FTE_BORD,bottom:FTE_BORD,left:FTE_BORD,right:FTE_BORD}},
+  totalCle:{font:{bold:true,sz:12,color:{rgb:'FF0B2E52'}},fill:{patternType:'solid',fgColor:{rgb:'FFD9E9F8'}},alignment:{vertical:'center',horizontal:'right'},border:{top:FTE_BORD,bottom:FTE_BORD,left:FTE_BORD,right:FTE_BORD}},
+  bandeau:{font:{bold:true,sz:12,color:{rgb:'FF0B2E52'}},fill:{patternType:'solid',fgColor:{rgb:'FFD9E9F8'}},alignment:{vertical:'center'},border:{top:FTE_BORD,bottom:FTE_BORD}},
+  bandeauNum:{font:{bold:true,sz:12,color:{rgb:'FF0B2E52'}},fill:{patternType:'solid',fgColor:{rgb:'FFD9E9F8'}},alignment:{vertical:'center',horizontal:'right'},border:{top:FTE_BORD,bottom:FTE_BORD}},
+  totalEmp:{font:{bold:true,sz:11,color:{rgb:'FF0B2E52'}},fill:{patternType:'solid',fgColor:{rgb:'FFEAF1F9'}},alignment:{vertical:'center'},border:{top:FTE_BORD,bottom:FTE_BORD}},
+  signature:{font:{sz:10,color:{rgb:'FF55607A'}},alignment:{vertical:'center'},border:{top:{style:'thin',color:{rgb:'FF55607A'}}}}
+};
+function fteCell(XL,ws,r,c,style,fmt){
+  var a=XL.utils.encode_cell({r:r,c:c});
+  if(!ws[a])ws[a]={t:'s',v:''};
+  // COPIE du style : la librairie de mise en forme met les styles en cache PAR RÉFÉRENCE — partager
+  // le même objet entre cellules faisait déborder le format d'une colonne sur les autres
+  // (les colonnes « Jours »/« Jobs » affichaient 5,00 au lieu de 5).
+  if(style)ws[a].s=JSON.parse(JSON.stringify(style));
+  if(fmt)ws[a].z=fmt;
+}
+function fteStyleLigne(XL,ws,r,nbCols,style,styleNumDepuis){
+  for(var c=0;c<nbCols;c++){
+    fteCell(XL,ws,r,c,(styleNumDepuis!==undefined&&c>=styleNumDepuis)?(style===FTE_STYLES.total?FTE_STYLES.totalNum:FTE_STYLES.cellNum):style);
+  }
+}
+function fteFeuille(XL,lignes,largeurs,options){
+  var ws=XL.utils.aoa_to_sheet(lignes);
+  ws['!cols']=largeurs.map(function(w){return {wch:w};});
+  if(options&&options.merges)ws['!merges']=options.merges;
+  if(options&&options.filtre)ws['!autofilter']={ref:options.filtre};
+  ws['!freeze']=options&&options.freeze?options.freeze:undefined;
+  return ws;
+}
+
+// Nom d'onglet Excel valide (31 caractères max, pas de : \ / ? * [ ])
+function fteNomFeuille(n,pris){
+  var b=(n||'Feuille').replace(/[\\\/\?\*\[\]:]/g,' ').replace(/\s+/g,' ').trim().slice(0,31)||'Feuille';
+  var x=b, i=2;
+  while(pris&&pris.indexOf(x)>=0){var suf=' ('+i+')';x=b.slice(0,31-suf.length)+suf;i++;}
+  if(pris)pris.push(x);
+  return x;
+}
+
+// Feuille 1 — SOMMAIRE PAIE : bandeau, trois indicateurs, une ligne par employé.
+// La colonne TOTAL est la seule que la paie recopie — elle est mise en évidence.
+function fteWsSommaire(XL,data,employes){
+  var fin=new Date(data.semaine+'T12:00:00');fin.setDate(fin.getDate()+6);
+  var tReg=0,tSupp=0,tTot=0,tVerif=0;
+  employes.forEach(function(e){tReg+=e.reg;tSupp+=e.supp;tTot+=e.totalSem;tVerif+=e.nbAValider;});
+  var entetes=['Employé','Jours','Régulier (h)','Supp. (h)','TOTAL (h)','À vérifier'];
+  var L=[];
+  L.push(['FEUILLES DE TEMPS — ÉQUIPE SOUCY AQUATIK']);
+  L.push(['Semaine du '+fmtDate(data.semaine)+' au '+fmtDate(localISO(fin))+' · sortie faite le '+fmtDate(todayISO())+' par '+(currentUser?((currentUser.prenom||'')+' '+(currentUser.nom||'')).trim():'')]);
+  L.push([]);
+  L.push(['TOTAL ÉQUIPE','','HEURES SUPPLÉMENTAIRES','','À VÉRIFIER AVANT DE PAYER','']);
+  L.push([fteDecTxt(tTot)+' h','',fteDecTxt(tSupp)+' h','',(tVerif>0?tVerif+' punch'+(tVerif>1?'s':''):'rien à signaler'),'']);
+  L.push([]);
+  L.push(entetes);
+  employes.forEach(function(e){
+    var v=[];
+    if(e.nbAValider>0)v.push(e.nbAValider+' punch'+(e.nbAValider>1?'s':'')+' à valider');
+    if(e.nbCourts>0)v.push(e.nbCourts+' ligne'+(e.nbCourts>1?'s':'')+' très courte'+(e.nbCourts>1?'s':''));
+    if(e.enCours)v.push('punch encore actif');
+    L.push([e.nom,e.nbJours,fteDec(e.reg),fteDec(e.supp),fteDec(e.totalSem),v.join(' · ')||'—']);
+  });
+  L.push(['TOTAL ÉQUIPE','',fteDec(tReg),fteDec(tSupp),fteDec(tTot),'']);
+
+  var ws=fteFeuille(XL,L,[26,8,13,12,13,30],{merges:[
+    {s:{r:0,c:0},e:{r:0,c:5}},{s:{r:1,c:0},e:{r:1,c:5}},
+    {s:{r:3,c:0},e:{r:3,c:1}},{s:{r:3,c:2},e:{r:3,c:3}},{s:{r:3,c:4},e:{r:3,c:5}},
+    {s:{r:4,c:0},e:{r:4,c:1}},{s:{r:4,c:2},e:{r:4,c:3}},{s:{r:4,c:4},e:{r:4,c:5}}
+  ],freeze:{xSplit:0,ySplit:7}});
+  fteCell(XL,ws,0,0,FTE_STYLES.titre);
+  fteCell(XL,ws,1,0,FTE_STYLES.soustitre);
+  [0,2,4].forEach(function(c){
+    fteCell(XL,ws,3,c,FTE_STYLES.kpiLbl);fteCell(XL,ws,3,c+1,FTE_STYLES.kpiLbl);
+    fteCell(XL,ws,4,c,FTE_STYLES.kpiVal);fteCell(XL,ws,4,c+1,FTE_STYLES.kpiVal);
+  });
+  fteStyleLigne(XL,ws,6,6,FTE_STYLES.entete);
+  fteCell(XL,ws,6,4,FTE_STYLES.enteteFort);
+  for(var i=0;i<employes.length;i++){
+    var r=7+i;
+    fteStyleLigne(XL,ws,r,6,FTE_STYLES.cell,1);
+    fteCell(XL,ws,r,0,FTE_STYLES.cellFort);
+    fteCell(XL,ws,r,2,FTE_STYLES.cellNum,'0.00');
+    fteCell(XL,ws,r,3,FTE_STYLES.cellNum,'0.00');
+    fteCell(XL,ws,r,4,FTE_STYLES.cellCle,'0.00');
+    if(employes[i].nbAValider>0||employes[i].nbCourts>0||employes[i].enCours)fteCell(XL,ws,r,5,FTE_STYLES.alerte);
+  }
+  var rt=7+employes.length;
+  fteStyleLigne(XL,ws,rt,6,FTE_STYLES.total,1);
+  fteCell(XL,ws,rt,2,FTE_STYLES.totalNum,'0.00');
+  fteCell(XL,ws,rt,3,FTE_STYLES.totalNum,'0.00');
+  fteCell(XL,ws,rt,4,FTE_STYLES.totalCle,'0.00');
+  ws['!rows']=[{hpt:26},{hpt:17},{hpt:6},{hpt:15},{hpt:24},{hpt:6}];
+  return ws;
+}
+
+// Feuille par employé (option A) — la fiche qui s'imprime et se signe.
+function fteWsFicheEmploye(XL,data,e){
+  var fin=new Date(data.semaine+'T12:00:00');fin.setDate(fin.getDate()+6);
+  var entetes=['Jour','Date','Site / job','ODT','Horaire','Punchs','Heures'];
+  var L=[], marques=[];
+  L.push([e.nom.toUpperCase()+' — semaine du '+fmtDate(data.semaine)+' au '+fmtDate(localISO(fin)),'','','','','',fteDec(e.totalSem)]);
+  L.push([e.nbJours+' jour'+(e.nbJours>1?'s':'')+' · '+e.nbJobs+' job'+(e.nbJobs>1?'s':'')+' · '+e.nbPunchs+' punch'+(e.nbPunchs>1?'s':'')+' regroupé'+(e.nbPunchs>1?'s':'')+' en '+e.nbLignes+' ligne'+(e.nbLignes>1?'s':''),'','','','','',fmtH(e.totalSem)]);
+  L.push([]);
+  L.push(entetes);marques.push({r:L.length-1,t:'entete'});
+  e.jours.forEach(function(j){
+    j.lignes.forEach(function(l,li){
+      L.push([li===0?j.label:'',li===0?fmtDate(j.date):'',l.lieu,l.odt||'—',
+        (l.debut||'')+' – '+(l.actif?'en cours':(l.fin||'')),l.nb,l.actif&&l.heures===0?'':fteDec(l.heures)]);
+      marques.push({r:L.length-1,t:l.aValider?'attention':'cell'});
+    });
+    L.push(['','','','','Total '+j.label.toLowerCase(),'',fteDec(j.total)]);marques.push({r:L.length-1,t:'sousTotal'});
+  });
+  L.push([]);
+  L.push(['TOTAL PAR JOB — POUR LA FACTURATION','','','ODT','','','Heures']);marques.push({r:L.length-1,t:'entete'});
+  e.jobs.forEach(function(j){
+    L.push([j.lieu,'','',j.odt||'—','','',fteDec(j.heures)]);marques.push({r:L.length-1,t:'cell'});
+  });
+  L.push([]);
+  L.push(['','','','','Heures régulières','',fteDec(e.reg)]);marques.push({r:L.length-1,t:'cell'});
+  L.push(['','','','','Heures supplémentaires','',fteDec(e.supp)]);marques.push({r:L.length-1,t:'cell'});
+  L.push(['','','','','TOTAL À PAYER','',fteDec(e.totalSem)]);marques.push({r:L.length-1,t:'totalCle'});
+  L.push([]);
+  L.push(['Signature employé','','','','Signature superviseur','','']);marques.push({r:L.length-1,t:'signature'});
+
+  var ws=fteFeuille(XL,L,[13,12,34,12,18,9,12],{merges:[
+    {s:{r:0,c:0},e:{r:0,c:5}},{s:{r:1,c:0},e:{r:1,c:5}},
+    {s:{r:L.length-1,c:0},e:{r:L.length-1,c:3}},{s:{r:L.length-1,c:4},e:{r:L.length-1,c:6}}
+  ],freeze:{xSplit:0,ySplit:4}});
+  fteCell(XL,ws,0,0,FTE_STYLES.titre);fteCell(XL,ws,0,6,FTE_STYLES.titreNum,'0.00');
+  fteCell(XL,ws,1,0,FTE_STYLES.sousBandeau);fteCell(XL,ws,1,6,FTE_STYLES.sousBandeauNum);
+  marques.forEach(function(m){
+    if(m.t==='entete'){fteStyleLigne(XL,ws,m.r,7,FTE_STYLES.entete);}
+    else if(m.t==='sousTotal'){fteStyleLigne(XL,ws,m.r,7,FTE_STYLES.total,6);fteCell(XL,ws,m.r,6,FTE_STYLES.totalNum,'0.00');}
+    else if(m.t==='totalCle'){fteStyleLigne(XL,ws,m.r,7,FTE_STYLES.total,6);fteCell(XL,ws,m.r,6,FTE_STYLES.totalCle,'0.00');}
+    else if(m.t==='signature'){fteCell(XL,ws,m.r,0,FTE_STYLES.signature);fteCell(XL,ws,m.r,4,FTE_STYLES.signature);}
+    else{
+      fteStyleLigne(XL,ws,m.r,7,m.t==='attention'?FTE_STYLES.cellAtt:FTE_STYLES.cell,5);
+      fteCell(XL,ws,m.r,6,FTE_STYLES.cellNum,'0.00');
+    }
+  });
+  ws['!rows']=[{hpt:24},{hpt:15},{hpt:6}];
+  return ws;
+}
+
+// Feuille « Toute l'équipe » (option B) — un bandeau par employé, tout se lit en descendant.
+function fteWsEquipe(XL,data,employes){
+  var fin=new Date(data.semaine+'T12:00:00');fin.setDate(fin.getDate()+6);
+  var tReg=0,tSupp=0,tTot=0;
+  employes.forEach(function(e){tReg+=e.reg;tSupp+=e.supp;tTot+=e.totalSem;});
+  var entetes=['Jour','Date','Site / job','ODT','Horaire','Punchs','Heures'];
+  var L=[], marques=[], merges=[];
+  L.push(['FEUILLES DE TEMPS — TOUTE L\'ÉQUIPE · semaine du '+fmtDate(data.semaine)+' au '+fmtDate(localISO(fin)),'','','','','',fteDec(tTot)]);
+  merges.push({s:{r:0,c:0},e:{r:0,c:5}});
+  L.push(entetes);marques.push({r:L.length-1,t:'entete'});
+  employes.forEach(function(e){
+    L.push([e.nom.toUpperCase()+'  —  '+e.nbJours+' jour'+(e.nbJours>1?'s':'')+' · '+e.nbJobs+' job'+(e.nbJobs>1?'s':'')+(e.nbAValider>0?' · '+e.nbAValider+' à valider':''),'','','','','',fteDec(e.totalSem)]);
+    merges.push({s:{r:L.length-1,c:0},e:{r:L.length-1,c:5}});
+    marques.push({r:L.length-1,t:'bandeau'});
+    e.jours.forEach(function(j){
+      j.lignes.forEach(function(l,li){
+        L.push([li===0?j.label:'',li===0?fmtDate(j.date):'',l.lieu,l.odt||'—',
+          (l.debut||'')+' – '+(l.actif?'en cours':(l.fin||'')),l.nb,l.actif&&l.heures===0?'':fteDec(l.heures)]);
+        marques.push({r:L.length-1,t:l.aValider?'attention':'cell'});
+      });
+      L.push(['','','','','Total '+j.label.toLowerCase(),'',fteDec(j.total)]);marques.push({r:L.length-1,t:'sousTotal'});
+    });
+    L.push(['TOTAL '+e.nom.toUpperCase(),'','','','régulier '+fteDecTxt(e.reg)+' · supp. '+fteDecTxt(e.supp),'',fteDec(e.totalSem)]);
+    merges.push({s:{r:L.length-1,c:0},e:{r:L.length-1,c:3}});
+    marques.push({r:L.length-1,t:'totalEmp'});
+  });
+  L.push(['TOTAL ÉQUIPE','','','','régulier '+fteDecTxt(tReg)+' · supp. '+fteDecTxt(tSupp),'',fteDec(tTot)]);
+  merges.push({s:{r:L.length-1,c:0},e:{r:L.length-1,c:3}});
+  marques.push({r:L.length-1,t:'totalEquipe'});
+
+  var ws=fteFeuille(XL,L,[13,12,34,12,20,9,12],{merges:merges,freeze:{xSplit:0,ySplit:2}});
+  fteCell(XL,ws,0,0,FTE_STYLES.titre);fteCell(XL,ws,0,6,FTE_STYLES.titreNum,'0.00');
+  marques.forEach(function(m){
+    if(m.t==='entete'){fteStyleLigne(XL,ws,m.r,7,FTE_STYLES.entete);}
+    else if(m.t==='bandeau'){fteStyleLigne(XL,ws,m.r,7,FTE_STYLES.bandeau,6);fteCell(XL,ws,m.r,6,FTE_STYLES.bandeauNum,'0.00');}
+    else if(m.t==='sousTotal'){fteStyleLigne(XL,ws,m.r,7,FTE_STYLES.total,6);fteCell(XL,ws,m.r,6,FTE_STYLES.totalNum,'0.00');}
+    else if(m.t==='totalEmp'){fteStyleLigne(XL,ws,m.r,7,FTE_STYLES.totalEmp,6);fteCell(XL,ws,m.r,6,FTE_STYLES.totalCle,'0.00');}
+    else if(m.t==='totalEquipe'){fteStyleLigne(XL,ws,m.r,7,FTE_STYLES.titre,6);fteCell(XL,ws,m.r,6,FTE_STYLES.titreNum,'0.00');}
+    else{
+      fteStyleLigne(XL,ws,m.r,7,m.t==='attention'?FTE_STYLES.cellAtt:FTE_STYLES.cell,5);
+      fteCell(XL,ws,m.r,6,FTE_STYLES.cellNum,'0.00');
+    }
+  });
+  ws['!rows']=[{hpt:24}];
+  return ws;
+}
+
+// Feuille 4 — TOTAL PAR JOB : combien d'heures sur chaque site/ODT, par employé (facturation).
+function fteWsJobs(XL,data,employes){
+  var entetes=['Site / lieu','ODT','Employé','Heures','Durée','Punchs'];
+  var L=[entetes], total=0;
+  var parSite={}, ordre=[];
+  employes.forEach(function(e){
+    e.jobs.forEach(function(j){
+      var cle=(siteNormName(j.lieu)||j.lieu)+'|'+(j.odt||'');
+      if(!parSite[cle]){parSite[cle]=[];ordre.push({cle:cle,lieu:j.lieu,odt:j.odt||''});}
+      parSite[cle].push({emp:e.nom,heures:j.heures,nb:j.nb});
+    });
+  });
+  ordre.forEach(function(o){
+    parSite[o.cle].forEach(function(x){
+      L.push([o.lieu,o.odt,x.emp,fteDec(x.heures),fmtH(x.heures),x.nb]);
+      total+=x.heures;
+    });
+  });
+  L.push(['TOTAL','','',fteDec(total),fmtH(total),'']);
+  var ws=fteFeuille(XL,L,[34,14,26,10,10,9],{filtre:'A1:F'+(L.length-1),freeze:{xSplit:0,ySplit:1}});
+  fteStyleLigne(XL,ws,0,entetes.length,FTE_STYLES.entete);
+  for(var r=1;r<L.length-1;r++){
+    fteStyleLigne(XL,ws,r,entetes.length,FTE_STYLES.cell,3);
+    fteCell(XL,ws,r,3,FTE_STYLES.cellNum,'0.00');
+  }
+  fteStyleLigne(XL,ws,L.length-1,entetes.length,FTE_STYLES.total,3);
+  fteCell(XL,ws,L.length-1,3,FTE_STYLES.totalNum,'0.00');
+  return ws;
+}
+
+// Feuille 5 — JOURNAL DES PUNCHS : le brut, punch par punch, pour l'audit (jamais pour la paie).
+function fteWsJournal(XL,data,employes){
+  var entetes=['Employé','Jour','Date','Site / lieu','ODT','Détail','Début','Fin','Heures','Validation'];
+  var L=[entetes];
+  employes.forEach(function(e){
+    e.jours.forEach(function(j){
+      j.punchs.forEach(function(p){
+        L.push([e.nom,j.label,fmtDate(j.date),p.lieu,p.odt||'',p.detail||'',p.start||'',
+          p.actif?'en cours':(p.end||''),p.actif?'':fteDec(p.hrs),
+          p.aValider?('en attente — '+p.raison):(p.approuve?'approuvé':'')]);
+      });
+    });
+  });
+  var ws=fteFeuille(XL,L,[26,11,12,30,12,26,9,9,10,26],{filtre:'A1:J'+L.length,freeze:{xSplit:0,ySplit:1}});
+  fteStyleLigne(XL,ws,0,entetes.length,FTE_STYLES.entete);
+  for(var r=1;r<L.length;r++){
+    fteStyleLigne(XL,ws,r,entetes.length,FTE_STYLES.cell,8);
+    fteCell(XL,ws,r,8,FTE_STYLES.cellNum,'0.00');
+    if((L[r][9]||'').indexOf('attente')>=0)fteCell(XL,ws,r,9,FTE_STYLES.alerte);
+  }
+  return ws;
+}
+
+function fteTelechargerWb(XL,wb,nomFichier){
+  var b64=XL.write(wb,{bookType:'xlsx',type:'base64'});
+  var bin=atob(b64), arr=new Uint8Array(bin.length);
+  for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+  var blob=new Blob([arr],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');a.href=url;a.download=nomFichier;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(function(){URL.revokeObjectURL(url);},4000);
+  return blob;
+}
+// Sur téléphone/tablette : partage natif (Mail, Teams, Messages…) quand le navigateur le permet.
+function ftePartager(blob,nomFichier,titre,texte){
+  try{
+    if(navigator.share&&window.File){
+      var f=new File([blob],nomFichier,{type:blob.type});
+      if(!navigator.canShare||navigator.canShare({files:[f]})){
+        navigator.share({files:[f],title:titre,text:texte}).catch(function(){});
+        return true;
+      }
+    }
+  }catch(e){}
+  return false;
+}
+
+function fteNomFichier(prefixe,semaine){
+  return prefixe+'_'+semaine+'.xlsx';
+}
+// LE fichier pour la paie : tout en un, plusieurs feuilles, une seule pièce jointe.
+function fteExcelEquipe(apres){
+  var data=fteBuildSemaine(_fteSemaine);
+  var sel=fteSelectionnes(data);
+  if(!sel.length){toast('⚠️ Aucune feuille sélectionnée');return;}
+  fteXlsx(function(XL){
+    var wb=XL.utils.book_new(), pris=[];
+    XL.utils.book_append_sheet(wb,fteWsSommaire(XL,data,sel),fteNomFeuille('Sommaire paie',pris));
+    sel.forEach(function(e){ // une fiche par employé (option A)
+      XL.utils.book_append_sheet(wb,fteWsFicheEmploye(XL,data,e),fteNomFeuille(e.nom,pris));
+    });
+    XL.utils.book_append_sheet(wb,fteWsEquipe(XL,data,sel),fteNomFeuille('Toute l\'équipe',pris)); // option B
+    XL.utils.book_append_sheet(wb,fteWsJobs(XL,data,sel),fteNomFeuille('Total par job',pris));
+    XL.utils.book_append_sheet(wb,fteWsJournal(XL,data,sel),fteNomFeuille('Journal des punchs',pris));
+    var nom=fteNomFichier('Feuilles_temps_EQUIPE',_fteSemaine);
+    var blob=fteTelechargerWb(XL,wb,nom);
+    sel.forEach(function(e){ftMarquerEnvoi(e,_fteSemaine,'excel_equipe');});
+    toast('📊 Fichier paie généré ('+sel.length+' employés)');
+    if(apres)apres(blob,nom,data,sel);
+    if(document.getElementById('fteBody'))dessinerFeuillesEquipe();
+  });
+}
+function fteExcelEmploye(empId,apres){
+  var data=fteBuildSemaine(_fteSemaine);
+  var e=data.employes.find(function(x){return x.id===empId;});
+  if(!e){toast('Employé introuvable');return;}
+  fteXlsx(function(XL){
+    var wb=XL.utils.book_new();
+    XL.utils.book_append_sheet(wb,fteWsFicheEmploye(XL,data,e),'Feuille de temps');
+    XL.utils.book_append_sheet(wb,fteWsJobs(XL,data,[e]),'Total par job');
+    XL.utils.book_append_sheet(wb,fteWsJournal(XL,data,[e]),'Journal des punchs');
+    var nom=fteNomFichier('Feuille_temps_'+e.nom.replace(/[^A-Za-zÀ-ÿ0-9]+/g,'_'),_fteSemaine);
+    var blob=fteTelechargerWb(XL,wb,nom);
+    ftMarquerEnvoi(e,_fteSemaine,'excel_employe');
+    toast('⬇️ Feuille de '+e.nom+' générée');
+    if(apres)apres(blob,nom,e);
+    if(document.getElementById('fteBody'))dessinerFeuillesEquipe();
+  });
+}
+
+// ═══ COURRIEL — sans dépendre d'Outlook Web ni d'une API ═══
+// L'app n'a aucun accès au serveur de courriel : on ouvre le logiciel de courriel DÉJÀ installé
+// (mailto: → Outlook de bureau, Mail sur iPhone…) avec un message court, et le détail part en pièce
+// jointe — le fichier Excel vient d'être téléchargé, il ne reste qu'à le glisser dans le message.
+// Sur téléphone, le partage natif permet d'envoyer le fichier directement.
+function fteMailto(to,sujet,corps){
+  var url='mailto:'+encodeURIComponent(to||'')+'?subject='+encodeURIComponent(sujet)+'&body='+encodeURIComponent(corps);
+  try{window.location.href=url;}catch(e){window.open(url,'_blank');}
+}
+function fteEmailPaie(){return lsGet('ft_email_paie')||'';}
+function fteSetEmailPaie(v){lsSet('ft_email_paie',(v||'').trim());}
+
+function fteCorpsCourtEmploye(e,semaine,nomFichier){
+  var fin=new Date(semaine+'T12:00:00');fin.setDate(fin.getDate()+6);
+  var b='Bonjour '+e.nom.split(' ')[0]+',\n\n';
+  b+='Voici ta feuille de temps pour la semaine du '+fmtDate(semaine)+' au '+fmtDate(localISO(fin))+'.\n\n';
+  b+='Total de la semaine : '+fmtH(e.totalSem)+' ('+fteDec(e.totalSem)+' h)\n';
+  b+='  Régulier : '+fmtH(e.reg)+'\n';
+  if(e.supp>0)b+='  Supplémentaire : '+fmtH(e.supp)+'\n';
+  b+='  '+e.nbJours+' jour(s) · '+e.nbJobs+' job(s)\n\n';
+  e.jours.forEach(function(j){
+    b+=j.label+' '+fmtDate(j.date)+' : '+fteLblJournee(j)+'\n';
+    j.lignes.forEach(function(l){
+      b+='   • '+l.lieu+(l.odt?' ['+l.odt+']':'')+' : '+fmtH(l.heures)+(l.nb>1?' ('+l.nb+' punchs)':'')+'\n';
+    });
+  });
+  b+='\nLe détail complet est dans le fichier joint : '+nomFichier+'\n';
+  b+='\n---\nSoucy Ops';
+  return b;
+}
+function fteEnvoyerEmploye(empId){
+  fteExcelEmploye(empId,function(blob,nom,e){
+    var sujet='Feuille de temps — '+e.nom+' — Sem. '+fmtDate(_fteSemaine);
+    var corps=fteCorpsCourtEmploye(e,_fteSemaine,nom);
+    if(ftePartager(blob,nom,sujet,corps)){toast('📤 Partage ouvert');return;}
+    if(!e.email){toast('⚠️ Aucun courriel au dossier — fichier téléchargé');return;}
+    fteMailto(e.email,sujet,corps);
+    toast('📧 Courriel ouvert — joindre le fichier téléchargé');
+  });
+}
+function fteEnvoyerPaie(){
+  fteExcelEquipe(function(blob,nom,data,sel){
+    var fin=new Date(_fteSemaine+'T12:00:00');fin.setDate(fin.getDate()+6);
+    var b='Bonjour,\n\nVoici les feuilles de temps de l\'équipe pour la semaine du '+fmtDate(_fteSemaine)+' au '+fmtDate(localISO(fin))+'.\n\n';
+    var tot=0,supp=0;
+    sel.forEach(function(e){
+      tot+=e.totalSem;supp+=e.supp;
+      b+=e.nom+' : '+fteDec(e.totalSem)+' h ('+fmtH(e.totalSem)+')'+(e.supp>0?' dont '+fteDec(e.supp)+' h supp.':'')+'\n';
+    });
+    b+='\nTOTAL ÉQUIPE : '+fteDec(tot)+' h ('+fmtH(tot)+')'+(supp>0?' dont '+fteDec(supp)+' h supplémentaires':'')+'\n';
+    b+='\nLe fichier joint ('+nom+') contient : le sommaire de paie, une fiche par employé, la feuille de toute l\'équipe, le total par job et le journal des punchs.\n';
+    b+='\n---\nSoucy Ops';
+    var sujet='Feuilles de temps équipe — Semaine du '+fmtDate(_fteSemaine);
+    if(ftePartager(blob,nom,sujet,b)){toast('📤 Partage ouvert');return;}
+    fteMailto(fteEmailPaie()||SUP_EMAIL,sujet,b);
+    toast('📧 Courriel ouvert — joindre le fichier téléchargé');
+  });
+}
+
+// ── Sortie : réconciliation des doublons de sites PUIS écran de sortie ──
 function fteGenerer(){
   var data=fteBuildSemaine(_fteSemaine);
   var sel=fteSelectionnes(data);
@@ -5161,15 +5706,15 @@ function fteDessinerEnvoi(){
   var data=fteBuildSemaine(_fteSemaine);
   var sel=fteSelectionnes(data);
   var doublons=(typeof siteFindDuplicatePairs==='function')?siteFindDuplicatePairs():[];
+  var totalSel=sel.reduce(function(s,e){return s+e.totalSem;},0);
   var h='';
   h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">'
     +'<button class="btn btn-ghost btn-sm" id="fteRetour">◀ Retour</button>'
     +'<div style="flex:1;font-size:13px;font-weight:800">Sortie des feuilles — semaine du '+fmtDate(_fteSemaine)+'</div></div>';
 
-  // Réconciliation des doublons de sites, faite À LA SORTIE des feuilles (demande de Charles)
   if(doublons.length){
     h+='<div style="background:var(--obg);border-radius:var(--rs);padding:10px 12px;margin-bottom:11px">'
-      +'<div style="font-size:12px;font-weight:800;color:#a35400;margin-bottom:5px">🔎 '+doublons.length+' doublon'+(doublons.length>1?'s':'')+' de site probable'+(doublons.length>1?'s':'')+' détecté'+(doublons.length>1?'s':'')+'</div>';
+      +'<div style="font-size:12px;font-weight:800;color:#a35400;margin-bottom:5px">🔎 '+doublons.length+' doublon'+(doublons.length>1?'s':'')+' de site probable'+(doublons.length>1?'s':'')+'</div>';
     doublons.slice(0,5).forEach(function(p){
       h+='<div style="font-size:11.5px;color:#7a4100;font-weight:600">• '+esc(p.a.nom)+' ↔ '+esc(p.b.nom)+'</div>';
     });
@@ -5178,8 +5723,21 @@ function fteDessinerEnvoi(){
     h+='<div style="background:var(--gbg);border-radius:var(--rs);padding:9px 12px;margin-bottom:11px;font-size:11.5px;color:var(--green);font-weight:700">✅ Aucun doublon de site détecté au répertoire.</div>';
   }
 
-  h+='<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:7px">'+sel.length+' feuille'+(sel.length>1?'s':'')+' à sortir</div>';
+  // ÉTAPE 1 — le fichier unique pour la paie (répond au « c'est long et laborieux pour la paie »)
+  h+='<div style="background:linear-gradient(135deg,var(--brand) 0%,var(--brand-dk) 100%);border-radius:var(--rs);padding:14px;margin-bottom:12px;color:#fff">'
+    +'<div style="font-size:13.5px;font-weight:800;margin-bottom:3px">1 · Fichier pour la paie</div>'
+    +'<div style="font-size:11.5px;opacity:.9;font-weight:600;margin-bottom:9px">Un seul fichier Excel pour '+sel.length+' employé'+(sel.length>1?'s':'')+' — '+fmtH(totalSel)+'. Onglets : sommaire de paie, une fiche par employé (à signer), toute l\'équipe, total par job, journal des punchs.</div>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
+      +'<button class="btn btn-sm" id="fteXlsEquipe" style="background:#fff;color:var(--brand);font-weight:800">📊 Télécharger le fichier paie</button>'
+      +'<button class="btn btn-sm" id="fteMailPaie" style="background:rgba(255,255,255,.18);color:#fff;font-weight:800">📧 Courriel à la paie</button>'
+    +'</div>'
+    +'<div style="margin-top:9px;display:flex;align-items:center;gap:6px">'
+      +'<span style="font-size:10.5px;opacity:.85;font-weight:700">Courriel de la paie :</span>'
+      +'<input type="email" id="fteEmailPaie" value="'+esc(fteEmailPaie())+'" placeholder="'+esc(SUP_EMAIL)+'" style="flex:1;max-width:260px;border:none;border-radius:7px;padding:6px 9px;font-size:12px"/>'
+    +'</div></div>';
 
+  // ÉTAPE 2 — la copie de chaque employé
+  h+='<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:7px">2 · Copie à chaque employé</div>';
   sel.forEach(function(e){
     var sansCourriel=!e.email;
     h+='<div style="border:1px solid var(--line);border-radius:var(--rs);padding:10px 11px;margin-bottom:8px">'
@@ -5191,115 +5749,53 @@ function fteDessinerEnvoi(){
         +'<div style="font-size:13px;font-weight:800;color:var(--blue)">'+fmtH(e.totalSem)+'</div>'
       +'</div>'
       +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">'
-        +'<button class="fte-brouillon btn btn-primary btn-sm" data-emp="'+e.id+'" '+(sansCourriel?'disabled style="opacity:.5"':'')+'>📧 Brouillon courriel</button>'
+        +'<button class="fte-xls-emp2 btn btn-ghost btn-sm" data-emp="'+e.id+'">⬇️ Excel</button>'
+        +'<button class="fte-mail-emp2 btn btn-primary btn-sm" data-emp="'+e.id+'">📧 Courriel</button>'
         +'<button class="fte-copier btn btn-ghost btn-sm" data-emp="'+e.id+'">📋 Copier</button>'
         +(e.envoi?'<span style="font-size:11px;color:var(--green);font-weight:800;align-self:center">✅ Sortie le '+fmtDate((e.envoi.le||'').slice(0,10))+'</span>':'')
       +'</div></div>';
   });
 
   h+='<div style="display:flex;gap:7px;flex-wrap:wrap;margin:12px 0">'
-    +'<button class="btn btn-ghost btn-sm" id="fteImprimer2" style="flex:1">🖨️ Imprimer toutes les feuilles</button>'
-    +'<button class="btn btn-ghost btn-sm" id="fteSynthese" style="flex:1">📧 Synthèse équipe pour moi</button></div>';
+    +'<button class="btn btn-ghost btn-sm" id="fteImprimer2" style="flex:1">🖨️ Imprimer toutes les feuilles</button></div>';
 
   h+='<div style="background:var(--surface);border-radius:var(--rs);padding:10px 12px;font-size:11.5px;color:var(--muted);font-weight:600">'
-    +'⚙️ <b>Envoi automatique</b> (l\'app envoie elle-même, sans passer par vos courriels) : demande de brancher un service d\'envoi au serveur Supabase. Non activé pour l\'instant — les brouillons ci-dessus partent de votre boîte Outlook/Gmail comme le reste de l\'app.</div>';
+    +'📎 Le courriel s\'ouvre dans votre logiciel de courriel habituel (Outlook de bureau, Mail…) avec le résumé déjà écrit ; le fichier Excel vient d\'être téléchargé, il ne reste qu\'à le joindre. Sur téléphone, le partage envoie le fichier directement. Aucune connexion à un serveur de courriel n\'est requise.</div>';
 
   body.innerHTML=h;
 
   document.getElementById('fteRetour').addEventListener('click',function(){_fteVue='liste';dessinerFeuillesEquipe();});
   var gs=document.getElementById('fteGoSites');
   if(gs)gs.addEventListener('click',function(){closeModal('fteModal');switchMod('sites');});
+  document.getElementById('fteXlsEquipe').addEventListener('click',function(){fteExcelEquipe();});
+  document.getElementById('fteMailPaie').addEventListener('click',fteEnvoyerPaie);
+  document.getElementById('fteEmailPaie').addEventListener('change',function(){fteSetEmailPaie(this.value);toast('💾 Courriel de la paie enregistré');});
   document.getElementById('fteImprimer2').addEventListener('click',fteImprimer);
-  document.getElementById('fteSynthese').addEventListener('click',fteEnvoyerSynthese);
-  body.querySelectorAll('.fte-brouillon').forEach(function(b){
-    b.addEventListener('click',function(){fteOuvrirBrouillon(b.dataset.emp);});
+  body.querySelectorAll('.fte-xls-emp2').forEach(function(b){
+    b.addEventListener('click',function(){fteExcelEmploye(b.dataset.emp);});
+  });
+  body.querySelectorAll('.fte-mail-emp2').forEach(function(b){
+    b.addEventListener('click',function(){fteEnvoyerEmploye(b.dataset.emp);});
   });
   body.querySelectorAll('.fte-copier').forEach(function(b){
     b.addEventListener('click',function(){fteCopierFeuille(b.dataset.emp);});
   });
 }
 
-// ── Corps de la feuille de temps d'un employé (même structure que l'écran : jour → punchs → job → semaine) ──
-function fteBuildCorpsEmploye(e,semaine){
-  var fin=new Date(semaine+'T12:00:00');fin.setDate(fin.getDate()+6);
-  var b='';
-  b+='FEUILLE DE TEMPS — '+e.nom+'\n';
-  b+='Semaine du '+fmtDate(semaine)+' au '+fmtDate(localISO(fin))+'\n';
-  b+='─────────────────────────────────────\n\n';
-  e.jours.forEach(function(j){
-    b+=j.label.toUpperCase()+'\n';
-    j.punchs.forEach(function(p){
-      b+='  → '+p.lieu;
-      if(p.odt)b+=' ['+p.odt+']';
-      if(p.detail)b+=' — '+p.detail;
-      b+=' : '+(p.actif?'en cours':fmtH(p.hrs));
-      b+='  ('+(p.start||'—')+' – '+(p.actif?'en cours':(p.end||'—'))+')';
-      if(p.aValider)b+='  [en attente de validation]';
-      b+='\n';
-    });
-    b+='  Total jour : '+(j.enCours?(j.total>0?fmtH(j.total)+' + en cours':'en cours'):fmtH(j.total))+'\n\n';
-  });
-  b+='── TOTAL PAR JOB ──\n';
-  e.jobs.forEach(function(j){
-    b+='  '+j.lieu+' ('+fteJobRef(j)+') : '+fteHeuresJob(j)+'\n';
-  });
-  b+='\n─────────────────────────────────────\n';
-  b+='➡️ TOTAL SEMAINE : '+fmtH(e.totalSem)+'\n';
-  b+='   Régulier (≤40h) : '+fmtH(Math.min(e.totalSem,40))+'\n';
-  if(e.totalSem>40)b+='   Supplémentaire : '+fmtH(e.totalSem-40)+'\n';
-  b+='\n---\nSoucy Ops — sortie par '+(currentUser?((currentUser.prenom||'')+' '+(currentUser.nom||'')).trim():'superviseur');
-  return b;
-}
-function fteComposeUrl(to,sujet,corps){
-  var sub=encodeURIComponent(sujet), be=encodeURIComponent(corps), t=encodeURIComponent(to||'');
-  return (EMAIL_TYPE==='gmail')
-    ? 'https://mail.google.com/mail/?view=cm&to='+t+'&su='+sub+'&body='+be
-    : 'https://outlook.office.com/mail/deeplink/compose?to='+t+'&subject='+sub+'&body='+be;
-}
 function fteEmpParId(id,data){
   var d=data||fteBuildSemaine(_fteSemaine);
   return d.employes.find(function(x){return x.id===id;})||null;
 }
-function fteOuvrirBrouillon(empId){
-  var e=fteEmpParId(empId);
-  if(!e){toast('Employé introuvable');return;}
-  if(!e.email){toast('⚠️ Aucun courriel au dossier pour '+e.nom);return;}
-  var corps=fteBuildCorpsEmploye(e,_fteSemaine);
-  window.open(fteComposeUrl(e.email,'Feuille de temps — '+e.nom+' — Sem. '+fmtDate(_fteSemaine),corps),'_blank');
-  ftMarquerEnvoi(e,_fteSemaine,'brouillon_courriel');
-  toast('📧 Brouillon prêt pour '+e.nom);
-  dessinerFeuillesEquipe();
-}
 function fteCopierFeuille(empId){
   var e=fteEmpParId(empId);
   if(!e)return;
-  var corps=fteBuildCorpsEmploye(e,_fteSemaine);
+  var corps=fteCorpsCourtEmploye(e,_fteSemaine,'(feuille de temps)');
   if(navigator.clipboard&&navigator.clipboard.writeText){
     navigator.clipboard.writeText(corps).then(function(){toast('📋 Feuille copiée');}).catch(function(){toast('⚠️ Copie impossible');});
   }else{toast('⚠️ Copie non supportée');}
 }
-function fteEnvoyerSynthese(){
-  var data=fteBuildSemaine(_fteSemaine);
-  var sel=fteSelectionnes(data);
-  if(!sel.length){toast('⚠️ Aucune feuille sélectionnée');return;}
-  var fin=new Date(_fteSemaine+'T12:00:00');fin.setDate(fin.getDate()+6);
-  var b='SYNTHÈSE DES FEUILLES DE TEMPS — ÉQUIPE\n';
-  b+='Semaine du '+fmtDate(_fteSemaine)+' au '+fmtDate(localISO(fin))+'\n\n';
-  var tot=0;
-  sel.forEach(function(e){
-    tot+=e.totalSem;
-    b+=e.nom+' : '+fmtH(e.totalSem)+' ('+e.nbPunchs+' punchs, '+e.nbJobs+' jobs)';
-    if(e.totalSem>40)b+=' — supp. '+fmtH(e.totalSem-40);
-    if(e.nbAValider>0)b+=' — '+e.nbAValider+' punch(s) à valider';
-    b+='\n';
-  });
-  b+='\nTOTAL ÉQUIPE : '+fmtH(tot)+'\n';
-  b+='\n---\nSoucy Ops';
-  window.open(fteComposeUrl(SUP_EMAIL,'Feuilles de temps équipe — Sem. '+fmtDate(_fteSemaine),b),'_blank');
-  toast('📧 Synthèse prête');
-}
 
-// ── Impression : un document par employé sélectionné, même circuit d'impression que le reste de l'app ──
+// ── Impression : un document signable par employé, lignes regroupées (même circuit que le reste de l'app) ──
 function fteBuildPrintHTML(){
   var data=fteBuildSemaine(_fteSemaine);
   var sel=fteSelectionnes(data);
@@ -5308,25 +5804,27 @@ function fteBuildPrintHTML(){
   sel.forEach(function(e,i){
     h+='<div class="pmm-print-doc"'+(i>0?' style="page-break-before:always"':'')+'>';
     h+='<div class="pmm-print-hd"><h1>FEUILLE DE TEMPS — '+esc(e.nom.toUpperCase())+'</h1>';
-    h+='<div class="pmm-print-sub">Semaine du '+fmtDate(_fteSemaine)+' au '+fmtDate(localISO(fin))+' · '+e.nbPunchs+' punchs · '+e.nbJobs+' jobs</div></div>';
-    h+='<table class="pmm-print-table"><thead><tr><th style="width:80px">Jour</th><th>Site / lieu</th><th style="width:110px">ODT / détail</th><th style="width:96px">Heures</th><th style="width:60px">Durée</th></tr></thead><tbody>';
+    h+='<div class="pmm-print-sub">Semaine du '+fmtDate(_fteSemaine)+' au '+fmtDate(localISO(fin))+' · '+e.nbJours+' jours · '+e.nbJobs+' jobs</div></div>';
+    h+='<table class="pmm-print-table"><thead><tr><th style="width:74px">Jour</th><th style="width:66px">Date</th><th>Site / lieu</th><th style="width:104px">ODT / détail</th><th style="width:92px">Heures</th><th style="width:58px">Durée</th></tr></thead><tbody>';
     e.jours.forEach(function(j){
-      j.punchs.forEach(function(p,pi){
-        h+='<tr><td>'+(pi===0?esc(j.label):'')+'</td><td>'+esc(p.lieu)+'</td><td>'+esc(fteRefLigne(p))+'</td>'
-          +'<td>'+esc(p.start||'—')+' – '+(p.actif?'en cours':esc(p.end||'—'))+'</td>'
-          +'<td style="text-align:right">'+(p.actif?'—':fmtH(p.hrs))+'</td></tr>';
+      j.lignes.forEach(function(l,li){
+        h+='<tr><td>'+(li===0?esc(j.label):'')+'</td><td>'+(li===0?fmtDate(j.date):'')+'</td>'
+          +'<td>'+esc(l.lieu)+(l.nb>1?' <span style="color:#666">(×'+l.nb+')</span>':'')+'</td>'
+          +'<td>'+esc(fteRefLigne(l))+'</td>'
+          +'<td>'+esc(l.debut||'—')+' – '+(l.actif?'en cours':esc(l.fin||'—'))+'</td>'
+          +'<td style="text-align:right">'+(l.actif&&l.heures===0?'—':fmtH(l.heures))+'</td></tr>';
       });
-      h+='<tr><td></td><td colspan="3" style="text-align:right;font-weight:700">Total '+esc(j.label)+'</td>'
-        +'<td style="text-align:right;font-weight:700">'+(j.enCours?(j.total>0?fmtH(j.total)+'+':'—'):fmtH(j.total))+'</td></tr>';
+      h+='<tr><td></td><td></td><td colspan="3" style="text-align:right;font-weight:700">Total '+esc(j.label)+'</td>'
+        +'<td style="text-align:right;font-weight:700">'+fteLblJournee(j)+'</td></tr>';
     });
     h+='</tbody></table>';
-    h+='<table class="pmm-print-table" style="margin-top:10px"><thead><tr><th>Total par job — site</th><th style="width:120px">ODT</th><th style="width:70px">Heures</th></tr></thead><tbody>';
+    h+='<table class="pmm-print-table" style="margin-top:10px"><thead><tr><th>Total par job — site</th><th style="width:110px">ODT</th><th style="width:70px">Heures</th></tr></thead><tbody>';
     e.jobs.forEach(function(j){
       h+='<tr><td>'+esc(j.lieu)+'</td><td>'+esc(fteJobRef(j))+'</td><td style="text-align:right">'+fteHeuresJob(j)+'</td></tr>';
     });
     h+='<tr><td colspan="2" style="text-align:right;font-weight:800">TOTAL SEMAINE</td><td style="text-align:right;font-weight:800">'+fmtH(e.totalSem)+'</td></tr>';
-    if(e.totalSem>40){
-      h+='<tr><td colspan="2" style="text-align:right">Régulier / Supplémentaire</td><td style="text-align:right">'+fmtH(40)+' / '+fmtH(e.totalSem-40)+'</td></tr>';
+    if(e.supp>0){
+      h+='<tr><td colspan="2" style="text-align:right">Régulier / Supplémentaire</td><td style="text-align:right">'+fmtH(e.reg)+' / '+fmtH(e.supp)+'</td></tr>';
     }
     h+='</tbody></table>';
     h+='<div style="margin-top:22px;display:flex;gap:30px"><div style="flex:1;border-top:1px solid #333;padding-top:4px;font-size:11px">Signature employé</div>'

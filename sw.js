@@ -1,5 +1,44 @@
 // SA Platform — Service Worker
-// v57 — Nouveau module « Feuilles de temps équipe » (demande : plus besoin d'attendre que chaque employé
+// v59 — Mise en page des fichiers Excel refaite d'après les maquettes validées avant codage.
+// « Sommaire paie » : bandeau de titre, trois indicateurs en haut (total équipe, heures supplémentaires,
+// ce qui reste à vérifier), puis six colonnes seulement — la colonne TOTAL, sur fond bleu, est le seul
+// chiffre que la paie recopie. Une fiche par employé (onglet à son nom) : bandeau avec son total, les
+// journées avec sous-total, le total par job pour la facturation, le bloc régulier/supplémentaire/total
+// à payer et les lignes de signature — elle s'imprime et se signe telle quelle, et c'est exactement ce
+// que l'employé reçoit. S'ajoute un onglet « Toute l'équipe » : un bandeau par employé, tout se lit en
+// descendant, pour la paie qui préfère une seule liste. Les deux lectures sont dans le même classeur.
+// Les lignes en attente de validation sont sur fond ambre, les heures restent en décimal dans les
+// cellules de calcul et à la française (80,52 h) dans les textes affichés.
+// (v58 — Quatre corrections sur le module « Feuilles de temps équipe » livré en v57 :
+// (1) COURRIEL SANS OUTLOOK : les boutons passaient par le lien web Outlook (outlook.office.com), qui
+// exige d'être connecté à Outlook Web — donc rien ne s'ouvrait. Le module n'utilise plus aucune API ni
+// aucun service de courriel : il ouvre le logiciel de courriel DÉJÀ installé (mailto: → Outlook de
+// bureau, Mail sur iPhone) avec le message déjà écrit, et sur téléphone/tablette il propose le partage
+// natif du fichier (Mail, Teams, Messages…). Le détail part en pièce jointe : le fichier Excel est
+// téléchargé juste avant, il ne reste qu'à le glisser dans le message.
+// (2) PUNCHS REGROUPÉS : plusieurs punchs de la MÊME journée sur le MÊME job (même site + même ODT)
+// étaient listés un par un — un aller-retour de 1 minute créait une ligne complète. Ils sont maintenant
+// regroupés en UNE ligne de feuille de temps (heures additionnées, de la première arrivée au dernier
+// départ, avec le nombre de punchs d'origine indiqué « ×3 punchs »). Les heures sont strictement les
+// mêmes : c'est la présentation qui change, pas le calcul. Une bascule « 📋 Feuille de temps / 🧾 Journal
+// des punchs » sépare clairement les deux lectures : la feuille (regroupée) sert à la paie et à
+// l'impression ; le journal (brut, punch par punch) sert à vérifier, corriger et à l'audit. Les lignes
+// de moins de 6 minutes sont signalées « très court » pour être vérifiées plutôt que payées à l'aveugle.
+// (3) FICHIERS EXCEL REFAITS : l'export était illisible et trop condensé. Nouveau classeur, une seule
+// pièce jointe pour toute l'équipe, avec 5 feuilles séparées et mises en forme (en-têtes de couleur
+// Soucy, colonnes à la bonne largeur, volets figés, filtres, totaux en gras, heures en décimal pour le
+// calcul ET en h:mm pour la lecture) : « Sommaire paie » (une ligne par employé : jours, jobs, régulier,
+// supplémentaire, total, colonne « à vérifier »), « Par employé » (la feuille telle qu'on la lit, blocs
+// par jour avec sous-totaux), « Détail (données) » (tableau plat filtrable/triable), « Total par job »
+// (facturation) et « Journal des punchs » (audit). La mise en forme est produite par xlsx-js-style,
+// chargé À LA DEMANDE au premier export seulement (aucun ralentissement à l'ouverture) ; si le CDN ne
+// répond pas, le même fichier sort avec la librairie déjà présente, sans les couleurs.
+// (4) TRAVAIL DE LA PAIE : au lieu de lire et recopier chaque feuille une par une, le technicien de paie
+// reçoit UN fichier dont la première feuille est le sommaire à recopier, avec le total équipe déjà fait
+// et les cas douteux signalés. L'écran de sortie est réorganisé en deux étapes : « 1 · Fichier pour la
+// paie » (avec l'adresse courriel de la paie, retenue d'une fois à l'autre) puis « 2 · Copie à chaque
+// employé ».)
+// (v57 — Nouveau module « Feuilles de temps équipe » (demande : plus besoin d'attendre que chaque employé
 // pense à faire « envoyer » — le superviseur sort lui-même toutes les feuilles de la semaine d'un seul
 // écran). Accessible depuis le Poste de commande (bouton principal) et depuis « Heures équipe ». L'écran
 // regroupe les employés AYANT punché dans la semaine et, pour chacun : le détail complet de ses punchs
@@ -19,7 +58,7 @@
 // synchronisée comme les autres tables, pour que l'information « feuille déjà sortie » soit visible sur
 // TOUS les appareils et non seulement sur le téléphone du superviseur. Aucune fonction de calcul
 // Temps/Suivi/Cumul existante n'a été modifiée (vérifié par comparaison automatique avec la v56) : le
-// nouvel écran LIT les mêmes données et n'écrit que par les mécanismes déjà en place.
+// nouvel écran LIT les mêmes données et n'écrit que par les mécanismes déjà en place.)
 // (v56 — Corrections suite aux retours sur la v55, groupées en un seul dépôt : (1) Le compte "admin" est un
 // compte de gestion, pas un technicien — il n'apparaît plus dans AUCUNE liste d'employés assignables
 // (Planning, créneaux, Plan de Match, tâches récurrentes) ni dans la "charge par technicien"/les lignes
@@ -121,7 +160,7 @@
 // vérifier un déploiement. Il reflète maintenant la variable APP_BUILD, à garder synchronisée avec ce
 // CACHE_NAME à chaque changement).
 
-var CACHE_NAME = 'sa-platform-v57';
+var CACHE_NAME = 'sa-platform-v59';
 
 // Installation : s'activer tout de suite sans attendre
 self.addEventListener('install', function(event) {
