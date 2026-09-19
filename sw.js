@@ -1,5 +1,19 @@
 // SA Platform — Service Worker
-// v59 — Mise en page des fichiers Excel refaite d'après les maquettes validées avant codage.
+// v60 — Nouveau module « Outils / QR », intégré dans l'onglet Logistique (sous-onglets 🔧 Outils et
+// ⚙️ Config, ce dernier réservé au superviseur/admin) — aucune nouvelle entrée dans la barre de
+// navigation. Catalogue d'outils avec repérage unique auto-incrémenté (PER-0001…) et étiquette QR
+// imprimable 3×3 cm (correction d'erreur L pour rester lisible à cette taille), format de payload
+// SOUCY-DPTM:{repérage}|{nom & marque}. Prise et retour d'un outil par scan ou depuis la liste, TOUJOURS
+// rattachés au punch actif de l'employé : sans punch en cours, la prise est refusée avec un message
+// clair. Un outil déjà sorti par quelqu'un d'autre est bloqué net (le superviseur peut forcer le retour,
+// la raison est journalisée). Chaque mouvement est enregistré avec l'employé, l'heure, le punch, le site
+// et le WO. En Sortie d'Inventaire, un bouton « Scanner un produit » ajoute automatiquement chaque
+// produit scanné comme ligne, avec un bandeau rappelant le site et le WO du punch en cours. Catégories,
+// préfixes de repérage et préfixe QR sont éditables dans Config. Trois nouvelles tables serveur (outils,
+// outils_mouvements, logistique_config) synchronisées comme les autres, fonctionnement hors-ligne par
+// localStorage. Aucune fonction de calcul Temps/Suivi/Cumul modifiée : seuls quatre points d'ancrage
+// existants ont été touchés (switchMod, openSortieModal, et les deux chemins de connexion).
+// (v59 — Mise en page des fichiers Excel refaite d'après les maquettes validées avant codage.
 // « Sommaire paie » : bandeau de titre, trois indicateurs en haut (total équipe, heures supplémentaires,
 // ce qui reste à vérifier), puis six colonnes seulement — la colonne TOTAL, sur fond bleu, est le seul
 // chiffre que la paie recopie. Une fiche par employé (onglet à son nom) : bandeau avec son total, les
@@ -8,7 +22,7 @@
 // que l'employé reçoit. S'ajoute un onglet « Toute l'équipe » : un bandeau par employé, tout se lit en
 // descendant, pour la paie qui préfère une seule liste. Les deux lectures sont dans le même classeur.
 // Les lignes en attente de validation sont sur fond ambre, les heures restent en décimal dans les
-// cellules de calcul et à la française (80,52 h) dans les textes affichés.
+// cellules de calcul et à la française (80,52 h) dans les textes affichés.)
 // (v58 — Quatre corrections sur le module « Feuilles de temps équipe » livré en v57 :
 // (1) COURRIEL SANS OUTLOOK : les boutons passaient par le lien web Outlook (outlook.office.com), qui
 // exige d'être connecté à Outlook Web — donc rien ne s'ouvrait. Le module n'utilise plus aucune API ni
@@ -160,7 +174,7 @@
 // vérifier un déploiement. Il reflète maintenant la variable APP_BUILD, à garder synchronisée avec ce
 // CACHE_NAME à chaque changement).
 
-var CACHE_NAME = 'sa-platform-v59';
+var CACHE_NAME = 'sa-platform-v60';
 
 // Installation : s'activer tout de suite sans attendre
 self.addEventListener('install', function(event) {

@@ -14,6 +14,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- QR : génération locale + scan caméra (module Outils) -->
+<script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -837,6 +840,54 @@ input,select,textarea{font-size:16px!important}
   #suiviMap{height:540px!important}
   #pmRouteMap{height:540px!important}
 }
+/* ── MODULE OUTILS / QR ── */
+.logi-tabs .pmm-subtab{flex:0 0 auto;white-space:nowrap}
+.tool-row{display:flex;align-items:center;gap:12px;padding:12px 14px;
+  border-bottom:1px solid var(--line2);cursor:pointer}
+.tool-row:last-child{border-bottom:none}
+.tool-row:active{background:var(--gray)}
+.tool-icon{width:46px;height:46px;border-radius:12px;background:var(--blue-lt);
+  display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.tool-body{flex:1;min-width:0}
+.tool-name{font-weight:800;font-size:14px;color:var(--dk)}
+.tool-meta{font-size:11px;color:var(--muted);margin-top:3px;display:flex;
+  align-items:center;gap:6px;flex-wrap:wrap}
+.tool-arr{color:var(--muted);font-size:18px;flex-shrink:0}
+.punch-ctx{background:linear-gradient(135deg,var(--green),#0F6E56);color:#fff;
+  border-radius:var(--rs);padding:11px 13px;margin-bottom:12px;display:flex;
+  align-items:center;gap:10px;font-size:12.5px}
+.punch-ctx .dot{width:9px;height:9px;border-radius:50%;background:var(--teal);flex-shrink:0}
+.status-widget{border-radius:var(--rs);padding:14px;text-align:center;margin-bottom:14px}
+.status-widget .ic{font-size:34px;margin-bottom:6px}
+.status-widget .txt{font-size:14px;font-weight:800}
+.status-widget.dispo{background:var(--gbg);color:var(--green)}
+.status-widget.sorti{background:var(--obg);color:#a35400}
+.status-widget.maint{background:var(--rbg);color:var(--red)}
+.qr-label-3x3{width:140px;height:140px;background:#fff;border:1px solid #d0d0d0;
+  padding:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  margin:0 auto;border-radius:3px}
+.qr-label-3x3 .qr-holder{width:100px;height:100px;flex-shrink:0}
+.qr-label-3x3 .qr-holder canvas,.qr-label-3x3 .qr-holder img{
+  width:100px!important;height:100px!important;display:block}
+.qr-label-3x3 .lbl-txt{font-size:7px;color:#000;font-weight:700;text-align:center;
+  margin-top:3px;font-family:Arial,sans-serif;line-height:1.1;max-width:130px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tl-move{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line2);font-size:12.5px}
+.tl-move:last-child{border-bottom:none}
+.tl-move .ic{width:28px;height:28px;border-radius:50%;display:flex;
+  align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.tl-move .ic.out{background:var(--obg);color:var(--orange)}
+.tl-move .ic.in{background:var(--gbg);color:var(--green)}
+.cat-row{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line2)}
+.cat-row:last-child{border-bottom:none}
+.cat-row .icon{width:36px;height:36px;border-radius:9px;background:var(--surface);
+  display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.cat-row .label{flex:1;font-weight:700;font-size:13.5px}
+.cat-row .count{font-size:11px;color:var(--muted);font-weight:700;margin-right:6px}
+.cat-row .actions{display:flex;gap:4px}
+.cat-row .actions button{border:none;background:var(--surface);border-radius:7px;
+  width:30px;height:30px;cursor:pointer;font-size:14px}
+
 </style>
 </head>
 <body>
@@ -1096,9 +1147,11 @@ input,select,textarea{font-size:16px!important}
 
   <!-- ── MODULE : SORTIE D'INVENTAIRE (entrepôt) ── -->
   <div id="modSortie" class="module" style="display:none">
-    <div style="background:#fff;border-bottom:1px solid var(--line);padding:8px 14px;display:flex;gap:6px">
+    <div class="logi-tabs" style="background:#fff;border-bottom:1px solid var(--line);padding:8px 14px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none">
       <button class="pmm-subtab on" data-mod="sortie">📤 Sortie Inventaire</button>
       <button class="pmm-subtab" data-mod="livraison">🚚 Bon de Livraison</button>
+      <button class="pmm-subtab" data-mod="outils">🔧 Outils</button>
+      <button class="pmm-subtab" data-mod="logiconfig" data-admin-only="1">⚙️ Config</button>
     </div>
     <div class="search-bar">
       <span class="search-icon">🔍</span>
@@ -1109,9 +1162,11 @@ input,select,textarea{font-size:16px!important}
 
   <!-- ── MODULE : BONS DE LIVRAISON ── -->
   <div id="modLivraison" class="module" style="display:none">
-    <div style="background:#fff;border-bottom:1px solid var(--line);padding:8px 14px;display:flex;gap:6px">
+    <div class="logi-tabs" style="background:#fff;border-bottom:1px solid var(--line);padding:8px 14px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none">
       <button class="pmm-subtab" data-mod="sortie">📤 Sortie Inventaire</button>
       <button class="pmm-subtab on" data-mod="livraison">🚚 Bon de Livraison</button>
+      <button class="pmm-subtab" data-mod="outils">🔧 Outils</button>
+      <button class="pmm-subtab" data-mod="logiconfig" data-admin-only="1">⚙️ Config</button>
     </div>
     <div class="search-bar">
       <span class="search-icon">🔍</span>
@@ -1814,6 +1869,86 @@ input,select,textarea{font-size:16px!important}
   </div>
 </div>
 
+<!-- ── MODULE : OUTILS / QR ── -->
+<div id="modOutils" class="module" style="display:none">
+  <div class="logi-tabs" style="background:#fff;border-bottom:1px solid var(--line);padding:8px 14px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none">
+    <button class="pmm-subtab" data-mod="sortie">📤 Sortie Inventaire</button>
+    <button class="pmm-subtab" data-mod="livraison">🚚 Bon de Livraison</button>
+    <button class="pmm-subtab on" data-mod="outils">🔧 Outils</button>
+    <button class="pmm-subtab" data-mod="logiconfig" data-admin-only="1">⚙️ Config</button>
+  </div>
+  <div style="padding:10px 14px;background:#fff;border-bottom:1px solid var(--line);display:flex;gap:8px">
+    <button id="toolScanBtn" class="btn btn-primary" style="flex:1">📷 Scanner un outil</button>
+    <button id="toolMyBtn" class="btn btn-ghost" style="flex:1">🔧 Mes outils</button>
+  </div>
+  <div class="search-bar">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="toolSearch" placeholder="Rechercher un outil…"/>
+  </div>
+  <div style="display:flex;overflow-x:auto;scrollbar-width:none;background:#fff;border-bottom:1px solid var(--line);padding:8px 10px;gap:6px" id="toolFilterBar"></div>
+  <div class="main" id="toolList" style="padding-top:10px"></div>
+</div>
+
+<!-- ── MODULE : CONFIG LOGISTIQUE ── -->
+<div id="modLogiConfig" class="module" style="display:none">
+  <div class="logi-tabs" style="background:#fff;border-bottom:1px solid var(--line);padding:8px 14px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none">
+    <button class="pmm-subtab" data-mod="sortie">📤 Sortie Inventaire</button>
+    <button class="pmm-subtab" data-mod="livraison">🚚 Bon de Livraison</button>
+    <button class="pmm-subtab" data-mod="outils">🔧 Outils</button>
+    <button class="pmm-subtab on" data-mod="logiconfig" data-admin-only="1">⚙️ Config</button>
+  </div>
+  <div class="main" id="logiConfigContent" style="padding-top:10px"></div>
+</div>
+
+<button class="fab" id="toolAddBtn" style="display:none">＋</button>
+
+<!-- Modal : Action sur un outil (prendre / retourner) -->
+<div class="modal-bg" id="toolModal">
+  <div class="modal-box">
+    <div class="modal-hd"><h3 id="toolModalTitle">Outil</h3>
+      <button class="modal-close" id="toolModalClose">✕</button></div>
+    <div id="toolModalBody"></div>
+  </div>
+</div>
+
+<!-- Modal : Scanner QR (outil ou produit) -->
+<div class="modal-bg" id="toolScanModal">
+  <div class="modal-box" style="max-width:520px">
+    <div class="modal-hd"><h3 id="toolScanTitle">📷 Scanner un QR code</h3>
+      <button class="modal-close" id="toolScanClose">✕</button></div>
+    <div id="toolScanReader" style="width:100%;min-height:260px;border-radius:var(--rs);overflow:hidden;background:#000"></div>
+    <div style="font-size:12px;color:var(--muted);text-align:center;padding:10px 4px 0" id="toolScanHint">Pointe la caméra vers le QR code</div>
+  </div>
+</div>
+
+<!-- Modal : Création / édition outil -->
+<div class="modal-bg" id="toolFormModal">
+  <div class="modal-box">
+    <div class="modal-hd"><h3 id="toolFormTitle">Nouvel outil</h3>
+      <button class="modal-close" id="toolFormClose">✕</button></div>
+    <div class="m2">
+      <div class="mfield"><label>Repérage</label>
+        <select id="tPrefix"></select></div>
+      <div class="mfield"><label>N°</label>
+        <input type="text" id="tNum" readonly style="font-family:monospace;background:var(--surface)"/></div>
+    </div>
+    <div class="mfield"><label>Nom + marque</label>
+      <input type="text" id="tNom" placeholder="Perceuse Milwaukee M18" autocomplete="off"/></div>
+    <div class="mfield"><label>Catégorie</label>
+      <select id="tCat"></select></div>
+    <div class="mfield"><label>Notes / n° de série</label>
+      <textarea id="tNotes" placeholder="Numéro de série, particularités…"></textarea></div>
+    <div class="mfield">
+      <label>Étiquette QR — aperçu (3×3 cm)</label>
+      <div id="tQrPreview" style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px;background:#fff;border:1px solid var(--line);border-radius:var(--rs)"></div>
+      <button class="btn btn-ghost btn-full" id="tQrPrintBtn" style="margin-top:8px">🖨️ Imprimer l'étiquette</button>
+    </div>
+    <button class="btn btn-success btn-full" id="tSaveBtn" style="margin-top:4px">💾 Enregistrer</button>
+    <button class="btn btn-danger btn-full" id="tDeleteBtn" style="margin-top:8px;display:none">🗑 Supprimer l'outil</button>
+    <button class="btn btn-ghost btn-full" id="tCancel" style="margin-top:8px">Annuler</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <!-- Modal de confirmation universel (remplace confirm() natif, fiable sur iOS) -->
@@ -2362,7 +2497,7 @@ var SB_KEY='sb_publishable_qVd_6eoAvwrDGs9u81woAg_RrMpTJxn';
 var sb=null;
 var sbReady=false;
 var sbStatus='offline'; // offline | syncing | online
-var SB_TABLES={workorders:'workorders',sites:'sites',plan:'plan',planmatch:'plan_match',flotte:'flotte',inventaire:'inventaire',comptes:'comptes',sortie:'sorties_inventaire',livraison:'bons_livraison',gpslog:'punch_gps_log',sitelog:'site_journal',planning:'planning_tasks',calconn:'tech_calendar_connections',hivernage:'rapports_hivernage',ftenvois:'feuilles_temps_envois'};
+var SB_TABLES={workorders:'workorders',sites:'sites',plan:'plan',planmatch:'plan_match',flotte:'flotte',inventaire:'inventaire',comptes:'comptes',sortie:'sorties_inventaire',livraison:'bons_livraison',gpslog:'punch_gps_log',sitelog:'site_journal',planning:'planning_tasks',calconn:'tech_calendar_connections',hivernage:'rapports_hivernage',ftenvois:'feuilles_temps_envois',outils:'outils',toolmoves:'outils_mouvements',logicfg:'logistique_config'};
 
 function initSupabase(){
   try{
@@ -3298,7 +3433,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // a bien pris effet. Il reflète maintenant APP_BUILD ci-dessous, à mettre à jour à CHAQUE fois que
   // CACHE_NAME change dans sw.js (même valeur, ex: 'v48').
   try{
-    var APP_BUILD='v59';
+    var APP_BUILD='v60';
     var vb=document.createElement('div');
     vb.id='__buildBadge';
     vb.textContent='build '+APP_BUILD+' ⟲';
@@ -3381,6 +3516,8 @@ document.addEventListener('DOMContentLoaded', function(){
   document.querySelectorAll('.pmm-subtab').forEach(function(b){
     b.addEventListener('click',function(){switchMod(b.dataset.mod);});
   });
+  // ➕ Module Outils / QR
+  if(typeof initToolModule==='function') initToolModule();
   document.getElementById('invAddBtn').addEventListener('click', function(){openInvModal(null);});
   document.getElementById('sortieAddBtn').addEventListener('click', function(){openSortieModal(null);});
   document.getElementById('livraisonAddBtn').addEventListener('click', function(){openLivraisonModal(null);});
@@ -3734,6 +3871,7 @@ function ouvrirSession(compte, doitChangerMdp){
   if(stored) applyFT(stored);
   checkEndOfDay(); // ➕ rattrape immédiatement un punch resté actif d'un jour déjà passé (voir commentaire de la fonction)
   buildNavbar();
+  if(typeof toolsMasquerOngletsAdmin==='function') toolsMasquerOngletsAdmin();
   switchMod('accueil');
   toast('Bienvenue, '+fullName()+' !');
   if(doitChangerMdp){
@@ -3763,6 +3901,7 @@ function doLoginCheck(user,pass){
   checkEndOfDay(); // ➕ rattrape immédiatement un punch resté actif d'un jour déjà passé (voir commentaire de la fonction)
   // FABs gérés par switchMod()
   buildNavbar();
+  if(typeof toolsMasquerOngletsAdmin==='function') toolsMasquerOngletsAdmin();
   switchMod('accueil');
   toast('Bienvenue, '+fullName()+' !');
 }
@@ -3786,7 +3925,7 @@ function doLogout(){
 // ═══════════════════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════════════════
-var modMap={accueil:'modAccueil',plan:'modPlan',planmatch:'modPlanMatch',planning:'modPlanning',ft:'modFT',suivi:'modSuivi',wo:'modWO',sites:'modSites',flotte:'modFlotte',inventaire:'modInv',sortie:'modSortie',livraison:'modLivraison',hivernage:'modHivernage',comptes:'modComptes',stats:'modStats',map:'modMap'};
+var modMap={accueil:'modAccueil',plan:'modPlan',planmatch:'modPlanMatch',planning:'modPlanning',ft:'modFT',suivi:'modSuivi',wo:'modWO',sites:'modSites',flotte:'modFlotte',inventaire:'modInv',sortie:'modSortie',livraison:'modLivraison',hivernage:'modHivernage',comptes:'modComptes',stats:'modStats',map:'modMap',outils:'modOutils',logiconfig:'modLogiConfig'};
 
 function switchMod(mod){
   if(!hasDroit(mod))return;
@@ -3800,8 +3939,8 @@ function switchMod(mod){
   });
   document.querySelectorAll('.pmm-subtab').forEach(function(b){b.classList.toggle('on',b.dataset.mod===mod);});
   // Afficher le bon FAB selon le module
-  var fabMap={plan:'pmAddBtn',planmatch:'pmmAddBtn',planning:'planningAddBtn',wo:'woAddBtn',sites:'siteAddBtn',flotte:'flotteAddBtn',inventaire:'invAddBtn',comptes:'comptesAddBtn',sortie:'sortieAddBtn',livraison:'livraisonAddBtn',hivernage:'hivernageAddBtn'};
-  ['pmAddBtn','pmmAddBtn','planningAddBtn','woAddBtn','siteAddBtn','flotteAddBtn','invAddBtn','comptesAddBtn','sortieAddBtn','livraisonAddBtn','hivernageAddBtn'].forEach(function(id){
+  var fabMap={plan:'pmAddBtn',planmatch:'pmmAddBtn',planning:'planningAddBtn',wo:'woAddBtn',sites:'siteAddBtn',flotte:'flotteAddBtn',inventaire:'invAddBtn',comptes:'comptesAddBtn',sortie:'sortieAddBtn',livraison:'livraisonAddBtn',hivernage:'hivernageAddBtn',outils:'toolAddBtn'};
+  ['pmAddBtn','pmmAddBtn','planningAddBtn','woAddBtn','siteAddBtn','flotteAddBtn','invAddBtn','comptesAddBtn','sortieAddBtn','livraisonAddBtn','hivernageAddBtn','toolAddBtn'].forEach(function(id){
     var el=document.getElementById(id);if(!el)return;
     var openToAll=(id==='sortieAddBtn'||id==='livraisonAddBtn'||id==='hivernageAddBtn'); // tous les employés peuvent créer une sortie/livraison/rapport d'hivernage
     var show=fabMap[mod]===id&&(openToAll||canEdit())&&(id!=='comptesAddBtn'||isAdmin());
@@ -3822,6 +3961,8 @@ function switchMod(mod){
   else if(mod==='hivernage')renderHivernageList();
   else if(mod==='comptes')renderComptesList();
   else if(mod==='stats')renderStats();
+  else if(mod==='outils'){ renderToolList(); if(typeof syncPull==='function') syncPull('outils'); }
+  else if(mod==='logiconfig'){ renderLogiConfig(); if(typeof syncPull==='function'){ syncPull('logicfg'); syncPull('outils'); } }
   else if(mod==='map')initMap();
 }
 
@@ -10013,6 +10154,8 @@ function openSortieModal(sortieId){
     document.getElementById('sortieDeleteBtn').style.display='none';
   }
   sortieRenderLignes();
+  // ➕ Bouton scan produit (module Outils)
+  if(typeof renderSortieScanButton==='function') renderSortieScanButton();
   openModal('sortieModal');
 }
 
@@ -11706,6 +11849,593 @@ function initCanvas(){
   sigCanvas.addEventListener('touchcancel',function(){drawing=false;},{passive:false});
 }
 function clearSig(){if(!sigCtx)return;sigCtx.clearRect(0,0,sigW,sigH);document.getElementById('sigPh').style.display='flex';}
+
+// ═══════════════════════════════════════════════════════
+// MODULE OUTILS / QR — intégré à Logistique
+// Catalogue d'outils avec repérage unique + étiquette QR 3×3 cm, prise/retour liés au PUNCH ACTIF,
+// blocage si un autre employé détient l'outil, et scan de produits dans la Sortie d'Inventaire
+// (la ligne scannée est rattachée au site + WO du punch en cours).
+// ═══════════════════════════════════════════════════════
+var _toolFilter='disponible', _toolEditId=null, _toolScan=null, _toolScanMode='outil', _toolRtSub=false;
+var _logiConfigCache={categories:null, prefixes:null, qr_prefix:null};
+
+function getTools(){ return lsGet('outils') || []; }
+function setTools(d){ lsSet('outils', d); }
+function getToolMoves(){ return lsGet('toolmoves') || []; }
+function setToolMoves(d){ lsSet('toolmoves', d); }
+
+var LOGI_DEFAUTS={
+  categories:[{id:'outil',icon:'🔧',label:'Outil'},{id:'equipement',icon:'⚙️',label:'Équipement'},
+    {id:'securite',icon:'🦺',label:'Sécurité'},{id:'mesure',icon:'📏',label:'Mesure'},{id:'autre',icon:'📋',label:'Autre'}],
+  prefixes:[{id:'PER',label:'Perceuses / visseuses',next:1,scope:'outils'},{id:'OUT',label:'Outils génériques',next:1,scope:'outils'},
+    {id:'MES',label:'Instruments de mesure',next:1,scope:'outils'},{id:'SEC',label:'Équipement de sécurité',next:1,scope:'outils'},
+    {id:'CHI',label:'Produits chimiques',next:1,scope:'inventaire'},{id:'EQU',label:'Équipements inventaire',next:1,scope:'inventaire'},
+    {id:'CON',label:'Consommables',next:1,scope:'inventaire'}],
+  qr_prefix:'SOUCY-DPTM:'
+};
+function getLogiConfig(key){
+  if(_logiConfigCache[key]) return _logiConfigCache[key];
+  // La table logistique_config se synchronise comme une liste de lignes {id,value}
+  var rows = lsGet('logicfg');
+  if(Array.isArray(rows)){
+    var r = rows.find(function(x){ return x && x.id===key; });
+    if(r && r.value!==undefined && r.value!==null){ _logiConfigCache[key]=r.value; return r.value; }
+  }else if(rows && rows[key]){ _logiConfigCache[key]=rows[key]; return rows[key]; }
+  return LOGI_DEFAUTS[key];
+}
+function setLogiConfig(key, value){
+  var rows = lsGet('logicfg');
+  if(!Array.isArray(rows)) rows = [];
+  var i = rows.findIndex(function(x){ return x && x.id===key; });
+  var row = {id:key, value:value, updatedAt:new Date().toISOString()};
+  if(i>=0) rows[i]=row; else rows.push(row);
+  lsSet('logicfg', rows);
+  _logiConfigCache[key] = value;
+  try{ sbPush('logicfg', row); }catch(e){}
+}
+
+function toolCatIcon(catId){
+  var c = getLogiConfig('categories').find(function(x){ return x.id===catId; });
+  return c ? c.icon : '📋';
+}
+function toolNextReperage(prefix){
+  var p = getLogiConfig('prefixes').find(function(x){ return x.id===prefix; });
+  if(!p) return prefix+'-0001';
+  return prefix+'-'+String(p.next||1).padStart(4,'0');
+}
+function toolQrPayload(reperage, nom){ return getLogiConfig('qr_prefix') + reperage + '|' + nom; }
+function bumpPrefixCounter(prefix){
+  var prefixes = getLogiConfig('prefixes');
+  var p = prefixes.find(function(x){ return x.id===prefix; });
+  if(p){ p.next = (p.next||1)+1; setLogiConfig('prefixes', prefixes); }
+}
+function parseToolQr(payload){
+  if(!payload) return null;
+  var prefix = getLogiConfig('qr_prefix');
+  payload = String(payload).trim();
+  if(payload.indexOf(prefix)===0) payload = payload.slice(prefix.length);
+  var parts = payload.split('|');
+  if(!parts[0]) return null;
+  return { reperage: parts[0].trim(), nom: (parts[1]||'').trim() };
+}
+
+// Contexte du punch actif — obligatoire pour sortir un outil
+function getActivePunchContext(){
+  if(!currentUser) return null;
+  var realIdx = new Date().getDay()===0 ? 6 : new Date().getDay()-1;
+  var st = chronoState[realIdx];
+  if(!st || st.status!=='running' || !st.activeTask) return null;
+  var t = st.activeTask;
+  return { week: mondayOf(todayISO()), day: realIdx, task: t,
+    siteId: t.siteId || null, siteNom: t.lieu || '',
+    woId: t.sourceType==='wo' ? t.sourceId : null, woLabel: t.sourceLabel || '' };
+}
+
+var TOOL_FILTERS=[{v:'disponible',l:'✅ Disponibles'},{v:'sorti',l:'📤 Sortis'},{v:'maintenance',l:'🔧 Maintenance'},{v:'tous',l:'Tous'}];
+function renderToolFilterBar(){
+  var bar = document.getElementById('toolFilterBar');
+  if(!bar) return;
+  bar.innerHTML='';
+  TOOL_FILTERS.forEach(function(f){
+    var b=document.createElement('button');
+    b.className='btn btn-sm '+(_toolFilter===f.v?'btn-primary':'btn-ghost');
+    b.style.flex='0 0 auto';
+    b.textContent=f.l;
+    b.addEventListener('click',function(){ _toolFilter=f.v; renderToolList(); });
+    bar.appendChild(b);
+  });
+}
+function renderToolList(){
+  renderToolFilterBar();
+  var list=document.getElementById('toolList');
+  if(!list) return;
+  list.innerHTML='';
+  var tools=getTools();
+  var si=document.getElementById('toolSearch');
+  var search=(si&&si.value||'').toLowerCase();
+  if(search) tools=tools.filter(function(t){ return ((t.nom||'')+' '+(t.reperage||'')+' '+(t.notes||'')).toLowerCase().indexOf(search)>=0; });
+  if(_toolFilter!=='tous') tools=tools.filter(function(t){ return (t.status||'disponible')===_toolFilter; });
+  tools.sort(function(a,b){ return (a.nom||'').localeCompare(b.nom||''); });
+  if(!tools.length){
+    list.innerHTML='<div class="empty"><div class="ei">🔧</div><h3>Aucun outil</h3><p>'+
+      (canEdit()?'Ajoute ton premier outil avec le + en bas à droite':'Aucun outil dans ce filtre')+'</p></div>';
+    return;
+  }
+  var card=document.createElement('div'); card.className='card';
+  tools.forEach(function(t){
+    var mine=(t.current_holder===currentUser.id);
+    var holder=mine?'Toi':(t.current_holder_name||empName(t.current_holder)||'');
+    var badge=t.status==='sorti'?'<span class="badge badge-orange">📤 Sorti</span>'
+      :t.status==='maintenance'?'<span class="badge badge-red">🔧 Maintenance</span>'
+      :'<span class="badge badge-green">✅ Disponible</span>';
+    var row=document.createElement('div'); row.className='tool-row';
+    row.innerHTML='<div class="tool-icon">'+toolCatIcon(t.categorie_id)+'</div>'+
+      '<div class="tool-body"><div class="tool-name">'+esc(t.nom)+'</div><div class="tool-meta">'+badge+
+      (holder?'<span style="color:'+(mine?'var(--green)':'var(--red)')+';font-weight:700">👤 '+esc(holder)+'</span>':'')+
+      '<span style="font-size:10px;color:var(--hint);font-family:monospace">'+esc(t.reperage||'')+'</span></div></div>'+
+      '<div class="tool-arr">›</div>';
+    row.addEventListener('click',function(){ openToolAction(t); });
+    card.appendChild(row);
+  });
+  list.appendChild(card);
+}
+
+function openToolAction(tool){
+  if(!tool) return;
+  var body=document.getElementById('toolModalBody');
+  document.getElementById('toolModalTitle').textContent=tool.nom;
+  var ctx=getActivePunchContext();
+  var mine=(tool.current_holder===currentUser.id);
+  var holder=tool.current_holder_name||empName(tool.current_holder);
+  var h='';
+  if(ctx) h+='<div class="punch-ctx"><span class="dot"></span><div style="flex:1"><b>Punch en cours</b> · '+esc(ctx.siteNom||'—')+' · depuis '+esc(ctx.task.start||'')+'</div></div>';
+  var sc=tool.status==='disponible'?'dispo':tool.status==='maintenance'?'maint':'sorti';
+  var si=tool.status==='disponible'?'✅':tool.status==='maintenance'?'🔧':'📤';
+  var stx=tool.status==='disponible'?'Disponible':tool.status==='maintenance'?'En maintenance':'Sorti par '+esc(holder);
+  h+='<div class="status-widget '+sc+'"><div class="ic">'+si+'</div><div class="txt">'+stx+'</div></div>';
+  h+='<div class="card" style="padding:12px 14px;margin-bottom:14px"><div style="font-weight:800;font-size:14px;color:var(--dk)">'+esc(tool.nom)+'</div>'+
+     '<div style="font-size:11px;color:var(--muted);font-family:monospace;margin-top:4px">'+esc(tool.reperage||'')+'</div>'+
+     (tool.notes?'<div style="font-size:11.5px;color:var(--muted);margin-top:6px">'+esc(tool.notes)+'</div>':'')+'</div>';
+  if(tool.status==='disponible'){
+    h+= ctx ? '<button class="btn btn-success btn-full" id="toolTakeBtn" style="margin-bottom:8px">✅ Prendre cet outil</button>'
+            : '<div style="background:var(--rbg);color:var(--red);border-radius:var(--rs);padding:11px;font-size:12.5px;font-weight:700;text-align:center;margin-bottom:8px">⚠️ Démarre ton punch (Temps) avant de prendre un outil</div>';
+  }else if(tool.status==='sorti'&&mine){
+    h+='<button class="btn btn-primary btn-full" id="toolReturnBtn" style="margin-bottom:8px">↩️ Retourner l\'outil</button>';
+  }else if(tool.status==='sorti'){
+    h+='<div style="background:var(--rbg);border-radius:var(--rs);padding:13px;font-size:13px;color:var(--red);font-weight:700;text-align:center;margin-bottom:10px">⛔ Déjà sorti par '+esc(holder)+'</div>';
+    if(isSup()) h+='<button class="btn btn-ghost btn-full" id="toolReturnBtn" style="margin-bottom:8px">↩️ Forcer le retour (superviseur)</button>';
+  }
+  if(canEdit()){
+    h+='<button class="btn btn-ghost btn-full" id="toolEditBtn" style="margin-bottom:8px">✏️ Modifier / réimprimer l\'étiquette</button>';
+    h+='<button class="btn btn-ghost btn-full" id="toolMaintBtn" style="margin-bottom:8px">🔧 '+(tool.status==='maintenance'?'Remettre en service':'Mettre en maintenance')+'</button>';
+  }
+  var moves=getToolMoves().filter(function(m){ return m.tool_id===tool.id; })
+    .sort(function(a,b){ return (b.created_at||'').localeCompare(a.created_at||''); }).slice(0,8);
+  if(moves.length){
+    h+='<div class="card" style="margin-top:14px"><div class="card-hd"><div class="card-hd-t">Historique récent</div></div><div style="padding:10px 14px">';
+    moves.forEach(function(m){
+      var out=m.action==='sortie';
+      h+='<div class="tl-move"><div class="ic '+(out?'out':'in')+'">'+(out?'📤':'↩️')+'</div><div><b>'+(out?'Sortie':'Retour')+'</b> — '+esc(m.emp_nom||m.uid)+
+         '<div style="color:var(--muted);font-size:11px">'+fmtDate((m.punch_date||'').slice(0,10))+' '+esc(m.heure||'')+
+         (m.site_nom?' · '+esc(m.site_nom):'')+(m.punch_task_id?' · 🔗 punch':'')+'</div></div></div>';
+    });
+    h+='</div></div>';
+  }
+  body.innerHTML=h;
+  var b1=document.getElementById('toolTakeBtn'); if(b1) b1.addEventListener('click',function(){ doToolCheckout(tool); });
+  var b2=document.getElementById('toolReturnBtn'); if(b2) b2.addEventListener('click',function(){ doToolReturn(tool); });
+  var b3=document.getElementById('toolEditBtn'); if(b3) b3.addEventListener('click',function(){ closeModal('toolModal'); openToolForm(tool); });
+  var b4=document.getElementById('toolMaintBtn');
+  if(b4) b4.addEventListener('click',function(){
+    var tools=getTools(), t=tools.find(function(x){ return x.id===tool.id; });
+    if(!t) return;
+    t.status=(t.status==='maintenance')?'disponible':'maintenance';
+    t.updatedAt=new Date().toISOString();
+    setTools(tools); sbPush('outils',t);
+    try{ auditLog('MODIFICATION','outils',t.id,{action:'maintenance',statut:t.status}); }catch(e){}
+    closeModal('toolModal'); renderToolList();
+    toast(t.status==='maintenance'?'🔧 Mis en maintenance':'✅ Remis en service');
+  });
+  openModal('toolModal');
+}
+
+function toolLogMouvement(t, action, ctx, notes){
+  var mv={ id:uid(), tool_id:t.id, tool_reperage:t.reperage, tool_nom:t.nom,
+    uid:currentUser.id, emp_nom:fullName(), action:action,
+    punch_task_id: ctx?String(ctx.task.id):'', punch_week: ctx?ctx.week:'',
+    punch_date: todayISO(), heure: nowHHMM(),
+    site_id: ctx&&ctx.siteId?ctx.siteId:'', site_nom: ctx?ctx.siteNom:'', wo_id: ctx&&ctx.woId?ctx.woId:'',
+    gps: (ctx&&ctx.task.gps)||null, notes: notes||'', created_at:new Date().toISOString() };
+  var list=getToolMoves(); list.push(mv); setToolMoves(list);
+  try{ sbPush('toolmoves', mv); }catch(e){}
+  return mv;
+}
+function doToolCheckout(tool){
+  var ctx=getActivePunchContext();
+  if(!ctx){ toast('⚠️ Démarre ton punch d\'abord'); return; }
+  var tools=getTools(), t=tools.find(function(x){ return x.id===tool.id; });
+  if(!t){ toast('Outil introuvable'); return; }
+  if(t.status==='sorti'&&t.current_holder!==currentUser.id){
+    toast('⛔ Déjà sorti par '+(t.current_holder_name||empName(t.current_holder)));
+    closeModal('toolModal'); renderToolList(); return;
+  }
+  if(t.status==='maintenance'){ toast('⛔ Outil en maintenance'); return; }
+  t.status='sorti'; t.current_holder=currentUser.id; t.current_holder_name=fullName();
+  t.current_punch_task_id=String(ctx.task.id); t.current_punch_week=ctx.week;
+  t.updatedAt=new Date().toISOString();
+  setTools(tools); sbPush('outils',t);
+  toolLogMouvement(t,'sortie',ctx,'');
+  try{ auditLog('CREATION','outils',t.id,{action:'sortie_punch',punch:ctx.task.id,site:ctx.siteNom}); }catch(e){}
+  closeModal('toolModal'); renderToolList();
+  toast('✅ '+t.nom+' pris — lié à ton punch ('+(ctx.siteNom||'tâche')+')');
+}
+function doToolReturn(tool){
+  var tools=getTools(), t=tools.find(function(x){ return x.id===tool.id; });
+  if(!t) return;
+  var force=(t.current_holder!==currentUser.id);
+  if(force&&!isSup()){ toast('⛔ Seul '+(t.current_holder_name||empName(t.current_holder))+' peut le retourner'); return; }
+  var holderAvant=t.current_holder_name||empName(t.current_holder);
+  var ctx=getActivePunchContext();
+  t.status='disponible'; t.current_holder=''; t.current_holder_name='';
+  t.current_punch_task_id=''; t.current_punch_week='';
+  t.updatedAt=new Date().toISOString();
+  setTools(tools); sbPush('outils',t);
+  toolLogMouvement(t,'retour',ctx, force&&holderAvant ? ('Retour forcé par '+fullName()+' (détenu par '+holderAvant+')') : '');
+  try{ auditLog('MODIFICATION','outils',t.id,{action:'retour',force:force}); }catch(e){}
+  closeModal('toolModal'); renderToolList();
+  toast('↩️ '+t.nom+' retourné');
+}
+
+function openToolForm(tool){
+  _toolEditId = tool?tool.id:null;
+  document.getElementById('toolFormTitle').textContent = tool?('Modifier · '+tool.nom):'Nouvel outil';
+  var prefixes=getLogiConfig('prefixes').filter(function(p){ return p.scope==='outils'||!p.scope; });
+  var pSel=document.getElementById('tPrefix'); pSel.innerHTML='';
+  prefixes.forEach(function(p){ var o=document.createElement('option'); o.value=p.id; o.textContent=p.id+' — '+p.label; pSel.appendChild(o); });
+  var cats=getLogiConfig('categories');
+  var cSel=document.getElementById('tCat'); cSel.innerHTML='';
+  cats.forEach(function(c){ var o=document.createElement('option'); o.value=c.id; o.textContent=c.icon+' '+c.label; cSel.appendChild(o); });
+  if(tool){
+    var pre=(tool.reperage||'').split('-')[0];
+    if(prefixes.some(function(p){ return p.id===pre; })) pSel.value=pre;
+    cSel.value=tool.categorie_id||(cats[0]?cats[0].id:'');
+    document.getElementById('tNum').value=(tool.reperage||'').split('-')[1]||'0001';
+    document.getElementById('tNom').value=tool.nom||'';
+    document.getElementById('tNotes').value=tool.notes||'';
+  }else{
+    var pre0=prefixes[0]?prefixes[0].id:'OUT';
+    pSel.value=pre0;
+    document.getElementById('tNum').value=toolNextReperage(pre0).split('-')[1];
+    document.getElementById('tNom').value='';
+    document.getElementById('tNotes').value='';
+  }
+  document.getElementById('tDeleteBtn').style.display=tool?'flex':'none';
+  function refreshQr(){
+    var num=document.getElementById('tNum').value;
+    var nom=(document.getElementById('tNom').value||'').trim()||'Nouvel outil';
+    var payload=toolQrPayload(pSel.value+'-'+num, nom);
+    var prev=document.getElementById('tQrPreview');
+    prev.innerHTML='<div class="qr-label-3x3"><div class="qr-holder" id="qrPrevHolder"></div><div class="lbl-txt">'+esc(pSel.value+'-'+num)+'</div></div>'+
+      '<div style="font-size:10px;color:var(--muted);font-family:monospace;word-break:break-all;text-align:center">'+esc(payload)+'</div>';
+    var holder=document.getElementById('qrPrevHolder');
+    if(holder&&typeof QRCode!=='undefined'){
+      holder.innerHTML='';
+      new QRCode(holder,{text:payload,width:100,height:100,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.L});
+    }else if(holder){ holder.innerHTML='<div style="font-size:10px;color:var(--muted);text-align:center">QR indisponible<br>(hors ligne)</div>'; }
+    document.getElementById('tSaveBtn').dataset.payload=payload;
+  }
+  pSel.onchange=function(){ if(!_toolEditId) document.getElementById('tNum').value=toolNextReperage(pSel.value).split('-')[1]; refreshQr(); };
+  document.getElementById('tNom').oninput=refreshQr;
+  refreshQr();
+  openModal('toolFormModal');
+}
+function saveTool(){
+  var nom=(document.getElementById('tNom').value||'').trim();
+  if(!nom){ document.getElementById('tNom').focus(); toast('⚠️ Nom requis'); return; }
+  var pre=document.getElementById('tPrefix').value, num=document.getElementById('tNum').value;
+  var reperage=pre+'-'+num, cat=document.getElementById('tCat').value;
+  var payload=document.getElementById('tSaveBtn').dataset.payload||toolQrPayload(reperage,nom);
+  var tools=getTools();
+  if(_toolEditId){
+    var t=tools.find(function(x){ return x.id===_toolEditId; });
+    if(!t) return;
+    if(t.reperage!==reperage&&tools.some(function(x){ return x.reperage===reperage; })){ toast('⚠️ Ce repérage existe déjà'); return; }
+    t.reperage=reperage; t.nom=nom; t.categorie_id=cat; t.qr_payload=payload;
+    t.notes=document.getElementById('tNotes').value.trim(); t.updatedAt=new Date().toISOString();
+    setTools(tools); sbPush('outils',t);
+    try{ auditLog('MODIFICATION','outils',t.id,{reperage:reperage}); }catch(e){}
+  }else{
+    if(tools.some(function(x){ return x.reperage===reperage; })){ toast('⚠️ Ce repérage existe déjà'); return; }
+    var nv={ id:uid(), reperage:reperage, nom:nom, categorie_id:cat, qr_payload:payload, status:'disponible',
+      current_holder:'', current_holder_name:'', current_punch_task_id:'', current_punch_week:'',
+      notes:document.getElementById('tNotes').value.trim(),
+      createdAt:new Date().toISOString(), updatedAt:new Date().toISOString() };
+    tools.push(nv); setTools(tools); sbPush('outils',nv);
+    bumpPrefixCounter(pre);
+    try{ auditLog('CREATION','outils',nv.id,{reperage:reperage}); }catch(e){}
+  }
+  closeModal('toolFormModal'); renderToolList(); toast('✅ Outil enregistré');
+}
+function deleteTool(){
+  if(!_toolEditId) return;
+  askConfirm('Supprimer cet outil ? L\'historique des mouvements est conservé.',function(){
+    var id=_toolEditId;
+    setTools(getTools().filter(function(x){ return x.id!==id; }));
+    try{ sbDelete('outils',id); }catch(e){}
+    try{ auditLog('SUPPRESSION','outils',id); }catch(e){}
+    closeModal('toolFormModal'); renderToolList(); toast('🗑 Outil supprimé');
+  },'🗑 Supprimer','Supprimer l\'outil');
+}
+
+// Étiquette 3×3 cm — le QR fait 2,2 cm, le repérage est écrit dessous
+function printToolQrLabel(){
+  var payload=document.getElementById('tSaveBtn').dataset.payload;
+  var reperage=document.getElementById('tPrefix').value+'-'+document.getElementById('tNum').value;
+  if(!payload){ toast('⚠️ Pas de QR'); return; }
+  document.getElementById('pmmPrintArea').innerHTML=
+    '<div class="pmm-print-doc" style="text-align:center">'+
+    '<div style="display:inline-block;width:3cm;height:3cm;border:1px dashed #bbb;padding:1mm;box-sizing:border-box;'+
+    'display:flex;flex-direction:column;align-items:center;justify-content:center">'+
+    '<div id="printQrHolder" style="line-height:0"></div>'+
+    '<div style="font-size:6pt;font-weight:700;margin-top:1mm;font-family:Arial">'+esc(reperage)+'</div>'+
+    '</div></div>';
+  var holder=document.getElementById('printQrHolder');
+  if(holder&&typeof QRCode!=='undefined'){
+    new QRCode(holder,{text:payload,width:83,height:83,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.L});
+    setTimeout(function(){ window.print(); },250);
+  }else{ toast('⚠️ Générateur QR non chargé'); }
+}
+
+function openMyTools(){
+  var mine=getTools().filter(function(t){ return t.current_holder===currentUser.id; });
+  var body=document.getElementById('toolModalBody');
+  document.getElementById('toolModalTitle').textContent='🔧 Mes outils en main';
+  var h='';
+  if(!mine.length){
+    h='<div class="empty"><div class="ei">🫙</div><h3>Aucun outil</h3><p>Tu n\'as rien pris pour le moment.</p></div>';
+  }else{
+    mine.forEach(function(t){
+      h+='<div class="tool-row" data-id="'+t.id+'"><div class="tool-icon">'+toolCatIcon(t.categorie_id)+'</div>'+
+        '<div class="tool-body"><div class="tool-name">'+esc(t.nom)+'</div><div class="tool-meta"><span class="badge badge-orange">📤 Sorti</span>'+
+        '<span style="font-size:10px;color:var(--hint);font-family:monospace">'+esc(t.reperage||'')+'</span></div></div></div>';
+    });
+  }
+  h+='<div style="margin-top:14px"><button class="btn btn-primary btn-full" id="myToolsScan">📷 Scanner pour prendre / retourner</button></div>';
+  body.innerHTML=h;
+  body.querySelectorAll('.tool-row').forEach(function(row){
+    row.addEventListener('click',function(){
+      var t=mine.find(function(x){ return x.id===row.dataset.id; });
+      if(t){ closeModal('toolModal'); setTimeout(function(){ openToolAction(t); },120); }
+    });
+  });
+  var s=document.getElementById('myToolsScan');
+  if(s) s.addEventListener('click',function(){ closeModal('toolModal'); setTimeout(function(){ openToolScanner('outil'); },120); });
+  openModal('toolModal');
+}
+
+function openToolScanner(mode){
+  _toolScanMode=mode||'outil';
+  var reader=document.getElementById('toolScanReader');
+  reader.innerHTML='';
+  document.getElementById('toolScanTitle').textContent=_toolScanMode==='produit'?'📷 Scanner un produit':'📷 Scanner un outil';
+  document.getElementById('toolScanHint').textContent='Pointe la caméra vers le QR code…';
+  openModal('toolScanModal');
+  if(typeof Html5Qrcode==='undefined'){ document.getElementById('toolScanHint').textContent='⚠️ Librairie de scan non chargée (hors ligne ?)'; return; }
+  setTimeout(function(){
+    try{
+      _toolScan=new Html5Qrcode('toolScanReader');
+      _toolScan.start({facingMode:'environment'},{fps:10,qrbox:{width:240,height:240}},
+        function(text){ handleToolQrScan(text); }, function(){}
+      ).catch(function(err){ document.getElementById('toolScanHint').textContent='⚠️ Caméra indisponible : '+(err&&err.message||err); });
+    }catch(err){ document.getElementById('toolScanHint').textContent='⚠️ Erreur : '+(err&&err.message||err); }
+  },200);
+}
+function closeToolScanner(){
+  if(_toolScan){
+    try{ _toolScan.stop().then(function(){ try{ _toolScan.clear(); }catch(e){} _toolScan=null; }).catch(function(){ _toolScan=null; }); }
+    catch(e){ _toolScan=null; }
+  }
+  closeModal('toolScanModal');
+}
+function handleToolQrScan(text){
+  if(!text) return;
+  var parsed=parseToolQr(text);
+  if(!parsed){ toast('⚠️ QR non reconnu'); return; }
+  try{ if(navigator.vibrate) navigator.vibrate(60); }catch(e){}
+  if(_toolScanMode==='produit'){
+    var produit=findInvByQr(parsed);
+    closeToolScanner();
+    if(!produit){ toast('⚠️ Produit inconnu : '+parsed.reperage); return; }
+    setTimeout(function(){ addScannedProductToSortie(produit,parsed); },200);
+    return;
+  }
+  var tool=getTools().find(function(t){ return t.reperage===parsed.reperage; });
+  closeToolScanner();
+  if(!tool){ toast('⚠️ Outil inconnu : '+parsed.reperage); return; }
+  setTimeout(function(){ openToolAction(tool); },200);
+}
+
+// Les articles d'inventaire n'ont pas de champ « code » : on retrouve le produit par son code s'il en a
+// un jour un, sinon par le NOM inscrit dans le QR (exact, puis partiel).
+function findInvByQr(parsed){
+  var inv=getInv();
+  var nom=(parsed.nom||'').toLowerCase().trim();
+  var p=inv.find(function(i){ return i.code&&i.code===parsed.reperage; });
+  if(p) return p;
+  if(nom){
+    p=inv.find(function(i){ return (i.nom||'').toLowerCase().trim()===nom; });
+    if(p) return p;
+    p=inv.find(function(i){ return (i.nom||'').toLowerCase().indexOf(nom)>=0 || nom.indexOf((i.nom||'').toLowerCase())>=0; });
+    if(p) return p;
+  }
+  return null;
+}
+function addScannedProductToSortie(produit,parsed){
+  if(typeof sortieLignes==='undefined'){ toast('⚠️ Ouvre d\'abord une sortie d\'inventaire'); return; }
+  var ctx=getActivePunchContext();
+  var existante=sortieLignes.find(function(l){ return (l.desc||'').toLowerCase()===(produit.nom||'').toLowerCase() && l.desc; });
+  if(existante){
+    existante.qteSortie=String((parseFloat(existante.qteSortie||'0')||0)+1);
+  }else{
+    sortieLignes.push({ code: produit.code||parsed.reperage||'', loc: produit.loc||produit.localisation||'',
+      desc: produit.nom||parsed.nom||'', qteSortie:'1', qteRetour:'',
+      projet: ctx?(ctx.siteNom||''):'', _scannedAt: nowHHMM(),
+      _siteId: ctx?ctx.siteId:'', _woId: ctx?ctx.woId:'', _punchTaskId: ctx?String(ctx.task.id):'' });
+  }
+  if(typeof sortieRenderLignes==='function'&&document.getElementById('sortieLignesWrap')) sortieRenderLignes();
+  toast('✅ '+(produit.nom||parsed.nom)+' ajouté à la sortie');
+}
+
+// Bouton « Scanner un produit » + bandeau site/WO, injectés en haut du modal Sortie d'Inventaire
+function renderSortieScanButton(){
+  var wrap=document.getElementById('sortieLignesWrap');
+  if(!wrap||document.getElementById('scanProduitBtn')) return;
+  var parent=wrap.parentNode;
+  var btn=document.createElement('button');
+  btn.id='scanProduitBtn'; btn.className='btn btn-primary btn-full';
+  btn.style.marginBottom='10px'; btn.type='button'; btn.textContent='📷 Scanner un produit';
+  parent.insertBefore(btn,wrap);
+  var ctx=getActivePunchContext();
+  if(ctx&&(ctx.siteId||ctx.siteNom||ctx.woId)){
+    var banner=document.createElement('div');
+    banner.id='sortiePunchBanner';
+    banner.style.cssText='display:flex;align-items:center;gap:8px;background:var(--blue-lt);border-radius:var(--rs);padding:10px 12px;margin-bottom:10px;font-size:12px';
+    banner.innerHTML='<span style="font-size:16px">🏢</span><div style="flex:1"><div style="font-weight:800;color:var(--dk)">'+esc(ctx.siteNom||'—')+'</div>'+
+      (ctx.woLabel?('<div style="font-size:10.5px;color:var(--muted)">WO lié : '+esc(ctx.woLabel)+'</div>'):'')+
+      '</div><span class="badge badge-green">🔗 Lié au punch</span>';
+    parent.insertBefore(banner,btn);
+  }
+  btn.addEventListener('click',function(){ openToolScanner('produit'); });
+}
+
+function renderLogiConfig(){
+  var el=document.getElementById('logiConfigContent');
+  if(!el) return;
+  if(!isSup()){ el.innerHTML='<div class="empty"><div class="ei">🔒</div><h3>Accès superviseur seulement</h3></div>'; return; }
+  el.innerHTML='';
+  var intro=document.createElement('div'); intro.className='card'; intro.style.padding='14px';
+  intro.innerHTML='<div style="font-size:13px;font-weight:800;color:var(--dk)">⚙️ Configuration Logistique</div>'+
+    '<div style="font-size:11.5px;color:var(--muted);margin-top:4px">Catégories d\'outils et préfixes de repérage.</div>';
+  el.appendChild(intro);
+  var cats=getLogiConfig('categories'), tools=getTools(), pres=getLogiConfig('prefixes');
+
+  var catCard=document.createElement('div'); catCard.className='card';
+  catCard.innerHTML='<div class="card-hd"><div class="card-hd-t">🏷 Catégories d\'outils</div><button class="btn btn-sm btn-ghost" id="addCatBtn">＋ Ajouter</button></div>';
+  cats.forEach(function(c){
+    var count=tools.filter(function(t){ return t.categorie_id===c.id; }).length;
+    var row=document.createElement('div'); row.className='cat-row';
+    row.innerHTML='<div class="icon">'+c.icon+'</div><div class="label">'+esc(c.label)+'</div>'+
+      '<div class="count">'+count+' item'+(count>1?'s':'')+'</div>'+
+      '<div class="actions"><button data-act="edit" data-id="'+esc(c.id)+'">✏️</button><button data-act="del" data-id="'+esc(c.id)+'">🗑</button></div>';
+    catCard.appendChild(row);
+  });
+  el.appendChild(catCard);
+
+  var preCard=document.createElement('div'); preCard.className='card';
+  preCard.innerHTML='<div class="card-hd"><div class="card-hd-t">🔤 Préfixes de repérage</div><button class="btn btn-sm btn-ghost" id="addPreBtn">＋ Ajouter</button></div>';
+  pres.forEach(function(p){
+    var row=document.createElement('div'); row.className='cat-row';
+    row.innerHTML='<div class="icon" style="font-family:monospace;font-size:12px;font-weight:800;color:var(--blue)">'+esc(p.id)+'-</div>'+
+      '<div class="label">'+esc(p.label)+'</div>'+
+      '<div class="count">'+(p.scope==='inventaire'?'(inventaire)':'prochain : '+String(p.next||1).padStart(4,'0'))+'</div>'+
+      '<div class="actions"><button data-act="edit" data-id="'+esc(p.id)+'">✏️</button></div>';
+    preCard.appendChild(row);
+  });
+  el.appendChild(preCard);
+
+  var qrCard=document.createElement('div'); qrCard.className='card';
+  qrCard.innerHTML='<div class="card-hd"><div class="card-hd-t">🏷 Préfixe QR global</div></div>'+
+    '<div style="padding:14px"><div class="mfield"><label>Préfixe</label><input type="text" id="qrPrefixInp" value="'+esc(getLogiConfig('qr_prefix'))+'"/></div>'+
+    '<div style="font-size:11px;color:var(--muted);margin-top:-6px">Format final : <code>'+esc(getLogiConfig('qr_prefix'))+'{repérage}|{nom}</code></div>'+
+    '<button class="btn btn-primary btn-full" id="saveQrPrefixBtn" style="margin-top:12px">💾 Enregistrer</button></div>';
+  el.appendChild(qrCard);
+
+  document.getElementById('saveQrPrefixBtn').addEventListener('click',function(){
+    var v=document.getElementById('qrPrefixInp').value.trim();
+    if(!v){ toast('⚠️ Préfixe requis'); return; }
+    setLogiConfig('qr_prefix',v);
+    try{ auditLog('MODIFICATION','logistique_config','qr_prefix',{valeur:v}); }catch(e){}
+    toast('✅ Préfixe enregistré'); renderLogiConfig();
+  });
+  document.getElementById('addCatBtn').addEventListener('click',function(){
+    var icon=prompt('Icône (emoji) :','🔧'); if(!icon) return;
+    var label=prompt('Nom de la catégorie :',''); if(!label) return;
+    var id=label.toLowerCase().replace(/[^a-z0-9]+/g,'_');
+    if(cats.some(function(c){ return c.id===id; })){ toast('⚠️ Existe déjà'); return; }
+    cats.push({id:id,icon:icon,label:label}); setLogiConfig('categories',cats);
+    try{ auditLog('CREATION','logistique_config','categories',{ajout:id}); }catch(e){}
+    renderLogiConfig(); toast('✅ Catégorie ajoutée');
+  });
+  document.getElementById('addPreBtn').addEventListener('click',function(){
+    var pid=prompt('Préfixe (ex: PER) :',''); if(!pid) return;
+    pid=pid.toUpperCase().replace(/[^A-Z0-9]/g,'');
+    if(!pid||pres.some(function(p){ return p.id===pid; })){ toast('⚠️ Invalide ou existe déjà'); return; }
+    var label=prompt('Description :',''); if(!label) return;
+    pres.push({id:pid,label:label,next:1,scope:'outils'}); setLogiConfig('prefixes',pres);
+    try{ auditLog('CREATION','logistique_config','prefixes',{ajout:pid}); }catch(e){}
+    renderLogiConfig(); toast('✅ Préfixe ajouté');
+  });
+  catCard.querySelectorAll('[data-act]').forEach(function(b){
+    b.addEventListener('click',function(){
+      var id=b.dataset.id;
+      if(b.dataset.act==='edit'){
+        var c=cats.find(function(x){ return x.id===id; }); if(!c) return;
+        var ni=prompt('Icône :',c.icon); if(ni===null) return;
+        var nl=prompt('Nom :',c.label); if(nl===null) return;
+        c.icon=ni||c.icon; c.label=nl||c.label; setLogiConfig('categories',cats); renderLogiConfig();
+      }else{
+        var used=tools.filter(function(t){ return t.categorie_id===id; }).length;
+        if(used>0){ toast('⚠️ Catégorie utilisée par '+used+' outil(s)'); return; }
+        askConfirm('Supprimer cette catégorie ?',function(){
+          cats.splice(cats.findIndex(function(x){ return x.id===id; }),1);
+          setLogiConfig('categories',cats); renderLogiConfig();
+        },'🗑 Supprimer','Confirmation');
+      }
+    });
+  });
+  preCard.querySelectorAll('[data-act="edit"]').forEach(function(b){
+    b.addEventListener('click',function(){
+      var p=pres.find(function(x){ return x.id===b.dataset.id; }); if(!p) return;
+      var nl=prompt('Description :',p.label); if(nl===null) return;
+      var nn=prompt('Prochain numéro :',String(p.next||1)); if(nn===null) return;
+      p.label=nl||p.label; p.next=Math.max(1,parseInt(nn,10)||1);
+      setLogiConfig('prefixes',pres); renderLogiConfig(); toast('✅ Préfixe mis à jour');
+    });
+  });
+}
+
+function toolsMasquerOngletsAdmin(){
+  document.querySelectorAll('[data-admin-only="1"]').forEach(function(b){ b.style.display=isSup()?'':'none'; });
+}
+
+function initToolModule(){
+  function bind(id,ev,fn){ var e=document.getElementById(id); if(e&&!e._toolBound){ e._toolBound=true; e.addEventListener(ev,fn); } }
+  bind('toolSearch','input',renderToolList);
+  bind('toolScanBtn','click',function(){ openToolScanner('outil'); });
+  bind('toolMyBtn','click',openMyTools);
+  bind('toolAddBtn','click',function(){ openToolForm(null); });
+  bind('toolModalClose','click',function(){ closeModal('toolModal'); });
+  bind('toolScanClose','click',closeToolScanner);
+  bind('toolFormClose','click',function(){ closeModal('toolFormModal'); });
+  bind('tCancel','click',function(){ closeModal('toolFormModal'); });
+  bind('tSaveBtn','click',saveTool);
+  bind('tDeleteBtn','click',deleteTool);
+  bind('tQrPrintBtn','click',printToolQrLabel);
+  var sm=document.getElementById('toolScanModal');
+  if(sm&&!sm._toolBound){ sm._toolBound=true; sm.addEventListener('click',function(e){ if(e.target===this) closeToolScanner(); }); }
+  toolsMasquerOngletsAdmin();
+  // Temps réel : la fusion des lignes est déjà faite par subscribeRealtime (outils est dans SB_TABLES) ;
+  // ce canal ne sert qu'à redessiner la liste si elle est à l'écran.
+  if(!_toolRtSub && typeof sb!=='undefined' && sb){
+    try{
+      _toolRtSub=true;
+      sb.channel('rt_outils_ui').on('postgres_changes',{event:'*',schema:'public',table:'outils'},function(){
+        if(curMod==='outils') renderToolList();
+      }).subscribe();
+    }catch(e){ _toolRtSub=false; }
+  }
+}
+
 </script>
 </body>
 </html>
