@@ -3456,7 +3456,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // a bien pris effet. Il reflète maintenant APP_BUILD ci-dessous, à mettre à jour à CHAQUE fois que
   // CACHE_NAME change dans sw.js (même valeur, ex: 'v48').
   try{
-    var APP_BUILD='v62';
+    var APP_BUILD='v63';
     var vb=document.createElement('div');
     vb.id='__buildBadge';
     vb.textContent='build '+APP_BUILD+' ⟲';
@@ -5441,7 +5441,11 @@ function fteCorrigerPunch(empId,jourIdx,taskIdx){
 // pas ralentir l'ouverture de l'app. Si le CDN ne répond pas, on retombe sur la librairie déjà présente :
 // même fichier, même structure, sans les couleurs.
 var _fteXlsxLib=null;
-function fteXlsx(cb){
+// silencieux = préchargement en arrière-plan (à l'ouverture de l'écran de sortie) : sans toast, et
+// surtout pour que le clic sur « Télécharger » soit traité IMMÉDIATEMENT. Safari (iPhone/iPad) bloque
+// un téléchargement déclenché après la fin du geste de l'utilisateur — c'est ce qui faisait que le
+// fichier « ne sortait pas » alors que tout le reste fonctionnait.
+function fteXlsx(cb,silencieux){
   if(_fteXlsxLib){cb(_fteXlsxLib);return;}
   if(typeof XLSX==='undefined'){toast('⚠️ Librairie Excel non disponible');return;}
   var base=window.XLSX, fini=false;
@@ -5456,7 +5460,7 @@ function fteXlsx(cb){
   s.onload=function(){var st=window.XLSX;termine(st&&st.style_version?st:base);};
   s.onerror=function(){termine(base);};
   setTimeout(function(){termine(base);},7000);
-  toast('⏳ Préparation du fichier…');
+  if(!silencieux)toast('⏳ Préparation du fichier…');
   document.head.appendChild(s);
 }
 
@@ -5723,16 +5727,49 @@ function fteWsJournal(XL,data,employes){
   return ws;
 }
 
+// Le fichier généré reste disponible à l'écran : sur iPhone/iPad, et dès que le navigateur refuse un
+// téléchargement automatique, le bouton de secours « Ouvrir / télécharger » est un vrai clic de
+// l'utilisateur sur un lien déjà prêt — ça, aucun navigateur ne le bloque.
+var _fteDernierFichier=null; // {url,nom,blob}
 function fteTelechargerWb(XL,wb,nomFichier){
-  var b64=XL.write(wb,{bookType:'xlsx',type:'base64'});
-  var bin=atob(b64), arr=new Uint8Array(bin.length);
-  for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
-  var blob=new Blob([arr],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  var blob;
+  try{
+    var b64=XL.write(wb,{bookType:'xlsx',type:'base64'});
+    var bin=atob(b64), arr=new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+    blob=new Blob([arr],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  }catch(err){
+    toast('⚠️ Génération du fichier impossible : '+((err&&err.message)||err));
+    try{auditLog('ERREUR','feuilles_temps','xlsx:'+((err&&err.message)||err));}catch(e){}
+    return null;
+  }
+  try{ if(_fteDernierFichier&&_fteDernierFichier.url)URL.revokeObjectURL(_fteDernierFichier.url); }catch(e){}
   var url=URL.createObjectURL(blob);
-  var a=document.createElement('a');a.href=url;a.download=nomFichier;
-  document.body.appendChild(a);a.click();document.body.removeChild(a);
-  setTimeout(function(){URL.revokeObjectURL(url);},4000);
+  _fteDernierFichier={url:url,nom:nomFichier,blob:blob};
+  try{
+    var a=document.createElement('a');a.href=url;a.download=nomFichier;a.rel='noopener';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+  }catch(e){}
+  fteAfficherLienFichier();
   return blob;
+}
+// Affiche (ou réaffiche après redessin) la carte du dernier fichier produit.
+function fteAfficherLienFichier(){
+  var z=document.getElementById('fteFichierPret');
+  if(!z||!_fteDernierFichier)return;
+  var f=_fteDernierFichier;
+  z.style.display='block';
+  z.innerHTML='<div style="background:var(--gbg);border:1px solid var(--green);border-radius:var(--rs);padding:10px 12px;margin-bottom:12px">'
+    +'<div style="font-size:12px;font-weight:800;color:var(--green);margin-bottom:6px">✅ Fichier prêt — '+esc(f.nom)+'</div>'
+    +'<div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:8px">Si le téléchargement ne s\'est pas lancé tout seul (fréquent sur iPhone et iPad), touche le bouton ci-dessous.</div>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
+      +'<a class="btn btn-primary btn-sm" href="'+f.url+'" download="'+esc(f.nom)+'" target="_blank" rel="noopener">⬇️ Ouvrir / télécharger</a>'
+      +(navigator.share?'<button class="btn btn-ghost btn-sm" id="ftePartagerPret">📤 Partager / envoyer</button>':'')
+    +'</div></div>';
+  var p=document.getElementById('ftePartagerPret');
+  if(p)p.addEventListener('click',function(){
+    if(!ftePartager(f.blob,f.nom,'Feuilles de temps','Feuilles de temps — '+f.nom))toast('⚠️ Partage non supporté sur cet appareil');
+  });
 }
 // Sur téléphone/tablette : partage natif (Mail, Teams, Messages…) quand le navigateur le permet.
 function ftePartager(blob,nomFichier,titre,texte){
@@ -5757,16 +5794,24 @@ function fteExcelEquipe(apres){
   var sel=fteSelectionnes(data);
   if(!sel.length){toast('⚠️ Aucune feuille sélectionnée');return;}
   fteXlsx(function(XL){
-    var wb=XL.utils.book_new(), pris=[];
-    XL.utils.book_append_sheet(wb,fteWsSommaire(XL,data,sel),fteNomFeuille('Sommaire paie',pris));
-    sel.forEach(function(e){ // une fiche par employé (option A)
-      XL.utils.book_append_sheet(wb,fteWsFicheEmploye(XL,data,e),fteNomFeuille(e.nom,pris));
-    });
-    XL.utils.book_append_sheet(wb,fteWsEquipe(XL,data,sel),fteNomFeuille('Toute l\'équipe',pris)); // option B
-    XL.utils.book_append_sheet(wb,fteWsJobs(XL,data,sel),fteNomFeuille('Total par job',pris));
-    XL.utils.book_append_sheet(wb,fteWsJournal(XL,data,sel),fteNomFeuille('Journal des punchs',pris));
-    var nom=fteNomFichier('Feuilles_temps_EQUIPE',_fteSemaine);
-    var blob=fteTelechargerWb(XL,wb,nom);
+    var wb,nom,blob;
+    try{
+      wb=XL.utils.book_new();var pris=[];
+      XL.utils.book_append_sheet(wb,fteWsSommaire(XL,data,sel),fteNomFeuille('Sommaire paie',pris));
+      sel.forEach(function(e){ // une fiche par employé (option A)
+        XL.utils.book_append_sheet(wb,fteWsFicheEmploye(XL,data,e),fteNomFeuille(e.nom,pris));
+      });
+      XL.utils.book_append_sheet(wb,fteWsEquipe(XL,data,sel),fteNomFeuille('Toute l\'équipe',pris)); // option B
+      XL.utils.book_append_sheet(wb,fteWsJobs(XL,data,sel),fteNomFeuille('Total par job',pris));
+      XL.utils.book_append_sheet(wb,fteWsJournal(XL,data,sel),fteNomFeuille('Journal des punchs',pris));
+      nom=fteNomFichier('Feuilles_temps_EQUIPE',_fteSemaine);
+    }catch(err){
+      toast('⚠️ Construction du fichier impossible : '+((err&&err.message)||err));
+      try{auditLog('ERREUR','feuilles_temps','wb:'+((err&&err.message)||err));}catch(e){}
+      return;
+    }
+    blob=fteTelechargerWb(XL,wb,nom);
+    if(!blob)return;
     sel.forEach(function(e){ftMarquerEnvoi(e,_fteSemaine,'excel_equipe');});
     toast('📊 Fichier paie généré ('+sel.length+' employés)');
     if(apres)apres(blob,nom,data,sel);
@@ -5778,12 +5823,19 @@ function fteExcelEmploye(empId,apres){
   var e=data.employes.find(function(x){return x.id===empId;});
   if(!e){toast('Employé introuvable');return;}
   fteXlsx(function(XL){
-    var wb=XL.utils.book_new();
-    XL.utils.book_append_sheet(wb,fteWsFicheEmploye(XL,data,e),'Feuille de temps');
-    XL.utils.book_append_sheet(wb,fteWsJobs(XL,data,[e]),'Total par job');
-    XL.utils.book_append_sheet(wb,fteWsJournal(XL,data,[e]),'Journal des punchs');
-    var nom=fteNomFichier('Feuille_temps_'+e.nom.replace(/[^A-Za-zÀ-ÿ0-9]+/g,'_'),_fteSemaine);
-    var blob=fteTelechargerWb(XL,wb,nom);
+    var wb,nom,blob;
+    try{
+      wb=XL.utils.book_new();
+      XL.utils.book_append_sheet(wb,fteWsFicheEmploye(XL,data,e),'Feuille de temps');
+      XL.utils.book_append_sheet(wb,fteWsJobs(XL,data,[e]),'Total par job');
+      XL.utils.book_append_sheet(wb,fteWsJournal(XL,data,[e]),'Journal des punchs');
+      nom=fteNomFichier('Feuille_temps_'+e.nom.replace(/[^A-Za-zÀ-ÿ0-9]+/g,'_'),_fteSemaine);
+    }catch(err){
+      toast('⚠️ Construction du fichier impossible : '+((err&&err.message)||err));
+      return;
+    }
+    blob=fteTelechargerWb(XL,wb,nom);
+    if(!blob)return;
     ftMarquerEnvoi(e,_fteSemaine,'excel_employe');
     toast('⬇️ Feuille de '+e.nom+' générée');
     if(apres)apres(blob,nom,e);
@@ -5870,12 +5922,14 @@ function fteDessinerEnvoi(){
   var body=document.getElementById('fteBody');
   var data=fteBuildSemaine(_fteSemaine);
   var sel=fteSelectionnes(data);
+  try{fteXlsx(function(){},true);}catch(e){} // précharge la librairie : le clic reste dans le geste utilisateur
   var doublons=(typeof siteFindDuplicatePairs==='function')?siteFindDuplicatePairs():[];
   var totalSel=sel.reduce(function(s,e){return s+e.totalSem;},0);
   var h='';
   h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">'
     +'<button class="btn btn-ghost btn-sm" id="fteRetour">◀ Retour</button>'
     +'<div style="flex:1;font-size:13px;font-weight:800">Sortie des feuilles — semaine du '+fmtDate(_fteSemaine)+'</div></div>';
+  h+='<div id="fteFichierPret" style="display:none"></div>';
 
   if(doublons.length){
     h+='<div style="background:var(--obg);border-radius:var(--rs);padding:10px 12px;margin-bottom:11px">'
@@ -5945,6 +5999,7 @@ function fteDessinerEnvoi(){
   body.querySelectorAll('.fte-copier').forEach(function(b){
     b.addEventListener('click',function(){fteCopierFeuille(b.dataset.emp);});
   });
+  fteAfficherLienFichier(); // le fichier déjà produit reste accessible après chaque redessin
 }
 
 function fteEmpParId(id,data){

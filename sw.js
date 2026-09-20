@@ -1,9 +1,15 @@
 // SA Platform — Service Worker
-// v62 — Correctif : un compte supprimé réapparaissait à la synchronisation suivante. La suppression
+// v63 — Correctif : le fichier Excel de la paie ne sortait pas sur iPhone/iPad. La librairie de mise en
+// forme se charge à la demande, et le téléchargement partait donc APRÈS la fin du geste de l'utilisateur —
+// Safari le bloque alors sans rien afficher. La librairie est maintenant préchargée dès l'ouverture de
+// l'écran de sortie, et le fichier produit reste affiché à l'écran avec un bouton « ⬇️ Ouvrir /
+// télécharger » (plus « 📤 Partager » sur téléphone) qui, lui, ne peut pas être bloqué. Toute erreur de
+// génération affiche désormais un message au lieu d'échouer en silence. Rien d'autre n'a changé.
+// (v62 — Correctif : un compte supprimé réapparaissait à la synchronisation suivante. La suppression
 // n'effaçait que la copie locale ; la ligne restait dans Supabase et le prochain pull la ramenait.
 // La suppression efface maintenant AUSSI la ligne serveur (et la journalise pour la Loi 25). Le même
 // défaut existait sur la suppression d'un véhicule et d'un article d'inventaire : corrigé aux trois
-// endroits. Rien d'autre n'a changé.
+// endroits. Rien d'autre n'a changé.)
 // (v61 — Photos et repérage physique, d'après les maquettes validées. Sur la fiche d'un outil : des photos
 // prises directement avec l'appareil photo de l'iPhone/iPad (même composant que les photos de punch), et
 // un emplacement où il est rangé. Nouveau sous-onglet « 📍 Emplacements » dans Logistique : l'entrepôt et
@@ -188,7 +194,7 @@
 // vérifier un déploiement. Il reflète maintenant la variable APP_BUILD, à garder synchronisée avec ce
 // CACHE_NAME à chaque changement).
 
-var CACHE_NAME = 'sa-platform-v62';
+var CACHE_NAME = 'sa-platform-v63';
 
 // Installation : s'activer tout de suite sans attendre
 self.addEventListener('install', function(event) {
