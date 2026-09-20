@@ -3456,7 +3456,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // a bien pris effet. Il reflète maintenant APP_BUILD ci-dessous, à mettre à jour à CHAQUE fois que
   // CACHE_NAME change dans sw.js (même valeur, ex: 'v48').
   try{
-    var APP_BUILD='v61';
+    var APP_BUILD='v62';
     var vb=document.createElement('div');
     vb.id='__buildBadge';
     vb.textContent='build '+APP_BUILD+' ⟲';
@@ -10004,7 +10004,10 @@ function deleteVehicule(){
   askConfirm('Supprimer ce véhicule ?', _deleteVehiculeDo, '🗑 Supprimer','Supprimer le véhicule');
 }
 function _deleteVehiculeDo(){
-  setFlotte(getFlotte().filter(function(v){return v.id!==vEditId;}));
+  var id=vEditId;
+  setFlotte(getFlotte().filter(function(v){return v.id!==id;}));
+  try{ sbDelete('flotte',id); }catch(e){}          // ⛑ idem : sans suppression serveur, il revenait
+  try{ auditLog('SUPPRESSION','flotte',id); }catch(e){}
   closeModal('flotteModal');renderFlotteList();toast('Véhicule supprimé');
 }
 
@@ -10058,7 +10061,10 @@ function deleteInv(){
   askConfirm('Supprimer ce produit ?', _deleteInvDo, '🗑 Supprimer','Supprimer le produit');
 }
 function _deleteInvDo(){
-  setInv(getInv().filter(function(i){return i.id!==iEditId;}));
+  var id=iEditId;
+  setInv(getInv().filter(function(i){return i.id!==id;}));
+  try{ sbDelete('inventaire',id); }catch(e){}      // ⛑ idem
+  try{ auditLog('SUPPRESSION','inventaire',id); }catch(e){}
   closeModal('invModal');renderInvList();toast('Produit supprimé');
 }
 
@@ -11065,7 +11071,12 @@ function deleteCompte(){
   askConfirm('Supprimer ce compte utilisateur ?', _deleteCompteDo, '🗑 Supprimer','Supprimer le compte');
 }
 function _deleteCompteDo(){
-  setComptes(getComptes().filter(function(c){return c.id!==cEditId;}));
+  var id=cEditId;
+  setComptes(getComptes().filter(function(c){return c.id!==id;}));
+  // ⛑ SUPPRESSION SERVEUR OBLIGATOIRE : sans ça la ligne restait dans Supabase et le compte
+  // réapparaissait à la synchronisation suivante (setComptes ne fait qu'un upsert du reste).
+  try{ sbDelete('comptes',id); }catch(e){}
+  try{ auditLog('SUPPRESSION','comptes',id); }catch(e){}
   closeModal('compteModal');renderComptesList();toast('Compte supprimé');
 }
 
