@@ -1,5 +1,14 @@
 // SA Platform — Service Worker
-// v60 — Nouveau module « Outils / QR », intégré dans l'onglet Logistique (sous-onglets 🔧 Outils et
+// v61 — Photos et repérage physique, d'après les maquettes validées. Sur la fiche d'un outil : des photos
+// prises directement avec l'appareil photo de l'iPhone/iPad (même composant que les photos de punch), et
+// un emplacement où il est rangé. Nouveau sous-onglet « 📍 Emplacements » dans Logistique : l'entrepôt et
+// le bureau en arborescence Bâtiment → Zone → Étagère, avec sous chaque étagère ce qui devrait s'y
+// trouver et un badge quand un outil en est sorti. Chaque étagère a son étiquette QR (EMP-…) imprimable
+// en 3×3 cm : la scanner ouvre directement le contenu attendu de cette étagère, ce qui rend l'inventaire
+// rapide. Les zones et étagères s'éditent dans ⚙️ Config, comme les catégories et les préfixes. La
+// première photo d'un outil sert de vignette dans la liste. Aucune fonction de calcul Temps/Suivi/Cumul
+// touchée.
+// (v60 — Nouveau module « Outils / QR », intégré dans l'onglet Logistique (sous-onglets 🔧 Outils et
 // ⚙️ Config, ce dernier réservé au superviseur/admin) — aucune nouvelle entrée dans la barre de
 // navigation. Catalogue d'outils avec repérage unique auto-incrémenté (PER-0001…) et étiquette QR
 // imprimable 3×3 cm (correction d'erreur L pour rester lisible à cette taille), format de payload
@@ -12,7 +21,7 @@
 // préfixes de repérage et préfixe QR sont éditables dans Config. Trois nouvelles tables serveur (outils,
 // outils_mouvements, logistique_config) synchronisées comme les autres, fonctionnement hors-ligne par
 // localStorage. Aucune fonction de calcul Temps/Suivi/Cumul modifiée : seuls quatre points d'ancrage
-// existants ont été touchés (switchMod, openSortieModal, et les deux chemins de connexion).
+// existants ont été touchés (switchMod, openSortieModal, et les deux chemins de connexion).)
 // (v59 — Mise en page des fichiers Excel refaite d'après les maquettes validées avant codage.
 // « Sommaire paie » : bandeau de titre, trois indicateurs en haut (total équipe, heures supplémentaires,
 // ce qui reste à vérifier), puis six colonnes seulement — la colonne TOTAL, sur fond bleu, est le seul
@@ -174,7 +183,7 @@
 // vérifier un déploiement. Il reflète maintenant la variable APP_BUILD, à garder synchronisée avec ce
 // CACHE_NAME à chaque changement).
 
-var CACHE_NAME = 'sa-platform-v60';
+var CACHE_NAME = 'sa-platform-v61';
 
 // Installation : s'activer tout de suite sans attendre
 self.addEventListener('install', function(event) {

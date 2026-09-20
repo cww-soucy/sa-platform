@@ -1151,6 +1151,7 @@ input,select,textarea{font-size:16px!important}
       <button class="pmm-subtab on" data-mod="sortie">📤 Sortie Inventaire</button>
       <button class="pmm-subtab" data-mod="livraison">🚚 Bon de Livraison</button>
       <button class="pmm-subtab" data-mod="outils">🔧 Outils</button>
+      <button class="pmm-subtab" data-mod="emplacements">📍 Emplacements</button>
       <button class="pmm-subtab" data-mod="logiconfig" data-admin-only="1">⚙️ Config</button>
     </div>
     <div class="search-bar">
@@ -1166,6 +1167,7 @@ input,select,textarea{font-size:16px!important}
       <button class="pmm-subtab" data-mod="sortie">📤 Sortie Inventaire</button>
       <button class="pmm-subtab on" data-mod="livraison">🚚 Bon de Livraison</button>
       <button class="pmm-subtab" data-mod="outils">🔧 Outils</button>
+      <button class="pmm-subtab" data-mod="emplacements">📍 Emplacements</button>
       <button class="pmm-subtab" data-mod="logiconfig" data-admin-only="1">⚙️ Config</button>
     </div>
     <div class="search-bar">
@@ -1214,6 +1216,54 @@ input,select,textarea{font-size:16px!important}
     </div>
   </div>
 
+
+  <!-- ── MODULE : OUTILS / QR ── -->
+<div id="modOutils" class="module" style="display:none">
+  <div class="logi-tabs" style="background:#fff;border-bottom:1px solid var(--line);padding:8px 14px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none">
+    <button class="pmm-subtab" data-mod="sortie">📤 Sortie Inventaire</button>
+    <button class="pmm-subtab" data-mod="livraison">🚚 Bon de Livraison</button>
+    <button class="pmm-subtab on" data-mod="outils">🔧 Outils</button>
+    <button class="pmm-subtab" data-mod="emplacements">📍 Emplacements</button>
+    <button class="pmm-subtab" data-mod="logiconfig" data-admin-only="1">⚙️ Config</button>
+  </div>
+  <div style="padding:10px 14px;background:#fff;border-bottom:1px solid var(--line);display:flex;gap:8px">
+    <button id="toolScanBtn" class="btn btn-primary" style="flex:1">📷 Scanner un outil</button>
+    <button id="toolMyBtn" class="btn btn-ghost" style="flex:1">🔧 Mes outils</button>
+  </div>
+  <div class="search-bar">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="toolSearch" placeholder="Rechercher un outil…"/>
+  </div>
+  <div style="display:flex;overflow-x:auto;scrollbar-width:none;background:#fff;border-bottom:1px solid var(--line);padding:8px 10px;gap:6px" id="toolFilterBar"></div>
+  <div class="main" id="toolList" style="padding-top:10px"></div>
+</div>
+
+<!-- ── MODULE : EMPLACEMENTS ── -->
+<div id="modEmplacements" class="module" style="display:none">
+  <div class="logi-tabs" style="background:#fff;border-bottom:1px solid var(--line);padding:8px 14px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none">
+    <button class="pmm-subtab" data-mod="sortie">📤 Sortie Inventaire</button>
+    <button class="pmm-subtab" data-mod="livraison">🚚 Bon de Livraison</button>
+    <button class="pmm-subtab" data-mod="outils">🔧 Outils</button>
+    <button class="pmm-subtab on" data-mod="emplacements">📍 Emplacements</button>
+    <button class="pmm-subtab" data-mod="logiconfig" data-admin-only="1">⚙️ Config</button>
+  </div>
+  <div style="padding:10px 14px;background:#fff;border-bottom:1px solid var(--line);display:flex;gap:8px">
+    <button id="empScanBtn" class="btn btn-primary" style="flex:1">📷 Scanner une étagère</button>
+  </div>
+  <div class="main" id="empContent" style="padding-top:10px"></div>
+</div>
+
+<!-- ── MODULE : CONFIG LOGISTIQUE ── -->
+<div id="modLogiConfig" class="module" style="display:none">
+  <div class="logi-tabs" style="background:#fff;border-bottom:1px solid var(--line);padding:8px 14px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none">
+    <button class="pmm-subtab" data-mod="sortie">📤 Sortie Inventaire</button>
+    <button class="pmm-subtab" data-mod="livraison">🚚 Bon de Livraison</button>
+    <button class="pmm-subtab" data-mod="outils">🔧 Outils</button>
+    <button class="pmm-subtab" data-mod="emplacements">📍 Emplacements</button>
+    <button class="pmm-subtab on" data-mod="logiconfig" data-admin-only="1">⚙️ Config</button>
+  </div>
+  <div class="main" id="logiConfigContent" style="padding-top:10px"></div>
+</div>
 
   <!-- FABs centralisés - hors des modules pour éviter pointer-events:none -->
   <button class="fab" id="pmAddBtn"      style="display:none">＋</button>
@@ -1869,37 +1919,6 @@ input,select,textarea{font-size:16px!important}
   </div>
 </div>
 
-<!-- ── MODULE : OUTILS / QR ── -->
-<div id="modOutils" class="module" style="display:none">
-  <div class="logi-tabs" style="background:#fff;border-bottom:1px solid var(--line);padding:8px 14px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none">
-    <button class="pmm-subtab" data-mod="sortie">📤 Sortie Inventaire</button>
-    <button class="pmm-subtab" data-mod="livraison">🚚 Bon de Livraison</button>
-    <button class="pmm-subtab on" data-mod="outils">🔧 Outils</button>
-    <button class="pmm-subtab" data-mod="logiconfig" data-admin-only="1">⚙️ Config</button>
-  </div>
-  <div style="padding:10px 14px;background:#fff;border-bottom:1px solid var(--line);display:flex;gap:8px">
-    <button id="toolScanBtn" class="btn btn-primary" style="flex:1">📷 Scanner un outil</button>
-    <button id="toolMyBtn" class="btn btn-ghost" style="flex:1">🔧 Mes outils</button>
-  </div>
-  <div class="search-bar">
-    <span class="search-icon">🔍</span>
-    <input type="text" id="toolSearch" placeholder="Rechercher un outil…"/>
-  </div>
-  <div style="display:flex;overflow-x:auto;scrollbar-width:none;background:#fff;border-bottom:1px solid var(--line);padding:8px 10px;gap:6px" id="toolFilterBar"></div>
-  <div class="main" id="toolList" style="padding-top:10px"></div>
-</div>
-
-<!-- ── MODULE : CONFIG LOGISTIQUE ── -->
-<div id="modLogiConfig" class="module" style="display:none">
-  <div class="logi-tabs" style="background:#fff;border-bottom:1px solid var(--line);padding:8px 14px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none">
-    <button class="pmm-subtab" data-mod="sortie">📤 Sortie Inventaire</button>
-    <button class="pmm-subtab" data-mod="livraison">🚚 Bon de Livraison</button>
-    <button class="pmm-subtab" data-mod="outils">🔧 Outils</button>
-    <button class="pmm-subtab on" data-mod="logiconfig" data-admin-only="1">⚙️ Config</button>
-  </div>
-  <div class="main" id="logiConfigContent" style="padding-top:10px"></div>
-</div>
-
 <button class="fab" id="toolAddBtn" style="display:none">＋</button>
 
 <!-- Modal : Action sur un outil (prendre / retourner) -->
@@ -1936,6 +1955,10 @@ input,select,textarea{font-size:16px!important}
       <input type="text" id="tNom" placeholder="Perceuse Milwaukee M18" autocomplete="off"/></div>
     <div class="mfield"><label>Catégorie</label>
       <select id="tCat"></select></div>
+    <div class="mfield"><label>Emplacement (où il est rangé)</label>
+      <select id="tEmp"></select></div>
+    <div class="mfield"><label>Photos de l'outil</label>
+      <div id="tPhotoZone"></div></div>
     <div class="mfield"><label>Notes / n° de série</label>
       <textarea id="tNotes" placeholder="Numéro de série, particularités…"></textarea></div>
     <div class="mfield">
@@ -3433,7 +3456,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // a bien pris effet. Il reflète maintenant APP_BUILD ci-dessous, à mettre à jour à CHAQUE fois que
   // CACHE_NAME change dans sw.js (même valeur, ex: 'v48').
   try{
-    var APP_BUILD='v60';
+    var APP_BUILD='v61';
     var vb=document.createElement('div');
     vb.id='__buildBadge';
     vb.textContent='build '+APP_BUILD+' ⟲';
@@ -3925,7 +3948,7 @@ function doLogout(){
 // ═══════════════════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════════════════
-var modMap={accueil:'modAccueil',plan:'modPlan',planmatch:'modPlanMatch',planning:'modPlanning',ft:'modFT',suivi:'modSuivi',wo:'modWO',sites:'modSites',flotte:'modFlotte',inventaire:'modInv',sortie:'modSortie',livraison:'modLivraison',hivernage:'modHivernage',comptes:'modComptes',stats:'modStats',map:'modMap',outils:'modOutils',logiconfig:'modLogiConfig'};
+var modMap={accueil:'modAccueil',plan:'modPlan',planmatch:'modPlanMatch',planning:'modPlanning',ft:'modFT',suivi:'modSuivi',wo:'modWO',sites:'modSites',flotte:'modFlotte',inventaire:'modInv',sortie:'modSortie',livraison:'modLivraison',hivernage:'modHivernage',comptes:'modComptes',stats:'modStats',map:'modMap',outils:'modOutils',logiconfig:'modLogiConfig',emplacements:'modEmplacements'};
 
 function switchMod(mod){
   if(!hasDroit(mod))return;
@@ -3962,6 +3985,7 @@ function switchMod(mod){
   else if(mod==='comptes')renderComptesList();
   else if(mod==='stats')renderStats();
   else if(mod==='outils'){ renderToolList(); if(typeof syncPull==='function') syncPull('outils'); }
+  else if(mod==='emplacements'){ renderEmplacements(); if(typeof syncPull==='function'){ syncPull('outils'); syncPull('logicfg'); } }
   else if(mod==='logiconfig'){ renderLogiConfig(); if(typeof syncPull==='function'){ syncPull('logicfg'); syncPull('outils'); } }
   else if(mod==='map')initMap();
 }
@@ -11969,7 +11993,10 @@ function renderToolList(){
       :t.status==='maintenance'?'<span class="badge badge-red">🔧 Maintenance</span>'
       :'<span class="badge badge-green">✅ Disponible</span>';
     var row=document.createElement('div'); row.className='tool-row';
-    row.innerHTML='<div class="tool-icon">'+toolCatIcon(t.categorie_id)+'</div>'+
+    var vignette = (t.photos&&t.photos.length)
+      ? '<img class="tool-icon" src="'+t.photos[0].data+'" style="object-fit:cover"/>'
+      : '<div class="tool-icon">'+toolCatIcon(t.categorie_id)+'</div>';
+    row.innerHTML=vignette+
       '<div class="tool-body"><div class="tool-name">'+esc(t.nom)+'</div><div class="tool-meta">'+badge+
       (holder?'<span style="color:'+(mine?'var(--green)':'var(--red)')+';font-weight:700">👤 '+esc(holder)+'</span>':'')+
       '<span style="font-size:10px;color:var(--hint);font-family:monospace">'+esc(t.reperage||'')+'</span></div></div>'+
@@ -11993,8 +12020,16 @@ function openToolAction(tool){
   var si=tool.status==='disponible'?'✅':tool.status==='maintenance'?'🔧':'📤';
   var stx=tool.status==='disponible'?'Disponible':tool.status==='maintenance'?'En maintenance':'Sorti par '+esc(holder);
   h+='<div class="status-widget '+sc+'"><div class="ic">'+si+'</div><div class="txt">'+stx+'</div></div>';
+  if(tool.photos&&tool.photos.length){
+    h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">';
+    tool.photos.slice(0,4).forEach(function(ph){
+      h+='<img src="'+ph.data+'" style="width:76px;height:76px;object-fit:cover;border-radius:10px;border:1px solid var(--line)"/>';
+    });
+    h+='</div>';
+  }
   h+='<div class="card" style="padding:12px 14px;margin-bottom:14px"><div style="font-weight:800;font-size:14px;color:var(--dk)">'+esc(tool.nom)+'</div>'+
      '<div style="font-size:11px;color:var(--muted);font-family:monospace;margin-top:4px">'+esc(tool.reperage||'')+'</div>'+
+     (tool.emplacement?'<div style="font-size:12px;color:var(--blue);font-weight:700;margin-top:6px">📍 '+esc(empLibelle(tool.emplacement))+'</div>':'')+
      (tool.notes?'<div style="font-size:11.5px;color:var(--muted);margin-top:6px">'+esc(tool.notes)+'</div>':'')+'</div>';
   if(tool.status==='disponible'){
     h+= ctx ? '<button class="btn btn-success btn-full" id="toolTakeBtn" style="margin-bottom:8px">✅ Prendre cet outil</button>'
@@ -12109,6 +12144,9 @@ function openToolForm(tool){
     document.getElementById('tNom').value='';
     document.getElementById('tNotes').value='';
   }
+  peuplerEmpSelect(tool?tool.emplacement:'');
+  _toolPhotos = tool&&tool.photos ? tool.photos.slice() : [];
+  renderToolPhotos();
   document.getElementById('tDeleteBtn').style.display=tool?'flex':'none';
   function refreshQr(){
     var num=document.getElementById('tNum').value;
@@ -12141,7 +12179,10 @@ function saveTool(){
     if(!t) return;
     if(t.reperage!==reperage&&tools.some(function(x){ return x.reperage===reperage; })){ toast('⚠️ Ce repérage existe déjà'); return; }
     t.reperage=reperage; t.nom=nom; t.categorie_id=cat; t.qr_payload=payload;
-    t.notes=document.getElementById('tNotes').value.trim(); t.updatedAt=new Date().toISOString();
+    t.notes=document.getElementById('tNotes').value.trim();
+    t.emplacement=document.getElementById('tEmp').value||'';
+    t.photos=_toolPhotos.slice();
+    t.updatedAt=new Date().toISOString();
     setTools(tools); sbPush('outils',t);
     try{ auditLog('MODIFICATION','outils',t.id,{reperage:reperage}); }catch(e){}
   }else{
@@ -12149,6 +12190,7 @@ function saveTool(){
     var nv={ id:uid(), reperage:reperage, nom:nom, categorie_id:cat, qr_payload:payload, status:'disponible',
       current_holder:'', current_holder_name:'', current_punch_task_id:'', current_punch_week:'',
       notes:document.getElementById('tNotes').value.trim(),
+      emplacement:document.getElementById('tEmp').value||'', photos:_toolPhotos.slice(),
       createdAt:new Date().toISOString(), updatedAt:new Date().toISOString() };
     tools.push(nv); setTools(tools); sbPush('outils',nv);
     bumpPrefixCounter(pre);
@@ -12249,6 +12291,8 @@ function handleToolQrScan(text){
     setTimeout(function(){ addScannedProductToSortie(produit,parsed); },200);
     return;
   }
+  if(/^EMP-/i.test(parsed.reperage)){ closeToolScanner(); var idEmp=parsed.reperage.toUpperCase();
+    setTimeout(function(){ ouvrirEmplacement(idEmp); },200); return; }
   var tool=getTools().find(function(t){ return t.reperage===parsed.reperage; });
   closeToolScanner();
   if(!tool){ toast('⚠️ Outil inconnu : '+parsed.reperage); return; }
@@ -12343,7 +12387,50 @@ function renderLogiConfig(){
   });
   el.appendChild(preCard);
 
+  var empCard=document.createElement('div'); empCard.className='card';
+  empCard.innerHTML='<div class="card-hd"><div class="card-hd-t">📍 Emplacements (entrepôt / bureau)</div><button class="btn btn-sm btn-ghost" id="addEmpBtn">＋ Ajouter</button></div>';
+  var emps=getEmplacements();
+  emps.forEach(function(e){
+    var n=outilsDeEmp(e.id).length;
+    var row=document.createElement('div'); row.className='cat-row';
+    row.innerHTML='<div class="icon">'+(e.bat==='Bureau'?'🏢':'🏭')+'</div>'+
+      '<div class="label">'+esc(e.nom)+'<div style="font-size:10.5px;color:var(--muted);font-weight:600">'+esc(e.bat+' · '+e.zone)+'</div></div>'+
+      '<div class="count">'+n+'</div>'+
+      '<div class="actions"><button data-eact="edit" data-id="'+esc(e.id)+'">✏️</button><button data-eact="del" data-id="'+esc(e.id)+'">🗑</button></div>';
+    empCard.appendChild(row);
+  });
+  el.appendChild(empCard);
+  empCard.querySelector('#addEmpBtn').addEventListener('click',function(){
+    var bat=prompt('Bâtiment (Entrepôt / Bureau) :','Entrepôt'); if(!bat) return;
+    var zone=prompt('Zone :',''); if(!zone) return;
+    var nom=prompt('Étagère / local :',''); if(!nom) return;
+    var id=prompt('Code de repérage (ex: EMP-C1) :','EMP-'); if(!id) return;
+    id=id.toUpperCase().replace(/[^A-Z0-9-]/g,'');
+    if(!id||emps.some(function(x){return x.id===id;})){ toast('⚠️ Code invalide ou déjà pris'); return; }
+    emps.push({id:id,bat:bat,zone:zone,nom:nom}); setLogiConfig('emplacements',emps);
+    try{ auditLog('CREATION','logistique_config','emplacements',{ajout:id}); }catch(err){}
+    renderLogiConfig(); toast('✅ Emplacement ajouté');
+  });
+  empCard.querySelectorAll('[data-eact]').forEach(function(b){
+    b.addEventListener('click',function(){
+      var e=emps.find(function(x){return x.id===b.dataset.id;}); if(!e) return;
+      if(b.dataset.eact==='edit'){
+        var z=prompt('Zone :',e.zone); if(z===null) return;
+        var nm=prompt('Étagère / local :',e.nom); if(nm===null) return;
+        e.zone=z||e.zone; e.nom=nm||e.nom; setLogiConfig('emplacements',emps); renderLogiConfig();
+      }else{
+        var used=outilsDeEmp(e.id).length;
+        if(used>0){ toast('⚠️ '+used+' outil(s) rangé(s) ici'); return; }
+        askConfirm('Supprimer cet emplacement ?',function(){
+          emps.splice(emps.findIndex(function(x){return x.id===e.id;}),1);
+          setLogiConfig('emplacements',emps); renderLogiConfig();
+        },'🗑 Supprimer','Confirmation');
+      }
+    });
+  });
+
   var qrCard=document.createElement('div'); qrCard.className='card';
+
   qrCard.innerHTML='<div class="card-hd"><div class="card-hd-t">🏷 Préfixe QR global</div></div>'+
     '<div style="padding:14px"><div class="mfield"><label>Préfixe</label><input type="text" id="qrPrefixInp" value="'+esc(getLogiConfig('qr_prefix'))+'"/></div>'+
     '<div style="font-size:11px;color:var(--muted);margin-top:-6px">Format final : <code>'+esc(getLogiConfig('qr_prefix'))+'{repérage}|{nom}</code></div>'+
@@ -12413,6 +12500,7 @@ function initToolModule(){
   bind('toolSearch','input',renderToolList);
   bind('toolScanBtn','click',function(){ openToolScanner('outil'); });
   bind('toolMyBtn','click',openMyTools);
+  bind('empScanBtn','click',function(){ openToolScanner('outil'); });
   bind('toolAddBtn','click',function(){ openToolForm(null); });
   bind('toolModalClose','click',function(){ closeModal('toolModal'); });
   bind('toolScanClose','click',closeToolScanner);
@@ -12434,6 +12522,150 @@ function initToolModule(){
       }).subscribe();
     }catch(e){ _toolRtSub=false; }
   }
+}
+
+
+// ═══════════════════════════════════════════════════════
+// EMPLACEMENTS + PHOTOS (v61) — repérage physique des outils
+// Une arborescence Bâtiment → Zone → Étagère, éditable dans Config comme les catégories.
+// Chaque étagère a son étiquette QR (EMP-…) : on la scanne et l'app affiche ce qui devrait s'y trouver.
+// ═══════════════════════════════════════════════════════
+var _toolPhotos=[], _empOuvert={};
+
+var EMP_DEFAUT=[
+  {id:'EMP-A1',bat:'Entrepôt',zone:'Zone A — Chimiques',nom:'Étagère 1'},
+  {id:'EMP-A2',bat:'Entrepôt',zone:'Zone A — Chimiques',nom:'Étagère 2'},
+  {id:'EMP-B3',bat:'Entrepôt',zone:'Zone B — Outils',nom:'Étagère 3'},
+  {id:'EMP-B4',bat:'Entrepôt',zone:'Zone B — Outils',nom:'Étagère 4'},
+  {id:'EMP-BUR1',bat:'Bureau',zone:'Local technique',nom:'Armoire 1'}
+];
+function getEmplacements(){
+  var e=getLogiConfig('emplacements');
+  return (e&&e.length)?e:EMP_DEFAUT;
+}
+function empById(id){ return getEmplacements().find(function(x){return x.id===id;})||null; }
+function empLibelle(id){
+  var e=empById(id);
+  return e?(e.bat+' · '+e.zone+' · '+e.nom):'';
+}
+function empQrPayload(e){ return getLogiConfig('qr_prefix')+e.id+'|'+e.bat+' '+e.nom; }
+
+// Outils rangés à cet emplacement
+function outilsDeEmp(id){ return getTools().filter(function(t){return t.emplacement===id;}); }
+
+function renderEmplacements(){
+  var el=document.getElementById('empContent');
+  if(!el) return;
+  var emps=getEmplacements(), tools=getTools();
+  var bats=[], parBat={};
+  emps.forEach(function(e){
+    if(!parBat[e.bat]){parBat[e.bat]=[];bats.push(e.bat);}
+    parBat[e.bat].push(e);
+  });
+  var h='';
+  bats.forEach(function(bat){
+    var liste=parBat[bat];
+    var nbItems=liste.reduce(function(s,e){return s+outilsDeEmp(e.id).length;},0);
+    h+='<div class="card" style="overflow:hidden;margin-bottom:12px">'
+      +'<div style="background:'+(bat==='Bureau'?'var(--blue)':'var(--navy)')+';color:#fff;padding:11px 13px;display:flex;align-items:center;gap:9px">'
+      +'<span style="font-size:16px">'+(bat==='Bureau'?'🏢':'🏭')+'</span>'
+      +'<div style="flex:1;font-size:13.5px;font-weight:800">'+esc(bat)+'</div>'
+      +'<div style="font-size:11.5px;opacity:.85">'+nbItems+' item'+(nbItems>1?'s':'')+'</div></div>';
+    var zones=[], parZone={};
+    liste.forEach(function(e){ if(!parZone[e.zone]){parZone[e.zone]=[];zones.push(e.zone);} parZone[e.zone].push(e); });
+    zones.forEach(function(z){
+      var nbZ=parZone[z].reduce(function(s,e){return s+outilsDeEmp(e.id).length;},0);
+      h+='<div style="padding:9px 13px;border-bottom:1px solid var(--line2);display:flex;align-items:center;gap:9px;background:var(--surface)">'
+        +'<div style="flex:1;font-size:12.5px;font-weight:700;color:var(--dk)">'+esc(z)+'</div>'
+        +'<div style="font-size:11px;color:var(--muted)">'+nbZ+'</div></div>';
+      parZone[z].forEach(function(e){
+        var dedans=outilsDeEmp(e.id);
+        var sortis=dedans.filter(function(t){return t.status==='sorti';}).length;
+        h+='<div class="emp-ligne" data-emp="'+esc(e.id)+'" style="padding:9px 13px 9px 30px;border-bottom:1px solid var(--line2);display:flex;align-items:center;gap:9px;cursor:pointer">'
+          +'<div style="flex:1;min-width:0"><div style="font-size:12.5px;color:var(--dk)">'+esc(e.nom)+'</div>'
+          +'<div style="font-size:10.5px;color:var(--muted);margin-top:2px">'
+          +(dedans.length?esc(dedans.slice(0,3).map(function(t){return t.nom;}).join(' · '))+(dedans.length>3?' …':''):'vide')+'</div></div>'
+          +(sortis?'<span class="badge badge-orange" style="font-size:10px">'+sortis+' sorti'+(sortis>1?'s':'')+'</span>':'')
+          +'<div style="font-size:10px;color:var(--hint);font-family:monospace">'+esc(e.id)+'</div></div>';
+      });
+    });
+    h+='</div>';
+  });
+  var sansEmp=tools.filter(function(t){return !t.emplacement;}).length;
+  if(sansEmp) h+='<div style="background:var(--obg);border-radius:var(--rs);padding:10px 12px;font-size:11.5px;color:#a35400;font-weight:700;margin-bottom:12px">📍 '+sansEmp+' outil'+(sansEmp>1?'s'
+    :'')+' sans emplacement — ouvre la fiche pour en assigner un.</div>';
+  h+='<div style="background:var(--blue-lt);border-radius:var(--rs);padding:11px 13px;font-size:11.5px;color:var(--blue);font-weight:600">💡 Chaque étagère a son étiquette QR. Scanne-la pour voir ce qui devrait s\'y trouver.</div>';
+  el.innerHTML=h;
+  el.querySelectorAll('.emp-ligne').forEach(function(r){
+    r.addEventListener('click',function(){ ouvrirEmplacement(r.dataset.emp); });
+  });
+}
+
+function ouvrirEmplacement(id){
+  var e=empById(id);
+  if(!e){ toast('⚠️ Emplacement inconnu : '+id); return; }
+  var dedans=outilsDeEmp(id);
+  document.getElementById('toolModalTitle').textContent='📍 '+e.nom;
+  var h='<div style="background:var(--blue-lt);border-radius:var(--rs);padding:11px 13px;margin-bottom:12px">'
+    +'<div style="font-size:13px;font-weight:800;color:var(--dk)">'+esc(e.bat+' · '+e.zone)+'</div>'
+    +'<div style="font-size:11px;color:var(--muted);font-family:monospace;margin-top:3px">'+esc(e.id)+'</div></div>';
+  if(!dedans.length){
+    h+='<div class="empty"><div class="ei">🫙</div><h3>Rien ici</h3><p>Aucun outil n\'est assigné à cet emplacement.</p></div>';
+  }else{
+    h+='<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:7px">Devrait s\'y trouver ('+dedans.length+')</div>';
+    dedans.forEach(function(t){
+      var ok=(t.status==='disponible');
+      h+='<div class="tool-row" data-id="'+t.id+'"><div class="tool-icon">'+toolCatIcon(t.categorie_id)+'</div>'
+        +'<div class="tool-body"><div class="tool-name">'+esc(t.nom)+'</div><div class="tool-meta">'
+        +(ok?'<span class="badge badge-green">✅ Devrait être là</span>'
+            :'<span class="badge badge-orange">📤 Sorti — '+esc(t.current_holder_name||empName(t.current_holder))+'</span>')
+        +'<span style="font-size:10px;color:var(--hint);font-family:monospace">'+esc(t.reperage||'')+'</span></div></div></div>';
+    });
+  }
+  h+='<button class="btn btn-ghost btn-full" id="empPrintBtn" style="margin-top:12px">🖨️ Imprimer l\'étiquette de cet emplacement</button>';
+  document.getElementById('toolModalBody').innerHTML=h;
+  document.querySelectorAll('#toolModalBody .tool-row').forEach(function(r){
+    r.addEventListener('click',function(){
+      var t=getTools().find(function(x){return x.id===r.dataset.id;});
+      if(t){ closeModal('toolModal'); setTimeout(function(){ openToolAction(t); },120); }
+    });
+  });
+  document.getElementById('empPrintBtn').addEventListener('click',function(){ printEmpLabel(e); });
+  openModal('toolModal');
+}
+
+function printEmpLabel(e){
+  document.getElementById('pmmPrintArea').innerHTML=
+    '<div class="pmm-print-doc" style="text-align:center">'
+    +'<div style="display:inline-block;width:3cm;height:3cm;border:1px dashed #bbb;padding:1mm;box-sizing:border-box;'
+    +'display:flex;flex-direction:column;align-items:center;justify-content:center">'
+    +'<div id="printEmpQr" style="line-height:0"></div>'
+    +'<div style="font-size:6pt;font-weight:700;margin-top:1mm;font-family:Arial">'+esc(e.id)+'</div>'
+    +'<div style="font-size:5pt;font-family:Arial">'+esc(e.nom)+'</div></div></div>';
+  var h=document.getElementById('printEmpQr');
+  if(h&&typeof QRCode!=='undefined'){
+    new QRCode(h,{text:empQrPayload(e),width:78,height:78,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.L});
+    setTimeout(function(){ window.print(); },250);
+  }else{ toast('⚠️ Générateur QR non chargé'); }
+}
+
+// Photos d'outil — réutilise le composant photo déjà utilisé au punch (caméra native iPhone/iPad)
+function renderToolPhotos(){
+  var z=document.getElementById('tPhotoZone');
+  if(!z||typeof pmmRenderPhotos!=='function') return;
+  pmmRenderPhotos(z,_toolPhotos,function(i){ _toolPhotos.splice(i,1); renderToolPhotos(); },
+    function(dataUrl){ _toolPhotos.push({data:dataUrl,name:'photo',addedBy:currentUser?currentUser.id:'',addedAt:new Date().toISOString()}); renderToolPhotos(); });
+}
+function peuplerEmpSelect(val){
+  var s=document.getElementById('tEmp');
+  if(!s) return;
+  s.innerHTML='<option value="">— Aucun —</option>';
+  getEmplacements().forEach(function(e){
+    var o=document.createElement('option'); o.value=e.id;
+    o.textContent=e.bat+' · '+e.zone+' · '+e.nom;
+    s.appendChild(o);
+  });
+  s.value=val||'';
 }
 
 </script>
