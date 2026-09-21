@@ -1,10 +1,19 @@
 // SA Platform — Service Worker
-// v63 — Correctif : le fichier Excel de la paie ne sortait pas sur iPhone/iPad. La librairie de mise en
+// v64 — Correctif majeur sur les feuilles de temps : les corrections faites à la main ne sont plus
+// défaites par la synchronisation. Avant, la fusion local/serveur était une simple union sans savoir
+// quel côté était le plus récent : un punch supprimé revenait, une heure corrigée à la baisse était
+// annulée par l'ancienne valeur, et changer l'heure de début ou le lieu créait un doublon. Chaque
+// punch corrigé porte maintenant une identité stable et l'heure de sa dernière modification — la
+// version la plus récente gagne — et une suppression laisse une trace qui voyage avec la semaine,
+// donc le punch ne peut plus ressusciter. De plus, l'écran Temps ne se recharge plus par-dessus une
+// correction en cours : la sauvegarde renvoyait un événement temps réel qui réaffichait l'ancienne
+// version. Aucun calcul d'heures modifié.
+// (v63 — Correctif : le fichier Excel de la paie ne sortait pas sur iPhone/iPad. La librairie de mise en
 // forme se charge à la demande, et le téléchargement partait donc APRÈS la fin du geste de l'utilisateur —
 // Safari le bloque alors sans rien afficher. La librairie est maintenant préchargée dès l'ouverture de
 // l'écran de sortie, et le fichier produit reste affiché à l'écran avec un bouton « ⬇️ Ouvrir /
 // télécharger » (plus « 📤 Partager » sur téléphone) qui, lui, ne peut pas être bloqué. Toute erreur de
-// génération affiche désormais un message au lieu d'échouer en silence. Rien d'autre n'a changé.
+// génération affiche désormais un message au lieu d'échouer en silence. Rien d'autre n'a changé.)
 // (v62 — Correctif : un compte supprimé réapparaissait à la synchronisation suivante. La suppression
 // n'effaçait que la copie locale ; la ligne restait dans Supabase et le prochain pull la ramenait.
 // La suppression efface maintenant AUSSI la ligne serveur (et la journalise pour la Loi 25). Le même
@@ -194,7 +203,7 @@
 // vérifier un déploiement. Il reflète maintenant la variable APP_BUILD, à garder synchronisée avec ce
 // CACHE_NAME à chaque changement).
 
-var CACHE_NAME = 'sa-platform-v63';
+var CACHE_NAME = 'sa-platform-v64';
 
 // Installation : s'activer tout de suite sans attendre
 self.addEventListener('install', function(event) {

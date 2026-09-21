@@ -2096,7 +2096,7 @@ var woPjFiles = [];
 var sitePjFiles = [];
 var mPjFiles = [];
 
-function makeDay(){return{status:'idle',activeTask:null,tasks:[],saved:false,kmArr:'',stopFiles:[]};}
+function makeDay(){return{status:'idle',activeTask:null,tasks:[],saved:false,kmArr:'',stopFiles:[],del:[]};}
 var chronoState = [];
 for(var _i=0;_i<7;_i++) chronoState.push(makeDay());
 
@@ -2756,36 +2756,99 @@ function mergeById(localArr, serverArr){
 // ➕ Fusionne deux journées de punchs SANS jamais perdre un punch local.
 // Règle : on garde l'union des punchs des deux côtés (identifiés par heure de début + lieu).
 // Un punch actif (sans heure de fin) local est TOUJOURS conservé — c'est la journée en cours.
+// ═══ FUSION D'UNE JOURNÉE DE FEUILLE DE TEMPS (local ↔ serveur) ═══
+// Historique du bug corrigé en v64 : la fusion était une simple UNION des punchs, sans savoir
+// lequel des deux côtés était le plus récent. Conséquences pour qui corrigeait des heures :
+//   • un punch supprimé revenait à la synchro suivante (le serveur l'avait encore) ;
+//   • une heure corrigée à la BAISSE était annulée (l'ancienne version, plus longue, « gagnait ») ;
+//   • changer l'heure de début ou le lieu créait un doublon (la signature servait de clé).
+// Maintenant : chaque punch touché à la main reçoit une identité stable (k) et l'heure de sa
+// dernière modification (mod) ; la version la plus récente gagne. Les suppressions laissent une
+// pierre tombale (del) qui voyage avec la semaine, donc le punch ne peut plus ressusciter.
+function _ftSig(t){ return (t&&t.start||'')+'|'+(t&&t.lieu||''); }
+function _ftMod(t){ return (t&&t.mod)||0; }
+// Marque un punch comme modifié à la main (identité stable + horodatage).
+// À appeler AVANT de changer l'heure ou le lieu : la signature d'origine (k0) sert à retrouver
+// la version que le serveur possède encore.
+function ftMarquerModif(t){
+  if(!t)return t;
+  if(!t.k){ t.k0=_ftSig(t); t.k=uid(); }
+  t.mod=Date.now();
+  return t;
+}
+// Pierre tombale : mémorise qu'un punch a été supprimé, pour que la synchro ne le ramène pas.
+function ftTombstone(dayIdx,t){
+  if(!t)return;
+  var d=chronoState[dayIdx]; if(!d)return;
+  if(!d.del)d.del=[];
+  d.del.push({k:t.k||'',sig:_ftSig(t),at:Date.now()});
+}
+function _ftFusionDel(a,b){
+  var out=[], vus={}, limite=Date.now()-90*86400000; // on oublie les suppressions de plus de 90 jours
+  (a||[]).concat(b||[]).forEach(function(d){
+    if(!d||!(d.at>limite))return;
+    var k=(d.k||'')+'~'+(d.sig||'');
+    if(vus[k]===undefined){ vus[k]=out.length; out.push({k:d.k||'',sig:d.sig||'',at:d.at}); }
+    else if(d.at>out[vus[k]].at) out[vus[k]].at=d.at;
+  });
+  return out;
+}
+function _ftDelViseTache(d,t){
+  if(d.k && t.k) return d.k===t.k;
+  return d.sig===_ftSig(t) || (t.k0 && d.sig===t.k0);
+}
 function mergeFTDay(localDay, serverDay){
   localDay = localDay || {tasks:[], status:'idle'};
   serverDay = serverDay || {tasks:[], status:'idle'};
-  var lt = localDay.tasks || [], st = serverDay.tasks || [];
-  var out = [], seen = {};
-  function sig(t){ return (t.start||'')+'|'+(t.lieu||''); }
-  function add(t){
-    var k = sig(t);
-    if(!(k in seen)){ seen[k]=out.length; out.push(t); return; }
-    // Même punch des deux côtés : on garde celui qui a le plus d'information (terminé > en cours, plus d'heures)
-    var prev = out[seen[k]];
-    var prevScore = (prev.end?2:0) + (prev.hrs||0)/1000;
-    var curScore  = (t.end?2:0)   + (t.hrs||0)/1000;
-    if(curScore > prevScore){
-      // ➕ Le serveur ne stocke plus les vraies photos (allégées).
-      // Si la version locale a de VRAIES photos, on les conserve en fusionnant.
-      var photosLocales=(prev.files||[]).filter(function(f){return f&&f.data;});
-      var recusLocaux=(prev.stopFiles||[]).filter(function(f){return f&&f.data;});
-      var remplacant=Object.assign({},t);
-      if(photosLocales.length && !(t.files||[]).some(function(f){return f&&f.data;})) remplacant.files=prev.files;
-      if(recusLocaux.length && !(t.stopFiles||[]).some(function(f){return f&&f.data;})) remplacant.stopFiles=prev.stopFiles;
-      out[seen[k]] = remplacant;
+  var lt = (localDay.tasks||[]).slice(), st = serverDay.tasks || [];
+  var del = _ftFusionDel(localDay.del, serverDay.del);
+  var out = lt.slice(), parK = {}, parSig = {};
+  out.forEach(function(t,i){
+    if(t.k)parK[t.k]=i;
+    if(parSig[_ftSig(t)]===undefined)parSig[_ftSig(t)]=i;
+    if(t.k0 && parSig[t.k0]===undefined)parSig[t.k0]=i;
+  });
+  st.forEach(function(sv){
+    var i = (sv.k!==undefined && sv.k!==null && parK[sv.k]!==undefined) ? parK[sv.k] : parSig[_ftSig(sv)];
+    if(i===undefined){ // punch que ce téléphone n'a jamais vu → on l'ajoute
+      out.push(sv); i=out.length-1;
+      if(sv.k)parK[sv.k]=i;
+      if(parSig[_ftSig(sv)]===undefined)parSig[_ftSig(sv)]=i;
+      return;
     }
+    var loc=out[i], lm=_ftMod(loc), sm=_ftMod(sv), gagnant;
+    if(lm||sm){
+      gagnant = (sm>lm) ? sv : loc;            // la correction la plus récente l'emporte
+    }else{
+      // Aucun des deux n'a été corrigé à la main : on garde celui qui porte le plus d'information
+      // (un punch terminé vaut mieux qu'un punch en cours) — comportement d'avant, conservé.
+      var ls=(loc.end?2:0)+(loc.hrs||0)/1000, ss=(sv.end?2:0)+(sv.hrs||0)/1000;
+      gagnant = (ss>ls) ? sv : loc;
+    }
+    if(gagnant!==loc){
+      // Le serveur ne stocke pas les vraies photos (allégées) : on garde celles du téléphone.
+      var photosLocales=(loc.files||[]).filter(function(f){return f&&f.data;});
+      var recusLocaux=(loc.stopFiles||[]).filter(function(f){return f&&f.data;});
+      var remplacant=Object.assign({},gagnant);
+      if(photosLocales.length && !(gagnant.files||[]).some(function(f){return f&&f.data;})) remplacant.files=loc.files;
+      if(recusLocaux.length && !(gagnant.stopFiles||[]).some(function(f){return f&&f.data;})) remplacant.stopFiles=loc.stopFiles;
+      out[i]=remplacant;
+    }
+  });
+  // Les punchs supprimés à la main ne reviennent pas — sauf s'ils ont été recréés APRÈS la suppression.
+  if(del.length){
+    out=out.filter(function(t){
+      for(var i=0;i<del.length;i++){
+        if(_ftDelViseTache(del[i],t) && _ftMod(t)<=del[i].at) return false;
+      }
+      return true;
+    });
   }
-  lt.forEach(add);  // le local d'abord : ses punchs sont la référence
-  st.forEach(add);  // le serveur complète, ne remplace jamais
   out.sort(function(a,b){ return (a.start||'').localeCompare(b.start||''); });
   var hasActive = out.some(function(t){ return t.active || !t.end; });
   return {
     tasks: out,
+    del: del,
     status: hasActive ? 'running' : (out.length ? (localDay.status==='idle'?'done':localDay.status) : 'idle'),
     saved: localDay.saved || serverDay.saved || false,
     kmArr: localDay.kmArr || serverDay.kmArr || '',
@@ -3072,11 +3135,22 @@ function subscribeFTRealtime(){
       else if(curMod==='accueil')renderAccueil();
       else if(curMod==='planmatch')renderPlanMatch();
       else if(curMod==='ft'){
-        try{
-          var wd=document.getElementById('weekDate');
-          var st=wd?loadFT(wd.value):null;
-          if(st){applyFT(st);buildDayTabs();renderDay(curDay);refreshCumul();}
-        }catch(e){}
+        // ⛔ v64 — NE PAS recharger l'écran par-dessus le travail en cours.
+        // Chaque sauvegarde déclenche un événement temps réel qui nous revient : on rechargeait
+        // alors la semaine par-dessus la correction qu'on venait de faire, et l'ancienne version
+        // réapparaissait à l'écran. On saute le rechargement juste après notre propre sauvegarde
+        // et tant qu'une fenêtre de correction est ouverte.
+        var _modalOuverte=['punchEditModal','jobModal','stopModal'].some(function(id){
+          var el=document.getElementById(id); return el&&el.classList.contains('open');
+        });
+        var _echoDeNous=(Date.now()-_ftSauveLocaleA)<10000;
+        if(!_modalOuverte && !_echoDeNous){
+          try{
+            var wd=document.getElementById('weekDate');
+            var st=wd?loadFT(wd.value):null;
+            if(st){applyFT(st);buildDayTabs();renderDay(curDay);refreshCumul();}
+          }catch(e){}
+        }
       }
       if(document.getElementById('teBody'))dessinerTempsEquipe();
     });
@@ -3169,7 +3243,7 @@ function saveFT(){
   if(!week||!currentUser)return;
   var uid2=activeUid();
   var payload={week:week,emp:activeName(),email:activeEmail(),savedAt:new Date().toISOString(),
-    days:chronoState.map(function(d){return{status:d.status,tasks:d.tasks,saved:d.saved,kmArr:d.kmArr,stopFiles:d.stopFiles};})};
+    days:chronoState.map(function(d){return{status:d.status,tasks:d.tasks,saved:d.saved,kmArr:d.kmArr,stopFiles:d.stopFiles,del:d.del||[]};})};
   setFTWeek(uid2+'_'+week,payload);
   var idx=getFTIndex();
   var found=false;
@@ -3177,8 +3251,10 @@ function saveFT(){
   for(var i=0;i<idx.length;i++){if(idx[i].week===week&&idx[i].uid===uid2){idx[i].savedAt=payload.savedAt;idx[i].totalH=totalH;found=true;break;}}
   if(!found)idx.unshift({week:week,uid:uid2,emp:activeName(),savedAt:payload.savedAt,totalH:totalH});
   setFTIndex(idx);
+  _ftSauveLocaleA=Date.now(); // sert à ignorer l'écho temps réel de notre propre sauvegarde
   sbPushFT(uid2,week,payload,totalH);
 }
+var _ftSauveLocaleA=0;
 function loadFT(week){
   if(!currentUser)return null;
   return getFTWeek(activeUid()+'_'+mondayOf(week));
@@ -3219,7 +3295,7 @@ function applyFT(data){
       // Statut cohérent
       if(activeTask){status='running';}
       else if(status==='running'){status=tasks.length>0?'done':'idle';}
-      chronoState[i]={status:status,activeTask:activeTask,tasks:tasks,saved:data.days[i].saved||false,kmArr:data.days[i].kmArr||'',stopFiles:data.days[i].stopFiles||[]};
+      chronoState[i]={status:status,activeTask:activeTask,tasks:tasks,saved:data.days[i].saved||false,kmArr:data.days[i].kmArr||'',stopFiles:data.days[i].stopFiles||[],del:data.days[i].del||[]};
     }
   }
 }
@@ -3456,7 +3532,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // a bien pris effet. Il reflète maintenant APP_BUILD ci-dessous, à mettre à jour à CHAQUE fois que
   // CACHE_NAME change dans sw.js (même valeur, ex: 'v48').
   try{
-    var APP_BUILD='v63';
+    var APP_BUILD='v64';
     var vb=document.createElement('div');
     vb.id='__buildBadge';
     vb.textContent='build '+APP_BUILD+' ⟲';
@@ -8654,12 +8730,13 @@ function saveFTUnder(weekMonday){
   if(!weekMonday||!currentUser)return;
   var uid2=activeUid();
   var payload={week:weekMonday,emp:activeName(),email:activeEmail(),savedAt:new Date().toISOString(),
-    days:chronoState.map(function(d){return{status:d.status,tasks:d.tasks,saved:d.saved,kmArr:d.kmArr,stopFiles:d.stopFiles};})};
+    days:chronoState.map(function(d){return{status:d.status,tasks:d.tasks,saved:d.saved,kmArr:d.kmArr,stopFiles:d.stopFiles,del:d.del||[]};})};
   setFTWeek(uid2+'_'+weekMonday,payload);
   var idx=getFTIndex();var found=false;var totalH=weekTotal();
   for(var i=0;i<idx.length;i++){if(idx[i].week===weekMonday&&idx[i].uid===uid2){idx[i].savedAt=payload.savedAt;idx[i].totalH=totalH;found=true;break;}}
   if(!found)idx.unshift({week:weekMonday,uid:uid2,emp:activeName(),savedAt:payload.savedAt,totalH:totalH});
   setFTIndex(idx);
+  _ftSauveLocaleA=Date.now();
   sbPushFT(uid2,weekMonday,payload,totalH);
 }
 function buildDayTabs(){
@@ -9269,7 +9346,8 @@ function savePunchEdit(){
     var newTask={id:++tid,lieu:lieu,detail:detail,start:start||'00:00',end:end||'',hrs:hrs,
       active:false,kmDep:kmDep,kmArr:kmArr,files:pePjFiles.slice(),notes:_peNotesVal,
       bassins:peBassins.slice(),
-      addedBy:currentUser.id,addedAt:new Date().toISOString()};
+      addedBy:currentUser.id,addedAt:new Date().toISOString(),
+      k:uid(),mod:Date.now()};   // identité stable + horodatage : la synchro ne pourra plus l'écraser
     chronoState[targetDay].tasks.push(newTask);
     chronoState[targetDay].tasks.sort(function(a,b){return (a.start||'').localeCompare(b.start||'');});
     if(chronoState[targetDay].status==='idle')chronoState[targetDay].status='done';
@@ -9284,6 +9362,7 @@ function savePunchEdit(){
   // ── MODE CORRECTION ──
   var t=chronoState[curDay].tasks[punchEditIdx];
   if(!t)return;
+  ftMarquerModif(t); // AVANT de toucher l'heure/le lieu : mémorise l'ancienne signature pour la synchro
   t.lieu=lieu;t.detail=detail;t.start=start;t.end=end;t.kmDep=kmDep;t.kmArr=kmArr;
   t.notes=_peNotesVal;
   t.files=pePjFiles.slice();
@@ -9319,6 +9398,7 @@ function deletePunch(){
   if(punchEditIdx===null)return;
   var _idx=punchEditIdx;
   askConfirm('Supprimer ce punch définitivement ?', function(){
+    ftTombstone(curDay, chronoState[curDay].tasks[_idx]); // empêche son retour à la prochaine synchro
     chronoState[curDay].tasks.splice(_idx,1);
     saveFT();closeModal('punchEditModal');
     renderTaskLog();refreshCumul();buildDayTabs();refreshWkStatus();
