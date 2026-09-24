@@ -516,6 +516,13 @@ input,select,textarea{font-size:16px!important}
 .wo-stat{display:flex;flex-direction:column;gap:2px}
 .wo-stat .ws-l{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.3px}
 .wo-stat .ws-v{font-size:13px;font-weight:700;color:var(--text)}
+.wo-card-group{border-left:3px solid var(--blue)}
+.wo-group-visits{border-top:1px solid var(--line);max-height:220px;overflow-y:auto}
+.wo-visit-row{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--line2);cursor:pointer;transition:.12s}
+.wo-visit-row:last-child{border-bottom:none}
+.wo-visit-row:hover{background:var(--surface)}
+.wo-visit-date{font-size:12.5px;font-weight:700;color:var(--text);flex:1}
+.wo-visit-tasks{font-size:11px;color:var(--muted)}
 .wo-checklist{padding:0 14px 12px}
 .wo-check-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
 .wo-check-item:last-child{border-bottom:none}
@@ -3694,7 +3701,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // a bien pris effet. Il reflète maintenant APP_BUILD ci-dessous, à mettre à jour à CHAQUE fois que
   // CACHE_NAME change dans sw.js (même valeur, ex: 'v48').
   try{
-    var APP_BUILD='v71';
+    var APP_BUILD='v72';
     var vb=document.createElement('div');
     vb.id='__buildBadge';
     vb.textContent='build '+APP_BUILD+' ⟲';
@@ -8673,24 +8680,72 @@ function renderWOList(){
     list.innerHTML='<div class="empty"><div class="ei">📝</div><h3>Aucun Work Order</h3><p>'+(isAdmin()?'Créez votre premier WO avec le bouton +':'Aucun WO assigné')+'</p></div>';
     return;
   }
+  // ➕ Les WO créés ensemble (plusieurs jours en une seule fois, voir saveWO) partagent un groupeId : ils
+  // s'affichent regroupés sous UN SEUL dossier client/site plutôt qu'en plusieurs cartes séparées. Chaque
+  // visite reste un WO indépendant (statut/tâches cochés séparément) — seul l'AFFICHAGE en liste change.
+  // L'ordre reste celui de getWOs() (plus récent en premier) : la carte du dossier prend la place du
+  // premier WO du groupe rencontré ; les suivants du même groupe sont sautés (déjà représentés).
+  var seenGroupes={};
   wos.forEach(function(wo){
-    var card=document.createElement('div');card.className='wo-card';
-    var checkedCount=(wo.tasks||[]).filter(function(t){return t.done;}).length;
-    var totalTasks=(wo.tasks||[]).length;
-    card.innerHTML='<div class="wo-hd">'+
-      '<div class="wo-hd-top">'+
-        '<span class="badge '+woPrioClass(wo.priorite)+'">'+wo.priorite+'</span>'+
-        '<span class="badge '+woStatusClass(wo.status)+'">'+wo.status.replace('_',' ')+'</span>'+entStatutBadgeHTML(wo)+'</div>'+
-      '<div class="wo-client">'+woTypeIcon(wo.type)+' '+wo.client+'</div>'+
-      '<div class="wo-site">📍 '+wo.site+(woSiteAddr(wo)?' <a href="https://maps.google.com/?q='+encodeURIComponent(woSiteAddr(wo))+'" target="_blank" onclick="event.stopPropagation()" style="color:var(--blue);font-weight:700;text-decoration:none">🗺</a>':'')+'</div></div>'+
-      '<div class="wo-body">'+
-        '<div class="wo-stat"><div class="ws-l">Date</div><div class="ws-v">'+(wo.date?fmtDate(wo.date):'—')+'</div></div>'+
-        '<div class="wo-stat"><div class="ws-l">Assigné</div><div class="ws-v">'+(woAssignees(wo).length?empNames(woAssignees(wo)):'—')+'</div></div>'+
-        (totalTasks>0?'<div class="wo-stat"><div class="ws-l">Tâches</div><div class="ws-v">'+checkedCount+'/'+totalTasks+'</div></div>':'')+
-      '</div>';
-    card.addEventListener('click',function(){openWOModal(wo);});
-    list.appendChild(card);
+    if(wo.groupeId){
+      if(seenGroupes[wo.groupeId])return;
+      seenGroupes[wo.groupeId]=true;
+      var items=wos.filter(function(w){return w.groupeId===wo.groupeId;});
+      list.appendChild(items.length>1?woBuildGroupCard(items):woBuildCard(items[0]));
+    }else{
+      list.appendChild(woBuildCard(wo));
+    }
   });
+}
+// Carte d'un seul WO (comportement historique, extrait pour être réutilisé par le dossier groupé aussi).
+function woBuildCard(wo){
+  var card=document.createElement('div');card.className='wo-card';
+  var checkedCount=(wo.tasks||[]).filter(function(t){return t.done;}).length;
+  var totalTasks=(wo.tasks||[]).length;
+  card.innerHTML='<div class="wo-hd">'+
+    '<div class="wo-hd-top">'+
+      '<span class="badge '+woPrioClass(wo.priorite)+'">'+wo.priorite+'</span>'+
+      '<span class="badge '+woStatusClass(wo.status)+'">'+wo.status.replace('_',' ')+'</span>'+entStatutBadgeHTML(wo)+'</div>'+
+    '<div class="wo-client">'+woTypeIcon(wo.type)+' '+wo.client+'</div>'+
+    '<div class="wo-site">📍 '+wo.site+(woSiteAddr(wo)?' <a href="https://maps.google.com/?q='+encodeURIComponent(woSiteAddr(wo))+'" target="_blank" onclick="event.stopPropagation()" style="color:var(--blue);font-weight:700;text-decoration:none">🗺</a>':'')+'</div></div>'+
+    '<div class="wo-body">'+
+      '<div class="wo-stat"><div class="ws-l">Date</div><div class="ws-v">'+(wo.date?fmtDate(wo.date):'—')+'</div></div>'+
+      '<div class="wo-stat"><div class="ws-l">Assigné</div><div class="ws-v">'+(woAssignees(wo).length?empNames(woAssignees(wo)):'—')+'</div></div>'+
+      (totalTasks>0?'<div class="wo-stat"><div class="ws-l">Tâches</div><div class="ws-v">'+checkedCount+'/'+totalTasks+'</div></div>':'')+
+    '</div>';
+  card.addEventListener('click',function(){openWOModal(wo);});
+  return card;
+}
+// Dossier groupé : un seul client/site, la liste des dates/visites en dessous — chaque ligne ouvre SON
+// propre WO (statut, tâches, notes restent individuels par visite).
+function woBuildGroupCard(items){
+  items=items.slice().sort(function(a,b){return (a.date||'').localeCompare(b.date||'');});
+  var first=items[0];
+  var doneCount=items.filter(function(w){return w.status==='termine';}).length;
+  var card=document.createElement('div');card.className='wo-card wo-card-group';
+  var top='<div class="wo-hd">'+
+    '<div class="wo-hd-top">'+
+      '<span class="badge '+woPrioClass(first.priorite)+'">'+first.priorite+'</span>'+
+      '<span class="badge" style="background:var(--blue-lt);color:var(--blue)">🔁 '+items.length+' visites · '+doneCount+'/'+items.length+' terminées</span></div>'+
+    '<div class="wo-client">'+woTypeIcon(first.type)+' '+first.client+'</div>'+
+    '<div class="wo-site">📍 '+first.site+'</div></div>';
+  var rows=items.map(function(w){
+    var ct=(w.tasks||[]).filter(function(t){return t.done;}).length, tt=(w.tasks||[]).length;
+    return '<div class="wo-visit-row" data-id="'+w.id+'">'+
+      '<span class="wo-visit-date">'+(w.date?fmtDate(w.date):'—')+'</span>'+
+      (tt>0?'<span class="wo-visit-tasks">'+ct+'/'+tt+' tâches</span>':'<span></span>')+
+      '<span class="badge '+woStatusClass(w.status)+'" style="font-size:10px">'+w.status.replace('_',' ')+'</span>'+
+      '</div>';
+  }).join('');
+  card.innerHTML=top+'<div class="wo-group-visits">'+rows+'</div>';
+  card.querySelectorAll('.wo-visit-row').forEach(function(row){
+    row.addEventListener('click',function(e){
+      e.stopPropagation();
+      var wo=getWOs().find(function(w){return w.id===row.dataset.id;});
+      if(wo)openWOModal(wo);
+    });
+  });
+  return card;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -8962,26 +9017,32 @@ function saveWO(){
     reqNotes:document.getElementById('woReqNotes').checked};
 
   if(woEditId){
-    // Édition : toujours un seul enregistrement, comportement strictement inchangé.
-    var wo=Object.assign({id:woEditId,date:document.getElementById('woDate').value,updatedAt:new Date().toISOString()},common);
+    // Édition : toujours un seul enregistrement, comportement strictement inchangé — le groupeId existant
+    // (le cas échéant) est préservé pour que la visite reste rattachée à son dossier après modification.
     var idx2=wos.findIndex(function(w){return w.id===woEditId;});
+    var oldGroupeId=idx2>=0?wos[idx2].groupeId:null;
+    var wo=Object.assign({id:woEditId,date:document.getElementById('woDate').value,groupeId:oldGroupeId||null,updatedAt:new Date().toISOString()},common);
     if(idx2>=0)wos[idx2]=wo;else wos.push(wo);
     setWOs(wos);sbPush('workorders',wo);auditLog('MODIFICATION','workorders',wo.id);
     closeModal('woModal');renderWOList();toast('✅ WO sauvegardé !');
     return;
   }
 
-  // Création : un ou plusieurs jours selon le sélecteur "Quand ?" — un Work Order indépendant par jour.
+  // Création : un ou plusieurs jours selon le sélecteur "Quand ?". Chaque date reste un Work Order
+  // indépendant (coché/complété séparément — utile quand chaque visite a ses propres tâches/notes), mais
+  // quand il y en a plusieurs, ils partagent un groupeId : la liste des WO les affiche alors regroupés sous
+  // UN SEUL dossier client/site plutôt qu'éparpillés en plusieurs cartes (voir renderWOList).
   var dates=dpGetDates('wo');
   if(!dates.length){toast('⚠️ Choisis au moins une date.');return;}
+  var groupeId=dates.length>1?uid():null;
   var created=[];
   dates.forEach(function(d){
-    var wo=Object.assign({id:uid(),date:d,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()},common);
+    var wo=Object.assign({id:uid(),date:d,groupeId:groupeId,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()},common);
     wos.unshift(wo);sbPush('workorders',wo);auditLog('CREATION','workorders',wo.id);
     created.push(wo);
   });
   setWOs(wos);closeModal('woModal');renderWOList();
-  toast(created.length>1?('✅ '+created.length+' Work Orders créés !'):'✅ WO sauvegardé !');
+  toast(created.length>1?('✅ '+created.length+' visites créées dans un même dossier !'):'✅ WO sauvegardé !');
 }
 function deleteWO(){
   askConfirm('Supprimer ce Work Order ?', _deleteWODo, '🗑 Supprimer','Supprimer le WO');

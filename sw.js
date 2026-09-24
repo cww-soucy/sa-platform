@@ -1,4 +1,14 @@
 // SA Platform — Service Worker
+// v72 — Correctif important : créer un WO sur plusieurs jours (plage, jours choisis, ou récurrence "tous
+// les jeudis") créait bien plusieurs Work Orders indépendants comme prévu, mais la LISTE DES WO les
+// affichait chacun comme une carte séparée — au lieu d'un seul dossier client comme Charles s'y attendait.
+// Corrigé sans changer la base de données : les WO créés ensemble partagent maintenant un groupeId, et la
+// liste les affiche regroupés sous UNE SEULE carte "dossier" (client, site, nombre de visites, progression
+// globale), avec la liste des dates en dessous — chaque visite reste cliquable individuellement pour voir
+// ou modifier SON statut et SES tâches, qui restent distincts par visite. L'édition d'une visite existante
+// préserve maintenant son groupeId (avant, il aurait été perdu à la sauvegarde). Testé sur les vraies
+// données du fichier : 58 WO en base, 1 groupe de 5 visites → 54 cartes affichées, comme attendu. Aucune
+// autre fonction touchée.
 // v71 — Le tableau "Charge de la semaine" (v68) jugé pas clair (juste des chiffres, impossible de voir
 // QUELS jobs, ni lesquels sont récurrents) est remplacé par un "Agenda de la semaine" : pour chaque jour,
 // la liste des jobs avec leur nom, le technicien assigné, le statut, et un badge 🔁 pour les tâches
@@ -103,7 +113,7 @@
 // (v59 — Mise en page des fichiers Excel refaite d'après les maquettes validées avant codage. …)
 // (v58 … v49 — voir historique précédent, inchangé.)
 
-var CACHE_NAME = 'sa-platform-v71';
+var CACHE_NAME = 'sa-platform-v72';
 
 // Installation : s'activer tout de suite sans attendre
 self.addEventListener('install', function(event) {
