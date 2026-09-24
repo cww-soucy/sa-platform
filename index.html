@@ -3650,7 +3650,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // a bien pris effet. Il reflète maintenant APP_BUILD ci-dessous, à mettre à jour à CHAQUE fois que
   // CACHE_NAME change dans sw.js (même valeur, ex: 'v48').
   try{
-    var APP_BUILD='v66';
+    var APP_BUILD='v67';
     var vb=document.createElement('div');
     vb.id='__buildBadge';
     vb.textContent='build '+APP_BUILD+' ⟲';
@@ -7389,49 +7389,92 @@ function plgBuildPrintHTML(){
   var virtual=plgVirtualEntries(monday,lastDay,mode,plgPassesPrint);
 
   var groups={};var groupOrder=[];
-  function ensureGroup(key,label){ if(!(key in groups)){groups[key]={label:label,rows:[]};groupOrder.push(key);} return groups[key]; }
-  function addRow(key,label,t,srcLbl){
-    ensureGroup(key,label).rows.push({date:t.dateDebut,heure:t.heureDebut||'',titre:t.titre,site:t.siteNom||'',
+  function ensureGroup(key,label){ if(!(key in groups)){groups[key]={label:label,rows:[],bars:[]};groupOrder.push(key);} return groups[key]; }
+  // ➕ srcType alimente à la fois la couleur des barres du visuel ET l'étiquette texte du détail.
+  function addRow(key,label,t,srcType,srcLbl){
+    var g=ensureGroup(key,label);
+    g.rows.push({date:t.dateDebut,heure:t.heureDebut||'',titre:t.titre,site:t.siteNom||'',
       statut:srcLbl||(PLANNING_STATUTS[t.statut]?PLANNING_STATUTS[t.statut].lbl:(t.statut||''))});
+    g.bars.push({start:t.dateDebut,end:t.dateFin||t.dateDebut,lbl:t.titre,src:srcType,termine:!!t.termine,valide:!!t.valide});
   }
   tasks.forEach(function(t){
     if(mode==='tech'){
       var a=planningAssignees(t); if(!a.length)a=[''];
-      a.forEach(function(eid){ if(!plgPassesPrint(eid,''))return; addRow(eid||'_none', eid?empName(eid):'(non assigné)', t); });
+      a.forEach(function(eid){ if(!plgPassesPrint(eid,''))return; addRow(eid||'_none', eid?empName(eid):'(non assigné)', t, 'tache'); });
     }else{
-      addRow(t.siteId||'_none', t.siteNom||'(sans site)', t);
+      addRow(t.siteId||'_none', t.siteNom||'(sans site)', t, 'tache');
     }
   });
   virtual.forEach(function(t){
     var srcLbl={plan:'Créneau',wo:'Work Order',pmm:'Plan de Match'}[t._src]||'';
-    if(mode==='tech'){ addRow(t.emp||'_none', t.empNom||empName(t.emp)||'(non assigné)', t, srcLbl); }
-    else{ addRow(t.siteId||'_none', t.siteNom||'(sans site)', t, srcLbl); }
+    if(mode==='tech'){ addRow(t.emp||'_none', t.empNom||empName(t.emp)||'(non assigné)', t, t._src, srcLbl); }
+    else{ addRow(t.siteId||'_none', t.siteNom||'(sans site)', t, t._src, srcLbl); }
   });
   groupOrder.sort(function(a,b){return (groups[a].label||'').localeCompare(groups[b].label||'');});
 
-  var h='<div class="pmm-print-doc">';
+  var h='<div class="pmm-print-doc jg-print-doc">';
   h+='<div class="pmm-print-hd"><h1>🗓 PLANNING ÉQUIPE'+(mode==='site'?' — PAR SITE':' — PAR TECHNICIEN')+'</h1>';
   h+='<div class="pmm-print-meta"><span><b>Période :</b> '+fmtDate(monday)+' → '+fmtDate(lastDay)+'</span></div></div>';
+
   if(!groupOrder.length){
-    h+='<div style="padding:20px;color:#6B8CAE">Rien de planifié sur cette période.</div>';
-  }else{
-    groupOrder.forEach(function(key){
-      var g=groups[key];
-      g.rows.sort(function(a,b){return (a.date+a.heure).localeCompare(b.date+b.heure);});
-      h+='<div class="pmm-print-sec"><div class="pmm-print-sec-hd c-bleu">'+esc(g.label)+'</div>';
-      h+='<table class="pmm-print-table"><thead><tr><th style="width:70px">Date</th><th style="width:45px">Heure</th><th>Tâche</th><th>Site</th><th style="width:85px">Statut</th></tr></thead><tbody>';
-      g.rows.forEach(function(r){
-        h+='<tr><td>'+esc(fmtDate(r.date))+'</td><td class="ctr">'+esc(r.heure||'—')+'</td><td>'+esc(r.titre)+'</td><td>'+esc(r.site||'—')+'</td><td>'+esc(r.statut||'—')+'</td></tr>';
-      });
-      h+='</tbody></table></div>';
-    });
+    h+='<div style="padding:20px;color:#6B8CAE">Rien de planifié sur cette période.</div></div>';
+    return h;
   }
+
+  // ── 1) VISUEL — barres colorées par semaine, un coup d'œil pour toute l'équipe/le site en réunion ──
+  var nbSemaines=Math.ceil(totalDays/7);
+  var weeks=[]; for(var i=0;i<nbSemaines;i++)weeks.push(plgAddDays(monday,i*7));
+  var labelColMM=48;
+  var barColorPrint={wo:'#b06800',plan:'#1B4F8C',tache:'#1a7a4a',pmm:'#7C3AED'};
+
+  h+='<div class="jg-print-chart">';
+  h+='<div class="jg-print-row jg-print-row-hd"><div class="jg-print-lbl" style="width:'+labelColMM+'mm"></div>';
+  weeks.forEach(function(w){
+    h+='<div class="jg-print-wk"><div class="jg-print-wk-lbl">'+jgWeekLabel(w)+'</div><div class="jg-print-wk-rg">'+jgWeekRange(w)+'</div></div>';
+  });
+  h+='</div>';
+
+  groupOrder.forEach(function(key){
+    var g=groups[key];
+    h+='<div class="jg-print-row">';
+    h+='<div class="jg-print-lbl" style="width:'+labelColMM+'mm"><b>'+esc(g.label)+'</b></div>';
+    h+='<div class="jg-print-track" style="width:calc(100% - '+labelColMM+'mm)">';
+    g.bars.forEach(function(b){
+      var startOffset=(new Date(b.start)-new Date(monday))/86400000;
+      var durDays=Math.max(1,(new Date(b.end)-new Date(b.start))/86400000+1);
+      var leftPct=(startOffset/totalDays)*100;
+      var widthPct=Math.max((durDays/totalDays)*100,3);
+      if(leftPct<0||leftPct>100)return;
+      var col=b.termine?(b.valide?'#1a7a4a':'#9AA7B4'):(barColorPrint[b.src]||'#1B4F8C');
+      h+='<div class="jg-print-bar" style="left:'+leftPct+'%;width:'+widthPct+'%;background:'+col+'">'+
+        (b.termine?(b.valide?'✅ ':'☑️ '):'')+esc(b.lbl)+'</div>';
+    });
+    h+='</div></div>';
+  });
+  h+='</div>'; // .jg-print-chart
+
+  // ── 2) DÉTAIL — le tableau texte complet, conservé tel quel (dates, heures, statuts précis) ──
+  h+='<div class="jg-print-detail-title">Détail</div>';
+  groupOrder.forEach(function(key){
+    var g=groups[key];
+    g.rows.sort(function(a,b){return (a.date+a.heure).localeCompare(b.date+b.heure);});
+    h+='<div class="pmm-print-sec"><div class="pmm-print-sec-hd c-bleu">'+esc(g.label)+'</div>';
+    h+='<table class="pmm-print-table"><thead><tr><th style="width:70px">Date</th><th style="width:45px">Heure</th><th>Tâche</th><th>Site</th><th style="width:85px">Statut</th></tr></thead><tbody>';
+    g.rows.forEach(function(r){
+      h+='<tr><td>'+esc(fmtDate(r.date))+'</td><td class="ctr">'+esc(r.heure||'—')+'</td><td>'+esc(r.titre)+'</td><td>'+esc(r.site||'—')+'</td><td>'+esc(r.statut||'—')+'</td></tr>';
+    });
+    h+='</tbody></table></div>';
+  });
+
   h+='</div>';
   return h;
 }
+// ➕ Imprime le Planning Équipe en grand format A3 paysage — visuel en barres (comme le Gantt Jobs) suivi
+// du détail complet. Le reste de l'app continue d'imprimer en A4 portrait (voir setPrintPageSize).
 function printPlanning(){
   document.getElementById('pmmPrintArea').innerHTML=plgBuildPrintHTML();
-  window.print();
+  setPrintPageSize('A3 landscape');
+  setTimeout(function(){ window.print(); },30);
 }
 
 function renderPlanning(){

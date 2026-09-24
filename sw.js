@@ -1,4 +1,10 @@
 // SA Platform — Service Worker
+// v67 — Correctif important : le bouton "Imprimer" du module PLANNING (celui accessible depuis l'onglet
+// Planning, différent du bouton "Imprimer / Envoyer" de Jobs Gantt) n'avait PAS reçu la mise à jour A3 +
+// visuel en barres de la v66 — Charles imprime depuis ce bouton-là, pas Jobs Gantt, d'où l'impression de
+// "rien n'a changé". Même traitement maintenant appliqué : visuel en barres colorées par technicien/site
+// (réutilise le même CSS que Jobs Gantt) suivi du détail complet, imprimé en A3 paysage. Aucune autre
+// fonction touchée (vérifié par comparaison automatique avec la v66).
 // v66 — Deux gros ajouts, purement additifs, aucune fonction protégée de Temps/Suivi/Cumul touchée :
 // (1) Sélecteur de jours multiples sur les trois formulaires de planification (Work Orders, Créneaux,
 // Tâches Planning) : 3 modes au choix — un seul jour (comportement d'origine, inchangé), plage
@@ -72,7 +78,7 @@
 // (v59 — Mise en page des fichiers Excel refaite d'après les maquettes validées avant codage. …)
 // (v58 … v49 — voir historique précédent, inchangé.)
 
-var CACHE_NAME = 'sa-platform-v66';
+var CACHE_NAME = 'sa-platform-v67';
 
 // Installation : s'activer tout de suite sans attendre
 self.addEventListener('install', function(event) {
