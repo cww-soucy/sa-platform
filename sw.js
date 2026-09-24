@@ -1,4 +1,20 @@
 // SA Platform — Service Worker
+// v66 — Deux gros ajouts, purement additifs, aucune fonction protégée de Temps/Suivi/Cumul touchée :
+// (1) Sélecteur de jours multiples sur les trois formulaires de planification (Work Orders, Créneaux,
+// Tâches Planning) : 3 modes au choix — un seul jour (comportement d'origine, inchangé), plage
+// consécutive (comme Planning le faisait déjà), ou jours choisis non consécutifs (petit calendrier
+// cliquable + saisie manuelle de type "28/09, 30/09, 3/10"). Chaque jour choisi crée un enregistrement
+// indépendant (même principe que les "copies indépendantes" déjà utilisées pour plusieurs employés sur
+// une tâche planning) — aucune structure de données existante modifiée, chaque WO/créneau/tâche reste à
+// un seul jour dans la base, modifiable et cochable séparément. En édition, le sélecteur de mode est
+// masqué et le comportement reste strictement celui d'avant (un seul enregistrement). Nouveau contrôleur
+// JS partagé (dpInit/dpSetMode/dpGetDates/etc.) réutilisé identiquement par les trois formulaires.
+// (2) Impression du Gantt Jobs refaite : vrai visuel en barres colorées (comme à l'écran, pas juste un
+// tableau texte) suivi du détail complet, imprimé en A3 paysage pour rester lisible en réunion — le reste
+// de l'app (Plan de Match, WO, Bon de Livraison, etc.) continue d'imprimer en A4 portrait par défaut
+// (nouveau mécanisme setPrintPageSize, actif seulement pour ce bouton précis, réinitialisé automatiquement
+// après impression). Vérifié par comparaison automatique de fonctions avec la v65 : seules les fonctions
+// listées ci-dessus ont changé, aucune autre.
 // v65 — Deux ajouts, purement additifs, aucune fonction protégée de Temps/Suivi/Cumul touchée :
 // (1) Bon de Livraison : le logo Soucy Aquatik (carré bleu) est maintenant affiché dans l'en-tête du
 // document imprimable, à côté du mot-clé "SOUCY AQUATIK" — avant, seul le texte était présent, sans
@@ -56,7 +72,7 @@
 // (v59 — Mise en page des fichiers Excel refaite d'après les maquettes validées avant codage. …)
 // (v58 … v49 — voir historique précédent, inchangé.)
 
-var CACHE_NAME = 'sa-platform-v65';
+var CACHE_NAME = 'sa-platform-v66';
 
 // Installation : s'activer tout de suite sans attendre
 self.addEventListener('install', function(event) {

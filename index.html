@@ -186,6 +186,32 @@ input,select,textarea{font-size:16px!important}
 .m2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .m3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
 
+/* ── SÉLECTEUR DE JOURS (WO / Créneaux / Planning) — un seul jour, plage consécutive, ou jours choisis ── */
+.dp-modepick{display:flex;gap:5px;margin-bottom:10px;background:var(--surface);padding:4px;border-radius:11px}
+.dp-modebtn{flex:1;text-align:center;padding:8px 4px;border-radius:8px;font-size:11.5px;font-weight:700;color:var(--muted);cursor:pointer;transition:.15s;user-select:none}
+.dp-modebtn.on{background:#fff;color:var(--blue);box-shadow:0 2px 6px rgba(11,46,82,.12)}
+.dp-range2{display:flex;gap:8px}
+.dp-cal{background:#fff;border:1.5px solid var(--line);border-radius:var(--rs);padding:10px}
+.dp-cal-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:12.5px;font-weight:800;color:var(--dk)}
+.dp-cal-nav{cursor:pointer;padding:3px 9px;border-radius:6px;color:var(--blue);font-weight:800}
+.dp-cal-nav:hover{background:var(--lt)}
+.dp-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center}
+.dp-cal-dow{font-size:9.5px;color:var(--muted);font-weight:800;padding-bottom:3px}
+.dp-cal-day{padding:7px 0;border-radius:8px;font-size:12.5px;cursor:pointer;color:var(--text);position:relative}
+.dp-cal-day:hover{background:var(--lt)}
+.dp-cal-day.off{visibility:hidden;cursor:default}
+.dp-cal-day.sel{background:var(--blue);color:#fff;font-weight:800}
+.dp-cal-day.today:not(.sel){box-shadow:inset 0 0 0 1.5px var(--teal)}
+.dp-manual{display:flex;gap:6px;margin-top:10px}
+.dp-manual input{flex:1;border:1.5px solid var(--line);border-radius:var(--rs);padding:9px 11px;font-size:12.5px;color:var(--text)}
+.dp-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
+.dp-chip{background:var(--blue-lt);color:var(--blue);font-size:11px;font-weight:700;padding:5px 7px 5px 10px;border-radius:999px;display:flex;align-items:center;gap:5px}
+.dp-chip b{cursor:pointer;opacity:.6;font-weight:800}
+.dp-chip b:hover{opacity:1}
+.dp-count{font-size:11.5px;color:var(--muted);margin-top:8px}
+.dp-count b{color:var(--dk)}
+.dp-note{background:var(--blue-lt);border:1px dashed var(--blue);border-radius:var(--rs);padding:8px 11px;font-size:11px;color:var(--muted);margin-top:10px;align-items:center;gap:6px}
+
 /* ── PJ ── */
 .pj-zone{border:1.5px dashed var(--line);border-radius:var(--rs);padding:10px;display:flex;flex-direction:column;gap:6px}
 .pj-row{display:flex;align-items:center;gap:8px;background:var(--gray);border-radius:8px;padding:6px 10px}
@@ -406,7 +432,28 @@ input,select,textarea{font-size:16px!important}
 .pmm-print-emp-name{font-size:15px;font-weight:800;color:#fff;margin-top:6px}
 .pmm-print-emp-block{margin-bottom:16px;border-bottom:2px dashed #c5d8ec;padding-bottom:10px}
 .pmm-print-emp-block:last-child{border-bottom:none}
+
+/* ➕ Gantt imprimé — visuel en barres (même logique que l'écran), pensé pour A3 paysage en réunion */
+.jg-print-chart{border:1px solid #c5d8ec;border-radius:6px;overflow:hidden;margin-bottom:16px}
+.jg-print-row{display:flex;border-bottom:1px solid #dce8f4;position:relative;min-height:15mm}
+.jg-print-row:last-child{border-bottom:none}
+.jg-print-row-hd{background:#EAF4FB;min-height:auto;border-bottom:2px solid #1B4F8C}
+.jg-print-lbl{flex:none;padding:2.5mm 3mm;border-right:1px solid #dce8f4;display:flex;flex-direction:column;justify-content:center;gap:1mm}
+.jg-print-lbl b{font-size:10.5pt;color:#1B2B3A;line-height:1.2}
+.jg-print-lbl span{font-size:8pt;font-weight:700}
+.jg-print-wk{flex:1;text-align:center;padding:2mm 0;border-right:1px solid #dce8f4}
+.jg-print-wk:last-child{border-right:none}
+.jg-print-wk-lbl{font-size:7pt;font-weight:800;color:#6B8CAE;text-transform:uppercase}
+.jg-print-wk-rg{font-size:8.5pt;font-weight:800;color:#1B2B3A}
+.jg-print-track{position:relative;min-height:15mm}
+.jg-print-bar{position:absolute;top:50%;transform:translateY(-50%);height:9mm;border-radius:2mm;
+  color:#fff;font-size:8pt;font-weight:700;display:flex;align-items:center;padding:0 2.5mm;
+  overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.jg-print-detail-title{font-size:12pt;font-weight:800;color:#1B4F8C;margin:4mm 0 3mm;padding-top:2mm;border-top:2px solid #1B4F8C}
+
 @media print{
+  .jg-print-doc .jg-print-chart{page-break-inside:avoid}
+  .jg-print-doc .pmm-print-sec{page-break-inside:avoid}
   body *{visibility:hidden!important}
   #pmmPrintArea,#pmmPrintArea *{visibility:visible!important}
   #pmmPrintArea{display:block!important;position:absolute;top:0;left:0;width:100%;padding:10px}
@@ -889,6 +936,7 @@ input,select,textarea{font-size:16px!important}
   width:30px;height:30px;cursor:pointer;font-size:14px}
 
 </style>
+<style id="printPageOverride"></style>
 </head>
 <body>
 
@@ -1414,8 +1462,31 @@ input,select,textarea{font-size:16px!important}
         </select>
       </div>
     </div>
-    <div class="m2">
-      <div class="mfield"><label>Date prévue</label><input type="date" id="woDate"/></div>
+    <div class="mfield">
+      <label>Quand ?</label>
+      <div class="dp-modepick" id="woDpModePick">
+        <div class="dp-modebtn on" data-m="1" onclick="dpSetMode('wo',1)">Un seul jour</div>
+        <div class="dp-modebtn" data-m="2" onclick="dpSetMode('wo',2)">Plage consécutive</div>
+        <div class="dp-modebtn" data-m="3" onclick="dpSetMode('wo',3)">Jours choisis</div>
+      </div>
+      <div id="woDpM1"><input type="date" id="woDate"/></div>
+      <div id="woDpM2" class="dp-range2" style="display:none">
+        <input type="date" id="woDpRangeStart" style="flex:1"/>
+        <input type="date" id="woDpRangeEnd" style="flex:1"/>
+      </div>
+      <div id="woDpM3" style="display:none">
+        <div class="dp-cal">
+          <div class="dp-cal-hd"><span class="dp-cal-nav" onclick="dpCalNav('wo',-1)">‹</span><span id="woDpCalTitle"></span><span class="dp-cal-nav" onclick="dpCalNav('wo',1)">›</span></div>
+          <div class="dp-cal-grid" id="woDpCalGrid"></div>
+        </div>
+        <div class="dp-manual">
+          <input type="text" id="woDpManualInput" placeholder="Ou tape des dates : 28/09, 30/09, 3/10"/>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="dpManualAdd('wo')">Ajouter</button>
+        </div>
+        <div class="dp-chips" id="woDpChips"></div>
+        <div class="dp-count" id="woDpCount"></div>
+      </div>
+      <div class="dp-note" id="woDpNote" style="display:none">💡 Chaque jour choisi crée son propre Work Order, indépendant — modifiable, cochable et facturable séparément.</div>
     </div>
     <div class="mfield"><label>Assigné(s) à</label>
       <div id="woAssigneList" style="max-height:170px;overflow-y:auto;border:1.5px solid var(--line);border-radius:var(--rs);padding:4px 10px"></div>
@@ -1551,7 +1622,32 @@ input,select,textarea{font-size:16px!important}
       </div>
       <div class="mfield"><label>Heure prévue</label><input type="time" id="pmHeure"/></div>
     </div>
-    <div class="mfield"><label>Date</label><input type="date" id="pmDate"/></div>
+    <div class="mfield">
+      <label>Quand ?</label>
+      <div class="dp-modepick" id="pmDpModePick">
+        <div class="dp-modebtn on" data-m="1" onclick="dpSetMode('pm',1)">Un seul jour</div>
+        <div class="dp-modebtn" data-m="2" onclick="dpSetMode('pm',2)">Plage consécutive</div>
+        <div class="dp-modebtn" data-m="3" onclick="dpSetMode('pm',3)">Jours choisis</div>
+      </div>
+      <div id="pmDpM1"><input type="date" id="pmDate"/></div>
+      <div id="pmDpM2" class="dp-range2" style="display:none">
+        <input type="date" id="pmDpRangeStart" style="flex:1"/>
+        <input type="date" id="pmDpRangeEnd" style="flex:1"/>
+      </div>
+      <div id="pmDpM3" style="display:none">
+        <div class="dp-cal">
+          <div class="dp-cal-hd"><span class="dp-cal-nav" onclick="dpCalNav('pm',-1)">‹</span><span id="pmDpCalTitle"></span><span class="dp-cal-nav" onclick="dpCalNav('pm',1)">›</span></div>
+          <div class="dp-cal-grid" id="pmDpCalGrid"></div>
+        </div>
+        <div class="dp-manual">
+          <input type="text" id="pmDpManualInput" placeholder="Ou tape des dates : 28/09, 30/09, 3/10"/>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="dpManualAdd('pm')">Ajouter</button>
+        </div>
+        <div class="dp-chips" id="pmDpChips"></div>
+        <div class="dp-count" id="pmDpCount"></div>
+      </div>
+      <div class="dp-note" id="pmDpNote" style="display:none">💡 Chaque jour choisi crée son propre créneau, indépendant.</div>
+    </div>
     <div class="mfield"><label>Employé(s) assigné(s)</label>
       <div id="pmEmpList" style="max-height:170px;overflow-y:auto;border:1.5px solid var(--line);border-radius:var(--rs);padding:4px 10px"></div>
     </div>
@@ -1998,9 +2094,31 @@ input,select,textarea{font-size:16px!important}
           <input type="checkbox" id="plgSiteSave" checked style="width:auto"/> ➕ Ajouter ce site au répertoire
         </label>
       </div>
-      <div style="display:flex;gap:8px">
-        <div style="flex:1"><label class="lbl">Date début</label><input type="date" id="plgDateDebut" class="inp"/></div>
-        <div style="flex:1"><label class="lbl">Date fin</label><input type="date" id="plgDateFin" class="inp"/></div>
+      <div>
+        <label class="lbl">Quand ?</label>
+        <div class="dp-modepick" id="plgDpModePick">
+          <div class="dp-modebtn on" data-m="1" onclick="dpSetMode('plg',1)">Un seul jour</div>
+          <div class="dp-modebtn" data-m="2" onclick="dpSetMode('plg',2)">Plage consécutive</div>
+          <div class="dp-modebtn" data-m="3" onclick="dpSetMode('plg',3)">Jours choisis</div>
+        </div>
+        <div id="plgDpM1"><input type="date" id="plgDpSingle" class="inp"/></div>
+        <div id="plgDpM2" class="dp-range2" style="display:none">
+          <input type="date" id="plgDateDebut" class="inp" style="flex:1"/>
+          <input type="date" id="plgDateFin" class="inp" style="flex:1"/>
+        </div>
+        <div id="plgDpM3" style="display:none">
+          <div class="dp-cal">
+            <div class="dp-cal-hd"><span class="dp-cal-nav" onclick="dpCalNav('plg',-1)">‹</span><span id="plgDpCalTitle"></span><span class="dp-cal-nav" onclick="dpCalNav('plg',1)">›</span></div>
+            <div class="dp-cal-grid" id="plgDpCalGrid"></div>
+          </div>
+          <div class="dp-manual">
+            <input type="text" id="plgDpManualInput" placeholder="Ou tape des dates : 28/09, 30/09, 3/10"/>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="dpManualAdd('plg')">Ajouter</button>
+          </div>
+          <div class="dp-chips" id="plgDpChips"></div>
+          <div class="dp-count" id="plgDpCount"></div>
+        </div>
+        <div class="dp-note" id="plgDpNote" style="display:none">💡 En mode « Jours choisis », chaque jour crée sa propre tâche planning, indépendante (statut séparé, comme les copies indépendantes par employé).</div>
       </div>
       <div style="display:flex;gap:8px">
         <div style="flex:1"><label class="lbl">Heure début (optionnel)</label><input type="time" id="plgHeureDebut" class="inp"/></div>
@@ -3532,7 +3650,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // a bien pris effet. Il reflète maintenant APP_BUILD ci-dessous, à mettre à jour à CHAQUE fois que
   // CACHE_NAME change dans sw.js (même valeur, ex: 'v48').
   try{
-    var APP_BUILD='v65';
+    var APP_BUILD='v66';
     var vb=document.createElement('div');
     vb.id='__buildBadge';
     vb.textContent='build '+APP_BUILD+' ⟲';
@@ -4425,7 +4543,7 @@ function openPmModal(woId, slotId){
     if(wo.id===woId)opt.selected=true;
     sel.appendChild(opt);
   });
-  document.getElementById('pmDate').value=pmDay||'';
+  dpInit('pm',pmDay||todayISO(),!!slotId); // pmDay = jour affiché dans Plan de Match ; en édition c'est déjà le jour du créneau (comportement original conservé)
   document.getElementById('pmHeure').value='';
   document.getElementById('pmClient').value='';document.getElementById('pmAddr').value='';
   document.getElementById('pmDescr').value='';document.getElementById('pmNotes').value='';
@@ -4474,16 +4592,32 @@ function savePlan(){
       siteId=newSite.id;
     }
   }
-  var slot={id:slotId||uid(),woId:woId||null,date:document.getElementById('pmDate').value,
-    heure:document.getElementById('pmHeure').value,emps:emps,emp:emps.join(', '),
+  var common={woId:woId||null,heure:document.getElementById('pmHeure').value,emps:emps,emp:emps.join(', '),
     client:client,addr:addr,siteId:siteId,type:document.getElementById('pmType').value,
     descr:document.getElementById('pmDescr').value.trim(),
-    notes:document.getElementById('pmNotes').value,status:'assigned',
-    updatedAt:new Date().toISOString()}; // ➕ posé AVANT setPlan — protège contre une resynchro rapide
-  if(slotId){var idx2=plan.findIndex(function(p){return p.id===slotId;});if(idx2>=0)plan[idx2]=slot;else plan.push(slot);}
-  else plan.push(slot);
-  setPlan(plan);sbPush('plan',slot);auditLog(slotId?'MODIFICATION':'CREATION','plan',slot.id);
-  closeModal('pmModal');renderPlan();toast('✅ Intervention planifiée !');
+    notes:document.getElementById('pmNotes').value,status:'assigned'};
+
+  if(slotId){
+    // Édition : toujours un seul enregistrement, comportement strictement inchangé.
+    var slot=Object.assign({id:slotId,date:document.getElementById('pmDate').value,updatedAt:new Date().toISOString()},common);
+    var idx2=plan.findIndex(function(p){return p.id===slotId;});
+    if(idx2>=0)plan[idx2]=slot;else plan.push(slot);
+    setPlan(plan);sbPush('plan',slot);auditLog('MODIFICATION','plan',slot.id);
+    closeModal('pmModal');renderPlan();toast('✅ Intervention planifiée !');
+    return;
+  }
+
+  // Création : un ou plusieurs jours selon le sélecteur "Quand ?" — un créneau indépendant par jour.
+  var dates=dpGetDates('pm');
+  if(!dates.length){toast('⚠️ Choisis au moins une date.');return;}
+  var created=[];
+  dates.forEach(function(d){
+    var slot=Object.assign({id:uid(),date:d,updatedAt:new Date().toISOString()},common);
+    plan.push(slot);sbPush('plan',slot);auditLog('CREATION','plan',slot.id);
+    created.push(slot);
+  });
+  setPlan(plan);closeModal('pmModal');renderPlan();
+  toast(created.length>1?('✅ '+created.length+' créneaux créés !'):'✅ Intervention planifiée !');
 }
 
 // ═══════════════════════════════════════════════════════
@@ -7527,6 +7661,7 @@ function openPlanningModal(taskId){
 
   document.getElementById('plgDateDebut').value=t?t.dateDebut:todayISO();
   document.getElementById('plgDateFin').value=t?t.dateFin:todayISO();
+  dpInit('plg',t?t.dateDebut:todayISO(),!!t);
   document.getElementById('plgHeureDebut').value=t?(t.heureDebut||''):'';
   document.getElementById('plgHeureFin').value=t?(t.heureFin||''):'';
 
@@ -7575,10 +7710,35 @@ function plgUpdateAssignModeUI(){
 function savePlanningTask(){
   var titre=(document.getElementById('plgTitre').value||'').trim();
   if(!titre){toast('⚠️ Le titre est requis.');return;}
-  var dateDebut=document.getElementById('plgDateDebut').value;
-  var dateFin=document.getElementById('plgDateFin').value;
-  if(!dateDebut||!dateFin){toast('⚠️ Dates requises.');return;}
-  if(dateFin<dateDebut){toast('⚠️ La date de fin doit être après la date de début.');return;}
+
+  // ── Détermine la ou les plages [dateDebut,dateFin] à créer ──
+  // Édition, ou mode 1/2 (jour unique / plage consécutive) : comportement historique, UNE seule plage,
+  // strictement identique à avant (dateFin peut être > dateDebut — un seul enregistrement qui couvre tout).
+  // Mode 3 (jours choisis, non consécutifs) : IMPOSSIBLE à représenter par une seule plage — on crée donc
+  // une plage [d,d] par jour choisi, c.-à-d. une tâche indépendante par jour (même principe que les
+  // "copies indépendantes" déjà utilisées pour plusieurs employés).
+  var dateRanges;
+  if(plgEditingId){
+    var dateDebut=document.getElementById('plgDateDebut').value;
+    var dateFin=document.getElementById('plgDateFin').value;
+    if(!dateDebut||!dateFin){toast('⚠️ Dates requises.');return;}
+    if(dateFin<dateDebut){toast('⚠️ La date de fin doit être après la date de début.');return;}
+    dateRanges=[[dateDebut,dateFin]];
+  }else{
+    var st=DP_STATE['plg'];
+    if(st&&st.mode===3){
+      var chosen=dpGetDates('plg');
+      if(!chosen.length){toast('⚠️ Choisis au moins une date.');return;}
+      dateRanges=chosen.map(function(d){return [d,d];});
+    }else{
+      var dates=dpGetDates('plg');
+      if(!dates.length){toast('⚠️ Dates requises.');return;}
+      var dd=dates[0],df=dates[dates.length-1];
+      if(df<dd){toast('⚠️ La date de fin doit être après la date de début.');return;}
+      dateRanges=[[dd,df]];
+    }
+  }
+
   var empIds=getCheckedEmp('plgEmpList');
   var siteNom=document.getElementById('plgSite').value.trim();
   var lien=(document.getElementById('plgLien')||{}).value||'';
@@ -7592,20 +7752,21 @@ function savePlanningTask(){
       return;
     }
     var mode=(!plgEditingId&&empIds.length>=2)?((document.querySelector('input[name="plgAssignMode"]:checked')||{}).value||'partage'):'partage';
-    if(mode==='independant'){
-      // ➕ Copies indépendantes : une tâche complète (et son éventuel créneau/WO lié) par employé sélectionné,
-      // chacune avec son propre statut — comme si on avait rempli le formulaire séparément pour chacun.
-      empIds.forEach(function(eid){ plgSaveOneTask(null,[eid],titre,dateDebut,dateFin,siteId); });
-      closeModal('plgModal');
-      renderPlanning();
-      toast('✅ '+empIds.length+' tâches créées (copies indépendantes).');
-      return;
-    }
-    var isNew=!plgEditingId;
-    plgSaveOneTask(plgEditingId,empIds,titre,dateDebut,dateFin,siteId);
+    var totalCreated=0;
+    dateRanges.forEach(function(range){
+      if(mode==='independant'){
+        // ➕ Copies indépendantes : une tâche par employé sélectionné, pour CHAQUE plage/jour de dateRanges.
+        empIds.forEach(function(eid){ plgSaveOneTask(null,[eid],titre,range[0],range[1],siteId); totalCreated++; });
+      }else{
+        plgSaveOneTask(plgEditingId,empIds,titre,range[0],range[1],siteId);
+        totalCreated++;
+      }
+    });
     closeModal('plgModal');
     renderPlanning();
-    toast(isNew?'✅ Tâche planifiée !':'✅ Tâche mise à jour.');
+    if(plgEditingId){ toast('✅ Tâche mise à jour.'); }
+    else if(mode==='independant'){ toast('✅ '+totalCreated+' tâches créées (copies indépendantes).'); }
+    else{ toast(totalCreated>1?('✅ '+totalCreated+' tâches créées !'):'✅ Tâche planifiée !'); }
   });
 }
 // Résout le nom de site tapé dans le modal Planning en un siteId, en créant le site si besoin — appelle
@@ -7853,39 +8014,92 @@ function jgOpenWO(woId){var wo=getWOs().find(function(w){return w.id===woId;});i
 
 // Construit une version imprimable/PDF de la vue Jobs (liste propre, sans barres) — même document type
 // que les autres impressions de l'app (Plan de Match, WO, etc.), affiché dans #pmmPrintArea puis window.print().
+// ➕ Bascule le format de page d'impression pour LE PROCHAIN window.print() seulement — le reste de
+// l'app (Plan de Match, WO, Bon de Livraison, etc.) continue d'imprimer en A4 portrait par défaut.
+// sizeCss ex: 'A3 landscape'. Se réinitialise automatiquement après l'impression (événement afterprint).
+function setPrintPageSize(sizeCss){
+  var el=document.getElementById('printPageOverride');
+  if(!el)return;
+  el.textContent = sizeCss ? ('@media print{ @page{ size:'+sizeCss+'; margin:8mm; } }') : '';
+}
+window.addEventListener('afterprint',function(){ setPrintPageSize(''); });
+
 function jgBuildPrintHTML(monday,rangeEnd){
   var agg=jgBuildGroups(monday,rangeEnd);
   var groups=agg.groups, groupOrder=agg.groupOrder;
-  var h='<div class="pmm-print-doc">';
+  var totalDays=(new Date(rangeEnd)-new Date(monday))/86400000+1;
+  var nbSemaines=Math.ceil(totalDays/7);
+  var weeks=[]; for(var i=0;i<nbSemaines;i++)weeks.push(plgAddDays(monday,i*7));
+
+  var h='<div class="pmm-print-doc jg-print-doc">';
   h+='<div class="pmm-print-hd"><h1>🔧 JOBS / CHANTIERS EN COURS</h1>';
   h+='<div class="pmm-print-meta"><span><b>Période :</b> '+fmtDate(monday)+' → '+fmtDate(rangeEnd)+'</span></div></div>';
+
   if(!groupOrder.length){
-    h+='<div style="padding:20px;color:#6B8CAE">Aucun job actif sur cette période.</div>';
-  }else{
-    var typeLbl={wo:'Work Order',plan:'WO',creneau:'Créneau',tache:'Tâche'};
-    groupOrder.forEach(function(key){
-      var g=groups[key];
-      var overallStatus=g.statuses.indexOf('late')>=0?'late':(g.statuses.indexOf('active')>=0?'active':'upcoming');
-      var statusLbl={active:'En cours',late:'En retard',upcoming:'À venir'}[overallStatus];
-      h+='<div class="pmm-print-sec"><div class="pmm-print-sec-hd c-bleu">'+esc(g.label)+' — '+statusLbl+'</div>';
-      h+='<table class="pmm-print-table"><thead><tr><th style="width:80px">Type</th><th>Description</th><th style="width:140px">Période</th><th>Assigné(s)</th></tr></thead><tbody>';
-      g.bars.forEach(function(b){
-        var periode=(b.start===b.end)?fmtDate(b.start):(fmtDate(b.start)+' → '+fmtDate(b.end));
-        h+='<tr><td>'+esc(typeLbl[b.t]||b.t)+'</td><td>'+esc(b.lbl)+'</td><td>'+esc(periode)+'</td><td>'+esc(empNames(b.assignes)||'—')+'</td></tr>';
-      });
-      h+='</tbody></table></div>';
-    });
+    h+='<div style="padding:20px;color:#6B8CAE">Aucun job actif sur cette période.</div></div>';
+    return h;
   }
+
+  // ── 1) VISUEL — même logique de barres que le Gantt à l'écran (jgBuildGroups), mise en page pour
+  // grand format (A3 paysage) : plus grand, plus lisible de loin en réunion, avec les couleurs de statut.
+  var labelColMM=48;
+  h+='<div class="jg-print-chart">';
+  h+='<div class="jg-print-row jg-print-row-hd"><div class="jg-print-lbl" style="width:'+labelColMM+'mm"></div>';
+  weeks.forEach(function(w){
+    h+='<div class="jg-print-wk"><div class="jg-print-wk-lbl">'+jgWeekLabel(w)+'</div><div class="jg-print-wk-rg">'+jgWeekRange(w)+'</div></div>';
+  });
+  h+='</div>';
+
+  var typeLbl={wo:'Work Order',plan:'WO',creneau:'Créneau',tache:'Tâche'};
+  var barColorPrint={wo:'#b06800',plan:'#1B4F8C',tache:'#1a7a4a',creneau:'#0E9C86'};
+
+  groupOrder.forEach(function(key){
+    var g=groups[key];
+    var overallStatus=g.statuses.indexOf('late')>=0?'late':(g.statuses.indexOf('active')>=0?'active':'upcoming');
+    var statusLbl={active:'En cours',late:'En retard',upcoming:'À venir'}[overallStatus];
+    var statusColor={active:'#1a7a4a',late:'#8b1a1a',upcoming:'#1B4F8C'}[overallStatus];
+
+    h+='<div class="jg-print-row">';
+    h+='<div class="jg-print-lbl" style="width:'+labelColMM+'mm"><b>'+esc(g.label)+'</b><span style="color:'+statusColor+'">'+statusLbl+'</span></div>';
+    h+='<div class="jg-print-track" style="width:calc(100% - '+labelColMM+'mm)">';
+    g.bars.forEach(function(b){
+      var startOffset=(new Date(b.start)-new Date(monday))/86400000;
+      var durDays=Math.max(1,(new Date(b.end)-new Date(b.start))/86400000+1);
+      var leftPct=(startOffset/totalDays)*100;
+      var widthPct=Math.max((durDays/totalDays)*100,3);
+      if(leftPct<0||leftPct>100)return;
+      var col=b.termine?(b.valide?'#1a7a4a':'#9AA7B4'):(barColorPrint[b.t]||'#1B4F8C');
+      h+='<div class="jg-print-bar" style="left:'+leftPct+'%;width:'+widthPct+'%;background:'+col+'">'+
+        (b.termine?(b.valide?'✅ ':'☑️ '):'')+esc(b.lbl)+'</div>';
+    });
+    h+='</div></div>';
+  });
+  h+='</div>'; // .jg-print-chart
+
+  // ── 2) DÉTAIL — le tableau texte complet, conservé tel quel pour les précisions (dates exactes, assignés)
+  h+='<div class="jg-print-detail-title">Détail</div>';
+  groupOrder.forEach(function(key){
+    var g=groups[key];
+    h+='<div class="pmm-print-sec"><div class="pmm-print-sec-hd c-bleu">'+esc(g.label)+'</div>';
+    h+='<table class="pmm-print-table"><thead><tr><th style="width:80px">Type</th><th>Description</th><th style="width:140px">Période</th><th>Assigné(s)</th></tr></thead><tbody>';
+    g.bars.forEach(function(b){
+      var periode=(b.start===b.end)?fmtDate(b.start):(fmtDate(b.start)+' → '+fmtDate(b.end));
+      h+='<tr><td>'+esc(typeLbl[b.t]||b.t)+'</td><td>'+esc(b.lbl)+'</td><td>'+esc(periode)+'</td><td>'+esc(empNames(b.assignes)||'—')+'</td></tr>';
+    });
+    h+='</tbody></table></div>';
+  });
+
   h+='</div>';
   return h;
 }
-// ➕ Imprime (ou "Enregistrer en PDF" / Partager depuis la boîte de dialogue système sur iPhone) la liste
-// des jobs actuellement affichés dans le Gantt, pour la période visible à l'écran.
+// ➕ Imprime le Gantt en grand format A3 paysage — vrai visuel en barres (comme à l'écran) suivi du détail
+// complet en tableau. Le reste de l'app continue d'imprimer en A4 portrait (voir setPrintPageSize).
 function printJobsGantt(){
   var monday=jgAnchorMonday;
   var rangeEnd=plgAddDays(monday,JG_NB_SEMAINES*7-1);
   document.getElementById('pmmPrintArea').innerHTML=jgBuildPrintHTML(monday,rangeEnd);
-  window.print();
+  setPrintPageSize('A3 landscape');
+  setTimeout(function(){ window.print(); },30); // laisse le DOM/CSS s'appliquer avant l'impression
 }
 
 function renderJobsGantt(){
@@ -8326,6 +8540,146 @@ function renderWOList(){
   });
 }
 
+// ═══════════════════════════════════════════════════════
+// SÉLECTEUR DE JOURS — partagé entre WO ('wo'), Créneaux ('pm') et Planning ('plg').
+// 3 modes : un seul jour / plage consécutive / jours choisis (non consécutifs, calendrier + saisie manuelle).
+// N'écrit JAMAIS dans les tables directement — dpGetDates(prefix) retourne juste la liste de dates ISO à
+// créer ; chaque save*() existant boucle dessus pour créer un enregistrement indépendant par jour (même
+// principe que les "copies indépendantes" déjà utilisées pour plusieurs employés sur une tâche planning).
+// ═══════════════════════════════════════════════════════
+var DP_STATE={};
+var DP_MOIS=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+var DP_JOURS=['dim','lun','mar','mer','jeu','ven','sam'];
+function dpPad(n){return n<10?'0'+n:''+n;}
+function dpISO(y,m,d){return y+'-'+dpPad(m+1)+'-'+dpPad(d);}
+
+// À appeler à l'ouverture de chaque modal. presetDate: date à préremplir (souvent aujourd'hui, ou la date
+// existante en édition). isEdit: true si on modifie un enregistrement déjà créé — dans ce cas le sélecteur
+// de mode est masqué (on ne peut pas rétroactivement "multiplier" un enregistrement existant en plusieurs jours).
+function dpInit(prefix,presetDate,isEdit){
+  var base=presetDate?new Date(presetDate+'T12:00:00'):new Date();
+  DP_STATE[prefix]={mode:1,chosen:new Set(),calYear:base.getFullYear(),calMonth:base.getMonth()};
+
+  var singleId=(prefix==='plg')?'plgDpSingle':(prefix+'Date');
+  var singleEl=document.getElementById(singleId);
+  if(singleEl)singleEl.value=presetDate||'';
+
+  var rsId=(prefix==='plg')?'plgDateDebut':(prefix+'DpRangeStart');
+  var reId=(prefix==='plg')?'plgDateFin':(prefix+'DpRangeEnd');
+  if(!(isEdit&&prefix==='plg')){ // Planning en édition : plgDateDebut/plgDateFin déjà remplis juste avant l'appel — ne pas écraser
+    var rs=document.getElementById(rsId),re=document.getElementById(reId);
+    if(rs)rs.value=presetDate||todayISO();
+    if(re)re.value=presetDate||todayISO();
+  }
+
+  var manual=document.getElementById(prefix+'DpManualInput');if(manual)manual.value='';
+
+  var pick=document.getElementById(prefix+'DpModePick');
+  if(pick)pick.style.display=isEdit?'none':'flex';
+
+  dpSetMode(prefix,(isEdit&&prefix==='plg')?2:1);
+  dpRenderCal(prefix);dpRenderChips(prefix);
+}
+
+function dpSetMode(prefix,m){
+  if(!DP_STATE[prefix])DP_STATE[prefix]={mode:1,chosen:new Set(),calYear:(new Date()).getFullYear(),calMonth:(new Date()).getMonth()};
+  DP_STATE[prefix].mode=m;
+  var pickEl=document.getElementById(prefix+'DpModePick');
+  if(pickEl)pickEl.querySelectorAll('.dp-modebtn').forEach(function(b){b.classList.toggle('on',+b.dataset.m===m);});
+  var m1=document.getElementById(prefix+'DpM1'),m2=document.getElementById(prefix+'DpM2'),m3=document.getElementById(prefix+'DpM3');
+  if(m1)m1.style.display=m===1?'block':'none';
+  if(m2)m2.style.display=m===2?'flex':'none';
+  if(m3)m3.style.display=m===3?'block':'none';
+  var note=document.getElementById(prefix+'DpNote');
+  if(note)note.style.display=(m===1)?'none':'flex';
+}
+
+function dpCalNav(prefix,dir){
+  var st=DP_STATE[prefix];if(!st)return;
+  st.calMonth+=dir;
+  if(st.calMonth<0){st.calMonth=11;st.calYear--;}
+  if(st.calMonth>11){st.calMonth=0;st.calYear++;}
+  dpRenderCal(prefix);
+}
+
+function dpRenderCal(prefix){
+  var st=DP_STATE[prefix];if(!st)return;
+  var grid=document.getElementById(prefix+'DpCalGrid');if(!grid)return;
+  var title=document.getElementById(prefix+'DpCalTitle');
+  if(title)title.textContent=DP_MOIS[st.calMonth]+' '+st.calYear;
+  var first=new Date(st.calYear,st.calMonth,1);
+  var startDow=(first.getDay()+6)%7;
+  var daysInMonth=new Date(st.calYear,st.calMonth+1,0).getDate();
+  var today=todayISO();
+  var html='';
+  ['L','M','M','J','V','S','D'].forEach(function(d){html+='<div class="dp-cal-dow">'+d+'</div>';});
+  for(var i=0;i<startDow;i++)html+='<div class="dp-cal-day off">·</div>';
+  for(var d=1;d<=daysInMonth;d++){
+    var ds=dpISO(st.calYear,st.calMonth,d);
+    var cls='dp-cal-day'+(st.chosen.has(ds)?' sel':'')+(ds===today?' today':'');
+    html+='<div class="'+cls+'" onclick="dpToggleDay(\''+prefix+'\',\''+ds+'\')">'+d+'</div>';
+  }
+  grid.innerHTML=html;
+}
+
+function dpFmtLong(ds){
+  var p=ds.split('-');var d=new Date(+p[0],+p[1]-1,+p[2]);
+  return DP_JOURS[d.getDay()]+' '+(+p[2])+' '+DP_MOIS[+p[1]-1];
+}
+
+function dpToggleDay(prefix,ds){
+  var st=DP_STATE[prefix];if(!st)return;
+  if(st.chosen.has(ds))st.chosen.delete(ds);else st.chosen.add(ds);
+  dpRenderCal(prefix);dpRenderChips(prefix);
+}
+
+function dpRenderChips(prefix){
+  var st=DP_STATE[prefix];if(!st)return;
+  var wrap=document.getElementById(prefix+'DpChips');if(!wrap)return;
+  var arr=Array.from(st.chosen).sort();
+  wrap.innerHTML=arr.map(function(ds){return '<div class="dp-chip">'+dpFmtLong(ds)+' <b onclick="dpToggleDay(\''+prefix+'\',\''+ds+'\')">✕</b></div>';}).join('');
+  var cnt=document.getElementById(prefix+'DpCount');
+  if(cnt)cnt.innerHTML=arr.length?('<b>'+arr.length+'</b> jour'+(arr.length>1?'s':'')+' sélectionné'+(arr.length>1?'s':'')):'Aucun jour sélectionné — clique sur le calendrier ou tape des dates ci-dessous.';
+}
+
+// Saisie manuelle rapide : "28/09, 30/09, 3/10" ou "28/09/2026" (année optionnelle = année affichée au calendrier)
+function dpManualAdd(prefix){
+  var st=DP_STATE[prefix];if(!st)return;
+  var inp=document.getElementById(prefix+'DpManualInput');if(!inp)return;
+  var raw=inp.value.trim();if(!raw)return;
+  raw.split(',').forEach(function(tok){
+    tok=tok.trim();if(!tok)return;
+    var m=tok.match(/^(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?$/);
+    if(!m)return;
+    var day=+m[1],month=+m[2],year=m[3]?(m[3].length===2?2000+ +m[3]:+m[3]):st.calYear;
+    var ds=dpISO(year,month-1,day);
+    var test=new Date(ds+'T12:00:00');
+    if(test.getFullYear()===year&&test.getMonth()===month-1&&test.getDate()===day)st.chosen.add(ds);
+  });
+  inp.value='';
+  dpRenderCal(prefix);dpRenderChips(prefix);
+}
+
+// Retourne la liste triée de dates ISO à créer, selon le mode actif du sélecteur.
+function dpGetDates(prefix){
+  var st=DP_STATE[prefix]||{mode:1,chosen:new Set()};
+  if(st.mode===1){
+    var singleId=(prefix==='plg')?'plgDpSingle':(prefix+'Date');
+    var el=document.getElementById(singleId);
+    return (el&&el.value)?[el.value]:[];
+  }
+  if(st.mode===2){
+    var rsId=(prefix==='plg')?'plgDateDebut':(prefix+'DpRangeStart');
+    var reId=(prefix==='plg')?'plgDateFin':(prefix+'DpRangeEnd');
+    var rs=document.getElementById(rsId).value,re=document.getElementById(reId).value;
+    if(!rs||!re||re<rs)return [];
+    var out=[],cur=rs;
+    while(cur<=re){out.push(cur);cur=plgAddDays(cur,1);}
+    return out;
+  }
+  return Array.from(st.chosen).sort();
+}
+
 function openWOModal(wo){
   populateClientList();
   woEditId=wo?wo.id:null;
@@ -8337,7 +8691,7 @@ function openWOModal(wo){
   document.getElementById('woType').value=wo?wo.type:'installation';
   document.getElementById('woPriorite').value=wo?wo.priorite:'normal';
   document.getElementById('woStatus').value=wo?wo.status:'ouvert';
-  document.getElementById('woDate').value=wo?wo.date:'';
+  dpInit('wo',wo?wo.date:todayISO(),!!wo);
   // Cases à cocher pour assigner un ou plusieurs employés
   buildEmpChecklist('woAssigneList',woAssignees(wo),true);
   document.getElementById('woDesc').value=wo?wo.desc:'';
@@ -8422,20 +8776,36 @@ function saveWO(){
   if(!client){document.getElementById('woClient').focus();return;}
   var wos=getWOs();
   var assignes=getCheckedEmp('woAssigneList');
-  var wo={id:woEditId||uid(),client:client,site:document.getElementById('woSite').value.trim(),
+  var common={client:client,site:document.getElementById('woSite').value.trim(),
     type:document.getElementById('woType').value,priorite:document.getElementById('woPriorite').value,
-    status:document.getElementById('woStatus').value,
-    date:document.getElementById('woDate').value,assignes:assignes,assigne:assignes.join(', '),
+    status:document.getElementById('woStatus').value,assignes:assignes,assigne:assignes.join(', '),
     desc:document.getElementById('woDesc').value.trim(),notes:document.getElementById('woNotes').value.trim(),
     tasks:woTasks,files:woPjFiles,
     reqBassin:document.getElementById('woReqBassin').checked,
     reqPhoto:document.getElementById('woReqPhoto').checked,
-    reqNotes:document.getElementById('woReqNotes').checked,
-    createdAt:woEditId?undefined:new Date().toISOString(),
-    updatedAt:new Date().toISOString()}; // ➕ posé AVANT setWOs — protège contre une resynchro qui arriverait juste après la sauvegarde
-  if(woEditId){var idx2=wos.findIndex(function(w){return w.id===woEditId;});if(idx2>=0)wos[idx2]=wo;else wos.push(wo);}
-  else wos.unshift(wo);
-  setWOs(wos);sbPush('workorders',wo);auditLog(woEditId?'MODIFICATION':'CREATION','workorders',wo.id);closeModal('woModal');renderWOList();toast('✅ WO sauvegardé !');
+    reqNotes:document.getElementById('woReqNotes').checked};
+
+  if(woEditId){
+    // Édition : toujours un seul enregistrement, comportement strictement inchangé.
+    var wo=Object.assign({id:woEditId,date:document.getElementById('woDate').value,updatedAt:new Date().toISOString()},common);
+    var idx2=wos.findIndex(function(w){return w.id===woEditId;});
+    if(idx2>=0)wos[idx2]=wo;else wos.push(wo);
+    setWOs(wos);sbPush('workorders',wo);auditLog('MODIFICATION','workorders',wo.id);
+    closeModal('woModal');renderWOList();toast('✅ WO sauvegardé !');
+    return;
+  }
+
+  // Création : un ou plusieurs jours selon le sélecteur "Quand ?" — un Work Order indépendant par jour.
+  var dates=dpGetDates('wo');
+  if(!dates.length){toast('⚠️ Choisis au moins une date.');return;}
+  var created=[];
+  dates.forEach(function(d){
+    var wo=Object.assign({id:uid(),date:d,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()},common);
+    wos.unshift(wo);sbPush('workorders',wo);auditLog('CREATION','workorders',wo.id);
+    created.push(wo);
+  });
+  setWOs(wos);closeModal('woModal');renderWOList();
+  toast(created.length>1?('✅ '+created.length+' Work Orders créés !'):'✅ WO sauvegardé !');
 }
 function deleteWO(){
   askConfirm('Supprimer ce Work Order ?', _deleteWODo, '🗑 Supprimer','Supprimer le WO');
