@@ -1,4 +1,16 @@
 // SA Platform — Service Worker
+// v71 — Le tableau "Charge de la semaine" (v68) jugé pas clair (juste des chiffres, impossible de voir
+// QUELS jobs, ni lesquels sont récurrents) est remplacé par un "Agenda de la semaine" : pour chaque jour,
+// la liste des jobs avec leur nom, le technicien assigné, le statut, et un badge 🔁 pour les tâches
+// récurrentes (détecté automatiquement — même titre + même technicien répété sur plusieurs semaines dans
+// le planning, comme une série créée via "Tous les jeudis…", aucun champ à remplir en plus). Le visuel en
+// barres et le détail complet (v67) restent en dessous, inchangés. Aucune autre fonction touchée.
+// v70 — Correctif : les tâches Planning récurrentes créées SANS site précisé (ex. via le générateur
+// "Tous les jeudis" de la v69) étaient invisibles dans le Gantt Jobs — jgBuildGroups exigeait un site pour
+// les afficher. Elles apparaissent maintenant aussi, regroupées par technicien assigné plutôt que par site.
+// Rappel pour Charles : le vrai calendrier visuel type Gantt (barres proportionnelles, couleurs de statut,
+// clic pour ouvrir) est l'écran "Jobs Gantt" dans Centre d'opérations — différent de l'écran "Planning"
+// (grille jour par jour). Aucune autre fonction touchée.
 // v69 — Ajout au sélecteur de jours (WO / Créneaux / Planning) : en mode "Jours choisis", un générateur
 // de récurrence "Tous les [jour de semaine] jusqu'au [date]" (ex. tous les jeudis jusqu'au 15 novembre) —
 // remplit automatiquement le calendrier avec les bonnes dates, qui restent ensuite modifiables une par une
@@ -91,7 +103,7 @@
 // (v59 — Mise en page des fichiers Excel refaite d'après les maquettes validées avant codage. …)
 // (v58 … v49 — voir historique précédent, inchangé.)
 
-var CACHE_NAME = 'sa-platform-v69';
+var CACHE_NAME = 'sa-platform-v71';
 
 // Installation : s'activer tout de suite sans attendre
 self.addEventListener('install', function(event) {

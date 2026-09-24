@@ -464,6 +464,19 @@ input,select,textarea{font-size:16px!important}
 .jg-charge-total{text-align:center;font-size:11pt;font-weight:800;padding:2mm 1mm;border:1px solid #dce8f4;background:#EAF4FB;color:#1B4F8C}
 .jg-charge-foot td{border-top:2px solid #1B4F8C}
 
+/* ➕ Agenda de la semaine — jour par jour, remplace le tableau de chiffres jugé peu clair */
+.jg-agenda{display:grid;grid-template-columns:1fr 1fr;gap:3mm;margin-bottom:6mm}
+.jg-agenda-day{border:1px solid #dce8f4;border-radius:2mm;overflow:hidden;break-inside:avoid}
+.jg-agenda-day-hd{background:#1B4F8C;color:#fff;font-size:9.5pt;font-weight:800;padding:1.5mm 3mm;display:flex;justify-content:space-between}
+.jg-agenda-day-hd span{font-weight:600;opacity:.85;font-size:8.5pt}
+.jg-agenda-item{display:flex;align-items:center;gap:2mm;padding:1.5mm 3mm;border-top:1px solid #eef3f8;font-size:9pt}
+.jg-agenda-item:first-of-type{border-top:none}
+.jg-agenda-recur{font-size:9pt;flex:none}
+.jg-agenda-recur-sp{width:9pt;flex:none}
+.jg-agenda-lbl{font-weight:700;color:#1B2B3A;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jg-agenda-who{color:#6B8CAE;font-size:8pt;flex:none;max-width:26mm;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jg-agenda-statut{font-size:7.5pt;font-weight:700;flex:none}
+
 @media print{
   .jg-print-doc .jg-print-chart{page-break-inside:avoid}
   .jg-print-doc .pmm-print-sec{page-break-inside:avoid}
@@ -3681,7 +3694,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // a bien pris effet. Il reflète maintenant APP_BUILD ci-dessous, à mettre à jour à CHAQUE fois que
   // CACHE_NAME change dans sw.js (même valeur, ex: 'v48').
   try{
-    var APP_BUILD='v69';
+    var APP_BUILD='v71';
     var vb=document.createElement('div');
     vb.id='__buildBadge';
     vb.textContent='build '+APP_BUILD+' ⟲';
@@ -7452,47 +7465,59 @@ function plgBuildPrintHTML(){
     return h;
   }
 
-  // ── 0) CHARGE DE LA SEMAINE — le plus important en premier : d'un coup d'œil, qui est chargé, quel jour
-  // est le plus achalandé. Toujours la PREMIÈRE semaine de la période affichée (celle en cours).
+  // ── 0) AGENDA DE LA SEMAINE — jour par jour, le nom de chaque job, technicien, site, statut, et un
+  // badge 🔁 pour les tâches récurrentes (même titre + même technicien répété sur plusieurs semaines dans
+  // le planning — détecté automatiquement, aucun champ de plus à remplir). C'est la vue la plus lisible en
+  // réunion : "qu'est-ce qui se passe quel jour", pas juste un chiffre.
   var weekDays=[]; for(var wd=0; wd<7; wd++)weekDays.push(plgAddDays(monday,wd));
-  var JOUR_COURT=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
-  function chargeCount(bars,day){
-    return bars.filter(function(b){return day>=b.start&&day<=b.end;}).length;
-  }
-  function chargeColor(n){
-    if(n===0)return '#F4F6FA';
-    if(n<=2)return '#DDF3E8';
-    if(n<=4)return '#FFF3E0';
-    return '#FCE0DE';
-  }
-  function chargeTextColor(n){
-    if(n===0)return '#B0BFCC';
-    if(n<=2)return '#1a7a4a';
-    if(n<=4)return '#B06800';
-    return '#B0221D';
-  }
-  h+='<div class="jg-print-detail-title" style="margin-top:0">📊 Charge de la semaine — '+fmtDate(monday)+' → '+fmtDate(plgAddDays(monday,6))+'</div>';
-  h+='<table class="jg-charge-table"><thead><tr><th class="jg-charge-name"></th>';
-  JOUR_COURT.forEach(function(jn,i){h+='<th>'+jn+'<br><span style="font-weight:400">'+plgFmtCourt(weekDays[i])+'</span></th>';});
-  h+='<th class="jg-charge-total">Total</th></tr></thead><tbody>';
-  var teamTotals=weekDays.map(function(){return 0;});
-  var grandTotal=0;
-  groupOrder.forEach(function(key){
-    var g=groups[key];
-    h+='<tr><td class="jg-charge-name">'+esc(g.label)+'</td>';
-    var rowTotal=0;
-    weekDays.forEach(function(day,i){
-      var n=chargeCount(g.bars,day);
-      rowTotal+=n; teamTotals[i]+=n;
-      h+='<td class="jg-charge-cell" style="background:'+chargeColor(n)+';color:'+chargeTextColor(n)+'">'+(n||'·')+'</td>';
+  var JOUR_LONG=['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+
+  // Détection "récurrent" : même titre (normalisé) + même technicien apparaissant à plus d'une reprise
+  // dans TOUT le planning (pas juste la semaine affichée) — signe d'une série créée via "Tous les jeudis…".
+  var recurCount={};
+  function normTitre(s2){return (s2||'').trim().toLowerCase();}
+  getPlanning().forEach(function(t){
+    if(t.statut==='annule')return;
+    var a=planningAssignees(t); if(!a.length)a=[''];
+    a.forEach(function(eid){
+      var k=normTitre(t.titre)+'|'+eid;
+      recurCount[k]=(recurCount[k]||0)+1;
     });
-    grandTotal+=rowTotal;
-    h+='<td class="jg-charge-total">'+rowTotal+'</td></tr>';
   });
-  h+='<tr class="jg-charge-foot"><td class="jg-charge-name">Total équipe</td>';
-  teamTotals.forEach(function(n){h+='<td class="jg-charge-cell" style="background:'+chargeColor(n)+';color:'+chargeTextColor(n)+';font-weight:800">'+(n||'·')+'</td>';});
-  h+='<td class="jg-charge-total">'+grandTotal+'</td></tr>';
-  h+='</tbody></table>';
+  function estRecurrent(titre,eid){ return (recurCount[normTitre(titre)+'|'+eid]||0)>1; }
+
+  var STATUT_BADGE={active:'#1a7a4a',late:'#8b1a1a',upcoming:'#1B4F8C'};
+  h+='<div class="jg-print-detail-title" style="margin-top:0">📅 Agenda de la semaine — '+fmtDate(monday)+' → '+fmtDate(plgAddDays(monday,6))+'</div>';
+  h+='<div class="jg-agenda">';
+  var semaineVide=true;
+  weekDays.forEach(function(day,di){
+    var items=[];
+    groupOrder.forEach(function(key){
+      groups[key].bars.forEach(function(b){
+        if(day<b.start||day>b.end)return;
+        items.push({lbl:b.lbl,who:groups[key].label,empKey:key,src:b.src,termine:b.termine,valide:b.valide});
+      });
+    });
+    if(!items.length)return;
+    semaineVide=false;
+    var dowJs=new Date(day+'T12:00:00').getDay();
+    h+='<div class="jg-agenda-day"><div class="jg-agenda-day-hd">'+JOUR_LONG[dowJs]+' '+plgFmtCourt(day)+' <span>'+items.length+' job'+(items.length>1?'s':'')+'</span></div>';
+    items.sort(function(a,b){return (a.who||'').localeCompare(b.who||'');});
+    items.forEach(function(it){
+      var recur=(mode==='tech')&&estRecurrent(it.lbl,it.empKey); // affiché seulement en vue "par technicien" (le regroupement est par emp)
+      var statutTxt=it.termine?(it.valide?'✅ Validé':'☑️ Terminé'):'À venir';
+      var statutCol=it.termine?(it.valide?'#1a7a4a':'#9AA7B4'):'#1B4F8C';
+      h+='<div class="jg-agenda-item">'
+        +(recur?'<span class="jg-agenda-recur" title="Tâche récurrente">🔁</span>':'<span class="jg-agenda-recur-sp"></span>')
+        +'<span class="jg-agenda-lbl">'+esc(it.lbl)+'</span>'
+        +'<span class="jg-agenda-who">'+esc(it.who)+'</span>'
+        +'<span class="jg-agenda-statut" style="color:'+statutCol+'">'+statutTxt+'</span>'
+        +'</div>';
+    });
+    h+='</div>';
+  });
+  if(semaineVide) h+='<div style="padding:10px;color:#6B8CAE;font-size:11pt">Rien de planifié cette semaine.</div>';
+  h+='</div>';
 
   // ── 1) VISUEL — barres colorées par semaine, un coup d'œil pour toute l'équipe/le site en réunion ──
   var nbSemaines=Math.ceil(totalDays/7);
@@ -8121,6 +8146,18 @@ function jgBuildGroups(monday,rangeEnd){
     var key='site|'+t.siteNom;
     var g=ensureGroup(key,t.siteNom);
     g.bars.push({t:'tache',lbl:t.titre,start:t.dateDebut,end:t.dateFin,statut:'upcoming',assignes:planningAssignees(t),srcType:'planning',srcId:t.id,termine:!!t.termine,valide:!!t.valide});
+  });
+  // ➕ Tâches planning SANS site (ex. entretiens récurrents génériques créés via "Jours choisis" / "Tous les
+  // jeudis" sans site précisé) : avant, invisibles ici faute de site — maintenant regroupées par technicien
+  // assigné à la place, pour qu'aucune tâche récurrente ne disparaisse du Gantt.
+  getPlanning().filter(function(t){return t.statut!=='annule'&&!t.siteNom&&!t.woId&&!t.planId;}).forEach(function(t){
+    if(t.dateFin<monday||t.dateDebut>rangeEnd)return;
+    var assignees=planningAssignees(t); if(!assignees.length)assignees=[''];
+    assignees.forEach(function(eid){
+      var key='emp|'+(eid||'_none');
+      var g=ensureGroup(key,eid?empName(eid):'(non assigné)');
+      g.bars.push({t:'tache',lbl:t.titre,start:t.dateDebut,end:t.dateFin,statut:'upcoming',assignes:assignees,srcType:'planning',srcId:t.id,termine:!!t.termine,valide:!!t.valide});
+    });
   });
 
   groupOrder.sort(function(a,b){return (groups[a].label||'').localeCompare(groups[b].label||'');});
