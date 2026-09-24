@@ -2775,6 +2775,7 @@ function mapRowToDb(localKey,row){
     if(row.reqBassin!==undefined){row.req_bassin=row.reqBassin;delete row.reqBassin;}
     if(row.reqPhoto!==undefined){row.req_photo=row.reqPhoto;delete row.reqPhoto;}
     if(row.reqNotes!==undefined){row.req_notes=row.reqNotes;delete row.reqNotes;}
+    if(row.groupeId!==undefined){row.groupe_id=row.groupeId;delete row.groupeId;}
   }
   if(localKey==='gpslog'){
     if(row.siteId!==undefined){row.site_id=row.siteId;delete row.siteId;}
@@ -2833,6 +2834,7 @@ function mapRowFromDb(localKey,r){
     if(r.req_bassin!==undefined){r.reqBassin=r.req_bassin;delete r.req_bassin;}
     if(r.req_photo!==undefined){r.reqPhoto=r.req_photo;delete r.req_photo;}
     if(r.req_notes!==undefined){r.reqNotes=r.req_notes;delete r.req_notes;}
+    if(r.groupe_id!==undefined){r.groupeId=r.groupe_id;delete r.groupe_id;}
   }
   if(localKey==='gpslog'){
     if(r.site_id!==undefined){r.siteId=r.site_id;delete r.site_id;}
@@ -3701,7 +3703,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // a bien pris effet. Il reflète maintenant APP_BUILD ci-dessous, à mettre à jour à CHAQUE fois que
   // CACHE_NAME change dans sw.js (même valeur, ex: 'v48').
   try{
-    var APP_BUILD='v72';
+    var APP_BUILD='v73';
     var vb=document.createElement('div');
     vb.id='__buildBadge';
     vb.textContent='build '+APP_BUILD+' ⟲';

@@ -1,4 +1,13 @@
 // SA Platform — Service Worker
+// v73 — Correctif CRITIQUE lié au groupeId introduit en v72 : la colonne correspondante n'existait pas
+// encore côté serveur (Supabase), donc CHAQUE sauvegarde d'un WO multi-jours était rejetée par le serveur
+// (colonne inconnue) — d'où l'impression que "ça ne marche plus" et, très probablement, des tentatives
+// répétées ayant créé de vrais doublons en production (14 Work Orders + 13 tâches Planning dupliqués pour
+// "Complexe Locatif Cobalt", créés à 11 minutes d'intervalle). Colonne ajoutée en base, mapping
+// camelCase↔snake_case complété (groupeId ↔ groupe_id, dans les deux sens), et les 27 doublons confirmés
+// ont été supprimés directement en base (toujours la copie la plus ancienne conservée). Aucun autre client
+// touché — vérifié qu'aucun autre doublon n'existe dans workorders ni planning_tasks. Aucune autre fonction
+// touchée.
 // v72 — Correctif important : créer un WO sur plusieurs jours (plage, jours choisis, ou récurrence "tous
 // les jeudis") créait bien plusieurs Work Orders indépendants comme prévu, mais la LISTE DES WO les
 // affichait chacun comme une carte séparée — au lieu d'un seul dossier client comme Charles s'y attendait.
@@ -113,7 +122,7 @@
 // (v59 — Mise en page des fichiers Excel refaite d'après les maquettes validées avant codage. …)
 // (v58 … v49 — voir historique précédent, inchangé.)
 
-var CACHE_NAME = 'sa-platform-v72';
+var CACHE_NAME = 'sa-platform-v73';
 
 // Installation : s'activer tout de suite sans attendre
 self.addEventListener('install', function(event) {
