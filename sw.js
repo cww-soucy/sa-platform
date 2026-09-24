@@ -1,4 +1,17 @@
 // SA Platform — Service Worker
+// v69 — Ajout au sélecteur de jours (WO / Créneaux / Planning) : en mode "Jours choisis", un générateur
+// de récurrence "Tous les [jour de semaine] jusqu'au [date]" (ex. tous les jeudis jusqu'au 15 novembre) —
+// remplit automatiquement le calendrier avec les bonnes dates, qui restent ensuite modifiables une par une
+// (retirer un jeudi précis en cliquant sa puce, comme n'importe quel autre jour choisi). Réutilise
+// entièrement le mode 3 existant (mêmes puces, même calendrier, même logique de sauvegarde un enregistrement
+// par jour) — aucune nouvelle table, aucun nouveau mode. Aucune autre fonction touchée.
+// v68 — Ajout demandé après la v67 : un tableau "Charge de la semaine" tout en haut de l'impression du
+// module Planning, AVANT le visuel en barres. Une grille technicien × jour (lundi à dimanche de la semaine
+// en cours), avec le nombre de tâches ce jour-là dans chaque case, colorée par intensité (gris = rien,
+// vert = léger, orange = chargé, rouge = très chargé), plus une ligne "Total équipe" par jour et une
+// colonne total par personne. Objectif : voir la charge de travail et l'achalandage de la semaine d'un
+// seul coup d'œil en réunion, sans avoir à déchiffrer les barres. Le visuel en barres et le détail complet
+// (v67) restent en dessous, inchangés. Aucune autre fonction touchée.
 // v67 — Correctif important : le bouton "Imprimer" du module PLANNING (celui accessible depuis l'onglet
 // Planning, différent du bouton "Imprimer / Envoyer" de Jobs Gantt) n'avait PAS reçu la mise à jour A3 +
 // visuel en barres de la v66 — Charles imprime depuis ce bouton-là, pas Jobs Gantt, d'où l'impression de
@@ -78,7 +91,7 @@
 // (v59 — Mise en page des fichiers Excel refaite d'après les maquettes validées avant codage. …)
 // (v58 … v49 — voir historique précédent, inchangé.)
 
-var CACHE_NAME = 'sa-platform-v67';
+var CACHE_NAME = 'sa-platform-v69';
 
 // Installation : s'activer tout de suite sans attendre
 self.addEventListener('install', function(event) {

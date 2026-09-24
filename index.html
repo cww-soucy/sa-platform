@@ -211,6 +211,9 @@ input,select,textarea{font-size:16px!important}
 .dp-count{font-size:11.5px;color:var(--muted);margin-top:8px}
 .dp-count b{color:var(--dk)}
 .dp-note{background:var(--blue-lt);border:1px dashed var(--blue);border-radius:var(--rs);padding:8px 11px;font-size:11px;color:var(--muted);margin-top:10px;align-items:center;gap:6px}
+.dp-recur{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px;padding:9px 10px;background:var(--surface);border-radius:var(--rs)}
+.dp-recur select,.dp-recur input[type=date]{border:1.5px solid var(--line);border-radius:8px;padding:7px 8px;font-size:12px;color:var(--text);background:#fff}
+.dp-recur span{font-size:12px;color:var(--muted);font-weight:600}
 
 /* ── PJ ── */
 .pj-zone{border:1.5px dashed var(--line);border-radius:var(--rs);padding:10px;display:flex;flex-direction:column;gap:6px}
@@ -450,6 +453,16 @@ input,select,textarea{font-size:16px!important}
   color:#fff;font-size:8pt;font-weight:700;display:flex;align-items:center;padding:0 2.5mm;
   overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .jg-print-detail-title{font-size:12pt;font-weight:800;color:#1B4F8C;margin:4mm 0 3mm;padding-top:2mm;border-top:2px solid #1B4F8C}
+
+/* ➕ Charge de la semaine — tableau chaleur, la première chose visible à l'impression du Planning */
+.jg-charge-table{width:100%;border-collapse:collapse;margin-bottom:6mm}
+.jg-charge-table th{background:#1B4F8C;color:#fff;font-size:8.5pt;font-weight:700;padding:2mm 1mm;text-align:center;border:1px solid #14406e}
+.jg-charge-table th.jg-charge-name{background:#0B2E52;text-align:left;padding-left:3mm}
+.jg-charge-table th.jg-charge-total{background:#0B2E52}
+.jg-charge-name{font-size:9.5pt;font-weight:700;color:#1B2B3A;padding:2mm 3mm;border:1px solid #dce8f4;white-space:nowrap}
+.jg-charge-cell{text-align:center;font-size:11pt;font-weight:700;padding:2mm 1mm;border:1px solid #dce8f4;width:11mm}
+.jg-charge-total{text-align:center;font-size:11pt;font-weight:800;padding:2mm 1mm;border:1px solid #dce8f4;background:#EAF4FB;color:#1B4F8C}
+.jg-charge-foot td{border-top:2px solid #1B4F8C}
 
 @media print{
   .jg-print-doc .jg-print-chart{page-break-inside:avoid}
@@ -1479,6 +1492,12 @@ input,select,textarea{font-size:16px!important}
           <div class="dp-cal-hd"><span class="dp-cal-nav" onclick="dpCalNav('wo',-1)">‹</span><span id="woDpCalTitle"></span><span class="dp-cal-nav" onclick="dpCalNav('wo',1)">›</span></div>
           <div class="dp-cal-grid" id="woDpCalGrid"></div>
         </div>
+        <div class="dp-recur">
+          <select id="woDpRecurDow"><option value="1">Tous les lundis</option><option value="2">Tous les mardis</option><option value="3">Tous les mercredis</option><option value="4">Tous les jeudis</option><option value="5">Tous les vendredis</option><option value="6">Tous les samedis</option><option value="0">Tous les dimanches</option></select>
+          <span>jusqu'au</span>
+          <input type="date" id="woDpRecurUntil"/>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="dpRecurAdd('wo')">🔁 Générer</button>
+        </div>
         <div class="dp-manual">
           <input type="text" id="woDpManualInput" placeholder="Ou tape des dates : 28/09, 30/09, 3/10"/>
           <button type="button" class="btn btn-ghost btn-sm" onclick="dpManualAdd('wo')">Ajouter</button>
@@ -1638,6 +1657,12 @@ input,select,textarea{font-size:16px!important}
         <div class="dp-cal">
           <div class="dp-cal-hd"><span class="dp-cal-nav" onclick="dpCalNav('pm',-1)">‹</span><span id="pmDpCalTitle"></span><span class="dp-cal-nav" onclick="dpCalNav('pm',1)">›</span></div>
           <div class="dp-cal-grid" id="pmDpCalGrid"></div>
+        </div>
+        <div class="dp-recur">
+          <select id="pmDpRecurDow"><option value="1">Tous les lundis</option><option value="2">Tous les mardis</option><option value="3">Tous les mercredis</option><option value="4">Tous les jeudis</option><option value="5">Tous les vendredis</option><option value="6">Tous les samedis</option><option value="0">Tous les dimanches</option></select>
+          <span>jusqu'au</span>
+          <input type="date" id="pmDpRecurUntil"/>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="dpRecurAdd('pm')">🔁 Générer</button>
         </div>
         <div class="dp-manual">
           <input type="text" id="pmDpManualInput" placeholder="Ou tape des dates : 28/09, 30/09, 3/10"/>
@@ -2110,6 +2135,12 @@ input,select,textarea{font-size:16px!important}
           <div class="dp-cal">
             <div class="dp-cal-hd"><span class="dp-cal-nav" onclick="dpCalNav('plg',-1)">‹</span><span id="plgDpCalTitle"></span><span class="dp-cal-nav" onclick="dpCalNav('plg',1)">›</span></div>
             <div class="dp-cal-grid" id="plgDpCalGrid"></div>
+          </div>
+          <div class="dp-recur">
+            <select id="plgDpRecurDow"><option value="1">Tous les lundis</option><option value="2">Tous les mardis</option><option value="3">Tous les mercredis</option><option value="4">Tous les jeudis</option><option value="5">Tous les vendredis</option><option value="6">Tous les samedis</option><option value="0">Tous les dimanches</option></select>
+            <span>jusqu'au</span>
+            <input type="date" id="plgDpRecurUntil"/>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="dpRecurAdd('plg')">🔁 Générer</button>
           </div>
           <div class="dp-manual">
             <input type="text" id="plgDpManualInput" placeholder="Ou tape des dates : 28/09, 30/09, 3/10"/>
@@ -3650,7 +3681,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // a bien pris effet. Il reflète maintenant APP_BUILD ci-dessous, à mettre à jour à CHAQUE fois que
   // CACHE_NAME change dans sw.js (même valeur, ex: 'v48').
   try{
-    var APP_BUILD='v67';
+    var APP_BUILD='v69';
     var vb=document.createElement('div');
     vb.id='__buildBadge';
     vb.textContent='build '+APP_BUILD+' ⟲';
@@ -7421,6 +7452,48 @@ function plgBuildPrintHTML(){
     return h;
   }
 
+  // ── 0) CHARGE DE LA SEMAINE — le plus important en premier : d'un coup d'œil, qui est chargé, quel jour
+  // est le plus achalandé. Toujours la PREMIÈRE semaine de la période affichée (celle en cours).
+  var weekDays=[]; for(var wd=0; wd<7; wd++)weekDays.push(plgAddDays(monday,wd));
+  var JOUR_COURT=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+  function chargeCount(bars,day){
+    return bars.filter(function(b){return day>=b.start&&day<=b.end;}).length;
+  }
+  function chargeColor(n){
+    if(n===0)return '#F4F6FA';
+    if(n<=2)return '#DDF3E8';
+    if(n<=4)return '#FFF3E0';
+    return '#FCE0DE';
+  }
+  function chargeTextColor(n){
+    if(n===0)return '#B0BFCC';
+    if(n<=2)return '#1a7a4a';
+    if(n<=4)return '#B06800';
+    return '#B0221D';
+  }
+  h+='<div class="jg-print-detail-title" style="margin-top:0">📊 Charge de la semaine — '+fmtDate(monday)+' → '+fmtDate(plgAddDays(monday,6))+'</div>';
+  h+='<table class="jg-charge-table"><thead><tr><th class="jg-charge-name"></th>';
+  JOUR_COURT.forEach(function(jn,i){h+='<th>'+jn+'<br><span style="font-weight:400">'+plgFmtCourt(weekDays[i])+'</span></th>';});
+  h+='<th class="jg-charge-total">Total</th></tr></thead><tbody>';
+  var teamTotals=weekDays.map(function(){return 0;});
+  var grandTotal=0;
+  groupOrder.forEach(function(key){
+    var g=groups[key];
+    h+='<tr><td class="jg-charge-name">'+esc(g.label)+'</td>';
+    var rowTotal=0;
+    weekDays.forEach(function(day,i){
+      var n=chargeCount(g.bars,day);
+      rowTotal+=n; teamTotals[i]+=n;
+      h+='<td class="jg-charge-cell" style="background:'+chargeColor(n)+';color:'+chargeTextColor(n)+'">'+(n||'·')+'</td>';
+    });
+    grandTotal+=rowTotal;
+    h+='<td class="jg-charge-total">'+rowTotal+'</td></tr>';
+  });
+  h+='<tr class="jg-charge-foot"><td class="jg-charge-name">Total équipe</td>';
+  teamTotals.forEach(function(n){h+='<td class="jg-charge-cell" style="background:'+chargeColor(n)+';color:'+chargeTextColor(n)+';font-weight:800">'+(n||'·')+'</td>';});
+  h+='<td class="jg-charge-total">'+grandTotal+'</td></tr>';
+  h+='</tbody></table>';
+
   // ── 1) VISUEL — barres colorées par semaine, un coup d'œil pour toute l'équipe/le site en réunion ──
   var nbSemaines=Math.ceil(totalDays/7);
   var weeks=[]; for(var i=0;i<nbSemaines;i++)weeks.push(plgAddDays(monday,i*7));
@@ -8616,6 +8689,8 @@ function dpInit(prefix,presetDate,isEdit){
   }
 
   var manual=document.getElementById(prefix+'DpManualInput');if(manual)manual.value='';
+  var recurUntil=document.getElementById(prefix+'DpRecurUntil');
+  if(recurUntil&&!recurUntil.value)recurUntil.value=plgAddDays(todayISO(),56); // 8 semaines par défaut, modifiable
 
   var pick=document.getElementById(prefix+'DpModePick');
   if(pick)pick.style.display=isEdit?'none':'flex';
@@ -8683,6 +8758,27 @@ function dpRenderChips(prefix){
   wrap.innerHTML=arr.map(function(ds){return '<div class="dp-chip">'+dpFmtLong(ds)+' <b onclick="dpToggleDay(\''+prefix+'\',\''+ds+'\')">✕</b></div>';}).join('');
   var cnt=document.getElementById(prefix+'DpCount');
   if(cnt)cnt.innerHTML=arr.length?('<b>'+arr.length+'</b> jour'+(arr.length>1?'s':'')+' sélectionné'+(arr.length>1?'s':'')):'Aucun jour sélectionné — clique sur le calendrier ou tape des dates ci-dessous.';
+}
+
+// Récurrence : "tous les jeudis jusqu'au [date]" — génère les dates correspondantes et les ajoute aux
+// jours choisis (mode 3), sans jamais effacer une sélection déjà faite au calendrier ou tapée à la main.
+function dpRecurAdd(prefix){
+  var st=DP_STATE[prefix];if(!st)return;
+  var dowSel=document.getElementById(prefix+'DpRecurDow');
+  var untilEl=document.getElementById(prefix+'DpRecurUntil');
+  if(!dowSel||!untilEl||!untilEl.value)return;
+  var targetDow=+dowSel.value; // 0=dimanche … 6=samedi (comme Date.getDay())
+  var cur=new Date();cur.setHours(12,0,0,0);
+  var until=new Date(untilEl.value+'T12:00:00');
+  if(until<cur){toast('⚠️ La date de fin doit être après aujourd\'hui.');return;}
+  while(cur.getDay()!==targetDow)cur.setDate(cur.getDate()+1);
+  var n=0;
+  while(cur<=until&&n<104){ // garde-fou : 2 ans de récurrence hebdomadaire maximum
+    st.chosen.add(dpISO(cur.getFullYear(),cur.getMonth(),cur.getDate()));
+    cur.setDate(cur.getDate()+7);
+    n++;
+  }
+  dpRenderCal(prefix);dpRenderChips(prefix);
 }
 
 // Saisie manuelle rapide : "28/09, 30/09, 3/10" ou "28/09/2026" (année optionnelle = année affichée au calendrier)
