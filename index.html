@@ -2433,7 +2433,7 @@ function alertStorageFull(msg, bloquant){
 // ════════════════ COFFRE DE SAUVEGARDE (anti-perte de données) ════════════════
 // Snapshot horodaté de toutes les tables importantes, à chaque écriture. Garde les 8 derniers.
 // Même s'il reste un bug qui vide une table, on peut toujours restaurer.
-var VAULT_KEYS=['workorders','plan','planmatch','sites','flotte','inventaire','comptes','sortie','livraison'];
+var VAULT_KEYS=['workorders','plan','planmatch','sites','flotte','inventaire','comptes','sortie','livraison','planning','calconn','hivernage'];
 var _vaultTimer=null;
 function scheduleVault(){ if(_vaultTimer)clearTimeout(_vaultTimer); _vaultTimer=setTimeout(doVault,1500); }
 // ➕ Mesure l'espace occupé par l'app (en octets)
@@ -2761,7 +2761,9 @@ function checkResetEpoch(cb){
       var serverEpoch=res&&res.data?res.data.value:null;
       if(!serverEpoch){cb(false);return;}
       var seen=localStorage.getItem(LS+'__epochSeen');
-      var stale = !seen || (new Date(seen) < new Date(serverEpoch));
+      // Comparaison en entier (pas en date) — un compteur simple incrémenté à chaque nettoyage admin,
+      // aucune ambiguïté de format/fuseau horaire possible, contrairement à une comparaison de dates.
+      var stale = !seen || (parseInt(seen,10)||0) < (parseInt(serverEpoch,10)||0);
       if(stale){
         // Vide le cache local des tables sensibles AVANT le pull, pour qu'aucune réconciliation montante
         // (ailleurs dans l'app) ne puisse repousser ces vieilles données par la suite.
@@ -3736,7 +3738,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // a bien pris effet. Il reflète maintenant APP_BUILD ci-dessous, à mettre à jour à CHAQUE fois que
   // CACHE_NAME change dans sw.js (même valeur, ex: 'v48').
   try{
-    var APP_BUILD='v74';
+    var APP_BUILD='v75';
     var vb=document.createElement('div');
     vb.id='__buildBadge';
     vb.textContent='build '+APP_BUILD+' ⟲';
