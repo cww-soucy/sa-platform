@@ -3738,7 +3738,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // a bien pris effet. Il reflète maintenant APP_BUILD ci-dessous, à mettre à jour à CHAQUE fois que
   // CACHE_NAME change dans sw.js (même valeur, ex: 'v48').
   try{
-    var APP_BUILD='v75';
+    var APP_BUILD='v76';
     var vb=document.createElement('div');
     vb.id='__buildBadge';
     vb.textContent='build '+APP_BUILD+' ⟲';
@@ -3753,6 +3753,29 @@ document.addEventListener('DOMContentLoaded', function(){
         function(){ restoreVault(0); }, '⟲ Restaurer', '🗄 Coffre de sauvegarde');
     });
     document.body.appendChild(vb);
+
+    // ➕ BOUTON PANIQUE (v76) : nettoyage local complet en un clic — vide le stockage local, le coffre de
+    // sauvegarde, désenregistre le service worker et recharge à neuf depuis le serveur. Ne touche à RIEN
+    // côté serveur (Supabase intact) — sert uniquement quand le cache de CET appareil est périmé et que les
+    // méthodes habituelles (fermer l'app, vider les données du site via le navigateur) ne suffisent pas.
+    var rb=document.createElement('div');
+    rb.id='__resetBadge';
+    rb.textContent='🧹 Tout réinitialiser';
+    rb.style.cssText='position:fixed;bottom:34px;right:6px;font:11px/1.4 monospace;color:#fff;background:rgba(180,40,40,.9);padding:3px 8px;border-radius:8px;z-index:99999;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.2)';
+    rb.addEventListener('click',function(){
+      askConfirm('Vider TOUTES les données locales de cet appareil (coffre de sauvegarde inclus) et recharger à neuf depuis le serveur ? Rien ne sera touché côté serveur — juste ce téléphone/ordinateur.',
+        function(){
+          try{ localStorage.clear(); }catch(e){}
+          try{
+            if(navigator.serviceWorker){
+              navigator.serviceWorker.getRegistrations().then(function(rs){ rs.forEach(function(r){ r.unregister(); }); });
+            }
+            if(window.caches){ caches.keys().then(function(ks){ ks.forEach(function(k){ caches.delete(k); }); }); }
+          }catch(e){}
+          setTimeout(function(){ location.reload(true); }, 400);
+        }, '🧹 Tout vider et recharger', 'Réinitialisation locale complète');
+    });
+    document.body.appendChild(rb);
   }catch(e){}
 
   // Initialiser les notifications
