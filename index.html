@@ -2708,12 +2708,21 @@ function initSupabase(){
     sb=supabase.createClient(SB_URL,SB_KEY);
     sbReady=true;
     setSbStatus('syncing');
+    // ➕ GARDE-FOU CONTRE LA RÉSURRECTION DE VIEILLES DONNÉES (v74) : avant de pousser quoi que ce soit
+    // vers le serveur, on vérifie un "epoch" de réinitialisation stocké côté serveur (app_meta). Si CET
+    // appareil n'a jamais vu cet epoch (ou en a vu un plus ancien), ça veut dire qu'un nettoyage/reset admin
+    // a eu lieu APRÈS la dernière synchro de cet appareil — son cache local est probablement périmé. Dans ce
+    // cas, on ne pousse JAMAIS le local vers le serveur automatiquement : on aligne silencieusement le local
+    // sur le serveur (déjà fait par syncPullAll juste avant) et on retient le nouvel epoch. La réconciliation
+    // montante normale (récupérer le travail fait hors-ligne) continue de fonctionner pour tout appareil déjà
+    // à jour avec le dernier epoch connu — rien ne change dans ce cas.
+    checkResetEpoch(function(staleDevice){
     syncPullAll(function(){
       setSbStatus('online');
-      // ➕ RÉCONCILIATION MONTANTE (une seule fois) : tout ce qui a été créé pendant que la
-      // synchro ne marchait pas n'est QUE local. On le pousse maintenant au serveur.
-      // Le pull ci-dessus a gardé le local (garde-fou protecteur), donc rien n'a été perdu.
-      if(!initSupabase._pushedUp){
+      if(staleDevice){
+        // Appareil périmé : on n'écrase JAMAIS le nettoyage serveur avec un vieux cache local.
+        try{ toast('🔄 Données locales réalignées sur le serveur'); }catch(e){}
+      } else if(!initSupabase._pushedUp){
         initSupabase._pushedUp=true;
         try{ pushAllLocalToServer(); }catch(e){}
         try{ pushAllLocalFT(); }catch(e){}
@@ -2737,7 +2746,31 @@ function initSupabase(){
         }
       }catch(e){}
     });
+    }); // fin checkResetEpoch
   }catch(e){setSbStatus('offline');}
+}
+
+// ➕ Vérifie si cet appareil a raté un reset admin (voir app_meta.reset_epoch). Callback(staleDevice) :
+// staleDevice=true → cet appareil a un epoch plus vieux (ou aucun) que le serveur → son cache local est
+// périmé, on doit éviter de le repousser et le vider pour ne plus jamais le repousser plus tard.
+// staleDevice=false → appareil à jour, comportement normal (réconciliation montante habituelle).
+// En cas d'erreur réseau/table absente : on suppose staleDevice=false pour ne jamais bloquer la sync normale.
+function checkResetEpoch(cb){
+  try{
+    sb.from('app_meta').select('value').eq('key','reset_epoch').single().then(function(res){
+      var serverEpoch=res&&res.data?res.data.value:null;
+      if(!serverEpoch){cb(false);return;}
+      var seen=localStorage.getItem(LS+'__epochSeen');
+      var stale = !seen || (new Date(seen) < new Date(serverEpoch));
+      if(stale){
+        // Vide le cache local des tables sensibles AVANT le pull, pour qu'aucune réconciliation montante
+        // (ailleurs dans l'app) ne puisse repousser ces vieilles données par la suite.
+        VAULT_KEYS.forEach(function(k){ try{ lsSet(k, []); }catch(e){} });
+        localStorage.setItem(LS+'__epochSeen', serverEpoch);
+      }
+      cb(stale);
+    }).catch(function(){ cb(false); });
+  }catch(e){ cb(false); }
 }
 
 function setSbStatus(s){
@@ -3703,7 +3736,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // a bien pris effet. Il reflète maintenant APP_BUILD ci-dessous, à mettre à jour à CHAQUE fois que
   // CACHE_NAME change dans sw.js (même valeur, ex: 'v48').
   try{
-    var APP_BUILD='v73';
+    var APP_BUILD='v74';
     var vb=document.createElement('div');
     vb.id='__buildBadge';
     vb.textContent='build '+APP_BUILD+' ⟲';
