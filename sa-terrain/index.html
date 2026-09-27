@@ -15,7 +15,96 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
-/* ==TOKENS== */ … /* ==/TOKENS== */
+/* ==TOKENS== */
+:root{
+  /* — Identité (ne pas modifier) — */
+  --sa-marine:#004987;
+  --sa-marine-900:#00233F;
+  --sa-marine-700:#003766;
+  --sa-marine-100:#DCE8F3;
+
+  /* — Encre (neutres froids tirés du marine) — */
+  --ink-950:#050E17;
+  --ink-900:#0A1826;
+  --ink-850:#0F2132;
+  --ink-800:#152A3E;
+  --ink-700:#223A51;
+  --ink-600:#3A5068;
+  --ink-500:#5C7187;
+  --ink-400:#8697A8;
+  --ink-300:#B4C0CB;
+  --ink-200:#D6DDE3;
+  --ink-100:#E9EDF1;
+  --ink-50:#F4F6F8;
+  --paper:#FFFFFF;
+
+  /* — Signal : jaune bouée, l'unique couleur d'action — */
+  --signal:#FFC400;
+  --signal-600:#E0AA00;
+  --signal-ink:#1C1500;
+
+  /* — Réactifs : chaque paramètre porte la couleur de son test — */
+  --rx-chlore:#C8157A;   /* DPD, magenta */
+  --rx-combine:#8A1A5B;  /* DPD 3, prune */
+  --rx-ph:#E2472B;       /* rouge phénol */
+  --rx-alc:#2E7D32;      /* vert de bromocrésol */
+  --rx-temp:#6A3FC8;     /* thermomètre */
+  --rx-niveau:#004987;   /* marine */
+  --rx-turb:#8C6A00;     /* ocre */
+  --rx-cya:#0E7C86;      /* acide cyanurique */
+
+  /* — États (réservés, jamais décoratifs) — */
+  --ok:#0B8A4B;
+  --warn:#D96C00;
+  --crit:#CF1D3A;
+
+  /* — Typographie — */
+  --font:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
+  --wide:118%;   /* titres : large, façon signalisation */
+  --narrow:78%;  /* chiffres : condensé, façon marquage de profondeur */
+  --t-2xs:11px; --t-xs:12px; --t-sm:14px; --t-md:16px; --t-lg:19px;
+  --t-xl:24px; --t-2xl:32px; --t-3xl:48px; --t-4xl:72px;
+
+  /* — Espace (base 4) — */
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:20px; --s6:24px; --s8:32px; --s10:40px; --s12:48px;
+
+  /* — Formes : angles francs, rayon minimal — */
+  --r1:2px; --r2:4px; --r3:8px;
+  --rule:1px; --rule-strong:3px;
+  --touch:56px;          /* cible tactile terrain (gants) */
+  --touch-min:48px;
+
+  /* — Motif : corde de couloir — */
+  --lane:repeating-linear-gradient(90deg,var(--signal) 0 14px,var(--sa-marine) 14px 28px,var(--paper) 28px 42px,var(--sa-marine) 42px 56px);
+
+  --ease:cubic-bezier(.2,.7,.2,1);
+}
+
+/* Thème Papier (défaut terrain — lisible plein soleil) */
+[data-theme="papier"]{
+  --bg:var(--paper); --surface:var(--ink-50); --surface-2:var(--ink-100);
+  --line:var(--ink-200); --line-strong:var(--ink-900);
+  --text:var(--ink-950); --text-2:var(--ink-600); --text-3:var(--ink-500);
+  --accent:var(--signal); --accent-ink:var(--signal-ink);
+  --brand:var(--sa-marine); --brand-ink:#fff;
+  --ok-bg:#E3F4EA; --warn-bg:#FFF0DE; --crit-bg:#FDE6EA;
+  --focus:0 0 0 3px var(--ink-950),0 0 0 6px var(--signal);
+}
+/* Thème Encre (défaut gestion — salle de contrôle) */
+[data-theme="encre"]{
+  --bg:var(--ink-950); --surface:var(--ink-900); --surface-2:var(--ink-850);
+  --line:var(--ink-800); --line-strong:var(--ink-600);
+  --text:#EEF2F5; --text-2:var(--ink-300); --text-3:var(--ink-400);
+  --accent:var(--signal); --accent-ink:var(--signal-ink);
+  --brand:var(--sa-marine); --brand-ink:#fff;
+  --ok:#2FC27A; --warn:#FF9A2E; --crit:#FF4D67;
+  --rx-chlore:#F04AA3; --rx-combine:#D56BAA; --rx-ph:#FF6A4D; --rx-alc:#5DBB63;
+  --rx-temp:#A488F0; --rx-niveau:#5AA3E6; --rx-turb:#D9B243; --rx-cya:#3FC1CB;
+  --ok-bg:#0C2A1E; --warn-bg:#2E1C07; --crit-bg:#33101A;
+  --focus:0 0 0 2px var(--ink-950),0 0 0 4px var(--signal);
+}
+/* ==/TOKENS== */
 
 /* ════════════════ Base ════════════════ */
 *,*::before,*::after{box-sizing:border-box}

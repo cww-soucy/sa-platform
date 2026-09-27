@@ -3,7 +3,7 @@
    Copié tel quel en tête de sa-terrain/index.html et sa-admin/index.html
    (contrainte : un seul fichier HTML autonome par app, pas de build).
    Toute modif ici doit être recopiée dans les deux apps — bloc délimité
-   par /* ==TOKENS== */ … /* ==/TOKENS== */.
+   par les marqueurs ==TOKENS== et ==/TOKENS==.
    ════════════════════════════════════════════════════════════════════ */
 /* ==TOKENS== */
 :root{
