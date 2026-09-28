@@ -131,25 +131,22 @@ if b:
     nb=b.replace('<sc-if value="{{ isSites }}">','<sc-if value="{{ isSites }}"><sc-if value="{{ noNouveaux }}"><div style="margin:12px 28px 0;padding:12px 14px;border:1px dashed var(--color-text);font-size:15px">Aucun site détecté automatiquement en attente.</div></sc-if>',1)
     M=M.replace(b,nb,1)
 
-# Carte : insertion du slot de carte dans le bloc isGeo, en comptant l'imbrication (isGeo contient des sc-for imbriqués,
-# une recherche non gourmande s'arrêterait au mauvais </sc-if> et corromprait tout le gabarit qui suit).
-_ig=M.find('<sc-if value="{{ isGeo }}"')
-if _ig>=0:
-    _depth=0; _end=None
-    for _m in re.finditer(r'<sc-if\b|</sc-if>',M[_ig:]):
-        _depth+= 1 if _m.group(0).startswith('<sc-if') else -1
-        if _depth==0: _end=_ig+_m.start(); break
-    if _end is not None:
-        _open_end=M.find('>',_ig)+1
-        M=M[:_open_end]+'<div id="mapSlot" style="flex:1;min-height:420px;border:1px solid var(--color-text)"></div>'+M[_open_end:]
-    else: print('!! isGeo mal formé')
-else: print('!! bloc isGeo introuvable')
+# Carte : la maquette affichait une <iframe src="SA Carte.html"> (fichier de démo jamais déployé : en production,
+# l'URL inexistante renvoie une autre page, d'où une « carte » blanche ou étrangère). On remplace l'iframe par le
+# conteneur de la vraie carte Leaflet (syncMap), dans le même panneau, à côté de la liste « En tournée ».
+_ifr=re.findall(r'<iframe src="SA Carte\.html"[^>]*></iframe>',M)
+if len(_ifr)==1: M=M.replace(_ifr[0],'<div id="mapSlot" style="position:absolute;inset:0"></div>',1)
+else: print('!! iframe de carte introuvable',len(_ifr))
 
 M=re.sub(r'<sc-(for|if)\b',r'<template data-sc="\1"',M); M=M.replace('</sc-for>','</template>').replace('</sc-if>','</template>')
 open(os.path.join(OUT,'admin.markup.html'),'w',encoding='utf-8').write(M)
 M=re.sub(r'(<template data-sc="if" value="\{\{ isCarte \}\}"[^>]*>\s*<div style="display:flex;flex-direction:column;gap:16px;height:100%">)',r'\1<div style="font-size:13px">{{ carteInfo }}</div>',M,count=1)
 ds=re.sub(r"@import url\([^)]*\);\s*",'',open(os.path.join(SRC,'design')+'/ds/styles.css',encoding='utf-8').read())
 icons=open(os.path.join(SRC,'design')+'/sa-icons.js',encoding='utf-8').read()
+# Leaflet intégré au fichier (plus de dépendance à unpkg.com, bloqué par certains filtres/bloqueurs).
+LF=os.path.join(SRC,'vendor','leaflet-1.9.4')
+lcss=open(os.path.join(LF,'leaflet.css'),encoding='utf-8').read(); ljs=open(os.path.join(LF,'leaflet.js'),encoding='utf-8').read()
+assert '</script' not in ljs.lower() and '</style' not in lcss.lower()
 rt=open(os.path.join(HERE,'runtime.js'),encoding='utf-8').read(); app=open(os.path.join(HERE,'app.js'),encoding='utf-8').read()
 html='''<!DOCTYPE html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -173,9 +170,8 @@ button{font-family:inherit}a{color:var(--color-accent-700)}
 <div id="le" style="min-height:22px;font-size:15px"></div>
 <button class="btn btn-primary" type="submit" style="min-height:48px">Se connecter</button></form></div>
 <template id="tpl">'''+M+'''</template>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<script>window.addEventListener('error',function(e){if(e.target&&e.target.src&&e.target.src.indexOf('leaflet')>=0)window.__leafletLoadError='script bloqué ou introuvable ('+e.target.src+')';},true);</script>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>'''+lcss+'''</style>
+<script>'''+ljs+'''</script>
 <script>'''+icons+'''</script><script>'''+rt+'''</script><script>'''+app+'''</script>
 </body></html>'''
 open(os.path.join(OUT,'admin.html'),'w',encoding='utf-8').write(html)

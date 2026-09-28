@@ -127,7 +127,7 @@ Comp.prototype.syncMap=function(){var self=this;
   var slot=document.getElementById('mapSlot');
   if(!slot){console.error('[carte] #mapSlot introuvable dans le DOM — le gabarit n’a pas rendu ce bloc.');return;}
   if(!window.L){
-    var reason=window.__leafletLoadError?('Bibliothèque de carte non chargée : '+window.__leafletLoadError):'Bibliothèque de carte non chargée (script bloqué ou hors-ligne).';
+    var reason='Bibliothèque de carte (Leaflet, intégrée au fichier) non initialisée — voir la console.';
     slot.innerHTML='<div style="padding:16px;font-size:13px;color:var(--color-text)">'+reason+'</div>';console.error('[carte] window.L absent —',reason);return;
   }
   if(!this._mapHost){this._mapHost=document.createElement('div');this._mapHost.setAttribute('data-keep','1');this._mapHost.style.cssText='height:100%;width:100%';}
