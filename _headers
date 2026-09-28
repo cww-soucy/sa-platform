@@ -18,3 +18,10 @@
 
 /
   Cache-Control: no-cache, must-revalidate
+
+# Nouvelles apps (sa-terrain, sa-admin) : même règle que ci-dessus.
+/sa-terrain/*
+  Cache-Control: no-cache, must-revalidate
+
+/sa-admin/*
+  Cache-Control: no-cache, must-revalidate
