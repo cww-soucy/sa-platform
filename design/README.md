@@ -73,19 +73,39 @@ Thèmes : `data-theme="papier"` et `data-theme="encre"` sur `<html>`. Les deux a
 - Temps / Suivi / Cumul : **habillage seulement** — voir plus bas.
 - Recherche globale (`/`) : site, client, n° de dossier, ODT ou PO.
 
-## Ce qui est démo vs. ce qui reste (phase 2)
+## Données : lecture seule réelle (v1.1)
 
-Phase 1 (ce commit) = design intégré et navigable, sur **données de démonstration** calquées sur les
-tables Supabase existantes. Rien n'écrit en base. Prochaines étapes :
+Les deux apps lisent directement le Supabase de SOUCY OPS (même projet, même clé publique),
+**en lecture seule**. Si le serveur ne répond pas, elles affichent la dernière copie locale,
+sinon la démonstration. Le mode est toujours indiqué (« Réel · lecture », « Hors ligne », « Démo »).
 
-1. **Brancher `DATA`** (un seul point par app) sur Supabase en reprenant la synchro offline-first de
-   SOUCY OPS (`syncPull`/`mergeById`, garde-fou `reset_epoch`, mapping camelCase ↔ snake_case).
-2. **Profils de relevé par contrat** : nouveau champ à créer (proposition : `sites.bassins[].profil`
-   + table `profils_releve` jsonb). À valider avant toute migration.
-3. **Temps / Suivi / Cumul** : copier *telles quelles* les fonctions de calcul et de validation de
-   SOUCY OPS (`weekTotal`, `dayTotal`, `refreshCumul`, `isPunchAllowed`, etc.) et ne remplacer que le
-   rendu HTML. Les valeurs affichées aujourd'hui sont fictives.
-4. Carte : remplacer le fond SVG schématique par Leaflet (déjà utilisé) si le fond de carte réel est requis.
+| Donnée | Source | Remarque |
+|---|---|---|
+| Employés | `comptes` | Seulement `id, nom, prenom, role, statut` — jamais les colonnes de mot de passe |
+| Sites | `sites` | Position = moyenne des punchs GPS (`punch_gps_log`) ; profil de relevé déduit du type |
+| Jobs, dossiers, séries | `workorders` (+ `planning_tasks`) | Regroupés par `groupe_id` ; récurrence déduite des jours de semaine |
+| Qui est où | `feuilles_temps` (tâche `active` du jour) | Même logique que Suivi dans SOUCY OPS |
+| Flux terrain | `punch_gps_log`, `site_journal` | Sans les photos |
+| Relevés de bassin | `feuilles_temps.days[].tasks[].bassins` | Vide pour l'instant : les écrans l'indiquent |
+| Temps / Cumul | `feuilles_temps` | Total = somme des `hrs` ; régulier ≤ 40 h ; vérifié identique à `total_h` |
+| Sondages | `sondages` + RPC `sondage_stats` | Résultats protégés par la clé des statistiques |
+| Facturation | — | Aucune table : écran d'exemple, signalé comme tel |
+| Hivernage (terrain) | `rapports_hivernage` | Vide : liste d'exemple, signalée comme telle |
+
+**Rien n'est écrit en base.** Sur le terrain, punch, relevés, demandes et bons restent sur le téléphone
+(bandeau « Mode essai » : continuer de puncher dans SOUCY OPS). Au bureau, les boutons de création
+ou de validation affichent « lecture seule ».
+
+## Ce qui reste (phase écriture)
+
+1. **Écriture** : reprendre la synchro offline-first de SOUCY OPS (`syncPull`/`mergeById`, garde-fou
+   `reset_epoch`, mapping camelCase ↔ snake_case) pour punch, relevés, demandes, bons, WO.
+2. **Profils de relevé par contrat** : aujourd'hui déduits du type de site ; à stocker (proposition :
+   `sites.bassins[].profil` + table `profils_releve`). À valider avant toute migration.
+3. **Temps / Suivi / Cumul** : copier telles quelles les fonctions de validation de SOUCY OPS.
+4. **Facturation** : créer la table et importer l'Excel.
+5. **Connexion** : remplacer le choix « Qui es-tu ? » par la connexion existante (`verifier_connexion`).
+6. Carte : fond de carte réel (Leaflet, déjà utilisé par SOUCY OPS) si souhaité.
 
 ## Tester
 

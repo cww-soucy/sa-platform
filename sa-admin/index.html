@@ -137,7 +137,7 @@ svg.i.lg{width:22px;height:22px}
 .me{border-top:1px solid var(--line);padding:14px 18px;display:flex;align-items:center;gap:10px}
 .me .av{width:34px;height:34px;display:grid;place-items:center;background:var(--sa-marine);color:#fff;font-weight:800;font-size:var(--t-xs)}
 .me div{flex:1;min-width:0}
-.me b{display:block;font-size:var(--t-sm)} .me small{color:var(--text-3);font-size:var(--t-xs)}
+.me b{display:block;font-size:var(--t-sm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .me small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;color:var(--text-3);font-size:var(--t-xs)}
 .iconbtn{border:1px solid var(--line);background:none;width:34px;height:34px;display:grid;place-items:center;color:var(--text-2)}
 .iconbtn:hover{color:var(--text);border-color:var(--line-strong)}
 
@@ -246,6 +246,8 @@ ul.plain{list-style:none;margin:0;padding:0}
 .pin{cursor:pointer}
 .pin .dot{stroke:var(--bg);stroke-width:2}
 .pin text{fill:var(--text);font-size:11.5px;font-weight:700;paint-order:stroke;stroke:var(--surface);stroke-width:4px;stroke-linejoin:round}
+.map svg.many .pin[data-site] text{display:none}
+.map svg.many .pin[data-site]:hover text{display:block}
 .pin.tech rect{fill:var(--signal);stroke:var(--ink-950);stroke-width:2}
 .pin.tech text.ini{fill:var(--signal-ink);stroke:none;font-size:10px;font-weight:900}
 .maplegend{position:absolute;left:16px;bottom:16px;background:var(--bg);border:1px solid var(--line);padding:10px 12px;display:flex;gap:14px;font-size:var(--t-xs);color:var(--text-2)}
@@ -339,6 +341,10 @@ ul.plain{list-style:none;margin:0;padding:0}
 
 .toast{position:fixed;right:20px;bottom:20px;background:var(--ink-950);color:#fff;border:1px solid var(--ink-700);border-left:4px solid var(--signal);padding:12px 16px;font-weight:650;transform:translateY(10px);opacity:0;transition:.2s var(--ease);pointer-events:none;z-index:99}
 .toast.on{transform:none;opacity:1}
+.mode{font-size:var(--t-2xs);font-weight:700;margin-left:10px;padding:1px 6px;border:1px solid currentColor;white-space:nowrap}
+.mode.ok{color:var(--ok)} .mode.warn{color:var(--warn)} .mode.y{color:var(--signal)}
+.btn[disabled]{opacity:.35;pointer-events:none}
+@media print{.rail,.strip,.r,.toolbar,.notice{display:none!important}.shell{display:block;height:auto}.view,.split,.split>.l{overflow:visible;height:auto}body{background:#fff;color:#000}}
 .demo{font-family:var(--mono);font-size:var(--t-2xs);color:var(--signal);border:1px solid var(--signal);padding:1px 6px;margin-left:8px;vertical-align:middle}
 @media (max-width:1280px){.mon{grid-template-columns:260px minmax(0,1fr)}.mon>.feedcol{grid-column:1/-1}.split{grid-template-columns:minmax(0,1fr) 340px}.search{display:none}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -377,7 +383,7 @@ ul.plain{list-style:none;margin:0;padding:0}
     </div>
     <div class="lane"></div>
     <nav class="nav" id="nav" aria-label="Modules"></nav>
-    <div class="me"><span class="av">CS</span><div><b>Charles S.</b><small>Direction des opérations</small></div><button class="iconbtn" id="theme" title="Thème clair / sombre" aria-label="Changer de thème"><svg class="i"><use href="#i-sun"/></svg></button></div>
+    <div class="me"><span class="av">SA</span><div><b>Bureau</b><small>Soucy Aquatik</small></div><button class="iconbtn" id="reload" title="Recharger les données" aria-label="Recharger les données"><svg class="i"><use href="#i-repeat"/></svg></button><button class="iconbtn" id="theme" title="Thème clair / sombre" aria-label="Changer de thème"><svg class="i"><use href="#i-sun"/></svg></button></div>
   </aside>
   <div class="main">
     <header class="strip">
@@ -439,8 +445,6 @@ var SITES=[
   {id:'s-ste-foy',nom:'Condos Le Quartier',client:'Syndicat Le Quartier',type:'Commercial',lat:46.772,lng:-71.293,bassins:['Piscine']},
   {id:'s-lebourg',nom:'Hôtel Lebourgneuf',client:'Groupe Hôtelier QC',type:'Commercial',lat:46.832,lng:-71.296,bassins:['Piscine','Spa']}
 ];
-function siteById(id){return SITES.find(function(s){return s.id===id;});}
-function techById(id){return TECHS.find(function(t){return t.id===id;});}
 
 /* Historique de relevés (30 jours) + dernier état par site */
 var HIST={};
@@ -454,7 +458,6 @@ SITES.forEach(function(s,si){
 });
 HIST['s-charles'][29].ph=7.9;HIST['s-charles'][28].ph=7.9;HIST['s-montcalm'][29].clc=.62;
 function zone(k,v){var p=PARAMS[k];if(v>=p.opt[0]&&v<=p.opt[1])return 'ok';if(v>=p.acc[0]&&v<=p.acc[1])return 'warn';return 'crit';}
-function siteState(id){var last=HIST[id][HIST[id].length-1],w='ok';['cl','clc','ph'].forEach(function(k){var z=zone(k,last[k]);if(z==='crit')w='crit';else if(z==='warn'&&w==='ok')w='warn';});return w;}
 
 var LIVE=[ // qui est où, en ce moment (punch_gps_log + tâches en cours)
   {t:'mg',site:'s-cobalt',depuis:'09:34',etat:'on'},{t:'jb',site:'s-charles',depuis:'07:12',etat:'on'},
@@ -518,6 +521,137 @@ function fmtH(h){var m=Math.round(h*60);return Math.floor(m/60)+' h '+String(m%6
 function dshort(iso){return new Date(iso+'T12:00').toLocaleDateString('fr-CA',{weekday:'short',day:'numeric',month:'short'});}
 function toast(m){var t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toast._t);toast._t=setTimeout(function(){t.classList.remove('on');},2400);}
 var TODAY=new Date('2026-09-28T10:45');
+var MODE='demo',REAL_AT=null,EXTRA_SITES=[],WO_RAW=[],PT_RAW=[],FT_RAW=[],SONDAGES=null,PLAN_BL=null;
+function siteById(id){return SITES.find(function(s){return s.id===id;})||EXTRA_SITES.find(function(s){return s.id===id;});}
+function techById(id){return TECHS.find(function(t){return t.id===id;});}
+function techName(id,fallback){var t=techById(id);return t?t.nom:(fallback||id||'—');}
+function histOf(id){return HIST[id]||[];}
+function lastR(id){var h=histOf(id);return h.length?h[h.length-1]:null;}
+function siteState(id){
+  var last=lastR(id);if(!last)return 'none';var w='ok';
+  ['cl','clc','ph'].forEach(function(k){if(last[k]==null)return;var z=zone(k,last[k]);if(z==='crit')w='crit';else if(z==='warn'&&w==='ok')w='warn';});
+  return w;
+}
+function isoDay(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function mondayISO(d){d=new Date(d);d.setHours(12,0,0,0);var k=d.getDay();d.setDate(d.getDate()+(k===0?-6:1-k));return isoDay(d);}
+function addDays(iso,n){var d=new Date(iso+'T12:00');d.setDate(d.getDate()+n);return isoDay(d);}
+function norm(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,' ').trim();}
+function ago(date,heure){
+  if(!date)return '';var t=isoDay(TODAY);
+  if(date===t)return heure||"aujourd'hui";
+  if(date===addDays(t,-1))return 'hier'+(heure?', '+heure:'');
+  return new Date(date+'T12:00').toLocaleDateString('fr-CA',{day:'numeric',month:'short'});
+}
+/* démo : dater l'historique de relevés */
+Object.keys(HIST).forEach(function(k){HIST[k].forEach(function(r){var d=new Date(TODAY);d.setDate(d.getDate()-r.d);r.date=isoDay(d);r.tech=TECHS[r.d%5].nom;});});
+FEED.forEach(function(f){f.date=isoDay(TODAY);});
+LIVE.forEach(function(l){if(l.site)l.lieu=siteById(l.site).nom;});
+
+/* ═══════════════════════════════════════════════════════════════════
+   LECTURE RÉELLE (Supabase, lecture seule) — même projet et même clé
+   publique que SOUCY OPS. Aucune écriture. La table comptes n'est lue
+   que pour id, nom, prénom, rôle, statut (jamais les mots de passe).
+   ═══════════════════════════════════════════════════════════════════ */
+var SB={url:'https://ldqvdiaewvhnukuaxdmc.supabase.co',key:'sb_publishable_qVd_6eoAvwrDGs9u81woAg_RrMpTJxn'};
+function sbGet(path){
+  return fetch(SB.url+'/rest/v1/'+path,{headers:{apikey:SB.key,Accept:'application/json'}})
+    .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status+' '+path.split('?')[0]);return r.json();});
+}
+var REAL={
+  KEY:'saAdmin.real',
+  cache:function(){try{return JSON.parse(localStorage.getItem(this.KEY)||'null');}catch(e){return null;}},
+  load:function(){
+    var self=this,now=new Date(),since=new Date(now);since.setDate(since.getDate()-45);
+    var wk0=mondayISO(new Date(now.getTime()-35*864e5));
+    return Promise.all([
+      sbGet('comptes?select=id,nom,prenom,role,statut'),
+      sbGet('sites?select=id,nom,addr,type,bassins,tel'),
+      sbGet('workorders?select=id,client,site,type,priorite,status,date,assigne,assignes,descr,tasks,groupe_id,updated_at'),
+      sbGet('planning_tasks?select=id,titre,descr,emp,emp_nom,site_id,site_nom,date_debut,date_fin,heure_debut,heure_fin,statut'),
+      sbGet('punch_gps_log?select=id,uid,emp,date,heure,lieu,addr,site_id,lat,lng,src&date=gte.'+isoDay(since)+'&order=date.desc,heure.desc'),
+      sbGet('site_journal?select=id,site_id,uid,emp,date,heure,lieu,notes&order=date.desc,heure.desc&limit=60'),
+      sbGet('feuilles_temps?select=id,uid,emp,week,days,total_h&week=gte.'+wk0),
+      sbGet('sondages?select=slug,titre,client,actif,created_at&order=created_at.desc')
+    ]).then(function(r){
+      var raw={comptes:r[0],sites:r[1],wo:r[2],pt:r[3],gps:r[4],journal:r[5],ft:r[6],sondages:r[7],at:Date.now()};
+      try{localStorage.setItem(self.KEY,JSON.stringify(raw));}catch(e){}
+      return raw;
+    });
+  },
+  apply:function(raw){
+    TODAY=new Date();var today=isoDay(TODAY),wk=mondayISO(TODAY),di=(TODAY.getDay()+6)%7;
+    var ROLE={employe:'Employé·e',superviseur:'Superviseur·e',admin:'Administration'};
+    TECHS=raw.comptes.filter(function(c){return c.role!=='admin'&&c.statut!=='inactif';}).map(function(c){
+      var nom=((c.prenom||'')+' '+(c.nom||'')).trim()||c.id;
+      return {id:c.id,nom:nom,ini:nom.split(/\s+/).map(function(x){return x.charAt(0);}).join('').slice(0,2).toUpperCase(),role:ROLE[c.role]||c.role||''};
+    }).sort(function(a,b){return a.nom.localeCompare(b.nom,'fr');});
+    var ALL=raw.comptes.map(function(c){return {id:c.id,nom:((c.prenom||'')+' '+(c.nom||'')).trim()||c.id};});
+    function nameOf(id,fb){var c=ALL.find(function(x){return x.id===id;});return c?c.nom:(fb||id);}
+    /* positions : moyenne des punchs GPS rattachés au site */
+    var pos={};raw.gps.forEach(function(g){if(g.site_id&&g.lat&&g.lng){var p=pos[g.site_id]=pos[g.site_id]||{la:0,ln:0,n:0};p.la+=g.lat;p.ln+=g.lng;p.n++;}});
+    var TYPE={commercial:'Commercial',creusee:'Résidentiel (creusée)',spa:'Spa',autre:'Autre'};
+    SITES=raw.sites.map(function(s){var p=pos[s.id];
+      return {id:s.id,nom:s.nom||'(sans nom)',client:s.addr||'',addr:s.addr||'',type:TYPE[s.type]||s.type||'—',rawType:s.type||'',lat:p?p.la/p.n:null,lng:p?p.ln/p.n:null,
+        bassins:Array.isArray(s.bassins)&&s.bassins.length?s.bassins.map(function(b){return b.nom||'Bassin';}):['Bassin principal']};
+    }).sort(function(a,b){return a.nom.localeCompare(b.nom,'fr');});
+    var byName={};SITES.forEach(function(s){byName[norm(s.nom)]=s;});
+    EXTRA_SITES=[];
+    function siteFor(name,addr){var s=byName[norm(name)]||byName[norm(addr)];if(s)return s;var id='x-'+norm(name||addr).replace(/ /g,'-');
+      s=EXTRA_SITES.find(function(x){return x.id===id;});if(!s){s={id:id,nom:name||addr||'Site inconnu',client:addr||'',addr:addr||'',type:'Hors répertoire',lat:null,lng:null,bassins:['Bassin principal']};EXTRA_SITES.push(s);byName[norm(s.nom)]=s;}return s;}
+    /* relevés de bassin : saisis dans les tâches de punch (feuilles_temps.days[].tasks[].bassins) */
+    HIST={};var nRelToday=0;
+    raw.ft.forEach(function(f){(f.days||[]).forEach(function(d,i){(d&&d.tasks||[]).forEach(function(t){(t.bassins||[]).forEach(function(b){
+      var s=t.siteId?siteById(t.siteId):siteFor(t.lieu);if(!s)return;var date=addDays(f.week,i);
+      (HIST[s.id]=HIST[s.id]||[]).push({date:date,d:Math.round((TODAY-new Date(date+'T12:00'))/864e5),cl:b.cl,ph:b.ph,alc:b.alc,temp:b.temp,clc:b.clc,tech:f.emp||nameOf(f.uid),bassin:b.bassin});
+      if(date===today)nRelToday++;
+    });});});});
+    Object.keys(HIST).forEach(function(k){HIST[k].sort(function(a,b){return a.date<b.date?-1:1;});});
+    REL_TODAY=nRelToday;
+    /* qui est où : tâche active de la journée dans la feuille de temps de la semaine */
+    LIVE=TECHS.map(function(t){
+      var f=raw.ft.find(function(x){return x.uid===t.id&&x.week===wk;}),day=f&&f.days&&f.days[di],tasks=(day&&day.tasks)||[];
+      var act=tasks.filter(function(x){return x.active;}).pop();
+      if(act){var s=act.siteId?siteById(act.siteId):byName[norm(act.lieu)];return {t:t.id,site:s?s.id:null,lieu:act.lieu||(s&&s.nom)||'',depuis:act.start||'',etat:'on'};}
+      if(tasks.length){var last=tasks[tasks.length-1];return {t:t.id,site:null,etat:'off',note:'Terminé'+(last.end?' à '+last.end:'')+' — '+(last.lieu||'')};}
+      return {t:t.id,site:null,etat:'off',note:'Pas punché aujourd\'hui'};
+    });
+    /* flux : punchs GPS + journal de chantier */
+    var feed=raw.gps.slice(0,40).map(function(g){var s=g.site_id&&siteById(g.site_id);return {date:g.date,h:g.heure||'',t:g.uid,emp:g.emp,site:s?s.id:null,lieu:s?s.nom:g.lieu,txt:'Punch — '+esc(g.lieu||(s&&s.nom)||'lieu inconnu')+(g.src==='gps'?'':' <span class="dim3">(position '+(g.src==='pending'?'en attente':g.src==='addr'?'par adresse':'absente')+')</span>')};});
+    raw.journal.forEach(function(j){var s=j.site_id&&siteById(j.site_id);feed.push({date:j.date,h:j.heure||'',t:j.uid,emp:j.emp,site:s?s.id:null,lieu:s?s.nom:j.lieu,txt:'Note de chantier — '+esc((j.notes||'').slice(0,120))});});
+    feed.sort(function(a,b){return (b.date+b.h)>(a.date+a.h)?1:-1;});
+    FEED=feed.slice(0,30);
+    /* dossiers : Work Orders regroupés par groupe_id */
+    WO_RAW=raw.wo;PT_RAW=raw.pt;FT_RAW=raw.ft;SONDAGES=raw.sondages;
+    var DONE=/^(termine|terminé|complete|complété|fait|ferme|fermé)$/i,groups={};
+    raw.wo.forEach(function(w){var g=w.groupe_id||w.id;(groups[g]=groups[g]||[]).push(w);});
+    DOSSIERS=Object.keys(groups).map(function(g){
+      var l=groups[g].slice().sort(function(a,b){return (a.date||'')<(b.date||'')?-1:1;}),w0=l[0],s=siteFor(w0.client,w0.site);
+      var assign=String(w0.assigne||w0.assignes||'').split(/,\s*/).filter(Boolean);
+      var vis=l.map(function(w){var d=(w.date||'').slice(0,10);return [d,DONE.test(w.status||'')?'fait':d&&d<today?'passe':d===today?'encours':'prevu',w];});
+      var nf=vis.filter(function(v){return v[1]==='fait';}).length;
+      var statut=nf===vis.length?'Terminé':!assign.length?'À assigner':vis.some(function(v){return v[1]!=='prevu';})?'En cours':'Planifié';
+      var wd={};l.forEach(function(w){if(w.date)wd[new Date(w.date.slice(0,10)+'T12:00').getDay()]=1;});var k=Object.keys(wd).map(Number).sort();
+      var J=['dim.','lun.','mar.','mer.','jeu.','ven.','sam.'],JL=['dimanches','lundis','mardis','mercredis','jeudis','vendredis','samedis'];
+      return {id:l.length>1?'G-'+g.slice(-5).toUpperCase():w0.id,client:w0.client||s.nom,site:s.id,titre:(w0.type?w0.type.charAt(0).toUpperCase()+w0.type.slice(1):'Work Order')+(w0.descr?' — '+w0.descr:''),
+        tech:assign[0]||null,techs:assign,statut:statut,rec:l.length>1?(k.length===1?'Tous les '+JL[k[0]]:k.map(function(i){return J[i];}).join(' · ')):null,visites:vis,tasks:w0.tasks||[]};
+    }).sort(function(a,b){return a.visites[0][0]<b.visites[0][0]?1:-1;});
+    /* à valider : tâches de punch en attente de validation */
+    PUNCH_CHECK=[];
+    raw.ft.forEach(function(f){(f.days||[]).forEach(function(d,i){(d&&d.tasks||[]).forEach(function(t){if(t.pendingValidation)PUNCH_CHECK.push({t:f.uid,emp:f.emp,date:addDays(f.week,i),h:t.start||'—',type:'site',
+      txt:(t.pendingReason==='entrepot_bureau'?'Entrepôt / bureau':'Nouveau site')+' — '+(t.lieu||'lieu inconnu')});});});});
+    PUNCH_CHECK.sort(function(a,b){return a.date<b.date?1:-1;});
+    /* sites détectés : punchs sans fiche de site */
+    var det={};raw.gps.forEach(function(g){if(!g.site_id&&g.lieu){var k=norm(g.lieu);var x=det[k]=det[k]||{nom:g.lieu,addr:g.addr||'',n:0,emps:{}};x.n++;x.emps[g.emp||g.uid]=1;}});
+    DETECTES=Object.keys(det).map(function(k){var x=det[k];return {nom:x.nom,addr:x.addr,vu:x.n+' punch'+(x.n>1?'s':'')+' · '+Object.keys(x.emps).join(', '),proche:null};});
+    FACT_DEMO=true;
+    tempsWeek=mondayISO(TODAY);if(!raw.ft.some(function(f){return f.week===tempsWeek;})){var ws=raw.ft.map(function(f){return f.week;}).sort();if(ws.length)tempsWeek=ws[ws.length-1];}
+    inspSite=(Object.keys(HIST)[0])||(SITES[0]&&SITES[0].id);
+    opsSel=DOSSIERS[0]&&DOSSIERS[0].id;opsOpen={};if(opsSel)opsOpen[opsSel]=1;
+    serie.tech=TECHS[0]&&TECHS[0].id;serie.titre='';serie.fin=addDays(isoDay(TODAY),42);serie.off={};
+    planWeek=mondayISO(TODAY);
+  }
+};
+var REL_TODAY=41,FACT_DEMO=false,tempsWeek='2026-09-21',planWeek='2026-09-28';
 
 /* ════════════════ Navigation ════════════════ */
 var MODS=[
@@ -537,19 +671,24 @@ var MODS=[
 ];
 var cur='monitoring';
 function renderNav(){
-  var n=0,alerts=SITES.filter(function(s){return siteState(s.id)==='crit';}).length,toVal=2;
+  var n=0,alerts=SITES.filter(function(s){return siteState(s.id)==='crit';}).length;
   $('#nav').innerHTML=MODS.map(function(m){
     if(m.g)return '<div class="nav-g">'+m.g+'</div>';
-    n++;var badge=m.k==='monitoring'&&alerts?'<span class="badge">'+alerts+'</span>':m.k==='sites'?'<span class="badge y">'+toVal+'</span>':m.k==='temps'?'<span class="badge y">'+PUNCH_CHECK.length+'</span>':'';
+    n++;var badge=m.k==='monitoring'&&alerts?'<span class="badge">'+alerts+'</span>':m.k==='sites'&&DETECTES.length?'<span class="badge y">'+DETECTES.length+'</span>':m.k==='temps'&&PUNCH_CHECK.length?'<span class="badge y">'+PUNCH_CHECK.length+'</span>':'';
     return '<button data-m="'+m.k+'"'+(m.k===cur?' aria-current="page"':'')+'><span class="n">'+String(n).padStart(2,'0')+'</span><span>'+m.n+'</span>'+badge+'</button>';
   }).join('');
   $$('#nav [data-m]').forEach(function(b){b.onclick=function(){go(b.dataset.m);};});
 }
+function modeLine(){
+  if(MODE==='reel')return '<span class="mode ok">Données réelles · lecture seule · '+new Date(REAL_AT).toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'})+'</span>';
+  if(MODE==='cache')return '<span class="mode warn">Hors ligne · copie du '+new Date(REAL_AT).toLocaleString('fr-CA',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+'</span>';
+  return '<span class="mode y">Démonstration</span>';
+}
 function go(k){
   cur=k;var m=MODS.find(function(x){return x.k===k;});
-  $('#title').textContent=m.n;$('#subtitle').textContent=m.sub;
+  $('#title').textContent=m.n;$('#subtitle').innerHTML=esc(m.sub)+' '+modeLine();
   try{localStorage.setItem('saAdmin.mod',k);}catch(e){}
-  renderNav();
+  renderNav();kpis();
   var v=$('#view');v.scrollTop=0;
   ({monitoring:vMonitoring,carte:vCarte,inspections:vInspections,operations:vOperations,planning:vPlanning,sites:vSites,facturation:vFacturation,sondages:vSondages,communication:vCommunication,temps:vTemps})[k](v);
 }
@@ -557,55 +696,87 @@ function kpis(){
   var on=LIVE.filter(function(l){return l.etat!=='off';}).length;
   $('#kOn').innerHTML=on+'<em> / '+TECHS.length+'</em>';
   $('#kAl').textContent=SITES.filter(function(s){return siteState(s.id)==='crit';}).length;
-  $('#kRel').textContent=41;
+  $('#kRel').textContent=REL_TODAY;
 }
+function readOnly(){toast(MODE==='demo'?'Démonstration — action simulée':'Lecture seule pour l\'essai — à faire dans SOUCY OPS pour l\'instant');}
+function banner(txt){return '<div class="notice">'+ic('alert')+'<span>'+txt+'</span></div>';}
 
 /* ════════════════ 01 · Monitoring ════════════════ */
 function gauge(k,v){
-  var p=PARAMS[k],z=zone(k,v),lo=p.acc[0]-(p.acc[1]-p.acc[0])*.3,hi=p.acc[1]+(p.acc[1]-p.acc[0])*.3,pc=function(x){return Math.max(0,Math.min(100,(x-lo)/(hi-lo)*100));};
+  var p=PARAMS[k];
+  if(v==null)return '<div class="g" style="--rx:var(--rx-'+p.rx+')"><small><i></i>'+p.lbl.replace('Chlore libre','Cl libre').replace('Chlore combiné','Cl comb.')+'</small><span class="num dim3">—</span><div class="bar"></div></div>';
+  var z=zone(k,v),lo=p.acc[0]-(p.acc[1]-p.acc[0])*.3,hi=p.acc[1]+(p.acc[1]-p.acc[0])*.3,pc=function(x){return Math.max(0,Math.min(100,(x-lo)/(hi-lo)*100));};
   return '<div class="g '+z+'" style="--rx:var(--rx-'+p.rx+')"><small><i></i>'+p.lbl.replace('Chlore libre','Cl libre').replace('Chlore combiné','Cl comb.')+'</small><span class="num">'+fr(v,p.d)+'</span>'+
     '<div class="bar"><span style="left:'+pc(p.opt[0])+'%;width:'+(pc(p.opt[1])-pc(p.opt[0]))+'%"></span><i style="left:'+pc(v)+'%"></i></div></div>';
 }
+var monF='actifs';
+function activeSites(){ // sites avec activité (punch, relevé ou note) dans les 14 derniers jours
+  var lim=addDays(isoDay(TODAY),-14),ids={};
+  FEED.forEach(function(f){if(f.site&&f.date>=lim)ids[f.site]=1;});
+  LIVE.forEach(function(l){if(l.site)ids[l.site]=1;});
+  Object.keys(HIST).forEach(function(k){var l=lastR(k);if(l&&l.date>=lim)ids[k]=1;});
+  return ids;
+}
 function vMonitoring(v){
-  var sorted=SITES.slice().sort(function(a,b){var o={crit:0,warn:1,ok:2};return o[siteState(a.id)]-o[siteState(b.id)];});
+  var act=activeSites(),O={crit:0,warn:1,ok:2,none:3};
+  var list=SITES.filter(function(s){return monF==='tous'||act[s.id];}).sort(function(a,b){return O[siteState(a.id)]-O[siteState(b.id)]||a.nom.localeCompare(b.nom,'fr');});
+  var punched=LIVE.filter(function(l){return l.etat!=='off';}).length;
   v.innerHTML='<div class="pad"><div class="mon">'+
-    '<section class="panel"><div class="panel-h"><h2>Équipe en ce moment</h2><small>'+LIVE.filter(function(l){return l.etat!=='off';}).length+' punchés</small></div><ul class="plain crew">'+
-      LIVE.map(function(l){var t=techById(l.t),s=l.site&&siteById(l.site);
-        return '<li><span class="av '+(l.etat==='on'?'on':l.etat==='pause'?'on pause':'')+'">'+t.ini+'</span><span><b>'+esc(t.nom)+'</b><small>'+(s?esc(s.nom):l.note||'Pas punché')+'</small></span>'+
-          (l.etat!=='off'?'<span class="r"><span class="num">'+l.depuis+'</span>'+(l.etat==='pause'?'<small style="color:var(--signal);text-align:right">Pause</small>':'')+'</span>':'<span class="dim3">—</span>')+'</li>';}).join('')+'</ul></section>'+
-    '<section class="panel"><div class="panel-h"><h2>Salles mécaniques</h2><small>dernier relevé par site · triés par gravité</small><span class="seg" role="group"><button aria-pressed="true">Tous</button><button aria-pressed="false">Municipal</button><button aria-pressed="false">Commercial</button></span></div>'+
-      '<div class="rooms">'+sorted.map(function(s){var last=HIST[s.id][29],st=siteState(s.id),live=LIVE.filter(function(l){return l.site===s.id&&l.etat!=='off';});
-        return '<button class="room" data-site="'+s.id+'" style="--st:var(--'+(st==='ok'?'ink-700':st)+')"><div class="room-h"><span class="sq '+st+'" style="margin-top:4px"></span><b>'+esc(s.nom)+'<small>'+esc(s.type)+' · '+s.bassins.length+' bassin'+(s.bassins.length>1?'s':'')+'</small></b>'+(live.length?'<span class="chip y">'+live.map(function(l){return techById(l.t).ini;}).join(' ')+'</span>':'')+'</div>'+
-          '<div class="gauges">'+gauge('cl',last.cl)+gauge('clc',last.clc)+gauge('ph',last.ph)+'</div>'+
-          '<span class="age">'+(live.length?'relevé il y a 23 min':'relevé hier, 15 h 10')+'</span></button>';}).join('')+'</div></section>'+
-    '<section class="panel feedcol"><div class="panel-h"><h2>Flux terrain</h2><small>temps réel</small></div><ul class="plain feed" id="feed">'+FEED.map(feedLi).join('')+'</ul></section>'+
+    '<section class="panel"><div class="panel-h"><h2>Équipe en ce moment</h2><small>'+punched+' punché'+(punched>1?'s':'')+'</small></div><ul class="plain crew">'+
+      LIVE.map(function(l){var t=techById(l.t);if(!t)return '';
+        return '<li><span class="av '+(l.etat==='on'?'on':l.etat==='pause'?'on pause':'')+'">'+t.ini+'</span><span><b>'+esc(t.nom)+'</b><small>'+esc(l.etat!=='off'?(l.lieu||'—'):(l.note||'Pas punché'))+'</small></span>'+
+          (l.etat!=='off'?'<span class="r"><span class="num">'+esc(l.depuis)+'</span>'+(l.etat==='pause'?'<small style="color:var(--signal);text-align:right">Pause</small>':'')+'</span>':'<span class="dim3">—</span>')+'</li>';}).join('')+'</ul></section>'+
+    '<section class="panel"><div class="panel-h"><h2>Salles mécaniques</h2><small>dernier relevé par site · triés par gravité</small><span class="seg" id="monF"><button data-f="actifs" aria-pressed="'+(monF==='actifs')+'">Actifs (14 j) · '+Object.keys(act).length+'</button><button data-f="tous" aria-pressed="'+(monF==='tous')+'">Tous · '+SITES.length+'</button></span></div>'+
+      (MODE!=='demo'&&!Object.keys(HIST).length?banner('<b>Aucun relevé de bassin en base pour l\'instant.</b> Les valeurs (chlore, pH…) apparaîtront ici dès que les relevés seront saisis sur le terrain.'):'')+
+      (list.length?'<div class="rooms">'+list.map(function(s){var last=lastR(s.id),st=siteState(s.id),live=LIVE.filter(function(l){return l.site===s.id&&l.etat!=='off';});
+        return '<button class="room" data-site="'+s.id+'" style="--st:var(--'+(st==='ok'||st==='none'?'ink-700':st)+')"><div class="room-h"><span class="sq '+(st==='none'?'off':st)+'" style="margin-top:4px"></span><b>'+esc(s.nom)+'<small>'+esc(s.type)+' · '+s.bassins.length+' bassin'+(s.bassins.length>1?'s':'')+'</small></b>'+(live.length?'<span class="chip y">'+live.map(function(l){return techById(l.t).ini;}).join(' ')+'</span>':'')+'</div>'+
+          '<div class="gauges">'+gauge('cl',last&&last.cl)+gauge('clc',last&&last.clc)+gauge('ph',last&&last.ph)+'</div>'+
+          '<span class="age">'+(last?'relevé '+ago(last.date):'aucun relevé')+'</span></button>';}).join('')+'</div>':'<p class="dim">Aucun site actif ces 14 derniers jours.</p>')+'</section>'+
+    '<section class="panel feedcol"><div class="panel-h"><h2>Flux terrain</h2><small>'+(MODE==='demo'?'temps réel':'punchs et notes')+'</small></div><ul class="plain feed" id="feed">'+(FEED.length?FEED.map(feedLi).join(''):'<li><span class="h"></span><p class="dim">Aucune activité récente.</p></li>')+'</ul></section>'+
     '</div></div>';
+  $$('#monF [data-f]',v).forEach(function(b){b.onclick=function(){monF=b.dataset.f;vMonitoring(v);};});
   $$('[data-site]',v).forEach(function(b){b.onclick=function(){inspSite=b.dataset.site;go('inspections');};});
 }
-function feedLi(f,isNew){var t=techById(f.t),s=siteById(f.site);return '<li class="'+(f.crit?'crit ':'')+(isNew===true?'new':'')+'"><span class="h">'+f.h+'</span><p>'+(f.crit?'<span class="sq crit" style="margin-right:6px"></span>':'')+f.txt+'<small>'+esc(t.nom)+' · '+esc(s.nom)+'</small></p></li>';}
-setInterval(function(){ // simulation du flux realtime (remplacé par supabase.channel en phase 2)
-  if(cur!=='monitoring')return;var f={h:new Date().toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'}).replace(' h ',':'),t:'ep',txt:'Relevé saisi — bassin 25 m, conforme',site:'s-valbelair'};
+function feedLi(f,isNew){
+  var s=f.site&&siteById(f.site),when=f.date&&f.date!==isoDay(TODAY)?ago(f.date):f.h;
+  return '<li class="'+(f.crit?'crit ':'')+(isNew===true?'new':'')+'"><span class="h">'+esc(when)+'</span><p>'+(f.crit?'<span class="sq crit" style="margin-right:6px"></span>':'')+f.txt+'<small>'+(f.date&&f.date!==isoDay(TODAY)&&f.h?esc(f.h)+' · ':'')+esc(techName(f.t,f.emp))+' · '+esc(s?s.nom:(f.lieu||'—'))+'</small></p></li>';
+}
+setInterval(function(){ // démo : simulation du flux realtime
+  if(cur!=='monitoring'||MODE!=='demo')return;var f={date:isoDay(TODAY),h:new Date().toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'}).replace(' h ',':'),t:'ep',txt:'Relevé saisi — bassin 25 m, conforme',site:'s-valbelair'};
   var ul=$('#feed');if(ul){ul.insertAdjacentHTML('afterbegin',feedLi(f,true));if(ul.children.length>12)ul.lastElementChild.remove();}
 },45000);
+setInterval(function(){if(MODE!=='demo'&&navigator.onLine)refresh(false);},5*60000); // relecture toutes les 5 min
 
 /* ════════════════ 02 · Carte ════════════════ */
 function vCarte(v){
-  var W=1000,H=700,x=function(lng){return (lng+71.48)/(71.48-71.06)*W;},y=function(lat){return (46.90-lat)/(46.90-46.71)*H;};
-  var river='M0,'+y(46.745)+' C'+x(-71.40)+','+y(46.752)+' '+x(-71.30)+','+y(46.768)+' '+x(-71.235)+','+y(46.790)+' S'+x(-71.15)+','+y(46.815)+' '+W+','+y(46.855)+' L'+W+','+y(46.835)+' C'+x(-71.15)+','+y(46.795)+' '+x(-71.22)+','+y(46.772)+' '+x(-71.25)+','+y(46.762)+' S'+x(-71.38)+','+y(46.735)+' 0,'+y(46.728)+'Z';
+  var all=SITES.filter(function(s){return s.lat!=null;}),med=function(a){a=a.slice().sort(function(x,y){return x-y;});return a[Math.floor(a.length/2)];};
+  var mLat=all.length?med(all.map(function(s){return s.lat;})):46.8,mLng=all.length?med(all.map(function(s){return s.lng;})):-71.25;
+  var pts=all.filter(function(s){return Math.abs(s.lat-mLat)<.2&&Math.abs(s.lng-mLng)<.3;}),odd=all.filter(function(s){return pts.indexOf(s)<0;});
+  var minLng=1e9,maxLng=-1e9,minLat=1e9,maxLat=-1e9;
+  if(MODE==='demo'||!pts.length){minLng=-71.48;maxLng=-71.06;minLat=46.71;maxLat=46.90;}
+  pts.forEach(function(s){minLng=Math.min(minLng,s.lng-.015);maxLng=Math.max(maxLng,s.lng+.015);minLat=Math.min(minLat,s.lat-.008);maxLat=Math.max(maxLat,s.lat+.008);});
+  var many=pts.length>16;
+  var W=1000,H=Math.round(W*(maxLat-minLat)/((maxLng-minLng)*Math.cos(46.8*Math.PI/180)));
+  var x=function(lng){return (lng-minLng)/(maxLng-minLng)*W;},y=function(lat){return (maxLat-lat)/(maxLat-minLat)*H;};
+  var river='M'+x(-71.60)+','+y(46.745)+' C'+x(-71.40)+','+y(46.752)+' '+x(-71.30)+','+y(46.768)+' '+x(-71.235)+','+y(46.790)+' S'+x(-71.10)+','+y(46.835)+' '+x(-70.80)+','+y(46.95)+' L'+x(-70.80)+','+y(46.92)+' C'+x(-71.12)+','+y(46.80)+' '+x(-71.22)+','+y(46.772)+' '+x(-71.25)+','+y(46.762)+' S'+x(-71.38)+','+y(46.735)+' '+x(-71.60)+','+y(46.728)+'Z';
   var g='';for(var i=1;i<10;i++){g+='<line class="gridl" x1="'+i*W/10+'" y1="0" x2="'+i*W/10+'" y2="'+H+'"/><line class="gridl" x1="0" y1="'+i*H/10+'" x2="'+W+'" y2="'+i*H/10+'"/>';}
-  var roads='<path class="road" d="M'+x(-71.45)+','+y(46.80)+' Q'+x(-71.30)+','+y(46.83)+' '+x(-71.12)+','+y(46.88)+'"/><path class="road" d="M'+x(-71.30)+','+y(46.90)+' L'+x(-71.29)+','+y(46.78)+'"/><path class="road" d="M'+x(-71.40)+','+y(46.73)+' Q'+x(-71.20)+','+y(46.74)+' '+x(-71.08)+','+y(46.75)+'"/>';
-  var pins=SITES.map(function(s){var st=siteState(s.id);return '<g class="pin" data-site="'+s.id+'" transform="translate('+x(s.lng)+','+y(s.lat)+')"><rect class="dot" x="-7" y="-7" width="14" height="14" fill="var(--'+(st==='ok'?'rx-niveau':st)+')"/><text x="12" y="4">'+esc(s.nom)+'</text></g>';}).join('');
-  var techs=LIVE.filter(function(l){return l.site;}).map(function(l,i){var s=siteById(l.site),dup=LIVE.filter(function(o){return o.site===l.site;}).indexOf(l);return '<g class="pin tech" transform="translate('+(x(s.lng)-6+dup*24)+','+(y(s.lat)-30)+')"><rect x="-11" y="-11" width="22" height="22"/><text class="ini" x="0" y="4" text-anchor="middle">'+techById(l.t).ini+'</text></g>';}).join('');
-  v.innerHTML='<div class="mapwrap"><div class="map"><svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Carte des sites de la région de Québec">'+g+'<path class="water" d="'+river+'"/>'+roads+
-    '<text class="lbl" x="'+x(-71.36)+'" y="'+y(46.745)+'">Fleuve Saint-Laurent</text><text class="lbl" x="'+x(-71.26)+'" y="'+y(46.735)+'">Lévis</text><text class="lbl" x="'+x(-71.28)+'" y="'+y(46.885)+'">Charlesbourg</text><text class="lbl" x="'+x(-71.44)+'" y="'+y(46.885)+'">Val-Bélair</text>'+
-    pins+techs+'</svg><div class="maplegend"><span><span class="sq" style="background:var(--rx-niveau)"></span>Site conforme</span><span><span class="sq warn"></span>À surveiller</span><span><span class="sq crit"></span>Hors norme</span><span><span class="sq" style="background:var(--signal)"></span>Technicien</span></div></div>'+
+  var pins=pts.map(function(s){var st=siteState(s.id);return '<g class="pin" data-site="'+s.id+'" transform="translate('+x(s.lng)+','+y(s.lat)+')"><rect class="dot" x="-7" y="-7" width="14" height="14" fill="var(--'+(st==='ok'||st==='none'?'rx-niveau':st)+')"/>'+(x(s.lng)>W*.72?'<text x="-12" y="4" text-anchor="end">':'<text x="12" y="4">')+esc(s.nom)+'</text></g>';}).join('');
+  var seen={};
+  var techs=LIVE.filter(function(l){var s=l.site&&siteById(l.site);return l.etat!=='off'&&s&&s.lat!=null;}).map(function(l){var s=siteById(l.site),dup=seen[l.site]=(seen[l.site]||0)+1;return '<g class="pin tech" transform="translate('+(x(s.lng)-6+(dup-1)*24)+','+(y(s.lat)-30)+')"><rect x="-11" y="-11" width="22" height="22"/><text class="ini" x="0" y="4" text-anchor="middle">'+techById(l.t).ini+'</text></g>';}).join('');
+  var lbls=[['Lévis',-71.18,46.80],['Charlesbourg',-71.27,46.87],['Sainte-Foy',-71.30,46.775],['Beauport',-71.19,46.86]].filter(function(l){return l[1]>minLng&&l[1]<maxLng&&l[2]>minLat&&l[2]<maxLat;}).map(function(l){return '<text class="lbl" x="'+x(l[1])+'" y="'+y(l[2])+'">'+l[0]+'</text>';}).join('');
+  v.innerHTML='<div class="mapwrap"><div class="map"><svg class="'+(many?'many':'')+'" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Carte des sites">'+g+(MODE==='demo'?'<path class="water" d="'+river+'"/>'+lbls:'')+pins+techs+'</svg>'+
+    (MODE!=='demo'?'<div class="maplegend" style="top:16px;bottom:auto">Positions calculées depuis les punchs GPS'+(many?' · survoler un point pour son nom':'')+'</div>':'')+
+    '<div class="maplegend"><span><span class="sq" style="background:var(--rx-niveau)"></span>Site</span><span><span class="sq warn"></span>À surveiller</span><span><span class="sq crit"></span>Hors norme</span><span><span class="sq" style="background:var(--signal)"></span>Technicien</span></div></div>'+
     '<aside class="side" id="mapSide"></aside></div>';
   function side(id){
     var s=id&&siteById(id);
-    if(!s){$('#mapSide').innerHTML='<div class="panel"><div class="panel-h"><h2>En tournée</h2></div><table class="t"><tbody>'+LIVE.filter(function(l){return l.site;}).map(function(l){return '<tr class="click" data-s="'+l.site+'"><td><b>'+techById(l.t).nom+'</b><span class="sub">'+siteById(l.site).nom+'</span></td><td class="r mono">'+l.depuis+'</td></tr>';}).join('')+'</tbody></table></div>';}
-    else{var last=HIST[s.id][29],here=LIVE.filter(function(l){return l.site===s.id;});
-      $('#mapSide').innerHTML='<button class="btn sm" id="mapBack">Tous</button><div class="detail" style="margin-top:14px"><h3>'+esc(s.nom)+'</h3><dl class="kv"><dt>Client</dt><dd>'+esc(s.client)+'</dd><dt>Type</dt><dd>'+esc(s.type)+'</dd><dt>Bassins</dt><dd>'+s.bassins.map(esc).join(', ')+'</dd><dt>Sur place</dt><dd>'+(here.map(function(l){return techById(l.t).nom;}).join(', ')||'—')+'</dd></dl>'+
-        '<div class="gauges" style="grid-template-columns:repeat(3,1fr)">'+gauge('cl',last.cl)+gauge('clc',last.clc)+gauge('ph',last.ph)+'</div><button class="btn" style="margin-top:18px" id="toInsp">'+ic('flask')+'Voir les relevés</button></div>';
+    if(!s){
+      var on=LIVE.filter(function(l){return l.etat!=='off';}),nopos=SITES.filter(function(x){return x.lat==null;}).concat(odd);
+      $('#mapSide').innerHTML='<div class="panel"><div class="panel-h"><h2>En tournée</h2><small>'+on.length+'</small></div>'+(on.length?'<table class="t"><tbody>'+on.map(function(l){return '<tr class="click" '+(l.site?'data-s="'+l.site+'"':'')+'><td><b>'+esc(techName(l.t))+'</b><span class="sub">'+esc(l.lieu||'—')+'</span></td><td class="r mono">'+esc(l.depuis)+'</td></tr>';}).join('')+'</tbody></table>':'<p class="dim">Personne n\'est punché en ce moment.</p>')+'</div>'+
+        (nopos.length?'<div class="panel" style="margin-top:24px"><div class="panel-h"><h2>Sans position</h2><small>'+nopos.length+'</small></div><p class="dim" style="font-size:var(--t-xs);margin:0 0 8px">Position calculée à partir des punchs GPS. Ces sites n\'en ont pas encore.</p><table class="t"><tbody>'+nopos.slice(0,60).map(function(x){return '<tr><td>'+esc(x.nom)+'<span class="sub">'+esc(x.addr)+'</span></td></tr>';}).join('')+'</tbody></table></div>':'');
+    }else{var last=lastR(s.id),here=LIVE.filter(function(l){return l.site===s.id&&l.etat!=='off';});
+      $('#mapSide').innerHTML='<button class="btn sm" id="mapBack">Tous</button><div class="detail" style="margin-top:14px"><h3>'+esc(s.nom)+'</h3><dl class="kv"><dt>Adresse</dt><dd>'+esc(s.addr||s.client)+'</dd><dt>Type</dt><dd>'+esc(s.type)+'</dd><dt>Bassins</dt><dd>'+s.bassins.map(esc).join(', ')+'</dd><dt>Sur place</dt><dd>'+(here.map(function(l){return esc(techName(l.t));}).join(', ')||'—')+'</dd></dl>'+
+        '<div class="gauges" style="grid-template-columns:repeat(3,1fr)">'+gauge('cl',last&&last.cl)+gauge('clc',last&&last.clc)+gauge('ph',last&&last.ph)+'</div><button class="btn" style="margin-top:18px" id="toInsp">'+ic('flask')+'Voir les relevés</button></div>';
       $('#mapBack').onclick=function(){side(null);};$('#toInsp').onclick=function(){inspSite=s.id;go('inspections');};}
     $$('#mapSide [data-s]').forEach(function(r){r.onclick=function(){side(r.dataset.s);};});
   }
@@ -616,44 +787,55 @@ function vCarte(v){
 /* ════════════════ 03 · Inspections & rapports ════════════════ */
 var inspSite='s-charles',inspRange=30;
 function vInspections(v){
-  var s=siteById(inspSite),h=HIST[s.id].slice(-inspRange);
-  v.innerHTML='<div class="pad"><div class="insp"><section><div class="panel"><div class="panel-h"><h2>Sites</h2><small>'+SITES.length+'</small></div><div class="sitelist">'+
-    SITES.map(function(x){return '<button data-s="'+x.id+'"'+(x.id===s.id?' aria-current="true"':'')+'><span class="sq '+siteState(x.id)+'"></span><span><b>'+esc(x.nom)+'</b><small>'+esc(x.client)+'</small></span></button>';}).join('')+'</div></div></section>'+
-    '<section><div class="toolbar"><div><h2 style="margin:0;font-size:var(--t-xl);font-weight:900;font-stretch:var(--wide)">'+esc(s.nom)+'</h2><span class="dim">'+esc(s.bassins[0])+' · zone optimale en bande verte</span></div><span class="sp"></span>'+
+  var s=siteById(inspSite)||SITES[0];if(!s){v.innerHTML='<div class="pad dim">Aucun site.</div>';return;}
+  inspSite=s.id;
+  var lim=addDays(isoDay(TODAY),-(inspRange-1)),h=histOf(s.id).filter(function(r){return r.date>=lim;});
+  var withR=SITES.filter(function(x){return histOf(x.id).length;}),others=SITES.filter(function(x){return !histOf(x.id).length;});
+  function item(x){return '<button data-s="'+x.id+'"'+(x.id===s.id?' aria-current="true"':'')+'><span class="sq '+(siteState(x.id)==='none'?'off':siteState(x.id))+'"></span><span><b>'+esc(x.nom)+'</b><small>'+esc(x.client||x.type)+'</small></span></button>';}
+  var right;
+  if(h.length<2){
+    right='<div class="toolbar"><div><h2 style="margin:0;font-size:var(--t-xl);font-weight:900;font-stretch:var(--wide)">'+esc(s.nom)+'</h2><span class="dim">'+esc(s.bassins.join(', '))+'</span></div></div>'+
+      '<div class="notice" style="max-width:640px">'+ic('flask')+'<span><b>'+(h.length?'Un seul relevé sur la période':'Aucun relevé sur la période')+'.</b> Les courbes (chlore libre et combiné, pH, alcalinité, température) apparaissent dès deux relevés saisis dans La Tournée ou dans SOUCY OPS (section « Relevé de bassin » du punch).</span></div>';
+  }else{
+    right='<div class="toolbar"><div><h2 style="margin:0;font-size:var(--t-xl);font-weight:900;font-stretch:var(--wide)">'+esc(s.nom)+'</h2><span class="dim">'+esc(s.bassins[0])+' · zone optimale en bande verte</span></div><span class="sp"></span>'+
     '<span class="seg" id="rng"><button data-r="7" aria-pressed="'+(inspRange===7)+'">7 j</button><button data-r="14" aria-pressed="'+(inspRange===14)+'">14 j</button><button data-r="30" aria-pressed="'+(inspRange===30)+'">30 j</button></span>'+
-    '<button class="btn">'+ic('print')+'Rapport PDF</button></div>'+
-    '<div class="charts">'+Object.keys(PARAMS).map(function(k){return chartHTML(k,h);}).join('')+'</div>'+
-    '<div class="panel" style="margin-top:32px"><div class="panel-h"><h2>Registre des relevés</h2><small>'+h.length+' jours</small></div><table class="t"><thead><tr><th>Date</th><th>Technicien</th>'+Object.keys(PARAMS).map(function(k){return '<th class="r">'+PARAMS[k].lbl+'</th>';}).join('')+'</tr></thead><tbody>'+
-    h.slice().reverse().slice(0,10).map(function(r){var dt=new Date(TODAY);dt.setDate(dt.getDate()-r.d);return '<tr><td class="mono">'+dt.toLocaleDateString('fr-CA')+'</td><td>'+TECHS[r.d%5].nom+'</td>'+Object.keys(PARAMS).map(function(k){var z=zone(k,r[k]);return '<td class="r"><span style="'+(z!=='ok'?'color:var(--'+z+');font-weight:800':'')+'">'+fr(r[k],PARAMS[k].d)+'</span></td>';}).join('')+'</tr>';}).join('')+'</tbody></table></div>'+
-    '</section></div></div>';
+    '<button class="btn" id="pdf">'+ic('print')+'Rapport PDF</button></div>'+
+    '<div class="charts">'+Object.keys(PARAMS).filter(function(k){return h.some(function(r){return r[k]!=null;});}).map(function(k){return chartHTML(k,h.filter(function(r){return r[k]!=null;}));}).join('')+'</div>'+
+    '<div class="panel" style="margin-top:32px"><div class="panel-h"><h2>Registre des relevés</h2><small>'+h.length+'</small></div><table class="t"><thead><tr><th>Date</th><th>Technicien</th>'+Object.keys(PARAMS).map(function(k){return '<th class="r">'+PARAMS[k].lbl+'</th>';}).join('')+'</tr></thead><tbody>'+
+    h.slice().reverse().slice(0,15).map(function(r){return '<tr><td class="mono">'+r.date+'</td><td>'+esc(r.tech||'—')+'</td>'+Object.keys(PARAMS).map(function(k){if(r[k]==null)return '<td class="r dim3">—</td>';var z=zone(k,r[k]);return '<td class="r"><span style="'+(z!=='ok'?'color:var(--'+z+');font-weight:800':'')+'">'+fr(r[k],PARAMS[k].d)+'</span></td>';}).join('')+'</tr>';}).join('')+'</tbody></table></div>';
+  }
+  v.innerHTML='<div class="pad"><div class="insp"><section><div class="panel"><div class="panel-h"><h2>Sites</h2><small>'+SITES.length+'</small></div><div class="sitelist">'+
+    (withR.length?withR.map(item).join('')+'<div class="nav-g" style="padding-left:8px">Sans relevé</div>':'')+others.map(item).join('')+'</div></div></section><section>'+right+'</section></div></div>';
   $$('.sitelist [data-s]',v).forEach(function(b){b.onclick=function(){inspSite=b.dataset.s;vInspections(v);};});
   $$('#rng [data-r]',v).forEach(function(b){b.onclick=function(){inspRange=+b.dataset.r;vInspections(v);};});
-  bindCharts(v,h);
+  if($('#pdf'))$('#pdf').onclick=function(){window.print();};
+  if(h.length>1)bindCharts(v,h);
 }
 function chartHTML(k,h){
   var p=PARAMS[k],W=340,H=150,L=34,R=8,T=10,B=22,vals=h.map(function(r){return r[k];});
   var lo=Math.min(p.acc[0],Math.min.apply(null,vals)),hi=Math.max(p.acc[1],Math.max.apply(null,vals));var pad=(hi-lo)*.08;lo-=pad;hi+=pad;
-  var X=function(i){return L+i*(W-L-R)/(h.length-1);},Y=function(v){return T+(hi-v)/(hi-lo)*(H-T-B);};
+  var X=function(i){return L+i*(W-L-R)/Math.max(1,h.length-1);},Y=function(v){return T+(hi-v)/(hi-lo)*(H-T-B);};
   var last=vals[vals.length-1],z=zone(k,last);
   var pts=vals.map(function(v,i){return X(i).toFixed(1)+','+Y(v).toFixed(1);}).join(' ');
   var dots=vals.map(function(v,i){var zz=zone(k,v);return zz==='ok'?'':'<rect class="pt" x="'+(X(i)-4)+'" y="'+(Y(v)-4)+'" width="8" height="8" fill="var(--'+zz+')"/>';}).join('');
+  var d0=new Date(h[0].date+'T12:00').toLocaleDateString('fr-CA',{day:'numeric',month:'short'}),d1=new Date(h[h.length-1].date+'T12:00').toLocaleDateString('fr-CA',{day:'numeric',month:'short'});
   return '<div class="chart" data-k="'+k+'" style="--rx:var(--rx-'+p.rx+')"><div class="chart-h"><b><i></i>'+p.lbl+'</b><span class="num" style="'+(z!=='ok'?'color:var(--'+z+')':'')+'">'+fr(last,p.d)+'</span><span class="u">'+p.u+'</span></div>'+
     '<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" role="img" aria-label="Tendance '+p.lbl+'">'+
     '<rect class="band" x="'+L+'" y="'+Y(p.opt[1])+'" width="'+(W-L-R)+'" height="'+(Y(p.opt[0])-Y(p.opt[1]))+'"/>'+
     '<line class="axis" x1="'+L+'" y1="'+(H-B)+'" x2="'+(W-R)+'" y2="'+(H-B)+'"/>'+
     [p.opt[0],p.opt[1]].map(function(t){return '<text class="tick" x="'+(L-6)+'" y="'+(Y(t)+3)+'" text-anchor="end">'+fr(t,p.d)+'</text>';}).join('')+
-    '<text class="tick" x="'+L+'" y="'+(H-6)+'">−'+(h.length-1)+' j</text><text class="tick" x="'+(W-R)+'" y="'+(H-6)+'" text-anchor="end">auj.</text>'+
+    '<text class="tick" x="'+L+'" y="'+(H-6)+'">'+d0+'</text><text class="tick" x="'+(W-R)+'" y="'+(H-6)+'" text-anchor="end">'+d1+'</text>'+
     '<polyline class="line" points="'+pts+'"/>'+dots+'<line class="xh" y1="'+T+'" y2="'+(H-B)+'" x1="-9" x2="-9"/><rect class="hit" x="'+L+'" y="0" width="'+(W-L-R)+'" height="'+H+'" fill="transparent"/></svg></div>';
 }
-function bindCharts(v,h){
+function bindCharts(v,hAll){
   var tip=$('#tip');
   $$('.chart',v).forEach(function(c){
-    var k=c.dataset.k,p=PARAMS[k],svg=$('svg',c),xh=$('.xh',c);
+    var k=c.dataset.k,p=PARAMS[k],h=hAll.filter(function(r){return r[k]!=null;}),svg=$('svg',c),xh=$('.xh',c),n=Math.max(1,h.length-1);
     svg.addEventListener('mousemove',function(e){
-      var r=svg.getBoundingClientRect(),sx=(e.clientX-r.left)/r.width*340,i=Math.round((sx-34)/(340-42)*(h.length-1));i=Math.max(0,Math.min(h.length-1,i));
-      var px=34+i*(340-42)/(h.length-1);xh.setAttribute('x1',px);xh.setAttribute('x2',px);
-      var dt=new Date(TODAY);dt.setDate(dt.getDate()-h[i].d);var val=h[i][k],z=zone(k,val);
-      tip.innerHTML=dt.toLocaleDateString('fr-CA',{day:'numeric',month:'short'})+' · <b>'+fr(val,p.d)+'</b> '+p.u+' · '+(z==='ok'?'optimal':z==='warn'?'acceptable':'hors norme');
+      var r=svg.getBoundingClientRect(),sx=(e.clientX-r.left)/r.width*340,i=Math.round((sx-34)/(340-42)*n);i=Math.max(0,Math.min(h.length-1,i));
+      var px=34+i*(340-42)/n;xh.setAttribute('x1',px);xh.setAttribute('x2',px);
+      var val=h[i][k],z=zone(k,val);
+      tip.innerHTML=new Date(h[i].date+'T12:00').toLocaleDateString('fr-CA',{day:'numeric',month:'short'})+' · <b>'+fr(val,p.d)+'</b> '+p.u+' · '+(z==='ok'?'optimal':z==='warn'?'acceptable':'hors norme');
       tip.style.display='block';tip.style.left=(r.left+px/340*r.width)+'px';tip.style.top=(r.top+window.scrollY)+'px';
     });
     svg.addEventListener('mouseleave',function(){tip.style.display='none';xh.setAttribute('x1',-9);xh.setAttribute('x2',-9);});
@@ -665,68 +847,98 @@ var opsSel='G-1041',opsOpen={'G-1041':1},opsFiltre='actifs';
 function vOperations(v){
   var list=DOSSIERS.filter(function(d){return opsFiltre==='tous'||(opsFiltre==='actifs'?d.statut!=='Terminé':d.statut==='À assigner');});
   var stC={'En cours':'ok','À faire':'warn','Planifié':'mute','Terminé':'mute','À assigner':'crit'};
-  v.innerHTML='<div class="split"><div class="l"><div class="toolbar"><span class="seg" id="opsF"><button data-f="actifs" aria-pressed="'+(opsFiltre==='actifs')+'">Actifs</button><button data-f="assigner" aria-pressed="'+(opsFiltre==='assigner')+'">À assigner</button><button data-f="tous" aria-pressed="'+(opsFiltre==='tous')+'">Tous</button></span><span class="sp"></span><span class="dim">'+list.length+' dossiers · '+list.reduce(function(a,d){return a+d.visites.length;},0)+' visites</span><button class="btn go">'+ic('plus')+'Nouveau dossier</button></div>'+
-    '<table class="t"><thead><tr><th></th><th>Dossier</th><th>Client · site</th><th>Technicien</th><th>Visites</th><th>Progression</th><th>Statut</th></tr></thead><tbody>'+
-    list.map(function(d){var s=siteById(d.site),t=d.tech&&techById(d.tech),f=d.visites.filter(function(x){return x[1]==='fait';}).length,multi=d.visites.length>1;
-      var row='<tr class="click dossier'+(d.id===opsSel?' sel':'')+'" data-d="'+d.id+'"><td>'+(multi?ic(opsOpen[d.id]?'down':'chev'):'')+'</td><td style="white-space:nowrap"><b class="mono">'+d.id+'</b></td><td><b>'+esc(d.client)+'</b><span class="sub">'+esc(s.nom)+' — '+esc(d.titre)+'</span></td><td>'+(t?esc(t.nom):'<span class="chip crit">Non assigné</span>')+'</td>'+
-        '<td>'+d.visites.length+(d.rec?' <span class="chip rec">'+ic('repeat')+esc(d.rec)+'</span>':'')+'</td><td><div style="display:flex;align-items:center;gap:8px"><span class="lanebar" style="flex:1"><i style="width:'+(f/d.visites.length*100)+'%"></i></span><span class="mono dim">'+f+'/'+d.visites.length+'</span></div></td><td><span class="chip '+stC[d.statut]+'">'+d.statut+'</span></td></tr>';
-      if(multi&&opsOpen[d.id])row+=d.visites.map(function(x,i){return '<tr class="visits"><td></td><td class="mono dim">'+(i+1)+'/'+d.visites.length+'</td><td colspan="3">'+dshort(x[0])+'</td><td colspan="2"><span class="chip '+(x[1]==='fait'?'ok':x[1]==='encours'?'warn':'mute')+'">'+(x[1]==='fait'?'Faite':x[1]==='encours'?'En cours':'Prévue')+'</span></td></tr>';}).join('');
-      return row;}).join('')+'</tbody></table></div><aside class="r detail" id="opsDetail"></aside></div>';
+  var VS={fait:['ok','Faite'],encours:['warn',"Aujourd'hui"],prevu:['mute','Prévue'],passe:['warn','À confirmer']};
+  v.innerHTML='<div class="split"><div class="l"><div class="toolbar"><span class="seg" id="opsF"><button data-f="actifs" aria-pressed="'+(opsFiltre==='actifs')+'">Actifs</button><button data-f="assigner" aria-pressed="'+(opsFiltre==='assigner')+'">À assigner</button><button data-f="tous" aria-pressed="'+(opsFiltre==='tous')+'">Tous</button></span><span class="sp"></span><span class="dim">'+list.length+' dossier'+(list.length>1?'s':'')+' · '+list.reduce(function(a,d){return a+d.visites.length;},0)+' visites</span><button class="btn go" id="newD">'+ic('plus')+'Nouveau dossier</button></div>'+
+    (list.length?'<table class="t"><thead><tr><th></th><th>Dossier</th><th>Client · site</th><th>Technicien</th><th>Visites</th><th>Progression</th><th>Statut</th></tr></thead><tbody>'+
+    list.map(function(d){var s=siteById(d.site),f=d.visites.filter(function(x){return x[1]==='fait';}).length,multi=d.visites.length>1;
+      var row='<tr class="click dossier'+(d.id===opsSel?' sel':'')+'" data-d="'+esc(d.id)+'"><td>'+(multi?ic(opsOpen[d.id]?'down':'chev'):'')+'</td><td style="white-space:nowrap"><b class="mono">'+esc(d.id)+'</b></td><td><b>'+esc(d.client)+'</b><span class="sub">'+esc(s?s.nom:'')+' — '+esc(d.titre.slice(0,90))+'</span></td><td>'+(d.tech?esc(techName(d.tech)):'<span class="chip crit">Non assigné</span>')+'</td>'+
+        '<td>'+d.visites.length+(d.rec?' <span class="chip rec">'+ic('repeat')+esc(d.rec)+'</span>':'')+'</td><td><div style="display:flex;align-items:center;gap:8px"><span class="lanebar" style="flex:1"><i style="width:'+(f/d.visites.length*100)+'%"></i></span><span class="mono dim">'+f+'/'+d.visites.length+'</span></div></td><td><span class="chip '+(stC[d.statut]||'mute')+'">'+d.statut+'</span></td></tr>';
+      if(multi&&opsOpen[d.id])row+=d.visites.map(function(x,i){var vs=VS[x[1]]||VS.prevu;return '<tr class="visits"><td></td><td class="mono dim">'+(i+1)+'/'+d.visites.length+'</td><td colspan="3">'+(x[0]?dshort(x[0]):'Sans date')+'</td><td colspan="2"><span class="chip '+vs[0]+'">'+vs[1]+'</span></td></tr>';}).join('');
+      return row;}).join('')+'</tbody></table>':'<p class="dim">Aucun dossier.</p>')+'</div><aside class="r detail" id="opsDetail"></aside></div>';
+  $('#newD').onclick=readOnly;
   $$('#opsF [data-f]',v).forEach(function(b){b.onclick=function(){opsFiltre=b.dataset.f;vOperations(v);};});
   $$('[data-d]',v).forEach(function(r){r.onclick=function(){var id=r.dataset.d;if(opsSel===id)opsOpen[id]=!opsOpen[id];opsSel=id;vOperations(v);};});
   var d=DOSSIERS.find(function(x){return x.id===opsSel;})||list[0];if(!d)return;var s=siteById(d.site);
-  $('#opsDetail').innerHTML='<span class="mono dim">'+d.id+'</span><h3>'+esc(d.client)+'</h3><p class="dim" style="margin:6px 0 0">'+esc(d.titre)+'</p>'+
-    '<dl class="kv"><dt>Site</dt><dd>'+esc(s.nom)+'</dd><dt>Bassins</dt><dd>'+s.bassins.map(esc).join(', ')+'</dd><dt>Technicien</dt><dd>'+(d.tech?techById(d.tech).nom:'—')+'</dd><dt>Récurrence</dt><dd>'+(d.rec||'Visite unique')+'</dd><dt>Statut</dt><dd>'+d.statut+'</dd></dl>'+
-    '<div class="panel"><div class="panel-h"><h2>Tâches de la prochaine visite</h2></div><table class="t"><tbody>'+['Relevés chimiques complets','Nettoyage des paniers et préfiltres','Contre-lavage filtre','Photo salle mécanique'].map(function(x,i){return '<tr><td style="width:24px"><span class="sq '+(i===0?'ok':'off')+'"></span></td><td>'+x+'</td></tr>';}).join('')+'</tbody></table></div>'+
-    '<div class="panel" style="margin-top:22px"><div class="panel-h"><h2>Journal du site</h2></div><ul class="plain feed">'+FEED.filter(function(f){return f.site===d.site;}).slice(0,3).map(feedLi).join('')+'<li><span class="h">ven.</span><p>Visite complétée, eau conforme.<small>'+(d.tech?techById(d.tech).nom:'—')+'</small></p></li></ul></div>'+
-    '<div style="display:flex;gap:8px;margin-top:18px"><button class="btn">Modifier</button><button class="btn">'+ic('cal')+'Planifier</button></div>';
+  var tasks=d.tasks&&d.tasks.length?d.tasks.map(function(t){return [t.label||t.titre||'Tâche',!!t.done];}):[['Relevés chimiques complets',true],['Nettoyage des paniers et préfiltres',false],['Contre-lavage filtre',false],['Photo salle mécanique',false]];
+  var next=d.visites.find(function(x){return x[1]!=='fait'&&x[0]>=isoDay(TODAY);});
+  var journal=FEED.filter(function(f){return f.site===d.site;}).slice(0,5);
+  $('#opsDetail').innerHTML='<span class="mono dim">'+esc(d.id)+'</span><h3>'+esc(d.client)+'</h3><p class="dim" style="margin:6px 0 0">'+esc(d.titre)+'</p>'+
+    '<dl class="kv"><dt>Site</dt><dd>'+esc(s?s.nom:'—')+(s&&s.addr?'<span class="sub">'+esc(s.addr)+'</span>':'')+'</dd><dt>Technicien</dt><dd>'+(d.techs&&d.techs.length?d.techs.map(function(t){return esc(techName(t));}).join(', '):d.tech?esc(techName(d.tech)):'—')+'</dd><dt>Récurrence</dt><dd>'+(d.rec||'Visite unique')+'</dd><dt>Prochaine visite</dt><dd>'+(next?dshort(next[0]):'—')+'</dd><dt>Statut</dt><dd>'+d.statut+'</dd></dl>'+
+    '<div class="panel"><div class="panel-h"><h2>Tâches prévues à chaque visite</h2></div><table class="t"><tbody>'+tasks.map(function(x){return '<tr><td style="width:24px"><span class="sq '+(x[1]?'ok':'off')+'"></span></td><td>'+esc(x[0])+'</td></tr>';}).join('')+'</tbody></table></div>'+
+    '<div class="panel" style="margin-top:22px"><div class="panel-h"><h2>Activité sur ce site</h2></div><ul class="plain feed">'+(journal.length?journal.map(feedLi).join(''):'<li><span class="h"></span><p class="dim">Aucun punch ni note récente.</p></li>')+'</ul></div>'+
+    '<div style="display:flex;gap:8px;margin-top:18px"><button class="btn" id="dEdit">Modifier</button><button class="btn" id="dPlan">'+ic('cal')+'Planifier</button></div>';
+  $('#dEdit').onclick=readOnly;$('#dPlan').onclick=function(){go('planning');};
 }
 
 /* ════════════════ 05 · Planning équipe ════════════════ */
 var serie={jour:4,fin:'2026-11-12',off:{},tech:'mg',titre:'Complexe Locatif Cobalt — entretien'};
+function planBlocks(mon){ // { techId: [[jourIdx, libellé, heure, type]] }  type 1 = récurrent
+  if(MODE==='demo')return {mg:[[0,'Charlesbourg','07:30'],[1,'Montcalm','13:00',1],[2,'Tremblay — fermeture','09:00'],[3,'Cobalt','09:30',1]],jb:[[0,'Charlesbourg','07:30',1],[2,'Charlesbourg','07:30',1],[4,'Charlesbourg','07:30',1]],ft:[[0,'Montcalm — cartouche','10:00'],[1,'Lebourgneuf','08:00',1]],ac:[[0,'Saint-Romuald','08:30'],[1,'Pintendre','08:30'],[3,'Tournée hivernage','08:00']],sl:[[0,'Pintendre','08:00'],[1,'Pintendre','08:00'],[2,'Breakeyville','08:00']],ep:[[0,'Val-Bélair','09:45'],[1,'Lebourgneuf','08:00',1],[3,'Beauport','08:00']],ol:[[0,'Pintendre','08:00'],[1,'Pintendre','08:00']],nr:[[2,'Dépôt — inventaire','08:00']],vd:[]};
+  var out={},end=addDays(mon,6);
+  DOSSIERS.forEach(function(d){d.visites.forEach(function(x){if(x[0]>=mon&&x[0]<=end){var i=Math.round((new Date(x[0]+'T12:00')-new Date(mon+'T12:00'))/864e5);
+    (d.techs&&d.techs.length?d.techs:['_']).forEach(function(t){(out[t]=out[t]||[]).push([i,d.client,'',d.rec?1:0]);});}});});
+  PT_RAW.forEach(function(p){var a=String(p.date_debut||'').slice(0,10),b=String(p.date_fin||a).slice(0,10);
+    for(var dd=a;dd&&dd<=b&&dd<=end;dd=addDays(dd,1)){if(dd<mon)continue;var i=Math.round((new Date(dd+'T12:00')-new Date(mon+'T12:00'))/864e5);(out[p.emp||'_']=out[p.emp||'_']||[]).push([i,p.titre||p.site_nom||'Tâche',p.heure_debut||'',0]);}});
+  return out;
+}
 function vPlanning(v){
-  var mon=new Date('2026-09-28T12:00'),days=[];for(var i=0;i<7;i++){var d=new Date(mon);d.setDate(mon.getDate()+i);days.push(d);}
-  var BL={mg:[[0,'Charlesbourg','07:30'],[1,'Montcalm','13:00',1],[2,'Tremblay — fermeture','09:00'],[3,'Cobalt','09:30',1]],jb:[[0,'Charlesbourg','07:30',1],[2,'Charlesbourg','07:30',1],[4,'Charlesbourg','07:30',1]],ft:[[0,'Montcalm — cartouche','10:00'],[1,'Lebourgneuf','08:00',1]],ac:[[0,'Saint-Romuald','08:30'],[1,'Pintendre','08:30'],[3,'Tournée hivernage','08:00']],sl:[[0,'Pintendre','08:00'],[1,'Pintendre','08:00'],[2,'Breakeyville','08:00']],ep:[[0,'Val-Bélair','09:45'],[1,'Lebourgneuf','08:00',1],[3,'Beauport','08:00']],ol:[[0,'Pintendre','08:00'],[1,'Pintendre','08:00']],nr:[[2,'Dépôt — inventaire','08:00']],vd:[]};
-  var dates=serieDates();
-  v.innerHTML='<div class="split"><div class="l"><div class="toolbar"><button class="btn sm">‹</button><b>Semaine du 28 septembre 2026</b><button class="btn sm">›</button><span class="sp"></span><span class="dim">'+ic('repeat')+' jaune = visite d\'une série récurrente</span><button class="btn">'+ic('print')+'Imprimer A3</button></div>'+
-    '<div class="week"><div class="hd"></div>'+days.map(function(d,i){return '<div class="hd'+(i===0?' today':'')+'">'+d.toLocaleDateString('fr-CA',{weekday:'short',day:'numeric'})+'</div>';}).join('')+
-    TECHS.map(function(t){var cells='';for(var i=0;i<7;i++){var bl=(BL[t.id]||[]).filter(function(b){return b[0]===i;});
-        if(t.id===serie.tech)dates.forEach(function(dd){if(dd.on&&dd.iso===days[i].toISOString().slice(0,10)&&!bl.some(function(b){return b[3];}))bl.push([i,'Nouvelle série (aperçu)','09:30',2]);});
-        cells+='<div>'+bl.map(function(b){return '<button class="blk'+(b[3]===1?' rec':b[3]===2?' prev':'')+'"><b>'+esc(b[1])+'</b><span>'+b[2]+'</span></button>';}).join('')+'</div>';}
+  var mon=MODE==='demo'?'2026-09-28':planWeek,days=[];for(var i=0;i<7;i++)days.push(addDays(mon,i));
+  var BL=planBlocks(mon),dates=serieDates(),today=isoDay(TODAY);
+  var rows=TECHS.slice();if(BL._)rows.push({id:'_',nom:'Non assigné',role:'à répartir'});
+  var total=Object.keys(BL).reduce(function(a,k){return a+BL[k].length;},0);
+  v.innerHTML='<div class="split"><div class="l"><div class="toolbar"><button class="btn sm" id="pwP">‹</button><b>Semaine du '+new Date(mon+'T12:00').toLocaleDateString('fr-CA',{day:'numeric',month:'long',year:'numeric'})+'</b><button class="btn sm" id="pwN">›</button>'+(MODE!=='demo'&&mon!==mondayISO(TODAY)?'<button class="btn sm" id="pw0">Cette semaine</button>':'')+'<span class="sp"></span><span class="dim">'+total+' visite'+(total>1?'s':'')+' · jaune = série récurrente</span><button class="btn" id="pPrint">'+ic('print')+'Imprimer</button></div>'+
+    '<div class="week"><div class="hd"></div>'+days.map(function(d){return '<div class="hd'+(d===today?' today':'')+'">'+new Date(d+'T12:00').toLocaleDateString('fr-CA',{weekday:'short',day:'numeric'})+'</div>';}).join('')+
+    rows.map(function(t){var cells='';for(var i=0;i<7;i++){var bl=(BL[t.id]||[]).filter(function(b){return b[0]===i;});
+        if(t.id===serie.tech&&(MODE==='demo'||serie.titre))dates.forEach(function(dd){if(dd.on&&dd.iso===days[i])bl.push([i,(serie.titre||'Nouvelle série')+' (aperçu)','',2]);});
+        cells+='<div>'+bl.map(function(b){return '<button class="blk'+(b[3]===1?' rec':b[3]===2?' prev':'')+'" title="'+esc(b[1])+'"><b>'+esc(b[1])+'</b><span>'+(b[2]||'&nbsp;')+'</span></button>';}).join('')+'</div>';}
       return '<div class="who"><b>'+esc(t.nom)+'</b><small>'+esc(t.role)+'</small></div>'+cells;}).join('')+'</div></div>'+
     '<aside class="r"><div class="panel"><div class="panel-h"><h2>Nouvelle série</h2><small>WO · créneau · tâche</small></div>'+
-    '<div style="display:grid;gap:12px"><label class="field">Titre<input id="sTitre" value="'+esc(serie.titre)+'"></label>'+
-    '<label class="field">Technicien<select id="sTech">'+TECHS.map(function(t){return '<option value="'+t.id+'"'+(t.id===serie.tech?' selected':'')+'>'+esc(t.nom)+'</option>';}).join('')+'</select></label>'+
+    '<div style="display:grid;gap:12px"><label class="field">Titre<input id="sTitre" value="'+esc(serie.titre)+'" placeholder="Ex. Résidence Desjardins — entretien"></label>'+
+    '<label class="field">Technicien<select id="sTech">'+TECHS.map(function(t){return '<option value="'+esc(t.id)+'"'+(t.id===serie.tech?' selected':'')+'>'+esc(t.nom)+'</option>';}).join('')+'</select></label>'+
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><label class="field">Tous les<select id="sJour">'+['dimanches','lundis','mardis','mercredis','jeudis','vendredis','samedis'].map(function(j,i){return '<option value="'+i+'"'+(i===serie.jour?' selected':'')+'>'+j+'</option>';}).join('')+'</select></label>'+
     '<label class="field">Jusqu\'au<input type="date" id="sFin" value="'+serie.fin+'"></label></div>'+
     '<div class="field">'+dates.filter(function(d){return d.on;}).length+' visites générées — clic pour retirer une date<div class="dates">'+dates.map(function(d){return '<button data-iso="'+d.iso+'" class="'+(d.on?'':'off')+'">'+new Date(d.iso+'T12:00').toLocaleDateString('fr-CA',{day:'numeric',month:'short'})+'</button>';}).join('')+'</div></div>'+
     '<p class="dim" style="font-size:var(--t-xs);margin:0">Chaque date devient une visite indépendante, regroupée sous un seul dossier client (groupe_id).</p>'+
-    '<button class="btn go" id="sOk">'+ic('check')+'Créer la série</button></div></div></aside></div>';
+    '<button class="btn go" id="sOk">'+ic('check')+'Créer la série</button>'+(MODE!=='demo'?'<p class="dim" style="font-size:var(--t-xs);margin:0">Essai en lecture seule : l\'aperçu s\'affiche dans la grille, rien n\'est créé en base.</p>':'')+'</div></div></aside></div>';
   $('#sJour').onchange=function(e){serie.jour=+e.target.value;serie.off={};vPlanning(v);};
   $('#sFin').onchange=function(e){serie.fin=e.target.value;vPlanning(v);};
   $('#sTech').onchange=function(e){serie.tech=e.target.value;vPlanning(v);};
-  $('#sTitre').oninput=function(e){serie.titre=e.target.value;};
+  $('#sTitre').onchange=function(e){serie.titre=e.target.value;vPlanning(v);};
   $$('[data-iso]',v).forEach(function(b){b.onclick=function(){serie.off[b.dataset.iso]=!serie.off[b.dataset.iso];vPlanning(v);};});
-  $('#sOk').onclick=function(){toast(dates.filter(function(d){return d.on;}).length+' visites créées — un dossier « '+serie.titre+' »');};
+  $('#sOk').onclick=function(){if(MODE!=='demo'){readOnly();return;}toast(dates.filter(function(d){return d.on;}).length+' visites créées — un dossier « '+serie.titre+' »');};
+  $('#pPrint').onclick=function(){window.print();};
+  if(MODE!=='demo'){$('#pwP').onclick=function(){planWeek=addDays(planWeek,-7);vPlanning(v);};$('#pwN').onclick=function(){planWeek=addDays(planWeek,7);vPlanning(v);};if($('#pw0'))$('#pw0').onclick=function(){planWeek=mondayISO(TODAY);vPlanning(v);};}
 }
-function serieDates(){var out=[],d=new Date('2026-09-28T12:00'),end=new Date(serie.fin+'T12:00');while(d.getDay()!==serie.jour)d.setDate(d.getDate()+1);
-  while(d<=end&&out.length<60){var iso=d.toISOString().slice(0,10);out.push({iso:iso,on:!serie.off[iso]});d.setDate(d.getDate()+7);}return out;}
+function serieDates(){var out=[],start=MODE==='demo'?'2026-09-28':isoDay(TODAY),d=new Date(start+'T12:00'),end=new Date(serie.fin+'T12:00');while(d.getDay()!==serie.jour)d.setDate(d.getDate()+1);
+  while(d<=end&&out.length<60){var iso=isoDay(d);out.push({iso:iso,on:!serie.off[iso]});d.setDate(d.getDate()+7);}return out;}
 
 /* ════════════════ 06 · Sites ════════════════ */
 var DETECTES=[
   {nom:'Piscine Saint-Nicolas',addr:'1450, route des Rivières, Lévis',vu:'3 punchs · Samuel L.',proche:null},
   {nom:'Cobalt Lebourgneuf',addr:'1450, boul. Lebourgneuf, Québec',vu:'1 punch · Maxime G.',proche:'s-cobalt'}
 ];
+function doublons(){
+  var out=[],L=SITES.map(function(s){return {s:s,n:norm(s.nom).replace(/\b(complexe|locatif|residence|piscine|le|la|les|de|du|des)\b/g,' ').replace(/\s+/g,' ').trim(),a:norm(s.addr).split(' ').slice(0,2).join(' ')};});
+  for(var i=0;i<L.length;i++)for(var j=i+1;j<L.length;j++){var A=L[i],B=L[j];
+    if((A.n&&A.n===B.n)||(A.a&&A.a.length>3&&A.a===B.a&&/^\d/.test(A.a))||(A.n.length>4&&B.n.length>4&&(A.n.indexOf(B.n)>=0||B.n.indexOf(A.n)>=0)))out.push([A.s,B.s]);}
+  return out.slice(0,12);
+}
+var sitesQ='';
 function vSites(v){
+  var dup=MODE==='demo'?[[siteById('s-lebourg'),{nom:'Hotel Le Bourgneuf (2024)',addr:''}]]:doublons();
+  var list=SITES.filter(function(s){return !sitesQ||norm(s.nom+' '+s.addr).indexOf(norm(sitesQ))>=0;});
   v.innerHTML='<div class="pad"><div class="grid" style="grid-template-columns:minmax(0,1fr) 420px">'+
-    '<section class="panel"><div class="panel-h"><h2>Répertoire</h2><small>'+SITES.length+' sites actifs</small><button class="btn sm go">'+ic('plus')+'Ajouter</button></div><table class="t"><thead><tr><th>Site</th><th>Client</th><th>Type</th><th class="r">Bassins</th><th>Eau</th></tr></thead><tbody>'+
-    SITES.map(function(s){var st=siteState(s.id);return '<tr class="click"><td><b>'+esc(s.nom)+'</b><span class="sub mono">'+s.lat.toFixed(3)+', '+s.lng.toFixed(3)+'</span></td><td>'+esc(s.client)+'</td><td>'+esc(s.type)+'</td><td class="r num">'+s.bassins.length+'</td><td><span class="chip '+st+'">'+(st==='ok'?'Conforme':st==='warn'?'À surveiller':'Hors norme')+'</span></td></tr>';}).join('')+'</tbody></table></section>'+
-    '<section><div class="panel"><div class="panel-h"><h2>Détectés automatiquement</h2><small>à valider</small></div>'+
-    DETECTES.map(function(d,i){var p=d.proche&&siteById(d.proche);return '<div style="border-bottom:1px solid var(--line);padding:12px 0" data-i="'+i+'"><b>'+esc(d.nom)+'</b><span class="sub">'+esc(d.addr)+' · '+esc(d.vu)+'</span>'+
+    '<section class="panel"><div class="panel-h"><h2>Répertoire</h2><small>'+SITES.length+' sites</small><label class="field" style="flex-direction:row;align-items:center"><input id="sq" placeholder="Filtrer…" value="'+esc(sitesQ)+'" style="min-height:30px;padding:4px 8px"></label><button class="btn sm go" id="addS">'+ic('plus')+'Ajouter</button></div><table class="t"><thead><tr><th>Site</th><th>Adresse</th><th>Type</th><th class="r">Bassins</th><th>Eau</th></tr></thead><tbody>'+
+    list.map(function(s){var st=siteState(s.id);return '<tr class="click" data-s="'+s.id+'"><td><b>'+esc(s.nom)+'</b>'+(s.lat!=null?'<span class="sub mono">'+s.lat.toFixed(3)+', '+s.lng.toFixed(3)+'</span>':'<span class="sub">sans position</span>')+'</td><td class="dim">'+esc(s.addr||s.client)+'</td><td>'+esc(s.type)+'</td><td class="r num">'+s.bassins.length+'</td><td>'+(st==='none'?'<span class="chip mute">Aucun relevé</span>':'<span class="chip '+st+'">'+(st==='ok'?'Conforme':st==='warn'?'À surveiller':'Hors norme')+'</span>')+'</td></tr>';}).join('')+'</tbody></table></section>'+
+    '<section><div class="panel"><div class="panel-h"><h2>Détectés automatiquement</h2><small>punchs sans fiche de site</small></div>'+
+    (DETECTES.length?DETECTES.map(function(d,i){var p=d.proche&&siteById(d.proche);return '<div style="border-bottom:1px solid var(--line);padding:12px 0" data-i="'+i+'"><b>'+esc(d.nom)+'</b><span class="sub">'+esc(d.addr)+' · '+esc(d.vu)+'</span>'+
       (p?'<div class="notice" style="margin:10px 0 0">'+ic('merge')+'<span>Doublon probable de <b>'+esc(p.nom)+'</b> — même adresse.</span></div>':'')+
-      '<div style="display:flex;gap:8px;margin-top:10px">'+(p?'<button class="btn sm go" data-a="fus">'+ic('merge')+'Fusionner</button><button class="btn sm" data-a="val">Garder séparé</button>':'<button class="btn sm go" data-a="val">'+ic('check')+'Valider</button><button class="btn sm" data-a="fus">'+ic('merge')+'Fusionner avec…</button>')+'<button class="btn sm" data-a="rej">Rejeter</button></div></div>';}).join('')+
-    '</div><div class="panel" style="margin-top:28px"><div class="panel-h"><h2>Doublons possibles</h2><small>même client, noms voisins</small></div><table class="t"><tbody><tr><td><b>Hôtel Lebourgneuf</b><span class="sub">↔ Hotel Le Bourgneuf (2024)</span></td><td class="r"><button class="btn sm">'+ic('merge')+'Comparer</button></td></tr></tbody></table></div></section></div></div>';
-  $$('[data-a]',v).forEach(function(b){b.onclick=function(){var row=b.closest('[data-i]');toast({val:'Site validé et ajouté au répertoire',fus:'Sites fusionnés — historique conservé',rej:'Détection rejetée'}[b.dataset.a]);DETECTES.splice(+row.dataset.i,1);vSites(v);};});
+      '<div style="display:flex;gap:8px;margin-top:10px">'+(p?'<button class="btn sm go" data-a="fus">'+ic('merge')+'Fusionner</button><button class="btn sm" data-a="val">Garder séparé</button>':'<button class="btn sm go" data-a="val">'+ic('check')+'Valider</button><button class="btn sm" data-a="fus">'+ic('merge')+'Fusionner avec…</button>')+'<button class="btn sm" data-a="rej">Rejeter</button></div></div>';}).join(''):'<p class="dim">Aucun punch hors répertoire. Tout est rattaché à une fiche.</p>')+
+    '</div><div class="panel" style="margin-top:28px"><div class="panel-h"><h2>Doublons possibles</h2><small>noms ou adresses voisins</small></div>'+(dup.length?'<table class="t"><tbody>'+dup.map(function(p){return '<tr><td><b>'+esc(p[0].nom)+'</b><span class="sub">↔ '+esc(p[1].nom)+'</span></td><td class="r"><button class="btn sm" data-cmp>'+ic('merge')+'Comparer</button></td></tr>';}).join('')+'</tbody></table>':'<p class="dim">Aucun doublon évident.</p>')+'</div></section></div></div>';
+  $('#sq').oninput=function(e){sitesQ=e.target.value;var pos=e.target.selectionStart;vSites(v);var q=$('#sq');q.focus();q.setSelectionRange(pos,pos);};
+  $('#addS').onclick=readOnly;$$('[data-cmp]',v).forEach(function(b){b.onclick=readOnly;});
+  $$('tr[data-s]',v).forEach(function(r){r.onclick=function(){inspSite=r.dataset.s;go('inspections');};});
+  $$('[data-a]',v).forEach(function(b){b.onclick=function(){if(MODE!=='demo'){readOnly();return;}var row=b.closest('[data-i]');toast({val:'Site validé et ajouté au répertoire',fus:'Sites fusionnés — historique conservé',rej:'Détection rejetée'}[b.dataset.a]);DETECTES.splice(+row.dataset.i,1);vSites(v);renderNav();};});
 }
 
 /* ════════════════ 07 · Facturation ════════════════ */
@@ -736,76 +948,149 @@ function vFacturation(v){
   var rows=FACT.filter(function(r){return factF==='tous'||r[6]===factF;});
   var tot=function(st){return FACT.filter(function(r){return r[6]===st;}).reduce(function(a,r){return a+(st==='afacturer'?r[4]:r[5]);},0);};
   var ecartTot=FACT.filter(function(r){return r[5];}).reduce(function(a,r){return a+(r[5]-r[4]);},0);
-  v.innerHTML='<div class="pad"><div class="sums"><div><small>À facturer (prix calculé)</small><span class="num">'+money(tot('afacturer'))+'</span></div><div><small>Facturé, en attente</small><span class="num">'+money(tot('facture'))+'</span></div><div><small>Payé ce mois</small><span class="num">'+money(tot('paye'))+'</span></div><div><small>Écart facturé − calculé</small><span class="num ecart '+(ecartTot>=0?'pos':'neg')+'">'+(ecartTot>=0?'+':'')+money(ecartTot)+'</span></div></div>'+
-    '<div class="toolbar"><span class="seg" id="fF">'+['tous','afacturer','facture','paye'].map(function(k){return '<button data-f="'+k+'" aria-pressed="'+(factF===k)+'">'+(k==='tous'?'Tous':L[k])+' · '+(k==='tous'?FACT.length:FACT.filter(function(r){return r[6]===k;}).length)+'</button>';}).join('')+'</span><span class="sp"></span><button class="btn">'+ic('up')+'Importer l\'Excel</button><button class="btn">Exporter</button></div>'+
+  v.innerHTML='<div class="pad">'+(FACT_DEMO?banner('<b>Exemple.</b> La facturation est encore suivie dans le fichier Excel : aucune table n\'existe en base. Cet écran montre la mise en page cible ; l\'import de l\'Excel viendra avec la phase écriture.'):'')+
+    '<div class="sums"><div><small>À facturer (prix calculé)</small><span class="num">'+money(tot('afacturer'))+'</span></div><div><small>Facturé, en attente</small><span class="num">'+money(tot('facture'))+'</span></div><div><small>Payé ce mois</small><span class="num">'+money(tot('paye'))+'</span></div><div><small>Écart facturé − calculé</small><span class="num ecart '+(ecartTot>=0?'pos':'neg')+'">'+(ecartTot>=0?'+':'')+money(ecartTot)+'</span></div></div>'+
+    '<div class="toolbar"><span class="seg" id="fF">'+['tous','afacturer','facture','paye'].map(function(k){return '<button data-f="'+k+'" aria-pressed="'+(factF===k)+'">'+(k==='tous'?'Tous':L[k])+' · '+(k==='tous'?FACT.length:FACT.filter(function(r){return r[6]===k;}).length)+'</button>';}).join('')+'</span><span class="sp"></span><button class="btn" id="fImp">'+ic('up')+'Importer l\'Excel</button><button class="btn" id="fExp">Exporter</button></div>'+
     '<table class="t"><thead><tr><th>N° ODT</th><th>N° PO</th><th>Client</th><th>Description</th><th class="r">Prix calculé</th><th class="r">Prix facturé</th><th class="r">Écart</th><th>Statut</th></tr></thead><tbody>'+
     rows.map(function(r){var e=r[5]?r[5]-r[4]:null;return '<tr><td class="mono"><b>'+r[0]+'</b></td><td class="mono">'+(r[1]||'<span class="chip warn">PO manquant</span>')+'</td><td>'+esc(r[2])+'</td><td class="dim">'+esc(r[3])+'</td><td class="r num">'+money(r[4])+'</td><td class="r num">'+(r[5]?money(r[5]):'<span class="dim3">—</span>')+'</td>'+
       '<td class="r"><span class="ecart '+(e===null?'zero':e>0?'pos':e<0?'neg':'zero')+'">'+(e===null?'—':e===0?'0':(e>0?'+':'')+money(e))+(e&&r[4]?' <span class="dim3" style="font-weight:500">('+(e>0?'+':'')+fr(e/r[4]*100,1)+' %)</span>':'')+'</span></td>'+
       '<td><select class="chip '+C[r[6]]+'" style="background:none;cursor:pointer" data-odt="'+r[0]+'">'+Object.keys(L).map(function(k){return '<option value="'+k+'"'+(k===r[6]?' selected':'')+'>'+L[k]+'</option>';}).join('')+'</select></td></tr>';}).join('')+
     '</tbody><tfoot><tr><td colspan="4">'+rows.length+' lignes</td><td class="r num">'+money(rows.reduce(function(a,r){return a+r[4];},0))+'</td><td class="r num">'+money(rows.reduce(function(a,r){return a+r[5];},0))+'</td><td colspan="2"></td></tr></tfoot></table></div>';
+  $('#fImp').onclick=readOnly;$('#fExp').onclick=readOnly;
   $$('#fF [data-f]',v).forEach(function(b){b.onclick=function(){factF=b.dataset.f;vFacturation(v);};});
-  $$('[data-odt]',v).forEach(function(s){s.onchange=function(){FACT.find(function(r){return r[0]===s.dataset.odt;})[6]=s.value;toast(s.dataset.odt+' → '+L[s.value]);vFacturation(v);};});
+  $$('[data-odt]',v).forEach(function(s){s.onchange=function(){FACT.find(function(r){return r[0]===s.dataset.odt;})[6]=s.value;toast(s.dataset.odt+' → '+L[s.value]+(FACT_DEMO?' (exemple)':''));vFacturation(v);};});
 }
 
 /* ════════════════ 08 · Sondages ════════════════ */
+var sondSel=null,sondStats={};
 function vSondages(v){
+  if(MODE==='demo'||!SONDAGES){return vSondagesDemo(v);}
+  if(!sondSel&&SONDAGES[0])sondSel=SONDAGES[0].slug;
+  var st=sondStats[sondSel];
+  var sel=SONDAGES.find(function(s){return s.slug===sondSel;});
+  var res;
+  if(!sel)res='<p class="dim">Aucun sondage.</p>';
+  else if(!st)res='<p class="dim" style="margin:0 0 12px">Les résultats sont protégés par la clé des statistiques (la même que la page stats-sondages).</p><div style="display:flex;gap:8px;max-width:420px"><label class="field" style="flex:1"><input type="password" id="sCle" placeholder="Clé des statistiques" autocomplete="off"></label><button class="btn go" id="sGo">Voir les résultats</button></div><p class="dim" id="sErr" style="font-size:var(--t-xs)"></p>';
+  else if(!st.length)res='<p class="dim">Aucune réponse pour le moment.</p>';
+  else{
+    var avg=function(a){a=a.filter(function(x){return x!=null;});return a.length?a.reduce(function(x,y){return x+y;},0)/a.length:0;};
+    var q2=avg(st.map(function(r){return r.q2_qualite;})),q3=avg(st.map(function(r){return r.q3_clarte;}));
+    var nps=st.map(function(r){return r.q10_nps;}).filter(function(x){return x!=null;}),pro=nps.filter(function(x){return x>=9;}).length,det=nps.filter(function(x){return x<=6;}).length,score=nps.length?Math.round((pro-det)/nps.length*100):0;
+    var com=st.filter(function(r){return r.q11_commentaire||r.q8_ameliorer;});
+    res='<div class="score"><span class="num">'+fr(q2,1)+'</span><span class="dim" style="padding-bottom:8px">sur 5 · qualité · '+st.length+' réponse'+(st.length>1?'s':'')+'</span></div>'+
+      '<div style="margin-top:22px"><div class="hbar"><span>Qualité</span><span class="b"><i style="width:'+(q2/5*100)+'%"></i></span><span class="num r" style="font-size:var(--t-md)">'+fr(q2,1)+'</span></div><div class="hbar"><span>Clarté</span><span class="b"><i style="width:'+(q3/5*100)+'%"></i></span><span class="num r" style="font-size:var(--t-md)">'+fr(q3,1)+'</span></div><div class="hbar"><span>NPS (−100 à 100)</span><span class="b"><i style="width:'+((score+100)/2)+'%"></i></span><span class="num r" style="font-size:var(--t-md)">'+score+'</span></div></div>'+
+      (com.length?'<div class="panel" style="margin-top:26px"><div class="panel-h"><h2>Commentaires</h2></div><ul class="plain feed">'+com.slice(0,8).map(function(r){return '<li><span class="h">'+(r.q10_nps!=null?r.q10_nps+'/10':'')+'</span><p>« '+esc(r.q11_commentaire||r.q8_ameliorer)+' »<small>'+esc(r.fonction||r.nom||'')+'</small></p></li>';}).join('')+'</ul></div>':'');
+  }
+  v.innerHTML='<div class="pad"><div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)"><section class="panel"><div class="panel-h"><h2>Sondages</h2><small>'+SONDAGES.length+'</small><button class="btn sm go" id="sNew">'+ic('plus')+'Créer un sondage</button></div><table class="t"><thead><tr><th>Sondage</th><th>Créé</th><th>Statut</th></tr></thead><tbody>'+
+    SONDAGES.map(function(s){return '<tr class="click'+(s.slug===sondSel?' sel':'')+'" data-slug="'+esc(s.slug)+'"><td><b>'+esc(s.titre)+'</b><span class="sub">'+esc(s.client||'')+'</span></td><td class="mono">'+esc(String(s.created_at||'').slice(0,10))+'</td><td><span class="chip '+(s.actif?'ok':'mute')+'">'+(s.actif?'Actif':'Fermé')+'</span></td></tr>';}).join('')+'</tbody></table></section>'+
+    '<section class="panel"><div class="panel-h"><h2>'+esc(sel?sel.titre:'Résultats')+'</h2></div>'+res+'</section></div></div>';
+  $('#sNew').onclick=readOnly;
+  $$('[data-slug]',v).forEach(function(r){r.onclick=function(){sondSel=r.dataset.slug;vSondages(v);};});
+  if($('#sGo')){var goK=function(){var cle=$('#sCle').value;if(!cle)return;
+    fetch(SB.url+'/rest/v1/rpc/sondage_stats',{method:'POST',headers:{apikey:SB.key,'Content-Type':'application/json'},body:JSON.stringify({p_slug:sondSel,p_cle:cle})})
+      .then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(rows){sondStats[sondSel]=rows||[];vSondages(v);})
+      .catch(function(){$('#sErr').textContent='Clé invalide ou serveur injoignable.';});};
+    $('#sGo').onclick=goK;$('#sCle').onkeydown=function(e){if(e.key==='Enter')goK();};}
+}
+function vSondagesDemo(v){
   var S=[{t:'Satisfaction — hivernement 2026',c:'Ville de Lévis',env:33,rep:21,note:4.6},{t:'Entretien résidentiel — été',c:'Clients résidentiels',env:58,rep:24,note:4.3},{t:'Service jeux d\'eau',c:'Ville de Québec',env:12,rep:9,note:4.1}];
   var Q=[['Ponctualité des visites',4.7],['Qualité de l\'eau constatée',4.5],['Communication avec le bureau',4.0],['Propreté après intervention',4.8],['Rapport et suivi',4.2]];
   v.innerHTML='<div class="pad"><div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)"><section class="panel"><div class="panel-h"><h2>Sondages</h2><button class="btn sm go">'+ic('plus')+'Créer un sondage</button></div><table class="t"><thead><tr><th>Sondage</th><th class="r">Réponses</th><th>Taux</th><th class="r">Note</th></tr></thead><tbody>'+
     S.map(function(s,i){return '<tr class="click'+(i===0?' sel':'')+'"><td><b>'+esc(s.t)+'</b><span class="sub">'+esc(s.c)+'</span></td><td class="r num">'+s.rep+' <span class="dim3">/ '+s.env+'</span></td><td style="width:140px"><span class="lanebar" style="display:block"><i style="width:'+(s.rep/s.env*100)+'%"></i></span></td><td class="r num">'+fr(s.note,1)+'</td></tr>';}).join('')+'</tbody></table></section>'+
     '<section class="panel"><div class="panel-h"><h2>Satisfaction — hivernement 2026</h2><small>21 réponses sur 33</small></div><div class="score"><span class="num">4,6</span><span class="dim" style="padding-bottom:8px">sur 5 · moyenne générale</span></div>'+
-    '<div style="margin-top:22px">'+Q.map(function(q){return '<div class="hbar"><span>'+q[0]+'</span><span class="b"><i style="width:'+(q[1]/5*100)+'%"></i></span><span class="num r" style="font-size:var(--t-md)">'+fr(q[1],1)+'</span></div>';}).join('')+'</div>'+
-    '<div class="panel" style="margin-top:26px"><div class="panel-h"><h2>Commentaires récents</h2></div><ul class="plain feed"><li><span class="h">4/5</span><p>« Travail soigné, mais on aimerait recevoir le rapport plus vite. »<small>Piscine Charny</small></p></li><li><span class="h">5/5</span><p>« Équipe ponctuelle et très professionnelle. »<small>Piscine Lauzon</small></p></li></ul></div></section></div></div>';
+    '<div style="margin-top:22px">'+Q.map(function(q){return '<div class="hbar"><span>'+q[0]+'</span><span class="b"><i style="width:'+(q[1]/5*100)+'%"></i></span><span class="num r" style="font-size:var(--t-md)">'+fr(q[1],1)+'</span></div>';}).join('')+'</div></section></div></div>';
 }
 
 /* ════════════════ 09 · Communication ════════════════ */
+function weekStats(){
+  if(MODE==='demo')return {rel:214,conf:'97 %',vis:58,h:null,n:39};
+  var wk=mondayISO(TODAY),prev=addDays(wk,-7),use=FT_RAW.some(function(f){return f.week===wk;})?wk:prev,rel=0,ok=0,vis=0,h=0;
+  FT_RAW.filter(function(f){return f.week===use;}).forEach(function(f){(f.days||[]).forEach(function(d){(d&&d.tasks||[]).forEach(function(t){vis++;h+=t.hrs||0;(t.bassins||[]).forEach(function(b){rel++;if(b.cl!=null&&zone('cl',b.cl)!=='crit'&&(b.ph==null||zone('ph',b.ph)!=='crit'))ok++;});});});});
+  var d=new Date(use+'T12:00'),start=new Date(d.getFullYear(),0,1);
+  return {rel:rel,conf:rel?Math.round(ok/rel*100)+' %':'—',vis:vis,h:h,n:Math.ceil(((d-start)/864e5+start.getDay()+1)/7),week:use};
+}
 function vCommunication(v){
-  v.innerHTML='<div class="pad"><div class="grid" style="grid-template-columns:360px minmax(0,1fr)"><section class="panel"><div class="panel-h"><h2>Infolettre de la semaine</h2><small>n° 39</small></div>'+
-    '<div style="display:grid;gap:12px"><label class="field">Titre<input value="Semaine 39 — la saison bascule vers l\'hivernage"></label><label class="field">Mot de la direction<textarea>Merci à toute l\'équipe : 12 rapports de pré-hivernage remis sur 33 à Lévis. On garde le rythme!</textarea></label>'+
-    '<label class="field">Bons coups<textarea>Julie a détecté une fuite au bassin 25 m de Charlesbourg avant qu\'elle ne devienne une fermeture.</textarea></label>'+
-    '<label class="field">Destinataires<select><option>Toute l\'équipe (9)</option><option>Terrain seulement</option></select></label><div style="display:flex;gap:8px"><button class="btn go" id="send">Envoyer vendredi 16 h</button><button class="btn">Aperçu courriel</button></div></div></section>'+
-    '<section><div class="news"><span class="mono" style="color:var(--ink-500)">Soucy Aquatik · infolettre n° 39 · 28 sept. 2026</span><h3>La saison bascule vers l\'hivernage</h3><p>Merci à toute l\'équipe : 12 rapports de pré-hivernage remis sur 33 à Lévis. On garde le rythme!</p><div class="lane"></div>'+
-    '<h4>Le département en chiffres</h4><div class="stats"><div><span class="num">214</span><small>relevés saisis</small></div><div><span class="num">97 %</span><small>relevés conformes</small></div><div><span class="num">58</span><small>visites complétées</small></div></div>'+
-    '<h4>Bons coups</h4><p>Julie a détecté une fuite au bassin 25 m de Charlesbourg avant qu\'elle ne devienne une fermeture.</p><h4>À venir</h4><p>Lun. 5 oct. — formation SIMDUT, dépôt, 7 h 30.</p></div></section></div></div>';
-  $('#send').onclick=function(){toast('Envoi programmé — vendredi 16 h');};
+  var s=weekStats(),date=TODAY.toLocaleDateString('fr-CA',{day:'numeric',month:'short',year:'numeric'});
+  v.innerHTML='<div class="pad"><div class="grid" style="grid-template-columns:360px minmax(0,1fr)"><section class="panel"><div class="panel-h"><h2>Infolettre de la semaine</h2><small>n° '+s.n+'</small></div>'+
+    '<div style="display:grid;gap:12px"><label class="field">Titre<input id="nT" value="Semaine '+s.n+' — la saison bascule vers l\'hivernage"></label><label class="field">Mot de la direction<textarea id="nM">Merci à toute l\'équipe pour le travail de la semaine.</textarea></label>'+
+    '<label class="field">Bons coups<textarea id="nB"></textarea></label>'+
+    '<label class="field">Destinataires<select><option>Toute l\'équipe ('+TECHS.length+')</option><option>Terrain seulement</option></select></label><div style="display:flex;gap:8px"><button class="btn go" id="send">Programmer l\'envoi</button><button class="btn" id="nPrev">Aperçu courriel</button></div></div></section>'+
+    '<section><div class="news"><span class="mono" style="color:var(--ink-500)">Soucy Aquatik · infolettre n° '+s.n+' · '+date+'</span><h3 id="pT"></h3><p id="pM"></p><div class="lane"></div>'+
+    '<h4>Le département en chiffres'+(s.week?' <span class="mono" style="font-size:var(--t-xs);color:var(--ink-500)">semaine du '+s.week+'</span>':'')+'</h4><div class="stats"><div><span class="num">'+s.vis+'</span><small>interventions punchées</small></div>'+(s.h!=null?'<div><span class="num">'+fmtH(s.h)+'</span><small>heures terrain</small></div>':'<div><span class="num">'+s.conf+'</span><small>relevés conformes</small></div>')+'<div><span class="num">'+s.rel+'</span><small>relevés saisis</small></div></div>'+
+    '<div id="pBw"><h4>Bons coups</h4><p id="pB"></p></div></div></section></div></div>';
+  function sync(){$('#pT').textContent=$('#nT').value;$('#pM').textContent=$('#nM').value;$('#pB').textContent=$('#nB').value;$('#pBw').style.display=$('#nB').value.trim()?'':'none';}
+  ['nT','nM','nB'].forEach(function(id){$('#'+id).oninput=sync;});sync();
+  $('#send').onclick=readOnly;$('#nPrev').onclick=function(){toast('L\'aperçu est à droite');};
 }
 
 /* ════════════════ 10 · Temps / Suivi / Cumul ════════════════ */
+/* Reprise à l'identique de SOUCY OPS : dayTotal = somme des t.hrs de la journée ;
+   régulier = min(total, 40) ; supplémentaire = max(0, total − 40) (refreshCumul). */
+function ftDayTotal(day){return((day&&day.tasks)||[]).reduce(function(s,t){return s+(t.hrs||0);},0);}
 var tempsTab='feuilles';
 function vTemps(v){
-  var DJ=['lun.','mar.','mer.','jeu.','ven.','sam.','dim.'];
-  var h='<div class="pad"><div class="notice">'+ic('alert')+'<span><b>Habillage visuel seulement.</b> Les calculs (total, régulier ≤ 40 h, supplémentaire) et la validation restent ceux de SOUCY OPS, repris sans modification au branchement. Valeurs affichées : démonstration.</span></div>'+
-    '<div class="toolbar"><span class="seg" id="tT"><button data-t="feuilles" aria-pressed="'+(tempsTab==='feuilles')+'">Feuilles de temps</button><button data-t="punchs" aria-pressed="'+(tempsTab==='punchs')+'">Punchs à valider · '+PUNCH_CHECK.length+'</button></span><span class="sp"></span><button class="btn sm">‹</button><b>Semaine du 21 septembre 2026</b><button class="btn sm">›</button><button class="btn">Exporter paie</button></div>';
+  var DJ=['lun.','mar.','mer.','jeu.','ven.','sam.','dim.'],rows,weeks=[];
+  if(MODE==='demo'){rows=FT.map(function(f){return {t:f.t,nom:techName(f.t),role:(techById(f.t)||{}).role,d:f.d,statut:f.statut};});}
+  else{
+    weeks=FT_RAW.map(function(f){return f.week;}).filter(function(x,i,a){return a.indexOf(x)===i;}).sort();
+    rows=FT_RAW.filter(function(f){return f.week===tempsWeek;}).map(function(f){
+      var days=f.days||[],d=[0,1,2,3,4,5,6].map(function(i){return ftDayTotal(days[i]);}),worked=days.filter(function(x){return x&&x.tasks&&x.tasks.length;}),saved=worked.filter(function(x){return x.saved;}).length;
+      var pend=days.reduce(function(a,x){return a+((x&&x.tasks)||[]).filter(function(t){return t.pendingValidation;}).length;},0);
+      return {t:f.uid,nom:techName(f.uid,f.emp),role:(techById(f.uid)||{}).role||'',d:d,statut:pend?'attente':worked.length&&saved===worked.length?'envoye':'encours',saved:saved,worked:worked.length,pend:pend};
+    }).filter(function(r){return r.worked||r.d.some(function(x){return x>0;});}).sort(function(a,b){return a.nom.localeCompare(b.nom,'fr');});
+  }
+  var wlabel=new Date((MODE==='demo'?'2026-09-21':tempsWeek)+'T12:00').toLocaleDateString('fr-CA',{day:'numeric',month:'long',year:'numeric'});
+  var wi=weeks.indexOf(tempsWeek);
+  var h='<div class="pad"><div class="notice">'+ic('alert')+'<span><b>Habillage visuel seulement.</b> Calculs repris tels quels de SOUCY OPS : total = somme des heures de chaque tâche, régulier ≤ 40 h, supplémentaire au-delà. '+(MODE==='demo'?'Valeurs affichées : démonstration.':'Lecture seule : la validation se fait toujours dans SOUCY OPS.')+'</span></div>'+
+    '<div class="toolbar"><span class="seg" id="tT"><button data-t="feuilles" aria-pressed="'+(tempsTab==='feuilles')+'">Feuilles de temps</button><button data-t="punchs" aria-pressed="'+(tempsTab==='punchs')+'">Punchs à valider · '+PUNCH_CHECK.length+'</button></span><span class="sp"></span>'+
+    (tempsTab==='feuilles'?'<button class="btn sm" id="twP" '+(MODE==='demo'||wi<=0?'disabled':'')+'>‹</button><b>Semaine du '+wlabel+'</b><button class="btn sm" id="twN" '+(MODE==='demo'||wi<0||wi>=weeks.length-1?'disabled':'')+'>›</button>':'')+'<button class="btn" id="tExp">Exporter paie</button></div>';
   if(tempsTab==='feuilles'){
-    h+='<table class="t"><thead><tr><th>Employé</th>'+DJ.map(function(d){return '<th class="r">'+d+'</th>';}).join('')+'<th class="r">Total</th><th class="r">Régulier ≤40 h</th><th class="r">Supplémentaire</th><th>Statut</th></tr></thead><tbody>'+
-    FT.map(function(f){var t=techById(f.t),wt=f.d.reduce(function(a,b){return a+b;},0),reg=Math.min(wt,40),supp=Math.max(0,wt-40);
-      return '<tr><td><b>'+esc(t.nom)+'</b><span class="sub">'+esc(t.role)+'</span></td>'+f.d.map(function(x){return '<td class="hcell mono'+(x?'':' z')+'">'+(x?fmtH(x):'—')+'</td>';}).join('')+
-      '<td class="hcell num" style="font-size:var(--t-md)">'+fmtH(wt)+'</td><td class="hcell mono">'+fmtH(reg)+'</td><td class="hcell mono'+(supp>0?' ot':' z')+'">'+(supp>0?fmtH(supp):'—')+'</td>'+
-      '<td>'+(f.statut==='valide'?'<span class="chip ok">'+ic('check')+'Validée</span>':f.statut==='soumis'?'<button class="btn sm" data-val="'+f.t+'">Valider</button>':'<span class="chip mute">Brouillon</span>')+'</td></tr>';}).join('')+'</tbody></table>';
+    h+=rows.length?'<table class="t"><thead><tr><th>Employé</th>'+DJ.map(function(d){return '<th class="r">'+d+'</th>';}).join('')+'<th class="r">Total</th><th class="r">Régulier ≤40 h</th><th class="r">Supplémentaire</th><th>Statut</th></tr></thead><tbody>'+
+    rows.map(function(f){var wt=f.d.reduce(function(a,b){return a+b;},0),reg=Math.min(wt,40),supp=Math.max(0,wt-40);
+      var stat=MODE==='demo'?(f.statut==='valide'?'<span class="chip ok">'+ic('check')+'Validée</span>':f.statut==='soumis'?'<button class="btn sm" data-val="'+f.t+'">Valider</button>':'<span class="chip mute">Brouillon</span>')
+        :f.statut==='attente'?'<span class="chip warn">'+f.pend+' punch'+(f.pend>1?'s':'')+' à valider</span>':f.statut==='envoye'?'<span class="chip ok">'+ic('check')+'Journées envoyées</span>':'<span class="chip mute">'+f.saved+'/'+f.worked+' envoyée'+(f.saved>1?'s':'')+'</span>';
+      return '<tr><td><b>'+esc(f.nom)+'</b><span class="sub">'+esc(f.role)+'</span></td>'+f.d.map(function(x){return '<td class="hcell mono'+(x?'':' z')+'">'+(x?fmtH(x):'—')+'</td>';}).join('')+
+      '<td class="hcell num" style="font-size:var(--t-md)">'+fmtH(wt)+'</td><td class="hcell mono">'+fmtH(reg)+'</td><td class="hcell mono'+(supp>0?' ot':' z')+'">'+(supp>0?fmtH(supp):'—')+'</td><td>'+stat+'</td></tr>';}).join('')+'</tbody></table>':'<p class="dim">Aucune feuille de temps pour cette semaine.</p>';
   }else{
-    h+='<table class="t"><thead><tr><th>Employé</th><th>Date</th><th>Heure</th><th>Anomalie</th><th></th></tr></thead><tbody>'+
-    PUNCH_CHECK.map(function(p,i){return '<tr><td><b>'+techById(p.t).nom+'</b></td><td class="mono">'+p.date+'</td><td class="mono">'+p.h+'</td><td><span class="sq '+(p.type==='ouvert'?'crit':'warn')+'" style="margin-right:8px"></span>'+esc(p.txt)+'</td><td class="r"><button class="btn sm go" data-pc="'+i+'">'+ic('check')+'Valider</button> <button class="btn sm">Corriger</button></td></tr>';}).join('')+'</tbody></table>';
+    h+=PUNCH_CHECK.length?'<table class="t"><thead><tr><th>Employé</th><th>Date</th><th>Heure</th><th>Motif</th><th></th></tr></thead><tbody>'+
+    PUNCH_CHECK.map(function(p,i){return '<tr><td><b>'+esc(techName(p.t,p.emp))+'</b></td><td class="mono">'+p.date+'</td><td class="mono">'+esc(p.h)+'</td><td><span class="sq '+(p.type==='ouvert'?'crit':'warn')+'" style="margin-right:8px"></span>'+esc(p.txt)+'</td><td class="r"><button class="btn sm go" data-pc="'+i+'">'+ic('check')+'Valider</button> <button class="btn sm" data-fix>Corriger</button></td></tr>';}).join('')+'</tbody></table>':'<p class="dim">Aucun punch en attente de validation.</p>';
   }
   v.innerHTML=h+'</div>';
   $$('#tT [data-t]',v).forEach(function(b){b.onclick=function(){tempsTab=b.dataset.t;vTemps(v);};});
-  $$('[data-val]',v).forEach(function(b){b.onclick=function(){FT.find(function(f){return f.t===b.dataset.val;}).statut='valide';toast('Feuille validée');vTemps(v);};});
-  $$('[data-pc]',v).forEach(function(b){b.onclick=function(){PUNCH_CHECK.splice(+b.dataset.pc,1);toast('Punch validé');renderNav();vTemps(v);};});
+  if($('#twP'))$('#twP').onclick=function(){tempsWeek=weeks[wi-1];vTemps(v);};
+  if($('#twN'))$('#twN').onclick=function(){tempsWeek=weeks[wi+1];vTemps(v);};
+  $('#tExp').onclick=readOnly;$$('[data-fix]',v).forEach(function(b){b.onclick=readOnly;});
+  $$('[data-val]',v).forEach(function(b){b.onclick=function(){FT.find(function(f){return f.t===b.dataset.val;}).statut='valide';toast('Feuille validée (démonstration)');vTemps(v);};});
+  $$('[data-pc]',v).forEach(function(b){b.onclick=function(){if(MODE!=='demo'){readOnly();return;}PUNCH_CHECK.splice(+b.dataset.pc,1);toast('Punch validé (démonstration)');renderNav();vTemps(v);};});
 }
 
 /* ════════════════ Démarrage ════════════════ */
+function useReal(raw,mode){
+  try{REAL.apply(raw);}catch(e){console.error(e);toast('Données réelles illisibles — démonstration');return;}
+  MODE=mode;REAL_AT=raw.at;go(cur);
+}
+function refresh(manual){
+  REAL.load().then(function(raw){useReal(raw,'reel');if(manual)toast('Données rechargées');})
+    .catch(function(){var c=REAL.cache();if(c&&MODE!=='cache'&&MODE!=='reel')useReal(c,'cache');if(manual||MODE==='demo')toast('Serveur injoignable — '+(c?'copie locale':'démonstration'));});
+}
 (function(){
   var th='encre',m='monitoring';
   try{th=localStorage.getItem('saAdmin.theme')||th;m=localStorage.getItem('saAdmin.mod')||m;}catch(e){}
   document.documentElement.dataset.theme=th;
   $('#theme').onclick=function(){var n=document.documentElement.dataset.theme==='encre'?'papier':'encre';document.documentElement.dataset.theme=n;try{localStorage.setItem('saAdmin.theme',n);}catch(e){}};
+  $('#reload').onclick=function(){refresh(true);};
   document.addEventListener('keydown',function(e){if(e.key==='/'&&document.activeElement.tagName!=='INPUT'&&document.activeElement.tagName!=='TEXTAREA'){e.preventDefault();$('#q').focus();}});
-  $('#q').addEventListener('keydown',function(e){if(e.key!=='Enter')return;var q=e.target.value.toLowerCase().trim();if(!q)return;
-    var s=SITES.find(function(x){return (x.nom+' '+x.client).toLowerCase().indexOf(q)>=0;});
-    var d=DOSSIERS.find(function(x){return x.id.toLowerCase()===q||x.client.toLowerCase().indexOf(q)>=0;});
-    var f=FACT.find(function(r){return r[0].toLowerCase()===q||r[1].toLowerCase()===q;});
-    if(f){factF='tous';go('facturation');}else if(d){opsSel=d.id;opsFiltre='tous';go('operations');}else if(s){inspSite=s.id;go('inspections');}else toast('Aucun résultat pour « '+e.target.value+' »');});
+  $('#q').addEventListener('keydown',function(e){if(e.key!=='Enter')return;var q=norm(e.target.value);if(!q)return;
+    var t=TECHS.find(function(x){return norm(x.nom).indexOf(q)>=0;});
+    var d=DOSSIERS.find(function(x){return norm(x.id)===q||norm(x.client).indexOf(q)>=0;});
+    var s=SITES.find(function(x){return norm(x.nom+' '+x.addr).indexOf(q)>=0;});
+    var f=FACT.find(function(r){return norm(r[0])===q||norm(r[1])===q;});
+    if(f){factF='tous';go('facturation');}else if(d){opsSel=d.id;opsFiltre='tous';opsOpen[d.id]=1;go('operations');}else if(s){inspSite=s.id;go('inspections');}else if(t){go('temps');}else toast('Aucun résultat pour « '+e.target.value+' »');});
   if(!MODS.some(function(x){return x.k===m;}))m='monitoring';
-  kpis();go(m);
+  cur=m;
+  var c=REAL.cache();
+  if(c)useReal(c,'cache');else go(m);
+  refresh(false);
   if('serviceWorker' in navigator&&location.protocol!=='file:')navigator.serviceWorker.register('sw.js').catch(function(){});
 })();
 </script>
