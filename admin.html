@@ -299,6 +299,7 @@ button{font-family:inherit}a{color:var(--color-accent-700)}
 [data-hv="3"]:hover{background:var(--color-accent-100) !important}
 [data-hv="4"]:hover{background:var(--color-accent-100) !important}
 [data-hv="5"]:hover{background:var(--color-accent-100) !important}
+[data-hv="6"]:hover{background:var(--color-accent-100) !important}
 </style></head><body>
 <div id="app"></div>
 <div id="login"><form id="loginForm" autocomplete="on">
@@ -580,7 +581,38 @@ button{font-family:inherit}a{color:var(--color-accent-700)}
       </template>
 
       <!-- ═════ PLANNING ═════ -->
-      
+      <template data-sc="if" value="{{ isPlanning }}">
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:8px">
+              <button class="btn btn-secondary btn-icon" onClick="{{ pPrev }}" aria-label="Semaine précédente" style="white-space:nowrap"><sa-i n="left" s="18"></sa-i></button>
+              <span style="font:600 20px var(--font-heading);padding:0 8px">{{ pLabel }}</span>
+              <button class="btn btn-secondary btn-icon" onClick="{{ pNext }}" aria-label="Semaine suivante" style="white-space:nowrap"><sa-i n="right" s="18"></sa-i></button>
+              <span style="font-size:13px;margin-left:12px;display:flex;align-items:center;gap:6px"><sa-i n="repeat" s="15"></sa-i><span>= créneau issu d’une série récurrente</span></span>
+            </div>
+            <button class="btn btn-primary blueprint" onClick="{{ openDlg }}" style="white-space:nowrap;padding:9px 16px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><sa-i n="plus" s="16"></sa-i><span>Nouveau créneau ou série</span></button>
+          </div>
+          <div style="overflow-x:auto"><div style="display:grid;grid-template-columns:180px repeat(5,minmax(150px,1fr));min-width:960px;border-top:1px solid var(--color-text);border-left:1px solid var(--color-divider)">
+            <div style="padding:8px 12px;border-right:1px solid var(--color-divider);border-bottom:1px solid var(--color-divider);font-size:12px">Technicien</div>
+            <template data-sc="for" list="{{ weekDays }}" as="w">
+              <div style="padding:8px 12px;border-right:1px solid var(--color-divider);border-bottom:1px solid var(--color-divider);font:600 16px var(--font-heading);background:{{ w.bg }};color:{{ w.fg }}">{{ w.label }}</div>
+            </template>
+            <template data-sc="for" list="{{ planRows }}" as="r">
+              <div style="padding:10px 12px;border-right:1px solid var(--color-divider);border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;line-height:1.25;opacity:{{ r.op }}"><span style="font-weight:500">{{ r.nom }}</span><span style="font-size:12px">{{ r.hours }}</span></div>
+              <template data-sc="for" list="{{ r.cells }}" as="c">
+                <div onClick="{{ c.add }}" style="padding:6px;border-right:1px solid var(--color-divider);border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:4px;min-height:74px;cursor:copy;background:{{ c.bg }}" data-hv="6">
+                  <template data-sc="for" list="{{ c.slots }}" as="s">
+                    <div style="padding:5px 7px;border:1px solid var(--color-text);background:{{ s.bg }};color:{{ s.fg }};display:flex;flex-direction:column;line-height:1.2;font-size:12px">
+                      <span style="display:flex;align-items:center;gap:5px;font:600 13px var(--font-heading);min-width:0"><span>{{ s.h }}</span><span style="font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">{{ s.tache }}</span><template data-sc="if" value="{{ s.rec }}"><span style="margin-left:auto;display:flex"><sa-i n="repeat" s="13"></sa-i></span></template></span>
+                      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ s.nom }}</span>
+                    </div>
+                  </template>
+                </div>
+              </template>
+            </template>
+          </div></div>
+        </div>
+      </template>
 
       
 
@@ -644,7 +676,64 @@ button{font-family:inherit}a{color:var(--color-accent-700)}
       
 
       <!-- ═════ TEMPS / SUIVI / CUMUL ═════ -->
-      
+      <template data-sc="if" value="{{ isTemps }}">
+        <div style="display:flex;flex-direction:column;gap:18px"><div style="display:flex;align-items:center;gap:8px"><button class="btn btn-secondary btn-icon" aria-label="Semaine précédente" onClick="{{ tPrev }}"><sa-i n="left" s="18"></sa-i></button><span style="font:600 20px var(--font-heading);padding:0 8px">{{ tLabel }}</span><button class="btn btn-secondary btn-icon" aria-label="Semaine suivante" onClick="{{ tNext }}"><sa-i n="right" s="18"></sa-i></button></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+            <div style="display:flex;border:1px solid var(--color-divider)">
+              <template data-sc="for" list="{{ tempsTabs }}" as="t"><button onClick="{{ t.go }}" style="all:unset;cursor:pointer;white-space:nowrap;padding:8px 18px;font:600 16px var(--font-heading);border-right:1px solid var(--color-divider);background:{{ t.bg }};color:{{ t.fg }}">{{ t.label }} <span style="font-weight:400">{{ t.n }}</span></button></template>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:13px;padding:6px 12px;border:1px dashed var(--color-text);flex:0 1 auto;min-width:0"><sa-i n="file" s="15"></sa-i><span>Lecture seule · heures des punchs terminés (● = punch en cours) · banque et heures sup. : SA Platform › Cumul</span></div>
+          </div>
+
+          <template data-sc="if" value="{{ isTempsTab }}">
+            <section class="blueprint" style="display:flex;flex-direction:column;overflow-x:auto">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <table class="table" style="font-size:14px">
+                <thead><tr><th style="text-transform:none;letter-spacing:0;font-size:12px;padding-left:18px">Technicien</th><template data-sc="for" list="{{ weekDays }}" as="w"><th style="text-transform:none;letter-spacing:0;font-size:12px;text-align:right">{{ w.label }}</th></template><th style="text-transform:none;letter-spacing:0;font-size:12px;text-align:right;padding-right:18px">Semaine</th></tr></thead>
+                <tbody>
+                  <template data-sc="for" list="{{ tempsRows }}" as="r">
+                    <tr style="opacity:{{ r.op }}"><td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px;font-weight:500">{{ r.nom }}</td>
+                      <template data-sc="for" list="{{ r.jours }}" as="j"><td style="padding:var(--sa-row,10px) 8px;text-align:right;font-variant-numeric:tabular-nums">{{ j }}</td></template>
+                      <td style="padding:var(--sa-row,10px) 18px var(--sa-row,10px) 8px;text-align:right;font:600 16px var(--font-heading)">{{ r.semaine }}</td></tr>
+                  </template>
+                </tbody>
+              </table>
+            </section>
+          </template>
+
+          <template data-sc="if" value="{{ isSuiviTab }}">
+            <section class="blueprint" style="display:flex;flex-direction:column">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <template data-sc="for" list="{{ punchRows }}" as="p">
+                <div style="display:grid;grid-template-columns:minmax(120px,1fr) minmax(90px,0.8fr) 110px minmax(0,2fr) auto;gap:16px;align-items:center;padding:12px 18px;border-bottom:1px solid var(--color-divider);background:{{ p.bg }}">
+                  <span style="font-weight:500">{{ p.nom }}</span>
+                  <span>{{ p.jour }}</span>
+                  <span style="font:600 16px var(--font-heading)">{{ p.entree }} → {{ p.sortie }}</span>
+                  <span style="display:flex;flex-direction:column;line-height:1.3"><span style="font-size:13px">{{ p.site }}</span><template data-sc="if" value="{{ p.flag }}"><span style="display:flex;align-items:center;gap:6px;font-weight:500"><sa-i n="alert" s="15"></sa-i><span>{{ p.flag }}</span></span></template></span>
+                  <span style="display:flex;gap:8px;justify-content:flex-end">
+                    <template data-sc="if" value="{{ p.pending }}"><a class="btn btn-primary" href="/" style="white-space:nowrap;text-decoration:none">Traiter dans SA Platform</a></template>
+                    <template data-sc="if" value="{{ p.done }}"><span style="display:flex;align-items:center;gap:6px;font-size:13px"><sa-i n="check" s="15" w="2"></sa-i><span>{{ p.etat }}</span></span></template>
+                  </span>
+                </div>
+              </template>
+            </section>
+          </template>
+
+          <template data-sc="if" value="{{ isCumulTab }}">
+            <section class="blueprint" style="display:flex;flex-direction:column;overflow-x:auto">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <table class="table" style="font-size:14px">
+                <thead><tr><th style="text-transform:none;letter-spacing:0;font-size:12px;padding-left:18px">Technicien</th><th style="text-transform:none;letter-spacing:0;font-size:12px;text-align:right">{{ tLabel }}</th><th style="text-transform:none;letter-spacing:0;font-size:12px;text-align:right">Cumul saison</th><th style="text-transform:none;letter-spacing:0;font-size:12px;text-align:right">Banque d’heures</th><th style="text-transform:none;letter-spacing:0;font-size:12px;text-align:right;padding-right:18px">Heures sup.</th></tr></thead>
+                <tbody>
+                  <template data-sc="for" list="{{ tempsRows }}" as="r">
+                    <tr style="opacity:{{ r.op }}"><td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px;font-weight:500">{{ r.nom }}</td><td style="padding:var(--sa-row,10px) 8px;text-align:right">{{ r.semaine }}</td><td style="padding:var(--sa-row,10px) 8px;text-align:right;font:600 16px var(--font-heading)">{{ r.cumul }}</td><td style="padding:var(--sa-row,10px) 8px;text-align:right">{{ r.banque }}</td><td style="padding:var(--sa-row,10px) 18px var(--sa-row,10px) 8px;text-align:right">{{ r.sup }}</td></tr>
+                  </template>
+                </tbody>
+              </table>
+            </section>
+          </template>
+        </div>
+      </template>
     </main>
   </div>
 
@@ -800,11 +889,16 @@ function norm(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[\
 function fr(v,step){var d=(String(step).split('.')[1]||'').length;return Number(v).toFixed(d).replace('.',',');}
 function fdate(s){if(!s)return'—';var p=String(s).slice(0,10).split('-');return p[2]+' '+MOIS[+p[1]-1].slice(0,4)+'.';}
 function villeOf(a){var p=String(a||'').split(',').map(function(x){return x.trim();}).filter(function(x){return x&&!/^(qc|québec|quebec|canada)$/i.test(x)&&!/[a-z]\d[a-z]\s?\d[a-z]\d/i.test(x);});return p.length>1?p[p.length-1].replace(/^Ville de\s+/i,''):'';}
+function fmtH(h){if(!h||h<=0)return '0 h 00';var m=Math.round(h*60);return Math.floor(m/60)+' h '+pad(m%60);}
+function minsFrom(s,e){if(!s||!e)return 0;var sp=String(s).split(':'),ep=String(e).split(':'),sm=parseInt(sp[0],10)*60+parseInt(sp[1],10),em=parseInt(ep[0],10)*60+parseInt(ep[1],10);if(isNaN(sm)||isNaN(em))return 0;if(em<sm)em+=1440;return Math.max(0,em-sm);}
+function isoWeek(d){var t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())),dn=t.getUTCDay()||7;t.setUTCDate(t.getUTCDate()+4-dn);var y0=new Date(Date.UTC(t.getUTCFullYear(),0,1));return Math.ceil(((t-y0)/86400000+1)/7);}
+function wkLabel(m){return 'Semaine '+isoWeek(m)+' · '+m.getDate()+' '+MOIS[m.getMonth()].slice(0,4)+'.';}
+var DJ=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
 var SUN={},segS=function(on){return{bg:on?'var(--color-text)':'transparent',fg:on?'var(--color-bg)':'var(--color-text)'};};
 
 function Comp(user){
   this.user=user;this.rootRef={current:null};this.D=null;this.loadedAt=null;this.err='';
-  this.state={mod:'monitoring',q:'',toast:null,inspSite:null,inspKey:null,inspFilter:'all',opsFilter:'Tous',opsOpen:{},siteType:'all'};
+  this.state={mod:'monitoring',q:'',toast:null,inspSite:null,inspKey:null,inspFilter:'all',opsFilter:'Tous',opsOpen:{},siteType:'all',tempsTab:'temps',tOff:0,pOff:0};this.pl={};this._pl={};
 }
 Comp.prototype.setState=function(p){this.state=Object.assign({},this.state,typeof p==='function'?p(this.state):p);this.update();};
 Comp.prototype.flash=function(t){var s=this;clearTimeout(this._tt);this.state.toast=t;this.update();this._tt=setTimeout(function(){s.state.toast=null;s.update();},2800);};
@@ -815,21 +909,24 @@ Comp.prototype.load=function(){
   return Promise.all([
     get('sites?select=id,nom,addr,type,notes'),get('contrats?select=site_id,type_code,code'),get('types_bassin?select=*'),
     soft('comptes_publics?select=id,prenom,nom,role,dept,tel',[]),
-    soft('feuilles_temps?select=uid,emp,week,days,total_h&week=in.('+wk0+','+wk+')',[]),
+    soft('feuilles_temps?select=uid,emp,week,days,total_h&week=gte.'+iso(addDays(now,-56)),[]),
     soft('workorders?select=id,client,site,type,priorite,status,date,assigne,descr,groupe_id&order=date.asc',[]),
     soft('releves?select=id,site_id,site_nom,tech,tech_nom,date,heure,type_code,vals,touched,checks,prods,note,hors_zone&date=gte.'+since+'&order=date.asc,heure.asc',[]),
     soft('punch_gps_log?select=emp,heure,lieu,date&date=eq.'+today+'&order=heure.desc&limit=30',[]),
-    soft('plan?select=id&date=eq.'+today,[]),soft('planning_tasks?select=id&date_debut=lte.'+today+'&date_fin=gte.'+today,[]),soft('demandes?select=id,tech,tech_nom,site_nom,type,motif,texte,statut,created_at&order=created_at.desc&limit=40',[])
+    soft('plan?select=id&date=eq.'+today,[]),soft('planning_tasks?select=id&date_debut=lte.'+today+'&date_fin=gte.'+today,[]),soft('demandes?select=id,tech,tech_nom,site_nom,type,motif,texte,statut,created_at&order=created_at.desc&limit=40',[]),soft('feuilles_temps?select=uid,week,total_h',[]),soft('comptes?select=id,statut',[])
   ]).then(function(r){
     var T={};r[2].forEach(function(t){T[t.code]=t;});var ct={};r[1].forEach(function(c){ct[c.site_id]=c;});
     var sites=r[0].map(function(s){var c=ct[s.id],code=(c&&c.type_code&&T[c.type_code])?c.type_code:'GEN';return{id:String(s.id),nom:s.nom||'(sans nom)',addr:s.addr||'',ville:villeOf(s.addr),type:code,contrat:(c&&c.code)||'',notes:s.notes||''};})
       .sort(function(a,b){return a.nom.localeCompare(b.nom,'fr');});
     var byId={};sites.forEach(function(s){byId[s.id]=s;});
-    self.D={sites:sites,byId:byId,types:T,comptes:r[3],ft:r[4],wo:r[5],rel:r[6].map(function(x){x.site_id=String(x.site_id);return x;}),gps:r[7],nPlan:r[8].length,nPt:r[9].length,dem:r[10]||[],today:today};
+    self.D={sites:sites,byId:byId,types:T,comptes:r[3],ft:r[4],wo:r[5],rel:r[6].map(function(x){x.site_id=String(x.site_id);return x;}),gps:r[7],nPlan:r[8].length,nPt:r[9].length,dem:r[10]||[],ftAll:r[11]||[],statut:(function(){var m={};(r[12]||[]).forEach(function(c){m[c.id]=c.statut;});return m;})(),today:today};
     self.loadedAt=new Date();self.err='';
     if(!self.state.inspSite){var w=self.D.rel.length?String(self.D.rel[self.D.rel.length-1].site_id):(sites[0]&&sites[0].id);self.state.inspSite=w||null;}
   }).catch(function(e){self.err='Chargement impossible : '+e.message;});
 };
+Comp.prototype.loadPlan=function(mon){var self=this,a=iso(mon),b=iso(addDays(mon,6));
+  return Promise.all([soft('workorders?select=id,client,site,date,assigne,status,descr,groupe_id&date=gte.'+a+'&date=lte.'+b,[]),soft('plan?select=id,client,addr,date,heure,emp,descr,type,status&date=gte.'+a+'&date=lte.'+b,[]),
+    soft('planning_tasks?select=id,titre,emp,site_nom,date_debut,date_fin,heure_debut,heure_fin,statut,recurrence,wo_id,plan_id&date_debut=lte.'+b+'&date_fin=gte.'+a,[])]).then(function(r){self.pl[a]={wo:r[0],plan:r[1],pt:r[2]};});};
 Comp.prototype.T=function(code){return this.D.types[code]||this.D.types.GEN||{label:'Bassin',court:'Bassin',norme:'',fields:[]};};
 Comp.prototype.outOf=function(rel){var T=this.T(rel.type_code),o=[];(T.fields||[]).forEach(function(f){var v=rel.vals&&rel.vals[f.key];if(v!=null&&rel.touched&&rel.touched[f.key]&&(v<f.lo||v>f.hi))o.push({f:f,v:v});});return o;};
 Comp.prototype.latest=function(){var m={};this.D.rel.forEach(function(r){m[r.site_id]=r;});return m;};
@@ -910,18 +1007,50 @@ Comp.prototype.vals=function(){
   var stype=st.siteType;
   var siteTypeOptions=[{v:'all',l:'Tous les types de bassin'}].concat(typesArr.map(function(k){return{v:k,l:D.types[k].label};})).map(function(o){return Object.assign({},o,{sel:o.v===stype});});
   var siteRows=D.sites.filter(function(s){return stype==='all'||s.type===stype;}).map(function(s){return{nom:s.nom,client:'—',ville:s.ville||'—',court:self.T(s.type).court,freq:'—',tech:'—',gps:'Non défini',bassin:'—',contrat:s.contrat||'—',go:function(){self.go('inspections',{inspSite:s.id,inspKey:null});}};});
+
+  // ---- TEMPS · SUIVI · CUMUL (lecture seule des feuilles de temps existantes)
+  var tMon=addDays(mondayOf(now),7*st.tOff),tWk=iso(tMon),allTeam=D.comptes.filter(function(c){return c.role!=='admin';}),actif=function(id){return D.statut[id]!=='inactif';},team=allTeam.filter(function(c){return actif(c.id);}),cn={};D.comptes.forEach(function(c){cn[c.id]=(c.prenom+' '+c.nom).trim();});
+  var tempsRows=allTeam.map(function(c){var row=D.ft.filter(function(f){return f.uid===c.id&&f.week===tWk;})[0],tot=0,live=false,jours=[];
+    for(var i=0;i<7;i++){var d=row&&row.days&&row.days[i],h=0,lv=false;((d&&d.tasks)||[]).forEach(function(t){h+=Number(t.hrs)||0;if(t.active)lv=true;});tot+=h;if(lv)live=true;jours.push((h>0?fmtH(h):'—')+(lv?' ●':''));}
+    var cum=D.ftAll.filter(function(f){return f.uid===c.id;}).reduce(function(s,f){return s+(Number(f.total_h)||0);},0);
+    return{_keep:actif(c.id)||tot>0||live,nom:(c.prenom+' '+c.nom).trim()+(actif(c.id)?'':' (inactif)'),op:(tot>0||live)?1:0.5,jours:jours,semaine:tot>0?fmtH(tot):'—',cumul:fmtH(cum),banque:'—',sup:'—'};}).filter(function(r){return r._keep||st.tempsTab==='cumul';});
+  var punchRows=[];D.ft.filter(function(f){return f.week===tWk;}).forEach(function(f){(f.days||[]).forEach(function(d,i){var di=iso(addDays(tMon,i));((d&&d.tasks)||[]).forEach(function(t){
+    var flag=t.pendingValidation?(t.pendingReason==='nouveau_site'?'Nouveau site à valider':'Entrepôt / bureau à confirmer'):(t.autoClosed?'Fermé automatiquement à 20 h':((t.active&&di<D.today)?'Punch resté ouvert':''));if(!flag)return;
+    var nomE=cn[f.uid]||f.emp||f.uid;punchRows.push({nom:nomE,jour:DJ[i]+' '+addDays(tMon,i).getDate(),entree:t.start||'—',sortie:t.end||'—',site:t.lieu||'—',flag:flag,pending:true,done:false,etat:'',bg:'var(--color-accent-100)',
+      fix:function(){self.flash('La correction se fait dans SA Platform › Suivi');},ok:function(){self.flash('La validation se fait dans SA Platform › Suivi');}});});});});
+  var tt=st.tempsTab,tempsTabs=[['temps','Temps',''],['suivi','Suivi',punchRows.length||''],['cumul','Cumul','']].map(function(x){var on=tt===x[0];return{label:x[1],n:x[2],bg:on?'var(--color-text)':'transparent',fg:on?'var(--color-bg)':'var(--color-text)',go:function(){self.setState({tempsTab:x[0]});}};});
+  var tDays=[];for(var ti=0;ti<7;ti++)tDays.push({label:DJ[ti]+' '+addDays(tMon,ti).getDate()});
+  // ---- PLANNING ÉQUIPE (5 jours, lecture seule)
+  var pMon=addDays(mondayOf(now),7*st.pOff),pk=iso(pMon),PL=this.pl[pk];
+  if(mod==='planning'&&!PL&&!this._pl[pk]){this._pl[pk]=1;this.loadPlan(pMon).then(function(){self.update();});}
+  var planRows=[],pDays=[];
+  for(var pi=0;pi<5;pi++){var pdt=addDays(pMon,pi),isT=iso(pdt)===D.today;pDays.push({label:DJ[pi]+' '+pdt.getDate(),bg:isT?'var(--color-text)':'transparent',fg:isT?'var(--color-bg)':'var(--color-text)'});}
+  if(PL){var rowsP={},order=[];
+    var addSlot=function(emp,di,slot){if(di<0||di>4)return;var k=emp||'_none';if(!rowsP[k]){rowsP[k]={nom:emp?(cn[emp]||emp):'Non assigné',cells:[[],[],[],[],[]],n:0,min:0};order.push(k);}rowsP[k].cells[di].push(slot);rowsP[k].n++;if(slot._min)rowsP[k].min+=slot._min;};
+    team.forEach(function(c){rowsP[c.id]={nom:(c.prenom+' '+c.nom).trim(),cells:[[],[],[],[],[]],n:0,min:0};order.push(c.id);});
+    var idx=function(dt){return Math.round((new Date(dt+'T12:00:00')-pMon)/86400000);};
+    var mk=function(h,nom,tache,rec,done,mn){return{h:h||'—',nom:nom||'—',tache:tache||'',rec:!!rec,bg:done?'var(--color-accent-700)':'var(--color-bg)',fg:done?'#ffffff':'var(--color-text)',_min:mn||0};};
+    var woIds={},plIds={};PL.wo.forEach(function(w){woIds[w.id]=1;});PL.plan.forEach(function(p){plIds[p.id]=1;});
+    PL.wo.forEach(function(w){var as=String(w.assigne||'').split(/,\s*/).filter(Boolean);if(!as.length)as=[''];as.forEach(function(e){addSlot(e,idx(w.date),mk('',w.client,String(w.descr||'').split('\n')[0].slice(0,40)||'Visite',w.groupe_id,w.status==='termine'));});});
+    PL.plan.forEach(function(p){var as=String(p.emp||'').split(/,\s*/).filter(Boolean);if(!as.length)as=[''];as.forEach(function(e){addSlot(e,idx(p.date),mk(p.heure,p.client,String(p.descr||'').split('\n')[0].slice(0,40)||'Intervention',false,p.status==='termine'));});});
+    PL.pt.forEach(function(t){if((t.wo_id&&woIds[t.wo_id])||(t.plan_id&&plIds[t.plan_id]))return;var as=String(t.emp||'').split(/,\s*/).filter(Boolean);if(!as.length)as=[''];
+      for(var d=0;d<5;d++){var dd=iso(addDays(pMon,d));if(dd<t.date_debut||dd>t.date_fin)continue;as.forEach(function(e){addSlot(e,d,mk(t.heure_debut,t.site_nom,t.titre,t.recurrence,t.statut==='termine',minsFrom(t.heure_debut,t.heure_fin)));});}});
+    planRows=order.map(function(k){var r=rowsP[k];return{nom:r.nom,op:1,hours:r.n+' visite'+(r.n>1?'s':'')+(r.min?' · '+fmtH(r.min/60):''),cells:r.cells.map(function(sl,d){return{slots:sl,bg:iso(addDays(pMon,d))===D.today?'var(--color-accent-100)':'transparent',add:function(){self.flash('La création de créneaux se fait dans SA Platform › Planning');}};})};});}
+
   // ---- navigation
   var G=[['Terrain',[['monitoring','Monitoring','activity',horsZone.length+urgDem.length,true],['carte','Carte des sites','map'],['inspections','Inspections','chart']]],['Gestion',[['operations','Opérations','folder'],['planning','Planning équipe','calendar'],['sites','Sites','building',nouveaux.length],['facturation','Facturation','receipt']]],['Équipe',[['sondages','Sondages clients','star'],['communication','Communication','megaphone'],['temps','Temps · Suivi · Cumul','timer']]]];
-  var LIVE=['monitoring','inspections','operations','sites'];
+  var LIVE=['monitoring','inspections','operations','sites','temps','planning'];
   var navGroups=G.map(function(g){return{label:g[0],items:g[1].map(function(i){return{label:i[1],icon:i[2],badge:i[3]||null,badgeBg:i[4]?'var(--color-text)':'transparent',badgeFg:i[4]?'var(--color-bg)':'var(--color-text)',go:function(){self.go(i[0]);},bar:mod===i[0]?'var(--color-text)':'transparent',bg:mod===i[0]?'var(--color-accent-100)':'transparent',fw:mod===i[0]?600:400};})};});
   var TITLES={monitoring:['Monitoring en direct','Qui est où, activité terrain et relevés hors zone'],inspections:['Inspections et rapports','Relevés techniques saisis en tournée, par site et dans le temps'],operations:['Opérations','Dossiers clients — les visites d’un même contrat restent regroupées'],sites:['Sites','Répertoire et sites détectés automatiquement'],
-    carte:['Carte des sites','Bientôt'],planning:['Planning équipe','Bientôt'],facturation:['Facturation','Bientôt'],sondages:['Sondages clients','Bientôt'],communication:['Communication d’équipe','Bientôt'],temps:['Temps · Suivi · Cumul','Bientôt']};
-  var soonName={carte:'Carte des sites',planning:'Planning équipe',facturation:'Facturation',sondages:'Sondages clients',communication:'Communication d’équipe',temps:'Temps · Suivi · Cumul'};
+    carte:['Carte des sites','Bientôt'],planning:['Planning équipe','Qui fait quoi cette semaine — lecture seule'],temps:['Temps · Suivi · Cumul','Heures des feuilles de temps existantes — lecture seule'],facturation:['Facturation','Bientôt'],sondages:['Sondages clients','Bientôt'],communication:['Communication d’équipe','Bientôt']};
+  var soonName={carte:'Carte des sites',facturation:'Facturation',sondages:'Sondages clients',communication:'Communication d’équipe'};
   var qq=st.q.trim().toLowerCase();
   var results=qq.length<2?[]:D.sites.filter(function(s){return(s.nom+s.ville+s.contrat).toLowerCase().indexOf(qq)>=0;}).slice(0,5).map(function(s){return{label:s.nom,sub:s.ville+' · '+self.T(s.type).court,go:function(){self.go('inspections',{inspSite:s.id,inspKey:null});}};})
     .concat(all.filter(function(d){return(d.client+d.objet+d.id).toLowerCase().indexOf(qq)>=0;}).slice(0,3).map(function(d){return{label:d.id+' · '+d.client,sub:d.objet,go:function(){var o={};o[d.id]=true;self.go('operations',{opsOpen:o,opsFilter:'Tous'});}};}));
   return Object.assign(base,{navGroups:navGroups,modTitle:TITLES[mod][0],modSub:TITLES[mod][1],results:results,hasResults:results.length>0,
     liveTxt:'En direct · '+JS[now.getDay()]+' '+now.getDate()+' '+MOIS[now.getMonth()].slice(0,4)+'. · '+pad(now.getHours())+':'+pad(now.getMinutes()),isLoading:false,loadErr:this.err,
+    isTemps:mod==='temps',isTempsTab:tt==='temps',isSuiviTab:tt==='suivi',isCumulTab:tt==='cumul',tempsTabs:tempsTabs,weekDays:mod==='planning'?pDays:tDays,tempsRows:tempsRows,punchRows:punchRows,tLabel:wkLabel(tMon),tPrev:function(){self.setState({tOff:st.tOff-1});},tNext:function(){self.setState({tOff:Math.min(0,st.tOff+1)});},
+    isPlanning:mod==='planning',planRows:planRows,pLabel:wkLabel(pMon),pPrev:function(){self.setState({pOff:st.pOff-1});},pNext:function(){self.setState({pOff:st.pOff+1});},openDlg:function(){self.flash('La création de créneaux se fait dans SA Platform › Planning');},pLoading:!PL,
     isMonitoring:mod==='monitoring',isInspections:mod==='inspections',isOperations:mod==='operations',isSites:mod==='sites',isSoon:LIVE.indexOf(mod)<0,soonTitle:soonName[mod]||'',
     kpis:kpis,techRows:techRows,flux:flux,salles:[],sallesSummary:'Aucune salle mécanique suivie pour l’instant — les fiches de salle arrivent avec la prochaine version de sa-terrain.',horsZone:horsZone,horsZoneCount:horsZone.length,
     typeOptions:typeOptions,inspFilter:fil,onInspFilter:function(e){self.setState({inspFilter:e.target.value});},inspSites:inspSites,
