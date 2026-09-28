@@ -952,6 +952,7 @@ button{font-family:inherit}a{color:var(--color-accent-700)}
 <template data-sc="if" value="{{ fxOpen }}"><div class="dialog-backdrop" onClick="{{ fxCloseBg }}" style="z-index:60"><div class="dialog" onClick="{{ stop }}" style="width:min(460px,100%);background:var(--color-bg);padding:22px 24px;border:1px solid var(--color-text);display:flex;flex-direction:column;gap:14px"><div style="display:flex;align-items:center;justify-content:space-between"><span class="dialog-title" style="font-size:22px">Corriger un punch</span><button class="btn btn-ghost btn-icon" onClick="{{ fxClose }}" aria-label="Fermer"><sa-i n="x" s="20"></sa-i></button></div><div style="font-size:14px">{{ fxTitle }}</div><div class="field"><label>Lieu</label><input class="input" value="{{ fxLieu }}" onChange="{{ onFxLieu }}"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:14px"><div class="field"><label>Entrée</label><input class="input" type="time" value="{{ fxEntree }}" onChange="{{ onFxEntree }}"></div><div class="field"><label>Sortie</label><input class="input" type="time" value="{{ fxSortie }}" onChange="{{ onFxSortie }}"></div></div><div class="dialog-actions" style="margin-top:0"><button class="btn btn-secondary" onClick="{{ fxClose }}">Annuler</button><button class="btn btn-primary" onClick="{{ fxSave }}">Enregistrer</button></div></div></div></template>
 </template>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script>window.addEventListener('error',function(e){if(e.target&&e.target.src&&e.target.src.indexOf('leaflet')>=0)window.__leafletLoadError='script bloqué ou introuvable ('+e.target.src+')';},true);</script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>/* <sa-i n="droplet" s="20"> — icônes Lucide, trait 1.5 (currentColor) */
 (function () {
@@ -1208,8 +1209,15 @@ Comp.prototype.geoData=function(){var D=this.D,g={},techs={},today=D.today;
   var sites=[];Object.keys(g).forEach(function(id){var s=D.byId[id];if(!s||s.merged)return;var rows=g[id].slice(0,15),la=0,ln=0;rows.forEach(function(r){la+=Number(r.lat);ln+=Number(r.lng);});
     sites.push({id:id,nom:s.nom,type:s.type,lat:la/rows.length,lng:ln/rows.length,n:g[id].length,last:g[id][0].date});});
   return{sites:sites,techs:techs};};
-Comp.prototype.syncMap=function(){var self=this;if(this.state.mod!=='carte'||!this.D)return;var slot=document.getElementById('mapSlot');if(!slot)return;
-  if(!window.L){slot.textContent='La carte demande une connexion internet (fond de carte).';return;}
+Comp.prototype.syncMap=function(){var self=this;
+  try{
+  if(this.state.mod!=='carte'||!this.D)return;
+  var slot=document.getElementById('mapSlot');
+  if(!slot){console.error('[carte] #mapSlot introuvable dans le DOM — le gabarit n’a pas rendu ce bloc.');return;}
+  if(!window.L){
+    var reason=window.__leafletLoadError?('Bibliothèque de carte non chargée : '+window.__leafletLoadError):'Bibliothèque de carte non chargée (script bloqué ou hors-ligne).';
+    slot.innerHTML='<div style="padding:16px;font-size:13px;color:var(--color-text)">'+reason+'</div>';console.error('[carte] window.L absent —',reason);return;
+  }
   if(!this._mapHost){this._mapHost=document.createElement('div');this._mapHost.setAttribute('data-keep','1');this._mapHost.style.cssText='height:100%;width:100%';}
   if(this._mapHost.parentNode!==slot){slot.appendChild(this._mapHost);}
   if(!this._map){this._map=L.map(this._mapHost,{zoomControl:true,attributionControl:true}).setView([46.82,-71.25],10);L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OpenStreetMap'}).addTo(this._map);this._layer=L.layerGroup().addTo(this._map);this._fitted=false;}
@@ -1217,7 +1225,8 @@ Comp.prototype.syncMap=function(){var self=this;if(this.state.mod!=='carte'||!th
   this._layer.clearLayers();var pts=[];
   G.sites.forEach(function(s){var m=L.circleMarker([s.lat,s.lng],{radius:7,color:'#1d2d3d',weight:2,fillColor:'#94bce3',fillOpacity:.95}).bindPopup('<b>'+s.nom.replace(/</g,'&lt;')+'</b><br>'+self.T(s.type).court+'<br>'+s.n+' punch(s) · dernier '+s.last);m.addTo(self._layer);pts.push([s.lat,s.lng]);});
   Object.keys(G.techs).forEach(function(e){var t=G.techs[e];var m=L.circleMarker([Number(t.lat),Number(t.lng)],{radius:11,color:'#000',weight:3,fillColor:'#1d2d3d',fillOpacity:1}).bindPopup('<b>'+(names[e]||e)+'</b><br>Punch à '+t.heure+'<br>'+(t.lieu||'').replace(/</g,'&lt;'));m.addTo(self._layer);pts.push([Number(t.lat),Number(t.lng)]);});
-  setTimeout(function(){self._map.invalidateSize();if(!self._fitted&&pts.length){self._map.fitBounds(pts,{padding:[40,40],maxZoom:14});self._fitted=true;}},60);};
+  setTimeout(function(){self._map.invalidateSize();if(!self._fitted&&pts.length){self._map.fitBounds(pts,{padding:[40,40],maxZoom:14});self._fitted=true;}},60);
+  }catch(e){console.error('[carte] erreur de rendu :',e);var s2=document.getElementById('mapSlot');if(s2)s2.innerHTML='<div style="padding:16px;font-size:13px">Erreur d’affichage de la carte : '+e.message+'</div>';}};
 Comp.prototype.writeFT=function(uid,week,fn,tries){var self=this,id=uid+'_'+week;tries=tries||0;
   return get('feuilles_temps?id=eq.'+encodeURIComponent(id)+'&select=*').then(function(r){var row=r[0];if(!row)throw new Error('feuille introuvable');var nd=fn(JSON.parse(JSON.stringify(row.days)));
     var tot=0;nd.forEach(function(d){(d.tasks||[]).forEach(function(t){tot+=Number(t.hrs)||0;});});var now=new Date().toISOString();
