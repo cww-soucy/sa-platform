@@ -186,6 +186,7 @@ h1.h{margin:0;font-size:var(--t-2xl);line-height:1.02;font-weight:900;font-stret
 .lrow .t small{display:block;font-size:var(--t-2xs);font-weight:600;color:var(--text-3);font-stretch:100%;margin-top:3px;letter-spacing:0}
 .lrow b{display:block;font-size:var(--t-md);font-weight:750;line-height:1.2}
 .lrow .meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:5px;font-size:var(--t-xs);color:var(--text-2)}
+.lrow .meta .d{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;width:100%}
 .lrow .go-ic{color:var(--text-3)}
 .lrow.done{opacity:.55}
 .lrow.done b{text-decoration:line-through;text-decoration-thickness:2px}
@@ -210,6 +211,10 @@ h1.h{margin:0;font-size:var(--t-2xl);line-height:1.02;font-weight:900;font-stret
 .punch-main{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:72px;padding:0 var(--s5);border:0;
   background:var(--signal);color:var(--signal-ink);font-size:var(--t-lg);font-weight:850;font-stretch:var(--wide)}
 .punch-idle{padding:var(--s6) var(--s5)}
+.punch-note{margin:0;padding:var(--s2) var(--s5) var(--s3);font-size:var(--t-xs);color:var(--ink-300);border-top:1px dashed var(--ink-700)}
+.lrow .t.none{font-size:var(--t-md);color:var(--text-3)}
+.mode-note{margin:var(--s4) var(--s4) 0;padding:var(--s3) var(--s4);border-left:6px solid var(--signal);background:var(--surface);font-size:var(--t-sm);color:var(--text-2)}
+.mode-note b{color:var(--text)}
 .punch-idle p{margin:var(--s2) 0 var(--s5);color:var(--ink-300);font-size:var(--t-sm)}
 
 .quick{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line)}
@@ -557,15 +562,122 @@ var SEED={
   semaine:{heures:31.25,visites:14,releves:22}
 };
 
-/* ── Couche DATA : unique point de branchement Supabase (phase 2) ── */
+/* ═══════════════════════════════════════════════════════════════════
+   LECTURE RÉELLE (Supabase, lecture seule)
+   Même projet et même clé publique que SOUCY OPS. Aucune écriture :
+   punch, relevés, demandes et bons restent sur l'appareil (mode essai).
+   La table comptes n'est lue que pour id, nom, prénom, rôle, statut —
+   jamais les colonnes de mot de passe.
+   ═══════════════════════════════════════════════════════════════════ */
+var SB={url:'https://ldqvdiaewvhnukuaxdmc.supabase.co',key:'sb_publishable_qVd_6eoAvwrDGs9u81woAg_RrMpTJxn'};
+function sbGet(path){
+  return fetch(SB.url+'/rest/v1/'+path,{headers:{apikey:SB.key,Accept:'application/json'}})
+    .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status+' '+path.split('?')[0]);return r.json();});
+}
+function isoDay(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function mondayISO(d){d=new Date(d);var k=d.getDay();d.setDate(d.getDate()+(k===0?-6:1-k));return isoDay(d);}
+function norm(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,' ').trim();}
+function fmtH(h){var m=Math.round((h||0)*60);return Math.floor(m/60)+' h '+String(m%60).padStart(2,'0');}
+var JOURS=['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+var REAL={
+  KEY:'saTerrain.real',
+  cache:function(){try{return JSON.parse(localStorage.getItem(this.KEY)||'null');}catch(e){return null;}},
+  load:function(){
+    var self=this,wk=mondayISO(new Date());
+    return Promise.all([
+      sbGet('comptes?select=id,nom,prenom,role,statut&statut=eq.actif'),
+      sbGet('sites?select=id,nom,addr,type,bassins'),
+      sbGet('workorders?select=id,client,site,type,descr,status,date,assigne,assignes,groupe_id,req_bassin,req_photo,req_notes'),
+      sbGet('planning_tasks?select=id,titre,descr,emp,emp_nom,site_id,site_nom,date_debut,date_fin,heure_debut,statut'),
+      sbGet('inventaire?select=id,nom,unite,qte&order=nom'),
+      sbGet('feuilles_temps?select=id,uid,week,days&week=eq.'+wk)
+    ]).then(function(r){
+      var raw={comptes:r[0],sites:r[1],wo:r[2],pt:r[3],inv:r[4],ft:r[5],at:Date.now()};
+      try{localStorage.setItem(self.KEY,JSON.stringify(raw));}catch(e){}
+      return raw;
+    });
+  },
+  profil:function(site,b){
+    var n=norm(site.nom),bt=(b&&b.type)||'';
+    if(bt==='spa'||(site.type==='spa'&&!b))return 'spa';
+    if(bt==='jeuxdeau'||/jeux d eau|jeu d eau/.test(n))return 'jeuxdeau';
+    if(site.type==='commercial'||/ville |municipal|complexe|condo|hotel|residence pour/.test(n))return 'municipal';
+    return 'residentiel';
+  },
+  apply:function(raw,uid){
+    var me=raw.comptes.find(function(c){return c.id===uid;});if(!me)return false;
+    var ROLE={employe:'Technicien·ne',superviseur:'Superviseur·e terrain',admin:'Administration'};
+    SEED.tech={id:me.id,nom:((me.prenom||'')+' '+(me.nom||'')).trim()||me.id,role:ROLE[me.role]||me.role||'',vehicule:'',tel_bureau:SEED.tech.tel_bureau};
+    var self=this;
+    SEED.sites=raw.sites.map(function(s){
+      var bs=Array.isArray(s.bassins)&&s.bassins.length?s.bassins:[null];
+      return {id:s.id,nom:s.nom||'(sans nom)',addr:s.addr||'',bassins:bs.map(function(b,i){return {nom:(b&&b.nom)||(bs.length>1?'Bassin '+(i+1):'Bassin principal'),profil:self.profil(s,b)};})};
+    }).sort(function(a,b){return a.nom.localeCompare(b.nom,'fr');});
+    var byName={};SEED.sites.forEach(function(s){byName[norm(s.nom)]=s;});
+    function siteFor(w){
+      var s=byName[norm(w.client)]||byName[norm(w.site)];
+      if(s)return s;
+      var id='wo-'+w.id;s=SEED.sites.find(function(x){return x.id===id;});
+      if(!s){s={id:id,nom:w.client||w.site||'Site inconnu',addr:w.site||'',bassins:[{nom:'Bassin principal',profil:'residentiel'}]};SEED.sites.push(s);byName[norm(s.nom)]=s;}
+      return s;
+    }
+    function ids(v){return String(v||'').split(/,\s*/).filter(Boolean);}
+    var mine=raw.wo.filter(function(w){return ids(w.assigne).concat(ids(w.assignes)).indexOf(uid)>=0&&w.date;});
+    var groups={};mine.forEach(function(w){var g=w.groupe_id||w.id;(groups[g]=groups[g]||[]).push(w);});
+    function recOf(list){
+      if(list.length<2)return null;
+      var wd={};list.forEach(function(w){wd[new Date(w.date.slice(0,10)+'T12:00').getDay()]=1;});
+      var k=Object.keys(wd).map(Number).sort();
+      return k.length===1?'Tous les '+JOURS[k[0]]+'s':k.map(function(i){return JOURS[i].slice(0,3)+'.';}).join(' · ');
+    }
+    var DONE=/^(termine|terminé|complete|complété|fait|ferme|fermé)$/i;
+    var today=isoDay(new Date());
+    SEED.agenda=mine.map(function(w){
+      var s=siteFor(w),g=groups[w.groupe_id||w.id];
+      return {id:w.id,date:w.date.slice(0,10),h:'',site:s.id,type:(w.type?w.type.charAt(0).toUpperCase()+w.type.slice(1):'Visite'),desc:w.descr||'',rec:recOf(g),etat:DONE.test(w.status||'')?'fait':'afaire'};
+    });
+    raw.pt.filter(function(p){return p.emp===uid||norm(p.emp_nom)===norm(SEED.tech.nom);}).forEach(function(p){
+      var s=p.site_id&&SEED.sites.find(function(x){return x.id===p.site_id;})||siteFor({id:p.id,client:p.site_nom||p.titre});
+      SEED.agenda.push({id:p.id,date:String(p.date_debut||'').slice(0,10),h:p.heure_debut||'',site:s.id,type:p.titre||'Tâche',rec:null,etat:p.statut==='done'||p.statut==='termine'?'fait':'afaire'});
+    });
+    SEED.agenda.sort(function(a,b){return (a.date+a.h)<(b.date+b.h)?-1:1;});
+    SEED.jobs=SEED.agenda.filter(function(j){return j.date===today;});
+    SEED.series=Object.keys(groups).filter(function(g){return groups[g].length>1;}).map(function(g){
+      var l=groups[g].slice().sort(function(a,b){return a.date<b.date?-1:1;}),fut=l.filter(function(w){return w.date.slice(0,10)>=today;});
+      return {titre:siteFor(l[0]).nom,quand:recOf(l),h:'',jusqua:new Date(l[l.length-1].date.slice(0,10)+'T12:00').toLocaleDateString('fr-CA',{day:'numeric',month:'short'}),reste:fut.length};
+    }).filter(function(s){return s.reste>0;});
+    SEED.inventaire=raw.inv.filter(function(i){return (i.qte||0)>0;}).map(function(i){return {k:i.id,n:i.nom,u:i.unite||'unité',camion:i.qte};});
+    SEED.invLabel='en stock';
+    var ft=raw.ft.find(function(f){return f.uid===uid;}),h=0,v=0,r=0;
+    if(ft&&Array.isArray(ft.days))ft.days.forEach(function(d){(d&&d.tasks||[]).forEach(function(x){h+=x.hrs||0;v++;if(x.bassins&&x.bassins.length)r++;});});
+    SEED.semaine={heures:h,visites:v,releves:r};
+    return true;
+  }
+};
+/* Agenda de démonstration : 14 jours, à partir d'un gabarit de visites */
+(function(){
+  var base=new Date();base.setHours(12,0,0,0);var out=[];
+  var pool=[['s-charles','Relevés + entretien','07:30','Lun · mer · ven',[1,3,5]],['s-cobalt','Visite hebdomadaire','09:30','Tous les jeudis',[4]],['s-montcalm','Relevés','13:00','Tous les mardis',[2]],['s-moulins','Relevé jeux d\'eau','11:30',null,[1,4]]];
+  for(var i=0;i<14;i++){
+    var d=new Date(base);d.setDate(base.getDate()+i);var iso=isoDay(d);
+    if(i===0){SEED.jobs.forEach(function(j){out.push(Object.assign({date:iso},j));});continue;}
+    pool.forEach(function(p,k){if(p[4].indexOf(d.getDay())>=0)out.push({id:'demo-'+i+'-'+k,date:iso,h:p[2],site:p[0],type:p[1],rec:p[3],etat:'afaire'});});
+    if(i===3)out.push({id:'demo-r',date:iso,h:'14:00',site:'s-roy',type:'Fermeture de piscine',etat:'afaire'});
+    if(i===6)out.push({id:'demo-p',date:iso,h:'10:00',site:'s-pintendre',type:'Pré-hivernage',etat:'afaire'});
+  }
+  SEED.agenda=out;SEED.invLabel='au camion';
+})();
+
+/* ── Couche DATA : état local de l'appareil (punch, fiches, demandes…) ── */
 var DATA=(function(){
+  /* mode : 'demo' | 'reel' | 'cache' */
   var KEY='saTerrain.v1';
   var s;
   try{s=JSON.parse(localStorage.getItem(KEY)||'null');}catch(e){s=null;}
   if(!s)s={punch:{etat:'idle',site:null,depuis:null,cumul:0},releves:[],demandes:SEED.demandes.slice(),hv:{},queue:0,pref:{theme:'papier',size:'normal'},bons:[],sorties:[]};
   function save(){try{localStorage.setItem(KEY,JSON.stringify(s));}catch(e){}}
   return {
-    state:s,save:save,
+    state:s,save:save,mode:'demo',realAt:null,
     site:function(id){return SEED.sites.find(function(x){return x.id===id;});},
     enqueue:function(){s.queue++;save();UI.sync();}
   };
@@ -611,7 +723,7 @@ function renderToday(){
     box.innerHTML='<div class="punch" data-s="idle"><div class="punch-idle">'+
       '<div class="punch-state"><i></i>Pas punché</div>'+
       '<div class="punch-site">Prêt pour la tournée</div>'+
-      '<p>'+SEED.jobs.filter(function(j){return j.etat!=='fait';}).length+' jobs restants aujourd\'hui. Punche en arrivant sur le premier site : la fiche technique s\'ajustera à son contrat.</p>'+
+      '<p>'+(function(n){return n?n+' job'+(n>1?'s':'')+' restant'+(n>1?'s':'')+' aujourd\'hui.':'Aucun job restant aujourd\'hui.';})(SEED.jobs.filter(function(j){return j.etat!=='fait';}).length)+' Punche en arrivant sur le premier site : la fiche technique s\'ajustera à son contrat.</p>'+
       '</div><button class="punch-main" id="btnArrive"><span>Arriver sur un site</span>'+ic('chev','lg')+'</button></div>';
     $('#btnArrive').onclick=function(){pickSite('arrive');};
   }else{
@@ -622,6 +734,7 @@ function renderToday(){
       '<div class="punch-addr">'+esc(s.addr)+'</div>'+
       '<div class="punch-clock"><span class="num" id="clock">00:00</span><small>depuis<br><b class="mono" style="color:#fff">'+new Date(p.depuis).toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'})+'</b></small></div>'+
       '</div>'+
+      '<p class="punch-note">Mode essai : ce punch reste sur ton téléphone. Continue de puncher dans SOUCY OPS pour tes heures.</p>'+
       '<button class="punch-main" data-go="fiche"><span>Ouvrir la fiche de ce site</span>'+ic('flask','lg')+'</button>'+
       '<div class="punch-acts">'+
         '<button id="bSwap">'+ic('swap')+'Changer de site</button>'+
@@ -642,13 +755,14 @@ function renderToday(){
   ul.innerHTML=SEED.jobs.map(function(j){
     var s=DATA.site(j.site), here=p.site===j.site&&p.etat!=='idle';
     return '<li><button class="lrow '+(j.etat==='fait'?'done ':'')+(here?'here':'')+'" data-job="'+j.id+'">'+
-      '<span class="t num">'+j.h+'</span>'+
+      (j.h?'<span class="t num">'+j.h+'</span>':'<span class="t num none">—</span>')+
       '<span><b>'+esc(s.nom)+'</b><span class="meta">'+esc(j.type)+
         (j.rec?'<span class="chip rec">'+ic('repeat','sm')+esc(j.rec)+'</span>':'')+
         (here?'<span class="chip fill">Ici maintenant</span>':j.etat==='fait'?'<span class="chip ok">'+ic('check','sm')+'Fait</span>':'')+
       '</span></span>'+
       '<span class="go-ic">'+ic('chev')+'</span></button></li>';
   }).join('');
+  if(!SEED.jobs.length)ul.innerHTML='<li><div class="lrow" style="grid-template-columns:1fr;color:var(--text-3)">Aucun job prévu aujourd\'hui dans les Work Orders.</div></li>';
   $$('[data-job]',ul).forEach(function(b){b.onclick=function(){
     var j=SEED.jobs.find(function(x){return x.id===b.dataset.job;});
     if(p.etat!=='idle'&&p.site===j.site){go('fiche');return;}
@@ -675,7 +789,7 @@ function pickSite(mode,preset){
     arr.sort(function(a,b){return (jobsSites.indexOf(b.id)>=0)-(jobsSites.indexOf(a.id)>=0);});
     $('#siteList').innerHTML=arr.map(function(s){
       var j=SEED.jobs.find(function(x){return x.site===s.id&&x.etat!=='fait';});
-      return '<li><button class="lrow" data-s="'+s.id+'"><span>'+ic('pin','lg')+'</span><span><b>'+esc(s.nom)+'</b><span class="meta">'+esc(s.addr)+(j?'<span class="chip rec">Prévu '+j.h+'</span>':'')+(s.id===p.site?'<span class="chip mute">Actuel</span>':'')+'</span></span><span class="go-ic">'+ic('chev')+'</span></button></li>';
+      return '<li><button class="lrow" data-s="'+s.id+'"><span>'+ic('pin','lg')+'</span><span><b>'+esc(s.nom)+'</b><span class="meta">'+esc(s.addr)+(j?'<span class="chip rec">Prévu'+(j.h?' '+j.h:' aujourd\'hui')+'</span>':'')+(s.id===p.site?'<span class="chip mute">Actuel</span>':'')+'</span></span><span class="go-ic">'+ic('chev')+'</span></button></li>';
     }).join('');
     $$('[data-s]',$('#siteList')).forEach(function(b){b.onclick=function(){closeSheet();doPunch(mode,b.dataset.s);};});
   }
@@ -762,7 +876,7 @@ function renderFiche(){
     f.vals[f.bassin]={};f.prod[f.bassin]={};
     if(f.bassin===s.bassins.length-1){f.photos=[];f.notes='';}
     DATA.save();DATA.enqueue();haptic();
-    toast('Relevé enregistré — '+b.nom);
+    toast('Relevé enregistré sur l\'appareil — '+b.nom);
     if(f.bassin<s.bassins.length-1){f.bassin++;DATA.save();}
     renderFiche();
   };
@@ -780,7 +894,7 @@ function renderFiche(){
     $('#progTxt').textContent=done+' / '+req+' requis';
     $('#progBar').style.width=(req?done/req*100:100)+'%';
     var bad=pr.params.filter(function(par){return zoneOf(par,vals[par.k])==='crit';}).length;
-    $('#saveNote').innerHTML=m?'Il reste '+m+' élément'+(m>1?'s':'')+' requis.':bad?'<span style="color:var(--crit)">'+bad+' paramètre'+(bad>1?'s':'')+' hors norme — le bureau sera avisé.</span>':'Tout est dans les normes. Prêt à enregistrer.';
+    $('#saveNote').innerHTML=m?'Il reste '+m+' élément'+(m>1?'s':'')+' requis.':bad?'<span style="color:var(--crit)">'+bad+' paramètre'+(bad>1?'s':'')+' hors norme — à corriger avant de quitter.</span>':'Tout est dans les normes. Prêt à enregistrer.';
   }
   renderFiche._upd=updProgress;
   function renderPhotos(){
@@ -856,9 +970,9 @@ function renderLogistique(opt){
     '<div class="seg" role="group"><button data-l="sortie" aria-pressed="'+(logiSub==='sortie')+'">Sortie d\'inventaire</button><button data-l="bon" aria-pressed="'+(logiSub==='bon')+'">Bon de livraison</button></div></div>';
   if(logiSub==='sortie'){
     var cart=DATA.state.cart||(DATA.state.cart={});
-    h+='<div class="sec"><div class="sec-h"><h2>Du camion vers le site</h2><small>'+esc(SEED.tech.vehicule.split(' — ')[0])+'</small></div>'+
+    h+='<div class="sec"><div class="sec-h"><h2>Du camion vers le site</h2><small>'+esc((SEED.tech.vehicule||'').split(' — ')[0])+'</small></div>'+
       '<button class="btn ghost block" style="margin-bottom:var(--s3)" id="scan">'+ic('scan')+'Scanner un code QR</button>'+
-      SEED.inventaire.map(function(it){var q=cart[it.k]||0;return '<div class="prod"><span><b>'+esc(it.n)+'</b><small>'+it.camion+' '+it.u+(it.camion>1?'s':'')+' au camion</small></span><span class="qty"><button class="step" data-ik="'+it.k+'" data-pm="-" aria-label="Moins">'+ic('minus')+'</button><span class="num" id="c-'+it.k+'">'+q+'</span><button class="step" data-ik="'+it.k+'" data-pm="+" aria-label="Plus">'+ic('plus')+'</button></span></div>';}).join('')+
+      SEED.inventaire.map(function(it){var q=cart[it.k]||0;return '<div class="prod"><span><b>'+esc(it.n)+'</b><small>'+it.camion+' '+esc(it.u)+' '+SEED.invLabel+'</small></span><span class="qty"><button class="step" data-ik="'+it.k+'" data-pm="-" aria-label="Moins">'+ic('minus')+'</button><span class="num" id="c-'+it.k+'">'+q+'</span><button class="step" data-ik="'+it.k+'" data-pm="+" aria-label="Plus">'+ic('plus')+'</button></span></div>';}).join('')+
       '<label class="field" style="margin-top:var(--s5)"><span>Destination</span><select id="dest">'+SEED.sites.map(function(s){return '<option value="'+s.id+'"'+(site&&s.id===site.id?' selected':'')+'>'+esc(s.nom)+'</option>';}).join('')+'</select></label>'+
       '<button class="btn go block" id="sortieOk">'+ic('check')+'Confirmer la sortie</button></div>';
   }else{
@@ -910,9 +1024,10 @@ function renderHivernage(){
   var list=SEED.hivernage.map(function(x){return Object.assign({},x,st.hv[x.id]&&{etat:st.hv[x.id].etat});});
   var n={afaire:0,encours:0,remis:0};list.forEach(function(x){n[x.etat]++;});
   $('#topSub').textContent='Pré-hivernage · Ville de Lévis';
+  var hvNote=DATA.mode!=='demo'?'<div class="mode-note"><b>Exemple.</b> Aucun rapport de pré-hivernage n\'est encore en base : liste de démonstration.</div>':'';
   if(hvOpen){renderHvRapport(el,list.find(function(x){return x.id===hvOpen;}));return;}
   el.innerHTML='<button class="back" data-go="plus">'+ic('back','sm')+'Plus</button>'+
-    '<div class="sec" style="padding-top:var(--s2)"><h1 class="h">Hivernage</h1>'+
+    hvNote+'<div class="sec" style="padding-top:var(--s2)"><h1 class="h">Hivernage</h1>'+
     '<div class="hv-count"><span class="num">'+n.remis+'</span><span>/ '+list.length+' rapports remis</span></div>'+
     '<div class="progress" style="margin-top:var(--s3)"><span class="lanebar"><i style="width:'+(n.remis/list.length*100)+'%"></i></span></div>'+
     '<div class="seg" role="group"><button data-f="afaire" aria-pressed="'+(hvFiltre==='afaire')+'">À faire · '+n.afaire+'</button><button data-f="encours" aria-pressed="'+(hvFiltre==='encours')+'">En cours · '+n.encours+'</button><button data-f="remis" aria-pressed="'+(hvFiltre==='remis')+'">Remis · '+n.remis+'</button></div></div>'+
@@ -957,6 +1072,7 @@ function renderDemandes(){
     '<button class="rq urg" data-req="urgence">'+ic('alert','lg')+'<span>Urgence<small>'+REQ.urgence.d+'</small></span></button>'+
     '<a class="rq call" href="tel:'+SEED.tech.tel_bureau+'">'+ic('phone','lg')+'<span>Appeler le bureau<small>418 872-1234</small></span></a>'+
     '</div></div>'+
+    (DATA.mode!=='demo'?'<div class="mode-note" style="margin:var(--s4) 0 0">Mode essai : les demandes restent sur ton téléphone. Pour une vraie urgence, appelle le bureau.</div>':'')+
     '<div class="sec"><div class="sec-h"><h2>Mes demandes</h2><small>'+st.demandes.length+'</small></div><ul class="ledger">'+
     st.demandes.slice().reverse().map(function(d){return '<li><div class="lrow" style="grid-template-columns:auto 1fr"><span>'+ic({materiel:'box',renfort:'people',urgence:'alert'}[d.type],'lg')+'</span><span><b>'+esc(d.txt)+'</b><span class="meta">'+esc(REQ[d.type].t)+' · '+esc(d.quand)+'<span class="chip '+(d.etat==='Envoyée'?'warn':'ok')+'">'+esc(d.etat)+'</span></span></span></div></li>';}).join('')+
     '</ul></div>';
@@ -969,7 +1085,7 @@ function openDemande(type){
     '<div class="row2"><button class="btn ghost" id="rqNo">Annuler</button><button class="btn '+(type==='urgence'?'crit':'go')+'" id="rqYes">Envoyer</button></div>');
   $('#rqNo').onclick=closeSheet;
   $('#rqYes').onclick=function(){var t=$('#rqTxt').value.trim();if(!t){$('#rqTxt').focus();return;}
-    DATA.state.demandes.push({id:'d-'+Date.now(),type:type,txt:t,quand:'À l\'instant',etat:'Envoyée'});DATA.save();DATA.enqueue();closeSheet();toast(r.t+' envoyée au bureau');if(cur==='demandes')renderDemandes();};
+    DATA.state.demandes.push({id:'d-'+Date.now(),type:type,txt:t,quand:'À l\'instant',etat:'Envoyée'});DATA.save();DATA.enqueue();closeSheet();toast(DATA.mode==='demo'?r.t+' envoyée au bureau':r.t+' notée (essai — non envoyée)');if(cur==='demandes')renderDemandes();};
   setTimeout(function(){$('#rqTxt').focus();},300);
 }
 
@@ -977,26 +1093,18 @@ function openDemande(type){
 function renderPlanning(){
   var el=$('#s-planning');
   $('#topSub').textContent='14 prochains jours';
-  var days=[], base=new Date();base.setHours(0,0,0,0);
-  var pool=[['s-charles','Relevés + entretien','07:30','Lun · mer · ven',[1,3,5]],['s-cobalt','Visite hebdomadaire','09:30','Tous les jeudis',[4]],['s-montcalm','Relevés','13:00','Tous les mardis',[2]],['s-moulins','Relevé jeux d\'eau','11:30',null,[1,4]],['s-roy','Fermeture de piscine','14:00',null,[]],['s-pintendre','Pré-hivernage','10:00',null,[]]];
-  for(var i=0;i<14;i++){
-    var d=new Date(base);d.setDate(base.getDate()+i);var wd=d.getDay(),jobs=[];
-    if(i===0){jobs=SEED.jobs.map(function(j){return {h:j.h,site:j.site,type:j.type,rec:j.rec,fait:j.etat==='fait'};});}
-    else{
-      pool.forEach(function(p){if(p[4].indexOf(wd)>=0)jobs.push({h:p[2],site:p[0],type:p[1],rec:p[3]});});
-      if(i===3)jobs.push({h:'14:00',site:'s-roy',type:'Fermeture de piscine'});
-      if(i===6)jobs.push({h:'10:00',site:'s-pintendre',type:'Pré-hivernage'});
-      jobs.sort(function(a,b){return a.h<b.h?-1:1;});
-    }
-    days.push({d:d,jobs:jobs,i:i});
-  }
-  el.innerHTML='<div class="sec" style="padding-top:var(--s5)"><div class="sec-h"><h2>Mes visites récurrentes</h2><small>'+SEED.series.length+' séries</small></div></div>'+
-    '<div class="series">'+SEED.series.map(function(s){return '<div class="serie"><b>'+esc(s.titre)+'</b><div class="when">'+ic('repeat','sm')+' '+esc(s.quand)+' · '+s.h+'</div><small>Jusqu\'au '+esc(s.jusqua)+' — '+s.reste+' visites restantes</small></div>';}).join('')+'</div>'+
+  var base=new Date();base.setHours(12,0,0,0);var days=[];
+  for(var i=0;i<14;i++){var d=new Date(base);d.setDate(base.getDate()+i);var iso=isoDay(d);
+    days.push({d:d,i:i,jobs:SEED.agenda.filter(function(j){return j.date===iso;})});}
+  var total=days.reduce(function(a,x){return a+x.jobs.length;},0);
+  el.innerHTML=(SEED.series.length?'<div class="sec" style="padding-top:var(--s5)"><div class="sec-h"><h2>Mes visites récurrentes</h2><small>'+SEED.series.length+' série'+(SEED.series.length>1?'s':'')+'</small></div></div>'+
+    '<div class="series">'+SEED.series.map(function(s){return '<div class="serie"><b>'+esc(s.titre)+'</b><div class="when">'+ic('repeat','sm')+' '+esc(s.quand)+(s.h?' · '+s.h:'')+'</div><small>Jusqu\'au '+esc(s.jusqua)+' — '+s.reste+' visite'+(s.reste>1?'s':'')+' restante'+(s.reste>1?'s':'')+'</small></div>';}).join('')+'</div>':'')+
+    (total?'':'<div class="mode-note">Aucun job assigné dans les 14 prochains jours.</div>')+
     days.map(function(x){
       if(!x.jobs.length&&(x.d.getDay()===0||x.d.getDay()===6))return '';
       var lbl=x.i===0?"Aujourd'hui":x.i===1?'Demain':x.d.toLocaleDateString('fr-CA',{weekday:'long'});
       return '<div class="day-h '+(x.i===0?'today':'')+'"><b>'+lbl.charAt(0).toUpperCase()+lbl.slice(1)+'</b><span>'+x.d.toLocaleDateString('fr-CA',{day:'numeric',month:'long'})+' · '+x.jobs.length+' job'+(x.jobs.length>1?'s':'')+'</span></div>'+
-        '<div style="padding:0 var(--s4)"><ul class="ledger">'+(x.jobs.length?x.jobs.map(function(j){var s=DATA.site(j.site);return '<li><div class="lrow '+(j.fait?'done':'')+'" style="grid-template-columns:auto 1fr;min-height:64px"><span class="t num">'+j.h+'</span><span><b>'+esc(s.nom)+'</b><span class="meta">'+esc(j.type)+(j.rec?'<span class="chip rec">'+ic('repeat','sm')+esc(j.rec)+'</span>':'')+'</span></span></div></li>';}).join(''):'<li><div class="lrow" style="grid-template-columns:1fr;min-height:52px;color:var(--text-3)">Rien de prévu</div></li>')+'</ul></div>';
+        '<div style="padding:0 var(--s4)"><ul class="ledger">'+(x.jobs.length?x.jobs.map(function(j){var s=DATA.site(j.site);return '<li><div class="lrow '+(j.etat==='fait'?'done':'')+'" style="grid-template-columns:auto 1fr;min-height:64px">'+(j.h?'<span class="t num">'+j.h+'</span>':'<span class="t num none">—</span>')+'<span><b>'+esc(s?s.nom:'Site')+'</b><span class="meta">'+esc(j.type)+(j.desc?'<span class="d">'+esc(j.desc)+'</span>':'')+(j.rec?'<span class="chip rec">'+ic('repeat','sm')+esc(j.rec)+'</span>':'')+'</span></span></div></li>';}).join(''):'<li><div class="lrow" style="grid-template-columns:1fr;min-height:52px;color:var(--text-3)">Rien de prévu</div></li>')+'</ul></div>';
     }).join('');
 }
 
@@ -1007,17 +1115,20 @@ function renderProfil(){
   el.innerHTML='<button class="back" data-go="plus">'+ic('back','sm')+'Plus</button>'+
     '<div class="sec" style="padding-top:var(--s2)"><h1 class="h">'+esc(t.nom)+'</h1><p class="lede">'+esc(t.role)+' · '+esc(t.vehicule)+'</p></div>'+
     '<div class="sec"><div class="sec-h"><h2>Ma semaine</h2><small>lun. → aujourd\'hui</small></div>'+
-    '<div class="kv"><div><small>Heures punchées</small><span class="num">'+fr(SEED.semaine.heures,2).replace(',',' h ').replace(/ h (\d\d)$/,' h $1')+'</span></div><div><small>Visites</small><span class="num">'+SEED.semaine.visites+'</span></div>'+
+    '<div class="kv"><div><small>Heures punchées</small><span class="num">'+fmtH(SEED.semaine.heures)+'</span></div><div><small>Visites</small><span class="num">'+SEED.semaine.visites+'</span></div>'+
     '<div><small>Relevés saisis</small><span class="num">'+(SEED.semaine.releves+st.releves.length)+'</span></div><div><small>Rapports hivernage</small><span class="num">'+Object.keys(st.hv).filter(function(k){return st.hv[k].etat==='remis';}).length+'</span></div></div>'+
     '<p class="pill-note">Heures à titre indicatif. La feuille de temps officielle est calculée et validée au bureau.</p></div>'+
     '<div class="sec"><div class="sec-h"><h2>Affichage</h2></div>'+
     '<div class="field"><span>Thème</span><div class="seg" style="margin-top:0" data-pref="theme"><button data-v="papier" aria-pressed="'+(st.pref.theme==='papier')+'">Plein jour</button><button data-v="encre" aria-pressed="'+(st.pref.theme==='encre')+'">Soir</button></div></div>'+
     '<div class="field"><span>Taille du texte</span><div class="seg" style="margin-top:0" data-pref="size"><button data-v="normal" aria-pressed="'+(st.pref.size==='normal')+'">Normale</button><button data-v="grand" aria-pressed="'+(st.pref.size==='grand')+'">Grande</button></div></div></div>'+
-    '<div class="sec"><div class="sec-h"><h2>Synchronisation</h2></div><p style="margin:0 0 var(--s4)">'+(st.queue?'<b>'+st.queue+'</b> envoi'+(st.queue>1?'s':'')+' en attente — partiront dès que le réseau revient.':'Tout est envoyé au bureau.')+'</p>'+
-    '<button class="btn ghost block" id="doSync">Synchroniser maintenant</button></div>'+
-    '<div class="sec" style="padding-bottom:var(--s8)"><button class="btn block" id="logout">Se déconnecter</button><p class="pill-note mono">La Tournée · v1.0.0-design</p></div>';
+    '<div class="sec"><div class="sec-h"><h2>Données</h2></div><p style="margin:0 0 var(--s4)">'+modeTxt()+'</p>'+
+    (DATA.mode!=='demo'?'<button class="btn ghost block" id="whoami" style="margin-bottom:var(--s3)">'+ic('user')+'Changer d\'utilisateur</button>':'')+
+    '<p style="margin:0 0 var(--s4)">'+(st.queue?'<b>'+st.queue+'</b> élément'+(st.queue>1?'s':'')+'  gardé'+(st.queue>1?'s':'')+' sur l\'appareil (mode essai, rien n\'est envoyé).':'Aucune saisie locale.')+'</p>'+
+    '<button class="btn ghost block" id="doSync">Recharger les données</button></div>'+
+    '<div class="sec" style="padding-bottom:var(--s8)"><button class="btn block" id="logout">Se déconnecter</button><p class="pill-note mono">La Tournée · v1.1.0-lecture</p></div>';
   $$('[data-pref]',el).forEach(function(g){$$('button',g).forEach(function(b){b.onclick=function(){st.pref[g.dataset.pref]=b.dataset.v;DATA.save();applyPrefs();renderProfil();};});});
-  $('#doSync').onclick=function(){if(!navigator.onLine){toast('Hors ligne — nouvel essai au retour du réseau');return;}st.queue=0;DATA.save();UI.sync();toast('Synchronisé');renderProfil();};
+  $('#doSync').onclick=function(){if(!navigator.onLine){toast('Hors ligne — nouvel essai au retour du réseau');return;}boot(true);};
+  if($('#whoami'))$('#whoami').onclick=function(){var c=REAL.cache();if(c)pickUser(c);};
   $('#logout').onclick=function(){toast('Déconnexion — branchée en phase 2');};
 }
 function applyPrefs(){
@@ -1030,16 +1141,41 @@ function openSheet(html){$('#sheet').innerHTML=html;$('#sheetBg').classList.add(
 function closeSheet(){$('#sheet').classList.remove('on');$('#sheetBg').classList.remove('on');}
 $('#sheetBg').onclick=closeSheet;
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closeSheet();});
+function modeTxt(){
+  if(DATA.mode==='reel')return 'Données réelles de SOUCY OPS, en lecture seule (chargées à '+new Date(DATA.realAt).toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'})+').';
+  if(DATA.mode==='cache')return 'Hors ligne : copie des données réelles du '+new Date(DATA.realAt).toLocaleString('fr-CA',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+'.';
+  return 'Données de démonstration (serveur injoignable).';
+}
 var UI={sync:function(){
-  var b=$('#sync'),q=DATA.state.queue;
-  if(!navigator.onLine){b.dataset.s='offline';$('span',b).textContent='Hors ligne'+(q?' · '+q:'');}
-  else if(q){b.dataset.s='queue';$('span',b).textContent=q+' en attente';}
-  else{b.dataset.s='online';$('span',b).textContent='À jour';}
+  var b=$('#sync'),m=DATA.mode;
+  b.dataset.s=m==='reel'?'online':m==='cache'?'offline':'queue';
+  $('span',b).textContent=m==='reel'?'Réel · lecture':m==='cache'?'Hors ligne':'Démo';
 }};
 $('#sync').onclick=function(){go('profil');};
 window.addEventListener('online',UI.sync);window.addEventListener('offline',UI.sync);
 
-applyPrefs();UI.sync();go('today');
+/* ════════════════ Démarrage ════════════════ */
+function pickUser(raw){
+  var list=raw.comptes.filter(function(c){return c.role!=='admin';}).sort(function(a,b){return (a.prenom||'').localeCompare(b.prenom||'','fr');});
+  openSheet('<h3 id="sheetTitle">Qui es-tu?</h3><p class="lede" style="margin:0 0 var(--s4)">Pour afficher tes jobs et ton planning. Mode essai : rien n\'est envoyé.</p><ul class="ledger">'+
+    list.map(function(c){return '<li><button class="lrow" data-u="'+esc(c.id)+'"><span>'+ic('user','lg')+'</span><span><b>'+esc(((c.prenom||'')+' '+(c.nom||'')).trim()||c.id)+'</b><span class="meta">'+esc({employe:'Employé·e',superviseur:'Superviseur·e'}[c.role]||c.role||'')+'</span></span><span class="go-ic">'+ic('chev')+'</span></button></li>';}).join('')+'</ul>');
+  $$('[data-u]',$('#sheet')).forEach(function(b){b.onclick=function(){DATA.state.uid=b.dataset.u;DATA.state.fiche=null;DATA.save();closeSheet();useReal(raw,'reel');};});
+}
+function useReal(raw,mode){
+  if(!DATA.state.uid||!REAL.apply(raw,DATA.state.uid)){pickUser(raw);return;}
+  DATA.mode=mode;DATA.realAt=raw.at;UI.sync();go(cur);
+}
+function boot(manual){
+  var c=REAL.cache();
+  if(c&&DATA.state.uid&&!manual)useReal(c,'cache');
+  REAL.load().then(function(raw){useReal(raw,'reel');if(manual)toast('Données rechargées');})
+    .catch(function(e){
+      if(c){if(DATA.state.uid)useReal(c,'cache');else pickUser(c);}
+      else{DATA.mode='demo';UI.sync();}
+      if(manual||!c)toast('Serveur injoignable — '+(c?'copie locale':'démonstration'));
+    });
+}
+applyPrefs();UI.sync();go('today');boot(false);
 if('serviceWorker' in navigator&&location.protocol!=='file:'){navigator.serviceWorker.register('sw.js').catch(function(){});}
 </script>
 </body>
