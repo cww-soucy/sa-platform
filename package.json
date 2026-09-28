@@ -1,0 +1,12 @@
+{
+  "name": "sa-platform",
+  "private": true,
+  "description": "Tests de sa-admin (admin.html) et sa-terrain (terrain.html)",
+  "scripts": {
+    "build": "python3 src/build.py",
+    "test": "python3 src/build.py --check && node --test --test-concurrency=1 tests/*.test.js"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1"
+  }
+}

@@ -39,8 +39,9 @@ SOON='''<sc-if value="{{ isSoon }}"><div style="padding:28px;max-width:640px;dis
 <p style="margin:0;font-size:16px;line-height:1.5">Ce module arrive dans une prochaine version de sa-admin. En attendant, il reste disponible dans SA Platform, qui continue de fonctionner normalement.</p>
 <a class="btn btn-primary" href="/" style="text-decoration:none;width:fit-content;padding:0 18px;min-height:44px;display:inline-flex;align-items:center">Ouvrir SA Platform</a></div></sc-if>
 '''
+WARN='<sc-if value="{{ hasWarn }}"><div role="alert" style="margin:0 0 16px;padding:10px 14px;border:2px solid var(--color-accent-900);font-size:14px;line-height:1.4;display:flex;gap:12px;align-items:center;flex-wrap:wrap"><span style="flex:1;min-width:240px">{{ warnTxt }}</span><button onClick="{{ retry }}" class="btn" style="min-height:32px">Réessayer</button></div></sc-if>\n'
 mm=re.search(r'<main[^>]*>',M)
-if mm: M=M[:mm.end()]+LOAD+SOON+M[mm.end():]
+if mm: M=M[:mm.end()]+WARN+LOAD+SOON+M[mm.end():]
 else: print('!! <main> introuvable')
 
 # ---------- Temps + Planning : navigation de semaine, libellés dynamiques ----------
