@@ -554,7 +554,7 @@ LIVE.forEach(function(l){if(l.site)l.lieu=siteById(l.site).nom;});
    ═══════════════════════════════════════════════════════════════════ */
 var SB={url:'https://ldqvdiaewvhnukuaxdmc.supabase.co',key:'sb_publishable_qVd_6eoAvwrDGs9u81woAg_RrMpTJxn'};
 function sbGet(path){
-  return fetch(SB.url+'/rest/v1/'+path,{headers:{apikey:SB.key,Accept:'application/json'}})
+  return fetch(SB.url+'/rest/v1/'+path,{headers:{apikey:SB.key,Authorization:'Bearer '+SB.key,Accept:'application/json'}})
     .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status+' '+path.split('?')[0]);return r.json();});
 }
 var REAL={
@@ -987,7 +987,7 @@ function vSondages(v){
   $('#sNew').onclick=readOnly;
   $$('[data-slug]',v).forEach(function(r){r.onclick=function(){sondSel=r.dataset.slug;vSondages(v);};});
   if($('#sGo')){var goK=function(){var cle=$('#sCle').value;if(!cle)return;
-    fetch(SB.url+'/rest/v1/rpc/sondage_stats',{method:'POST',headers:{apikey:SB.key,'Content-Type':'application/json'},body:JSON.stringify({p_slug:sondSel,p_cle:cle})})
+    fetch(SB.url+'/rest/v1/rpc/sondage_stats',{method:'POST',headers:{apikey:SB.key,Authorization:'Bearer '+SB.key,'Content-Type':'application/json'},body:JSON.stringify({p_slug:sondSel,p_cle:cle})})
       .then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(rows){sondStats[sondSel]=rows||[];vSondages(v);})
       .catch(function(){$('#sErr').textContent='Clé invalide ou serveur injoignable.';});};
     $('#sGo').onclick=goK;$('#sCle').onkeydown=function(e){if(e.key==='Enter')goK();};}

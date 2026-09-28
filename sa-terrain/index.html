@@ -571,7 +571,7 @@ var SEED={
    ═══════════════════════════════════════════════════════════════════ */
 var SB={url:'https://ldqvdiaewvhnukuaxdmc.supabase.co',key:'sb_publishable_qVd_6eoAvwrDGs9u81woAg_RrMpTJxn'};
 function sbGet(path){
-  return fetch(SB.url+'/rest/v1/'+path,{headers:{apikey:SB.key,Accept:'application/json'}})
+  return fetch(SB.url+'/rest/v1/'+path,{headers:{apikey:SB.key,Authorization:'Bearer '+SB.key,Accept:'application/json'}})
     .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status+' '+path.split('?')[0]);return r.json();});
 }
 function isoDay(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
