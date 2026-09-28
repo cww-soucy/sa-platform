@@ -1113,7 +1113,7 @@ function renderProfil(){
   var el=$('#s-profil'),st=DATA.state,t=SEED.tech;
   $('#topSub').textContent=t.role;
   el.innerHTML='<button class="back" data-go="plus">'+ic('back','sm')+'Plus</button>'+
-    '<div class="sec" style="padding-top:var(--s2)"><h1 class="h">'+esc(t.nom)+'</h1><p class="lede">'+esc(t.role)+' · '+esc(t.vehicule)+'</p></div>'+
+    '<div class="sec" style="padding-top:var(--s2)"><h1 class="h">'+esc(t.nom)+'</h1><p class="lede">'+esc(t.role)+(t.vehicule?' · '+esc(t.vehicule):'')+'</p></div>'+
     '<div class="sec"><div class="sec-h"><h2>Ma semaine</h2><small>lun. → aujourd\'hui</small></div>'+
     '<div class="kv"><div><small>Heures punchées</small><span class="num">'+fmtH(SEED.semaine.heures)+'</span></div><div><small>Visites</small><span class="num">'+SEED.semaine.visites+'</span></div>'+
     '<div><small>Relevés saisis</small><span class="num">'+(SEED.semaine.releves+st.releves.length)+'</span></div><div><small>Rapports hivernage</small><span class="num">'+Object.keys(st.hv).filter(function(k){return st.hv[k].etat==='remis';}).length+'</span></div></div>'+
