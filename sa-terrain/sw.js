@@ -1,7 +1,7 @@
 // sa-terrain — Service Worker (hors-ligne)
 // Stratégie : réseau d'abord pour la page (toujours la dernière version si en ligne), cache en secours.
 // Polices Google : cache d'abord. Les appels Supabase ne sont jamais mis en cache.
-var VERSION='sa-terrain-v1.0.0-design';
+var VERSION='sa-terrain-v1.1.0-lecture';
 var CORE=['./','./index.html','./manifest.webmanifest','./icon.svg'];
 self.addEventListener('install',function(e){e.waitUntil(caches.open(VERSION).then(function(c){return c.addAll(CORE);}).then(function(){return self.skipWaiting();}));});
 self.addEventListener('activate',function(e){e.waitUntil(caches.keys().then(function(ks){return Promise.all(ks.filter(function(k){return k!==VERSION;}).map(function(k){return caches.delete(k);}));}).then(function(){return self.clients.claim();}));});
