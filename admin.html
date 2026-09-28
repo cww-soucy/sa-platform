@@ -819,13 +819,13 @@ Comp.prototype.load=function(){
     soft('workorders?select=id,client,site,type,priorite,status,date,assigne,descr,groupe_id&order=date.asc',[]),
     soft('releves?select=id,site_id,site_nom,tech,tech_nom,date,heure,type_code,vals,touched,checks,prods,note,hors_zone&date=gte.'+since+'&order=date.asc,heure.asc',[]),
     soft('punch_gps_log?select=emp,heure,lieu,date&date=eq.'+today+'&order=heure.desc&limit=30',[]),
-    soft('plan?select=id&date=eq.'+today,[]),soft('planning_tasks?select=id&date_debut=lte.'+today+'&date_fin=gte.'+today,[])
+    soft('plan?select=id&date=eq.'+today,[]),soft('planning_tasks?select=id&date_debut=lte.'+today+'&date_fin=gte.'+today,[]),soft('demandes?select=id,tech,tech_nom,site_nom,type,motif,texte,statut,created_at&order=created_at.desc&limit=40',[])
   ]).then(function(r){
     var T={};r[2].forEach(function(t){T[t.code]=t;});var ct={};r[1].forEach(function(c){ct[c.site_id]=c;});
     var sites=r[0].map(function(s){var c=ct[s.id],code=(c&&c.type_code&&T[c.type_code])?c.type_code:'GEN';return{id:String(s.id),nom:s.nom||'(sans nom)',addr:s.addr||'',ville:villeOf(s.addr),type:code,contrat:(c&&c.code)||'',notes:s.notes||''};})
       .sort(function(a,b){return a.nom.localeCompare(b.nom,'fr');});
     var byId={};sites.forEach(function(s){byId[s.id]=s;});
-    self.D={sites:sites,byId:byId,types:T,comptes:r[3],ft:r[4],wo:r[5],rel:r[6].map(function(x){x.site_id=String(x.site_id);return x;}),gps:r[7],nPlan:r[8].length,nPt:r[9].length,today:today};
+    self.D={sites:sites,byId:byId,types:T,comptes:r[3],ft:r[4],wo:r[5],rel:r[6].map(function(x){x.site_id=String(x.site_id);return x;}),gps:r[7],nPlan:r[8].length,nPt:r[9].length,dem:r[10]||[],today:today};
     self.loadedAt=new Date();self.err='';
     if(!self.state.inspSite){var w=self.D.rel.length?String(self.D.rel[self.D.rel.length-1].site_id):(sites[0]&&sites[0].id);self.state.inspSite=w||null;}
   }).catch(function(e){self.err='Chargement impossible : '+e.message;});
@@ -855,16 +855,19 @@ Comp.prototype.vals=function(){
   var relToday=D.rel.filter(function(r){return r.date===D.today;});
   var woToday=D.wo.filter(function(w){return w.date===D.today;}).length+D.nPlan+D.nPt;
   var suivis=Object.keys(lastRel).filter(function(s){return lastRel[s].date>=iso(addDays(now,-30));}).length;
+  var openDem=D.dem.filter(function(d){return d.statut!=='Traitée';}),urgDem=openDem.filter(function(d){return d.type==='Urgence';});
   var kpis=[{label:'Techniciens punchés',val:nPunched,of:' / '+techRows.length,sub:techRows.length-nPunched+' hors punch'},
     {label:'Visites du jour',val:woToday,of:'',sub:'WO, créneaux et tâches'},
     {label:'Relevés saisis aujourd’hui',val:relToday.length,of:'',sub:relToday.length?'par les techniciens':'aucun encore'},
     {label:'Relevés hors zone',val:horsZone.length,of:'',sub:'à la dernière visite',hot:horsZone.length>0},
+    {label:'Demandes ouvertes',val:openDem.length,of:'',sub:urgDem.length?urgDem.length+' urgence(s)':'du terrain',hot:urgDem.length>0},
     {label:'Sites avec relevé (30 j)',val:suivis,of:' / '+D.sites.length,sub:'sa-terrain'}].map(function(k){return Object.assign(k,{bg:k.hot?'var(--color-accent-900)':'transparent',fg:k.hot?'#ffffff':'var(--color-text)'});});
   // ---- flux
   var flux=[];
   D.gps.forEach(function(g){flux.push({t:g.heure||'',h:g.heure||'',txt:'Punch',who:g.emp,site:g.lieu||'—',icon:'login',bg:'transparent',fg:'var(--color-text)'});});
   relToday.forEach(function(r){var no=self.outOf(r).length;flux.push({t:r.heure||'',h:r.heure||'',txt:no?'Relevé — '+no+' valeur(s) hors zone':'Relevé enregistré',who:r.tech_nom||r.tech,site:r.site_nom,icon:no?'alert':'clipboard',bg:no?'var(--color-accent-900)':'transparent',fg:no?'#ffffff':'var(--color-text)'});});
-  flux.sort(function(a,b){return String(b.t).localeCompare(String(a.t));});flux=flux.slice(0,14);
+  D.dem.slice(0,10).forEach(function(d){var t=new Date(d.created_at),urg=d.type==='Urgence'&&d.statut!=='Traitée',tod=iso(t)===D.today;flux.push({t:(tod?'':iso(t))+pad(t.getHours())+':'+pad(t.getMinutes()),h:(tod?'':t.getDate()+' '+MOIS[t.getMonth()].slice(0,3)+'. ')+pad(t.getHours())+':'+pad(t.getMinutes()),txt:d.type+' — '+(d.texte||d.motif||''),who:d.tech_nom||d.tech,site:d.site_nom||'hors site',icon:urg?'alert':'message',bg:urg?'var(--color-accent-900)':'transparent',fg:urg?'#ffffff':'var(--color-text)'});});
+  flux.sort(function(a,b){return String(b.t).localeCompare(String(a.t));});flux=flux.slice(0,16);
   // ---- inspections
   var fil=st.inspFilter,typesArr=Object.keys(D.types);
   var typeOptions=[{v:'all',l:'Tous les types de bassin'}].concat(typesArr.map(function(k){return{v:k,l:D.types[k].label};})).map(function(o){return Object.assign({},o,{sel:o.v===fil});});
@@ -908,7 +911,7 @@ Comp.prototype.vals=function(){
   var siteTypeOptions=[{v:'all',l:'Tous les types de bassin'}].concat(typesArr.map(function(k){return{v:k,l:D.types[k].label};})).map(function(o){return Object.assign({},o,{sel:o.v===stype});});
   var siteRows=D.sites.filter(function(s){return stype==='all'||s.type===stype;}).map(function(s){return{nom:s.nom,client:'—',ville:s.ville||'—',court:self.T(s.type).court,freq:'—',tech:'—',gps:'Non défini',bassin:'—',contrat:s.contrat||'—',go:function(){self.go('inspections',{inspSite:s.id,inspKey:null});}};});
   // ---- navigation
-  var G=[['Terrain',[['monitoring','Monitoring','activity',horsZone.length,true],['carte','Carte des sites','map'],['inspections','Inspections','chart']]],['Gestion',[['operations','Opérations','folder'],['planning','Planning équipe','calendar'],['sites','Sites','building',nouveaux.length],['facturation','Facturation','receipt']]],['Équipe',[['sondages','Sondages clients','star'],['communication','Communication','megaphone'],['temps','Temps · Suivi · Cumul','timer']]]];
+  var G=[['Terrain',[['monitoring','Monitoring','activity',horsZone.length+urgDem.length,true],['carte','Carte des sites','map'],['inspections','Inspections','chart']]],['Gestion',[['operations','Opérations','folder'],['planning','Planning équipe','calendar'],['sites','Sites','building',nouveaux.length],['facturation','Facturation','receipt']]],['Équipe',[['sondages','Sondages clients','star'],['communication','Communication','megaphone'],['temps','Temps · Suivi · Cumul','timer']]]];
   var LIVE=['monitoring','inspections','operations','sites'];
   var navGroups=G.map(function(g){return{label:g[0],items:g[1].map(function(i){return{label:i[1],icon:i[2],badge:i[3]||null,badgeBg:i[4]?'var(--color-text)':'transparent',badgeFg:i[4]?'var(--color-bg)':'var(--color-text)',go:function(){self.go(i[0]);},bar:mod===i[0]?'var(--color-text)':'transparent',bg:mod===i[0]?'var(--color-accent-100)':'transparent',fw:mod===i[0]?600:400};})};});
   var TITLES={monitoring:['Monitoring en direct','Qui est où, activité terrain et relevés hors zone'],inspections:['Inspections et rapports','Relevés techniques saisis en tournée, par site et dans le temps'],operations:['Opérations','Dossiers clients — les visites d’un même contrat restent regroupées'],sites:['Sites','Répertoire et sites détectés automatiquement'],
