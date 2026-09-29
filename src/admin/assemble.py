@@ -366,6 +366,41 @@ DEDLG=('<template data-sc="if" value="{{ deOpen }}"><div class="dialog-backdrop"
   +IF('deNotDone',BTNX('btn-secondary','deFinal','{{ deFinalLbl }}'))+BTNX('btn-primary','deSave','{{ deSaveLbl }}')+'</div></div></div></template>\n')
 M=M.rstrip()+'\n'+DEDLG
 
+# ---------- STOCK + FLOTTE ----------
+STKHEAD=lambda extra:('<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><input class="input" type="search" placeholder="Rechercher…" value="{{ stkQ }}" onInput="{{ onStkQ }}" style="max-width:280px">%s</div>'
+  '<sc-if value="{{ stkLoading }}"><div>Chargement…</div></sc-if><sc-if value="{{ stkErr }}"><div role="alert" style="padding:10px 14px;border:2px solid var(--color-accent-900)">{{ stkErr }}</div></sc-if>'
+  '<sc-if value="{{ stkNone }}"><div style="font-size:15px;border:1px dashed var(--color-text);padding:14px">Aucun élément pour ce filtre.</div></sc-if>')%extra
+OPENTD='<td style="padding:4px 18px 4px 8px;text-align:right"><button class="btn btn-secondary" onClick="{{ r.open }}">Ouvrir</button></td>'
+STK=('<sc-if value="{{ isStock }}"><div style="display:flex;flex-direction:column;gap:14px">'
+  +STKHEAD('<span style="font-size:14px">{{ stkSum }}</span><span style="flex:1"></span><button class="btn btn-secondary" onClick="{{ stkExport }}" style="gap:8px"><sa-i n="download" s="17"></sa-i>Excel</button><button class="btn btn-primary" onClick="{{ stkNew }}" style="gap:8px"><sa-i n="plus" s="17"></sa-i>Nouveau produit</button>')
+  +SEG('stkCats')
+  +'<sc-if value="{{ stkAlert }}"><div role="status" style="padding:10px 14px;border:2px solid var(--color-accent-900);font-weight:600">{{ stkAlert }}</div></sc-if>'
+  +CARD('<table class="table" style="font-size:14px"><thead><tr>'+TH%('padding-left:18px','Produit')+TH%('','Catégorie')+TH%('text-align:right','En stock')+TH%('text-align:right','Seuil')+TH%('text-align:right','Prix')+TH%('text-align:right','Valeur')+TH%('','')+TH%('','')+'</tr></thead><tbody>'
+  '<sc-for list="{{ iRows }}" as="r"><tr><td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px;font-weight:{{ r.fw }}">{{ r.nom }}</td>'+TD%('','{{ r.cat }}')+TD%('text-align:right;font-weight:{{ r.fw }}','{{ r.qte }}')+TD%('text-align:right','{{ r.seuil }}')+TD%('text-align:right','{{ r.prix }}')+TD%('text-align:right','{{ r.val }}')+TD%('font-weight:700','{{ r.etat }}')
+  +OPENTD+'</tr></sc-for></tbody></table>','overflow-x:auto')+'</div></sc-if>\n')
+FLT=('<sc-if value="{{ isFlotte }}"><div style="display:flex;flex-direction:column;gap:14px">'
+  +STKHEAD('<span style="font-size:14px">{{ fSum }}</span><span style="flex:1"></span><button class="btn btn-primary" onClick="{{ fltNew }}" style="gap:8px"><sa-i n="plus" s="17"></sa-i>Nouveau véhicule</button>')
+  +CARD('<table class="table" style="font-size:14px"><thead><tr>'+TH%('padding-left:18px','Véhicule')+TH%('','Plaque')+TH%('','Année')+TH%('','Couleur')+TH%('text-align:right','Kilométrage')+TH%('','Assigné à')+TH%('','')+'</tr></thead><tbody>'
+  '<sc-for list="{{ fRows }}" as="r"><tr><td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px;font-weight:600">{{ r.nom }}</td>'+TD%('','{{ r.plaque }}')+TD%('','{{ r.annee }}')+TD%('','{{ r.couleur }}')+TD%('text-align:right','{{ r.km }}')+TD%('','{{ r.assigne }}')
+  +OPENTD+'</tr></sc-for></tbody></table>','overflow-x:auto')+'</div></sc-if>\n')
+bs=block(M,'isStats')
+if bs: M=M.replace(bs,bs+STK+FLT,1)
+else: print('!! ancre isStats (Stock)')
+SE=WRAP('seOpen','seCloseBg',DLGHEAD('seTitle','seClose')
+  +IF('seInv',FL('Nom du produit',INP('sNom.v','sNom.on'))
+    +G2(FL('Catégorie',SEL('sCats','onSCat')),FL('Unité',SEL('sUnits','onSUnit')))
+    +G2(FL('Qté en stock',INP('sQte.v','sQte.on','number',' min="0" step="0.1"')),FL('Seuil d’alerte',INP('sSeuil.v','sSeuil.on','number',' min="0" step="0.1"')))
+    +FL('Prix unitaire ($)',INP('sPrix.v','sPrix.on','number',' min="0" step="0.01"'))
+    +IF('seCanAdj','<div style="border:1px solid var(--color-divider);padding:12px;display:flex;flex-direction:column;gap:8px"><b>Entrée ou sortie de stock</b><div style="display:flex;gap:8px;align-items:center">'
+      +'<input class="input" type="number" min="0" step="0.1" value="{{ seDelta }}" onInput="{{ onSeDelta }}" aria-label="Quantité à ajuster" placeholder="Quantité" style="max-width:140px">'
+      +BTNX('btn-secondary','seIn','+ Entrée')+BTNX('btn-secondary','seOut','− Sortie')+'</div><div style="font-size:13px">Appliqué tout de suite sur la quantité du serveur (sans écraser un mouvement fait ailleurs au même moment).</div></div>'))
+  +IF('seFl',G2(FL('Nom / modèle',INP('sNom.v','sNom.on')),FL('Plaque',INP('sPlaque.v','sPlaque.on')))
+    +G2(G2(FL('Année',INP('sAnnee.v','sAnnee.on')),FL('Couleur',INP('sCouleur.v','sCouleur.on'))),FL('Kilométrage',INP('sKm.v','sKm.on','number',' min="0"')))
+    +FL('Assigné à',SEL('sAssignes','onSAssigne')))
+  +FL('Notes',TXT('sNotes.v','sNotes.on',''))
+  +'<div class="dialog-actions" style="margin-top:0;flex-wrap:wrap">'+IF('seCanDel',BTNX('btn-secondary','seDel','{{ seDelLbl }}'))+'<span style="flex:1"></span>'+BTNX('btn-secondary','seClose','Fermer')+BTNX('btn-primary','seSave','{{ seSaveLbl }}')+'</div>')
+M=M.rstrip()+'\n'+SE
+
 
 # Monitoring : lien vers la photo jointe à une demande du terrain (chargée seulement au clic)
 rep('<span style="font-size:12px">{{ f.who }} · {{ f.site }}</span>','<span style="font-size:12px">{{ f.who }} · {{ f.site }}</span><sc-if value="{{ f.hasPhoto }}"><button onClick="{{ f.openPhoto }}" style="all:unset;cursor:pointer;font-size:12px;text-decoration:underline;width:fit-content">Voir la photo jointe</button></sc-if>')

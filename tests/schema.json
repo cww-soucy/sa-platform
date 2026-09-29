@@ -278,5 +278,27 @@
     "doit_changer_mdp",
     "statut",
     "saisonnier"
+  ],
+  "flotte": [
+    "id",
+    "nom",
+    "plaque",
+    "annee",
+    "couleur",
+    "km",
+    "assigne",
+    "notes",
+    "updated_at"
+  ],
+  "inventaire": [
+    "id",
+    "nom",
+    "categorie",
+    "unite",
+    "qte",
+    "seuil",
+    "prix",
+    "notes",
+    "updated_at"
   ]
 }

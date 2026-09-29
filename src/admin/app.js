@@ -25,8 +25,8 @@ var DJ=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
 var SUN={},segS=function(on){return{bg:on?'var(--color-text)':'transparent',fg:on?'var(--color-bg)':'var(--color-text)'};};
 
 function Comp(user){
-  this.user=user;this.rootRef={current:null};this.D=null;this.ftw={};this._ftwL={};this.envois={};this.pmm={};this.docs={};this.loadedAt=null;this.err='';
-  this.state={mod:'monitoring',q:'',toast:null,inspSite:null,inspKey:null,inspFilter:'all',opsFilter:'Tous',opsOpen:{},siteType:'all',carteView:'geo',factFilter:'Tous',tempsTab:'semaine',tOff:0,sOff:0,fe:null,pmmDate:null,pb:null,ce:null,de:null,docQ:'',docF:'tous',logTab:'bl',hj:null,hp:null,paieSel:{},paieOpen:{},paieMode:'synthese',pOff:0,ed:null,sed:null,survey:null,sondKey:(function(){try{return localStorage.getItem('sa_admin_sondkey')||'';}catch(e){return '';}})(),keyIn:'',dlg:false,busy:false,f:{type:'Bon de travail',site:'',tech:'',debut:'',heure:'07:00',rec:'aucune',jours:{},fin:''}};this.pl={};this._pl={};this.sd={};this._sd={};
+  this.user=user;this.rootRef={current:null};this.D=null;this.ftw={};this._ftwL={};this.envois={};this.pmm={};this.docs={};this.stk=null;this.flt=null;this.loadedAt=null;this.err='';
+  this.state={mod:'monitoring',q:'',toast:null,inspSite:null,inspKey:null,inspFilter:'all',opsFilter:'Tous',opsOpen:{},siteType:'all',carteView:'geo',factFilter:'Tous',tempsTab:'semaine',tOff:0,sOff:0,fe:null,pmmDate:null,pb:null,ce:null,de:null,docQ:'',docF:'tous',logTab:'bl',se:null,stkQ:'',stkCat:'tous',hj:null,hp:null,paieSel:{},paieOpen:{},paieMode:'synthese',pOff:0,ed:null,sed:null,survey:null,sondKey:(function(){try{return localStorage.getItem('sa_admin_sondkey')||'';}catch(e){return '';}})(),keyIn:'',dlg:false,busy:false,f:{type:'Bon de travail',site:'',tech:'',debut:'',heure:'07:00',rec:'aucune',jours:{},fin:''}};this.pl={};this._pl={};this.sd={};this._sd={};
 }
 Comp.prototype.setState=function(p){this.state=Object.assign({},this.state,typeof p==='function'?p(this.state):p);this.update();};
 Comp.prototype.flash=function(t){var s=this;clearTimeout(this._tt);this.state.toast=t;this.update();this._tt=setTimeout(function(){s.state.toast=null;s.update();},2800);};
@@ -683,6 +683,74 @@ Comp.prototype.docsVals=function(){var self=this,st=this.state,D=this.D,mod=st.m
     deClose:function(){self.setState({de:null});},deCloseBg:function(e){if(e.target===e.currentTarget)self.setState({de:null});}};
   return Object.assign(out,deV);};
 
+/* ═════════════ STOCK (inventaire) et FLOTTE — mêmes tables et mêmes champs que SA Platform ═════════════ */
+var INV_CATS=[['chimique','Chimique'],['equipement','Équipement'],['piece','Pièce'],['consommable','Consommable'],['autre','Autre']];
+var INV_UNITS=['kg','L','unité','sac','boîte'];
+function nbr(v){var n=parseFloat(String(v==null?'':v).replace(',','.'));return isFinite(n)?n:0;}
+function invLow(i){return nbr(i.seuil)>0&&nbr(i.qte)<=nbr(i.seuil);}
+Comp.prototype.loadStock=function(kind,force){var self=this,k=kind==='fl'?'flt':'stk';if(!force&&this[k])return;this[k]='loading';
+  get(kind==='fl'?'flotte?select=*&order=nom.asc':'inventaire?select=*&order=nom.asc').then(function(r){self[k]=r;
+    if(self.D){if(kind==='fl')self.D.flotte=r.map(function(v){return{id:v.id,nom:v.nom,plaque:v.plaque};});else self.D.inv=r.map(function(i){return{id:i.id,nom:i.nom,qte:i.qte,seuil:i.seuil};});}self.update();})
+    .catch(function(e){self[k]='err';self.stkErr=netMsg(e);self.update();});};
+Comp.prototype.openStk=function(kind,id){var L=Array.isArray(this[kind==='fl'?'flt':'stk'])?this[kind==='fl'?'flt':'stk']:[],x=id?L.filter(function(r){return r.id===id;})[0]:null;
+  var f=x?JSON.parse(JSON.stringify(x)):(kind==='fl'?{nom:'',plaque:'',annee:'',couleur:'',km:'',assigne:'',notes:''}:{nom:'',categorie:'chimique',unite:'kg',qte:'',seuil:'',prix:'',notes:''});
+  Object.keys(f).forEach(function(k){if(f[k]==null)f[k]='';});
+  this.setState({se:{kind:kind,id:id||null,f:f,delta:'',confirm:false,busy:false}});};
+Comp.prototype.seSet=function(k,v){var se=this.state.se,f=Object.assign({},se.f);f[k]=v;this.setState({se:Object.assign({},se,{f:f,confirm:false})});};
+Comp.prototype.saveStk=function(){var self=this,se=this.state.se;if(!se||se.busy)return;var f=se.f,fl=se.kind==='fl',tb=fl?'flotte':'inventaire';
+  if(!String(f.nom).trim()){this.flash(fl?'Le nom du véhicule est requis':'Le nom du produit est requis');return;}
+  var body=fl?{nom:String(f.nom).trim(),plaque:String(f.plaque||'').trim().toUpperCase(),annee:String(f.annee||''),couleur:String(f.couleur||'').trim(),km:String(f.km||''),assigne:String(f.assigne||'').trim(),notes:String(f.notes||'').trim()}
+    :{nom:String(f.nom).trim(),categorie:f.categorie||'autre',unite:f.unite||'unité',qte:nbr(f.qte),seuil:nbr(f.seuil),prix:nbr(f.prix),notes:String(f.notes||'').trim()};
+  body.updated_at=nowIso();this.setState({se:Object.assign({},se,{busy:true})});
+  (se.id?rest('PATCH',tb+'?id=eq.'+encodeURIComponent(se.id),body):postRows(tb,[Object.assign({id:pmmId()},body)])).then(function(){
+    auditT(self,se.id?'MODIFICATION':'CREATION',tb,se.id||body.nom);self.setState({se:null});self.flash(fl?'Véhicule enregistré':'Produit enregistré');self.loadStock(se.kind,true);})
+    .catch(function(e){self.setState({se:Object.assign({},self.state.se,{busy:false})});self.flash('Échec — rien n’a été modifié : '+netMsg(e));});};
+/* Entrée / sortie de stock : relit la quantité sur le serveur et n'écrit que si personne ne l'a changée entre-temps */
+Comp.prototype.adjustStk=function(sign){var self=this,se=this.state.se;if(!se||!se.id||se.busy)return;var d=nbr(se.delta);if(!(d>0)){this.flash('Indiquez une quantité');return;}
+  var id=encodeURIComponent(se.id),tries=0;this.setState({se:Object.assign({},se,{busy:true})});
+  var go=function(){return get('inventaire?select=qte,updated_at&id=eq.'+id).then(function(r){if(!r.length)throw new Error('produit supprimé entre-temps');var q=Math.round((nbr(r[0].qte)+sign*d)*1000)/1000;
+    if(q<0)throw new Error('stock insuffisant ('+nbr(r[0].qte)+' en stock)');
+    return rest('PATCH','inventaire?id=eq.'+id+'&updated_at='+(r[0].updated_at?'eq.'+encodeURIComponent(r[0].updated_at):'is.null'),{qte:q,updated_at:nowIso()},'return=representation').then(function(w){
+      if(Array.isArray(w)&&!w.length){if(++tries<3)return go();throw new Error('modifié en même temps ailleurs, réessayez');}return q;});});};
+  go().then(function(q){auditT(self,'MODIFICATION','inventaire',se.id,{mouvement:(sign>0?'+':'-')+d,qte:q});var s2=self.state.se,f=Object.assign({},s2.f,{qte:q});
+    self.setState({se:Object.assign({},s2,{f:f,delta:'',busy:false})});self.flash((sign>0?'Entrée':'Sortie')+' enregistrée — stock : '+q);self.loadStock('inv',true);})
+    .catch(function(e){self.setState({se:Object.assign({},self.state.se,{busy:false})});self.flash('Échec : '+netMsg(e));});};
+Comp.prototype.deleteStk=function(){var self=this,se=this.state.se;if(!se||!se.id)return;if(!se.confirm){this.setState({se:Object.assign({},se,{confirm:true})});return;}var tb=se.kind==='fl'?'flotte':'inventaire';
+  rest('DELETE',tb+'?id=eq.'+encodeURIComponent(se.id)).then(function(){auditT(self,'SUPPRESSION',tb,se.id);self.setState({se:null});self.flash('Supprimé');self.loadStock(se.kind,true);}).catch(function(e){self.flash('Échec : '+netMsg(e));});};
+Comp.prototype.exportStock=function(){var L=Array.isArray(this.stk)?this.stk:[],cat={};INV_CATS.forEach(function(c){cat[c[0]]=c[1];});
+  var N=function(v){return{v:nbr(v),s:3};},data=[['Produit','Catégorie','Qté','Unité','Seuil','Prix unitaire','Valeur','Sous le seuil','Notes'].map(function(h){return{v:h,s:1};})];
+  L.forEach(function(i){data.push([i.nom,cat[i.categorie]||i.categorie||'',N(i.qte),i.unite||'',N(i.seuil),N(i.prix),N(nbr(i.qte)*nbr(i.prix)),invLow(i)?'OUI':'',i.notes||'']);});
+  data.push([{v:'Total',s:2},'','','','','',{v:L.reduce(function(s,i){return s+nbr(i.qte)*nbr(i.prix);},0),s:4}]);
+  saveBlob(xlsxBlob([{name:'Stock',widths:[30,14,10,8,10,12,12,12,30],rows:data}]),'SoucyAquatik_Stock_'+iso(new Date())+'.xlsx');auditT(this,'EXPORT','inventaire','xlsx');this.flash('Fichier Excel téléchargé');};
+Comp.prototype.stockVals=function(){var self=this,st=this.state,mod=st.mod,names=this.names();
+  if(mod==='stock'&&!this.stk)this.loadStock('inv');if(mod==='flotte'&&!this.flt)this.loadStock('fl');
+  var cat={};INV_CATS.forEach(function(c){cat[c[0]]=c[1];});var q=norm(st.stkQ),cf=st.stkCat||'tous';
+  var inv=Array.isArray(this.stk)?this.stk:[],low=inv.filter(invLow);
+  var iRows=inv.filter(function(i){return(!q||norm(i.nom+' '+(i.notes||'')).indexOf(q)>=0)&&(cf==='tous'||(cf==='bas'?invLow(i):i.categorie===cf));}).map(function(i){var lo=invLow(i);
+    return{nom:i.nom,cat:cat[i.categorie]||i.categorie||'—',qte:nbr(i.qte)+' '+(i.unite||''),seuil:nbr(i.seuil)?String(nbr(i.seuil)):'—',prix:nbr(i.prix)?nbr(i.prix).toFixed(2)+' $':'—',val:nbr(i.prix)?(nbr(i.qte)*nbr(i.prix)).toFixed(2)+' $':'—',
+      low:lo,fw:lo?700:400,etat:lo?'Sous le seuil':'',open:function(){self.openStk('inv',i.id);}};});
+  var fl=Array.isArray(this.flt)?this.flt:[];
+  var fRows=fl.filter(function(v){return!q||norm([v.nom,v.plaque,v.assigne,names[v.assigne]].join(' ')).indexOf(q)>=0;}).map(function(v){
+    return{nom:v.nom,plaque:v.plaque||'—',annee:v.annee||'—',couleur:v.couleur||'—',km:v.km?nbr(v.km).toLocaleString('fr-CA')+' km':'—',assigne:v.assigne?(names[v.assigne]||v.assigne):'Disponible',open:function(){self.openStk('fl',v.id);}};});
+  var out={isStock:mod==='stock',isFlotte:mod==='flotte',stkQ:st.stkQ||'',onStkQ:function(e){self.setState({stkQ:e.target.value});},
+    stkCats:[['tous','Tous']].concat([['bas','Sous le seuil ('+low.length+')']],INV_CATS).map(function(c){return Object.assign({label:c[1],go:function(){self.setState({stkCat:c[0]});}},segS(cf===c[0]));}),
+    stkAlert:low.length?low.length+' produit(s) sous le seuil d’alerte : '+low.map(function(i){return i.nom;}).join(', '):'',
+    stkSum:inv.length+' produit(s) · valeur en stock : '+inv.reduce(function(s,i){return s+nbr(i.qte)*nbr(i.prix);},0).toFixed(2)+' $',
+    iRows:iRows,fRows:fRows,fSum:fl.length+' véhicule(s) · '+fl.filter(function(v){return v.assigne;}).length+' assigné(s)',
+    stkLoading:(mod==='stock'&&this.stk==='loading')||(mod==='flotte'&&this.flt==='loading'),stkErr:(mod==='stock'&&this.stk==='err')||(mod==='flotte'&&this.flt==='err')?'Lecture impossible : '+(this.stkErr||''):'',
+    stkNone:(mod==='stock'&&Array.isArray(this.stk)&&!iRows.length)||(mod==='flotte'&&Array.isArray(this.flt)&&!fRows.length),
+    stkNew:function(){self.openStk('inv');},fltNew:function(){self.openStk('fl');},stkExport:function(){self.exportStock();}};
+  var se=st.se;out.seOpen=!!se;if(!se)return out;var f=se.f,isFl=se.kind==='fl';
+  var F=function(k){return{v:f[k],on:function(e){self.seSet(k,e.target.value);}};};
+  return Object.assign(out,{seTitle:se.id?(isFl?f.nom+(f.plaque?' · '+f.plaque:''):f.nom):(isFl?'Nouveau véhicule':'Nouveau produit'),seFl:isFl,seInv:!isFl,
+    sNom:F('nom'),sPlaque:F('plaque'),sAnnee:F('annee'),sCouleur:F('couleur'),sKm:F('km'),sNotes:F('notes'),sQte:F('qte'),sSeuil:F('seuil'),sPrix:F('prix'),
+    sCats:INV_CATS.map(function(c){return{v:c[0],l:c[1],sel:f.categorie===c[0]};}),onSCat:function(e){self.seSet('categorie',e.target.value);},
+    sUnits:INV_UNITS.concat(INV_UNITS.indexOf(f.unite)<0&&f.unite?[f.unite]:[]).map(function(u){return{v:u,l:u,sel:f.unite===u};}),onSUnit:function(e){self.seSet('unite',e.target.value);},
+    sAssignes:[{v:'',l:'Disponible (non assigné)',sel:!f.assigne}].concat(this.D.comptes.filter(function(c){return self.D.statut[c.id]!=='inactif'||c.id===f.assigne;}).map(function(c){return{v:c.id,l:(c.prenom+' '+c.nom).trim()||c.id,sel:f.assigne===c.id};})),onSAssigne:function(e){self.seSet('assigne',e.target.value);},
+    seCanAdj:!isFl&&!!se.id,seDelta:se.delta,onSeDelta:function(e){self.setState({se:Object.assign({},self.state.se,{delta:e.target.value})});},seIn:function(){self.adjustStk(1);},seOut:function(){self.adjustStk(-1);},
+    seSave:function(){self.saveStk();},seSaveLbl:se.busy?'Enregistrement…':(se.id?'Enregistrer':'Créer'),seCanDel:!!se.id,seDelLbl:se.confirm?'Confirmer la suppression':'Supprimer',seDel:function(){self.deleteStk();},
+    seClose:function(){self.setState({se:null});},seCloseBg:function(e){if(e.target===e.currentTarget)self.setState({se:null});}});};
+
 /* Valeurs d'écran : Temps (Semaine · À valider · Paie · Cumul) et Stats */
 Comp.prototype.tempsVals=function(punchRows){var self=this,st=this.state,D=this.D,mod=st.mod,tMon=addDays(mondayOf(new Date()),7*st.tOff),wk=iso(tMon),today=iso(new Date());
   if((mod==='temps'||mod==='stats'||st.hj)&&this.ftw[wk]===undefined)this.loadWeekFT(wk);
@@ -921,11 +989,11 @@ Comp.prototype.vals=function(){
   var poManquant=factAll.filter(function(b){return b.noPo;}).length;
 
   // ---- navigation
-  var G=[['Terrain',[['monitoring','Monitoring','activity',horsZone.length+urgDem.length,true],['carte','Carte des sites','map'],['inspections','Inspections','chart']]],['Gestion',[['planmatch','Plan de Match','clipboard'],['operations','Opérations','folder'],['planning','Planning équipe','calendar'],['sites','Sites','building',nouveaux.length],['facturation','Facturation','receipt'],['logistique','Logistique','truck'],['hivernage','Hivernage','snow']]],['Équipe',[['sondages','Sondages clients','star'],['communication','Communication','megaphone'],['temps','Temps · Paie','timer'],['stats','Stats','chart'],['comptes','Comptes','users']]]];
-  var LIVE=['logistique','hivernage','comptes','planmatch','stats','monitoring','inspections','operations','sites','temps','planning','sondages','carte','facturation'];
+  var G=[['Terrain',[['monitoring','Monitoring','activity',horsZone.length+urgDem.length,true],['carte','Carte des sites','map'],['inspections','Inspections','chart']]],['Gestion',[['planmatch','Plan de Match','clipboard'],['operations','Opérations','folder'],['planning','Planning équipe','calendar'],['sites','Sites','building',nouveaux.length],['facturation','Facturation','receipt'],['hivernage','Hivernage','snow']]],['Matériel',[['logistique','Logistique','send'],['stock','Stock','package'],['flotte','Flotte','truck']]],['Équipe',[['sondages','Sondages clients','star'],['communication','Communication','megaphone'],['temps','Temps · Paie','timer'],['stats','Stats','chart'],['comptes','Comptes','users']]]];
+  var LIVE=['stock','flotte','logistique','hivernage','comptes','planmatch','stats','monitoring','inspections','operations','sites','temps','planning','sondages','carte','facturation'];
   var navGroups=G.map(function(g){return{label:g[0],items:g[1].map(function(i){return{label:i[1],icon:i[2],badge:i[3]||null,badgeBg:i[4]?'var(--color-text)':'transparent',badgeFg:i[4]?'var(--color-bg)':'var(--color-text)',go:function(){self.go(i[0]);},bar:mod===i[0]?'var(--color-text)':'transparent',bg:mod===i[0]?'var(--color-accent-100)':'transparent',fw:mod===i[0]?600:400};})};});
   var TITLES={monitoring:['Monitoring en direct','Qui est où, activité terrain et relevés hors zone'],inspections:['Inspections et rapports','Relevés techniques saisis en tournée, par site et dans le temps'],operations:['Opérations','Dossiers clients — les visites d’un même contrat restent regroupées'],sites:['Sites','Répertoire et sites détectés automatiquement'],
-    carte:['Carte des sites','Sites et techniciens, d’après les punchs GPS'],sondages:['Sondages clients','Résultats de satisfaction — lecture seule'],planning:['Planning équipe','Qui fait quoi cette semaine — lecture seule'],temps:['Temps · Paie','Feuilles de temps de l’équipe — corriger, ajouter, approuver, sortir la paie'],comptes:['Comptes','Employés, rôles, droits, statut et mots de passe — partagés avec SA Platform et sa-terrain'],planmatch:['Plan de Match','Le plan de la journée de chaque employé — tâches, véhicule, travaux du jour'],stats:['Stats','Heures de l’équipe, bons de travail, stock — par semaine'],facturation:['Facturation','Depuis ton fichier Excel — ODT, prix, écarts. PO manquant sur '+poManquant+' dossier(s).'],communication:['Communication d’équipe','Bientôt'],logistique:['Logistique','Bons de livraison et sorties d’inventaire — les mêmes que SA Platform et sa-terrain'],hivernage:['Hivernage','Rapports de pré-hivernage par site — constats, travaux prévus, suivi']};
+    carte:['Carte des sites','Sites et techniciens, d’après les punchs GPS'],sondages:['Sondages clients','Résultats de satisfaction — lecture seule'],planning:['Planning équipe','Qui fait quoi cette semaine — lecture seule'],temps:['Temps · Paie','Feuilles de temps de l’équipe — corriger, ajouter, approuver, sortir la paie'],comptes:['Comptes','Employés, rôles, droits, statut et mots de passe — partagés avec SA Platform et sa-terrain'],planmatch:['Plan de Match','Le plan de la journée de chaque employé — tâches, véhicule, travaux du jour'],stats:['Stats','Heures de l’équipe, bons de travail, stock — par semaine'],facturation:['Facturation','Depuis ton fichier Excel — ODT, prix, écarts. PO manquant sur '+poManquant+' dossier(s).'],communication:['Communication d’équipe','Bientôt'],logistique:['Logistique','Bons de livraison et sorties d’inventaire — les mêmes que SA Platform et sa-terrain'],stock:['Stock','Inventaire de l’entrepôt — quantités, seuils d’alerte, prix, entrées et sorties'],flotte:['Flotte','Véhicules de l’entreprise et à qui ils sont assignés'],hivernage:['Hivernage','Rapports de pré-hivernage par site — constats, travaux prévus, suivi']};
   var soonName={communication:'Communication d’équipe'};
   var qq=st.q.trim().toLowerCase();
   var results=qq.length<2?[]:D.sites.filter(function(s){return(s.nom+s.ville+s.contrat).toLowerCase().indexOf(qq)>=0;}).slice(0,5).map(function(s){return{label:s.nom,sub:s.ville+' · '+self.T(s.type).court,go:function(){self.go('inspections',{inspSite:s.id,inspKey:null});}};})
@@ -944,7 +1012,7 @@ Comp.prototype.vals=function(){
     exportMsg:function(){self.flash('Export PDF : bientôt');},
     opsFilters:opsFilters,dossiers:dossiers,newDossier:function(){self.openDlg({type:'Bon de travail'});},noDossier:dossiers.length===0,
     nouveaux:nouveaux,siteTypeOptions:siteTypeOptions,siteType:stype,onSiteType:function(e){self.setState({siteType:e.target.value});},siteRows:siteRows,siteCount:siteRows.length,noNouveaux:nouveaux.length===0},
-    this.tempsVals(punchRows),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals());
+    this.tempsVals(punchRows),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals(),this.stockVals());
 };
 Comp.prototype.update=function(){if(!this._host)return;SARender(document.getElementById('tpl'),this._host,this.vals());this.syncMap();var el=this.rootRef.current;if(el)el.style.setProperty('--sa-row','10px');};
 Comp.prototype.mount=function(host){var self=this;this._host=host;this.update();
