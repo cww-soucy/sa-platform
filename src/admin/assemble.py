@@ -311,6 +311,61 @@ CE=WRAP('ceOpen','ceCloseBg',DLGHEAD('ceTitle','ceClose')
   +'<div class="dialog-actions" style="margin-top:0;flex-wrap:wrap">'+IF('ceCanDel',BTNX('btn-secondary','ceDel','{{ ceDelLbl }}'))+'<span style="flex:1"></span>'+BTNX('btn-secondary','ceClose','Fermer')+IF('ceCanEdit',BTNX('btn-primary','ceSave','{{ ceSaveLbl }}'))+'</div>')
 M=M.rstrip()+'\n'+CE
 
+# ---------- LOGISTIQUE + HIVERNAGE (côté bureau) ----------
+DOCLIST=lambda flag,head:('<sc-if value="{{ %s }}"><div style="display:flex;flex-direction:column;gap:18px">'%flag+head
+  +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+SEG('docFilters')+'<input class="input" type="search" placeholder="Rechercher (n°, client, site, technicien)…" value="{{ docQ }}" onInput="{{ onDocQ }}" style="max-width:320px"><span style="flex:1"></span>'
+  +'<button class="btn btn-primary" onClick="{{ docNew }}" style="gap:8px"><sa-i n="plus" s="17"></sa-i>{{ docNewLbl }}</button></div>'
+  '<sc-if value="{{ docLoading }}"><div>Chargement…</div></sc-if><sc-if value="{{ docErr }}"><div role="alert" style="padding:10px 14px;border:2px solid var(--color-accent-900)">{{ docErr }}</div></sc-if>'
+  '<sc-if value="{{ docNone }}"><div style="font-size:15px;border:1px dashed var(--color-text);padding:14px">Aucun document pour ce filtre.</div></sc-if>'
+  +CARD('<table class="table" style="font-size:14px"><tbody><sc-for list="{{ docRows }}" as="r"><tr><td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px;font-weight:600">{{ r.a }}</td>'+TD%('','{{ r.b }}')+TD%('','{{ r.c }}')+TD%('','{{ r.d }}')+TD%('font-weight:600','{{ r.etat }}')
+  +'<td style="padding:4px 18px 4px 8px;text-align:right"><button class="btn btn-secondary" onClick="{{ r.open }}">Ouvrir</button></td></tr></sc-for></tbody></table>','overflow-x:auto')
+  +'</div></sc-if>\n')
+LOGI=DOCLIST('isLogi',SEG('logTabs'))
+HIVB=DOCLIST('isHivB','')
+bs=block(M,'isStats')
+if bs: M=M.replace(bs,bs+LOGI+HIVB,1)
+else: print('!! ancre isStats (Logistique)')
+CELL='<input class="input" value="{{ c.v }}" onInput="{{ c.on }}" placeholder="{{ c.ph }}" aria-label="{{ c.ph }}" style="flex:{{ c.w }};min-width:60px;padding:6px 8px">'
+DELB=lambda fn:'<button class="btn btn-ghost btn-icon" onClick="{{ %s }}" aria-label="Retirer"><sa-i n="x" s="16"></sa-i></button>'%fn
+ROWED=lambda lst,title,addfn,addlbl,extra='':('<div style="display:flex;flex-direction:column;gap:6px"><b>%s</b><sc-for list="{{ %s }}" as="r"><div style="display:flex;gap:6px;align-items:center"><sc-for list="{{ r.cells }}" as="c">'%(title,lst)
+  +CELL+'</sc-for>'+extra+DELB('r.del')+'</div></sc-for><button class="btn btn-ghost" onClick="{{ %s }}" style="align-self:flex-start">+ %s</button></div>'%(addfn,addlbl))
+PHOTOS=lambda lst,addfn:('<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><sc-for list="{{ %s }}" as="p"><span style="display:flex;align-items:center;gap:4px;border:1px solid var(--color-divider);padding:2px 4px 2px 8px;font-size:13px">'
+  '<button onClick="{{ p.open }}" style="all:unset;cursor:pointer;text-decoration:underline">{{ p.name }}</button>'%lst+DELB('p.del')+'</span></sc-for><button class="btn btn-ghost" onClick="{{ %s }}" style="gap:6px"><sa-i n="camera" s="16"></sa-i>Ajouter une photo</button></div>'%addfn)
+TECHSEL='<select class="input" onChange="{{ onDTech }}"><option value="">—</option><template data-sc="for" list="{{ dTechs }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select>'
+DE_BL=IF('isBL',G2(FL('Client',INP('dClient.v','dClient.on','text',' list="deSites"')),FL('Téléphone',INP('dTel.v','dTel.on','tel')))
+  +FL('Adresse de livraison',INP('dAdr.v','dAdr.on'))
+  +G2(G2(FL('Date',INP('dDate.v','dDate.on','date')),FL('Heure',INP('dHeure.v','dHeure.on','time'))),FL('Technicien / livreur',TECHSEL))
+  +'<label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" checked="{{ dUrg.v }}" onChange="{{ dUrg.on }}">Livraison urgente</label>'
+  +ROWED('rLiv','Articles à livrer','addLiv','Ajouter un article')+ROWED('rRet','Articles récupérés chez le client','addRet','Ajouter un article récupéré')
+  +FL('Photos et signatures',PHOTOS('blPhotos','addBlPhoto')))
+DE_SO=IF('isSO',G2(FL('Client / projet',INP('dClient.v','dClient.on','text',' list="deSites"')),FL('Date',INP('dDate.v','dDate.on','date')))
+  +G2(FL('Employé',TECHSEL),G2(FL('N° employé',INP('dNoEmp.v','dNoEmp.on')),FL('Département',INP('dDept.v','dDept.on'))))
+  +ROWED('rLig','Articles sortis','addLig','Ajouter une ligne'))
+PRIO='<select class="input" onChange="{{ r.onPrio }}" aria-label="Priorité" style="flex:1.2;padding:6px 8px"><template data-sc="for" list="{{ r.prio }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select>'
+DE_HV=IF('isHV',G2(FL('Site',INP('dSite.v','dSite.on','text',' list="deSites"')),FL('Client',INP('dClient.v','dClient.on')))
+  +G2(FL('Titre',INP('dTitre.v','dTitre.on')),FL('Objet',INP('dObjet.v','dObjet.on')))
+  +G2(G2(FL('Date d’inspection',INP('dDI.v','dDI.on','date')),FL('Date du rapport',INP('dDR.v','dDR.on','date'))),G2(FL('Préparé par',INP('dPrep.v','dPrep.on')),FL('Technicien',TECHSEL)))
+  +'<div style="display:flex;flex-direction:column;gap:10px"><b>Constats par section</b><sc-for list="{{ dSecs }}" as="s"><div style="border:1px solid var(--color-divider);padding:10px;display:flex;flex-direction:column;gap:8px">'
+    '<div style="display:flex;gap:8px;align-items:center"><input class="input" value="{{ s.title }}" onInput="{{ s.onTitle }}" placeholder="Titre de la section" aria-label="Titre de la section" style="flex:2;font-weight:600">'
+    +SEL('s.tags','s.onTag').replace('<select class="input"','<select class="input" aria-label="Priorité de la section" style="flex:1"')+DELB('s.del')+'</div>'
+    '<sc-for list="{{ s.items }}" as="it"><div style="display:flex;gap:6px"><input class="input" value="{{ it.v }}" onInput="{{ it.on }}" placeholder="Constat…" aria-label="Constat" style="flex:1;padding:6px 8px">'+DELB('it.del')+'</div></sc-for>'
+    '<button class="btn btn-ghost" onClick="{{ s.addItem }}" style="align-self:flex-start">+ Ajouter un constat</button>'+PHOTOS('s.photos','s.addPhoto')+'</div></sc-for>'
+    '<button class="btn btn-ghost" onClick="{{ addSec }}" style="align-self:flex-start">+ Ajouter une section</button></div>'
+  +ROWED('rPlan','Prévisionnel des travaux','addPlan','Ajouter une ligne',PRIO)
+  +'<div style="display:flex;flex-direction:column;gap:6px"><b>Suivi</b><sc-for list="{{ rSuivi }}" as="r"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><input class="input" value="{{ r.el }}" onInput="{{ r.onEl }}" placeholder="Élément" aria-label="Élément suivi" style="flex:2;min-width:140px;padding:6px 8px">'
+    +CHK('r.cks','l')+'<input class="input" value="{{ r.who }}" onInput="{{ r.onWho }}" placeholder="Date / responsable" aria-label="Date / responsable" style="flex:1;min-width:120px;padding:6px 8px">'+DELB('r.del')+'</div></sc-for>'
+    '<button class="btn btn-ghost" onClick="{{ addSuivi }}" style="align-self:flex-start">+ Ajouter un suivi</button></div>'
+  +FL('Calendrier prévisionnel','<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px"><sc-for list="{{ dQ }}" as="q"><input class="input" value="{{ q.v }}" onInput="{{ q.on }}" placeholder="{{ q.l }}" aria-label="{{ q.l }}"></sc-for></div>')
+  +FL('Recommandation générale',TXT('dCall.v','dCall.on','Texte mis en évidence dans le rapport'))
+  +G2(FL('Signataire Soucy Aquatik',INP('dSSA.v','dSSA.on')),FL('Signataire client',INP('dSCl.v','dSCl.on'))))
+DEDLG=('<template data-sc="if" value="{{ deOpen }}"><div class="dialog-backdrop" onClick="{{ deCloseBg }}" style="z-index:60"><div class="dialog" onClick="{{ stop }}" style="width:min(860px,100%);background:var(--color-bg);max-height:calc(100vh - 40px);overflow-y:auto;gap:14px;padding:22px 24px;border:1px solid var(--color-text)">'
+  +DLGHEAD('deTitle','deClose')+'<datalist id="deSites"><sc-for list="{{ sitesList2 }}" as="o"><option value="{{ o.v }}"></option></sc-for></datalist>'
+  +'<sc-if value="{{ deDone }}"><div style="padding:8px 12px;border:1px solid var(--color-text);font-weight:600;display:flex;align-items:center;gap:10px">{{ deDoneTxt }}<span style="flex:1"></span><button class="btn btn-ghost" onClick="{{ deReopen }}">Remettre en brouillon</button></div></sc-if>'
+  +DE_BL+DE_SO+DE_HV
+  +'<div class="dialog-actions" style="margin-top:0;flex-wrap:wrap">'+IF('deCanDel',BTNX('btn-secondary','deDel','{{ deDelLbl }}'))+BTNX('btn-secondary','dePrint','Imprimer')+'<span style="flex:1"></span>'+BTNX('btn-secondary','deClose','Fermer')
+  +IF('deNotDone',BTNX('btn-secondary','deFinal','{{ deFinalLbl }}'))+BTNX('btn-primary','deSave','{{ deSaveLbl }}')+'</div></div></div></template>\n')
+M=M.rstrip()+'\n'+DEDLG
+
 
 # Monitoring : lien vers la photo jointe à une demande du terrain (chargée seulement au clic)
 rep('<span style="font-size:12px">{{ f.who }} · {{ f.site }}</span>','<span style="font-size:12px">{{ f.who }} · {{ f.site }}</span><sc-if value="{{ f.hasPhoto }}"><button onClick="{{ f.openPhoto }}" style="all:unset;cursor:pointer;font-size:12px;text-decoration:underline;width:fit-content">Voir la photo jointe</button></sc-if>')
