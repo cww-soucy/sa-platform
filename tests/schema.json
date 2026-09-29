@@ -300,5 +300,47 @@
     "prix",
     "notes",
     "updated_at"
+  ],
+  "outils": [
+    "id",
+    "reperage",
+    "nom",
+    "categorie_id",
+    "qr_payload",
+    "status",
+    "current_holder",
+    "current_holder_name",
+    "current_punch_task_id",
+    "current_punch_week",
+    "notes",
+    "created_at",
+    "updated_at",
+    "emplacement",
+    "photos"
+  ],
+  "outils_mouvements": [
+    "id",
+    "tool_id",
+    "tool_reperage",
+    "tool_nom",
+    "uid",
+    "emp_nom",
+    "action",
+    "punch_task_id",
+    "punch_week",
+    "punch_date",
+    "heure",
+    "site_id",
+    "site_nom",
+    "wo_id",
+    "gps",
+    "notes",
+    "created_at",
+    "updated_at"
+  ],
+  "logistique_config": [
+    "id",
+    "value",
+    "updated_at"
   ]
 }

@@ -25,8 +25,8 @@ var DJ=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
 var SUN={},segS=function(on){return{bg:on?'var(--color-text)':'transparent',fg:on?'var(--color-bg)':'var(--color-text)'};};
 
 function Comp(user){
-  this.user=user;this.rootRef={current:null};this.D=null;this.ftw={};this._ftwL={};this.envois={};this.pmm={};this.docs={};this.stk=null;this.flt=null;this.loadedAt=null;this.err='';
-  this.state={mod:'monitoring',q:'',toast:null,inspSite:null,inspKey:null,inspFilter:'all',opsFilter:'Tous',opsOpen:{},siteType:'all',carteView:'geo',factFilter:'Tous',tempsTab:'semaine',tOff:0,sOff:0,fe:null,pmmDate:null,pb:null,ce:null,de:null,docQ:'',docF:'tous',logTab:'bl',se:null,stkQ:'',stkCat:'tous',hj:null,hp:null,paieSel:{},paieOpen:{},paieMode:'synthese',pOff:0,ed:null,sed:null,survey:null,sondKey:(function(){try{return localStorage.getItem('sa_admin_sondkey')||'';}catch(e){return '';}})(),keyIn:'',dlg:false,busy:false,f:{type:'Bon de travail',site:'',tech:'',debut:'',heure:'07:00',rec:'aucune',jours:{},fin:''}};this.pl={};this._pl={};this.sd={};this._sd={};
+  this.user=user;this.rootRef={current:null};this.D=null;this.ftw={};this._ftwL={};this.envois={};this.pmm={};this.docs={};this.stk=null;this.flt=null;this.tools=null;this.tmoves=null;this.lcfg=null;this.loadedAt=null;this.err='';
+  this.state={mod:'monitoring',q:'',toast:null,inspSite:null,inspKey:null,inspFilter:'all',opsFilter:'Tous',opsOpen:{},siteType:'all',carteView:'geo',factFilter:'Tous',tempsTab:'semaine',tOff:0,sOff:0,fe:null,pmmDate:null,pb:null,ce:null,de:null,docQ:'',docF:'tous',logTab:'bl',se:null,stkQ:'',stkCat:'tous',te:null,ke:null,outTab:'outils',outF:'tous',outQ:'',qrIn:null,hj:null,hp:null,paieSel:{},paieOpen:{},paieMode:'synthese',pOff:0,ed:null,sed:null,survey:null,sondKey:(function(){try{return localStorage.getItem('sa_admin_sondkey')||'';}catch(e){return '';}})(),keyIn:'',dlg:false,busy:false,f:{type:'Bon de travail',site:'',tech:'',debut:'',heure:'07:00',rec:'aucune',jours:{},fin:''}};this.pl={};this._pl={};this.sd={};this._sd={};
 }
 Comp.prototype.setState=function(p){this.state=Object.assign({},this.state,typeof p==='function'?p(this.state):p);this.update();};
 Comp.prototype.flash=function(t){var s=this;clearTimeout(this._tt);this.state.toast=t;this.update();this._tt=setTimeout(function(){s.state.toast=null;s.update();},2800);};
@@ -751,6 +751,125 @@ Comp.prototype.stockVals=function(){var self=this,st=this.state,mod=st.mod,names
     seSave:function(){self.saveStk();},seSaveLbl:se.busy?'Enregistrement…':(se.id?'Enregistrer':'Créer'),seCanDel:!!se.id,seDelLbl:se.confirm?'Confirmer la suppression':'Supprimer',seDel:function(){self.deleteStk();},
     seClose:function(){self.setState({se:null});},seCloseBg:function(e){if(e.target===e.currentTarget)self.setState({se:null});}});};
 
+/* ═════════════ OUTILS (QR), EMPLACEMENTS et CONFIGURATION LOGISTIQUE — tables outils, outils_mouvements, logistique_config (SA Platform v61+) ═════════════ */
+var LOGI_DEF={categories:[{id:'outil',icon:'🔧',label:'Outil'},{id:'equipement',icon:'⚙️',label:'Équipement'},{id:'securite',icon:'🦺',label:'Sécurité'},{id:'mesure',icon:'📏',label:'Mesure'},{id:'autre',icon:'📋',label:'Autre'}],
+  prefixes:[{id:'PER',label:'Perceuses / visseuses',next:1,scope:'outils'},{id:'OUT',label:'Outils génériques',next:1,scope:'outils'},{id:'MES',label:'Instruments de mesure',next:1,scope:'outils'},{id:'SEC',label:'Équipement de sécurité',next:1,scope:'outils'},
+    {id:'CHI',label:'Produits chimiques',next:1,scope:'inventaire'},{id:'EQU',label:'Équipements inventaire',next:1,scope:'inventaire'},{id:'CON',label:'Consommables',next:1,scope:'inventaire'}],
+  qr_prefix:'SOUCY-DPTM:',
+  emplacements:[{id:'EMP-A1',bat:'Entrepôt',zone:'Zone A — Chimiques',nom:'Étagère 1'},{id:'EMP-A2',bat:'Entrepôt',zone:'Zone A — Chimiques',nom:'Étagère 2'},{id:'EMP-B3',bat:'Entrepôt',zone:'Zone B — Outils',nom:'Étagère 3'},{id:'EMP-B4',bat:'Entrepôt',zone:'Zone B — Outils',nom:'Étagère 4'},{id:'EMP-BUR1',bat:'Bureau',zone:'Local technique',nom:'Armoire 1'}]};
+var TOOL_ST={disponible:'Disponible',sorti:'Sorti',maintenance:'En maintenance'};
+function cfgVal(rows,k){var r=(rows||[]).filter(function(x){return x.id===k;})[0],v=r&&r.value;if(k==='emplacements'||k==='categories'||k==='prefixes')return Array.isArray(v)&&v.length?v:JSON.parse(JSON.stringify(LOGI_DEF[k]));return v||LOGI_DEF[k];}
+function qrData(text){var d=document.createElement('div');new QRCode(d,{text:text,width:240,height:240,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.L});var c=d.querySelector('canvas');return c?c.toDataURL('image/png'):((d.querySelector('img')||{}).src||'');}
+function pickImg(user,cb){var inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.onchange=function(){var file=inp.files&&inp.files[0];if(!file)return;var img=new Image(),u=URL.createObjectURL(file);img.onload=function(){var s=Math.min(1,1200/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);cb({data:c.toDataURL('image/jpeg',0.7),name:'photo',addedBy:user.id,addedAt:nowIso()});};img.src=u;};inp.click();}
+Comp.prototype.loadOutils=function(force){var self=this;if(!force&&this.tools)return;if(!this.tools)this.tools='loading';
+  Promise.all([get('outils?select=*&order=nom.asc'),get('outils_mouvements?select=*&order=created_at.desc&limit=500'),get('logistique_config?select=*')]).then(function(r){self.tools=r[0];self.tmoves=r[1];self.lcfg=r[2];self.update();})
+    .catch(function(e){self.tools='err';self.toolErr=netMsg(e);self.update();});};
+/* Écrit une clé de configuration en partant de la valeur relue au serveur (jamais d'une copie périmée) */
+Comp.prototype.mutCfg=function(key,fn){var self=this;return get('logistique_config?select=*&id=eq.'+key).then(function(r){var v=JSON.parse(JSON.stringify(cfgVal(r,key)));var nv=fn(v);if(nv===undefined)nv=v;
+  return rest('POST','logistique_config?on_conflict=id',[{id:key,value:nv,updated_at:nowIso()}],'resolution=merge-duplicates,return=representation');});};
+Comp.prototype.cfg=function(k){return cfgVal(Array.isArray(this.lcfg)?this.lcfg:[],k);};
+Comp.prototype.openTool=function(id){var L=Array.isArray(this.tools)?this.tools:[],t=id?L.filter(function(x){return x.id===id;})[0]:null,pres=this.cfg('prefixes').filter(function(p){return p.scope!=='inventaire';});
+  var f;if(t){var rp=String(t.reperage||'').split('-');f={prefix:rp[0]||'',num:rp.slice(1).join('-')||'',nom:t.nom||'',categorie_id:t.categorie_id||'',emplacement:t.emplacement||'',notes:t.notes||'',photos:(t.photos||[]).slice()};}
+  else{var p0=pres[0]||{id:'OUT',next:1};f={prefix:p0.id,num:String(p0.next||1).padStart(4,'0'),nom:'',categorie_id:(this.cfg('categories')[0]||{}).id||'',emplacement:'',notes:'',photos:[]};}
+  this.setState({te:{id:id||null,f:f,confirm:false,busy:false}});};
+Comp.prototype.teSet=function(k,v){var te=this.state.te,f=Object.assign({},te.f);f[k]=v;if(k==='prefix'&&!te.id){var p=this.cfg('prefixes').filter(function(x){return x.id===v;})[0];f.num=String((p&&p.next)||1).padStart(4,'0');}this.setState({te:Object.assign({},te,{f:f,confirm:false})});};
+Comp.prototype.toolAudit=function(action,id,d){auditT(this,action,'outils',id,d);};
+Comp.prototype.saveTool=function(){var self=this,te=this.state.te;if(!te||te.busy)return;var f=te.f,nom=String(f.nom).trim(),num=String(f.num).trim(),rep=f.prefix+'-'+num,L=Array.isArray(this.tools)?this.tools:[];
+  if(!nom){this.flash('Le nom de l’outil est requis');return;}if(!num){this.flash('Le numéro de repérage est requis');return;}
+  if(L.some(function(x){return x.reperage===rep&&x.id!==te.id;})){this.flash('Ce repérage existe déjà');return;}
+  var body={reperage:rep,nom:nom,categorie_id:f.categorie_id,qr_payload:this.cfg('qr_prefix')+rep+'|'+nom,notes:String(f.notes||'').trim(),emplacement:f.emplacement||'',photos:f.photos||[],updated_at:nowIso()};
+  this.setState({te:Object.assign({},te,{busy:true})});
+  var w=te.id?rest('PATCH','outils?id=eq.'+encodeURIComponent(te.id),body)
+    :postRows('outils',[Object.assign({id:pmmId(),status:'disponible',current_holder:'',current_holder_name:'',current_punch_task_id:'',current_punch_week:'',created_at:nowIso()},body)]).then(function(r){
+      return self.mutCfg('prefixes',function(ps){var p=ps.filter(function(x){return x.id===f.prefix;})[0];var n=parseInt(num,10);if(p&&n>=(p.next||1))p.next=n+1;}).catch(function(){}).then(function(){return r;});});
+  w.then(function(r){var id=te.id||(r&&r[0]&&r[0].id);self.toolAudit(te.id?'MODIFICATION':'CREATION',id,{reperage:rep});self.setState({te:null});self.flash('Outil enregistré');self.loadOutils(true);})
+   .catch(function(e){self.setState({te:Object.assign({},self.state.te,{busy:false})});self.flash('Échec — rien n’a été modifié : '+netMsg(e));});};
+Comp.prototype.toolMove=function(t,action,notes){var me=(this.user.prenom+' '+this.user.nom).trim(),n=new Date();
+  return postRows('outils_mouvements',[{id:pmmId(),tool_id:t.id,tool_reperage:t.reperage,tool_nom:t.nom,uid:this.user.id,emp_nom:me,action:action,punch_task_id:'',punch_week:'',punch_date:iso(n),heure:pad(n.getHours())+':'+pad(n.getMinutes()),site_id:'',site_nom:'',wo_id:'',gps:null,notes:notes||'',created_at:nowIso(),updated_at:nowIso()}]);};
+/* Statut écrit seulement si l'outil est toujours dans l'état affiché (un technicien a pu le prendre entre-temps) */
+Comp.prototype.toolStatus=function(to){var self=this,te=this.state.te,L=Array.isArray(this.tools)?this.tools:[],t=te&&L.filter(function(x){return x.id===te.id;})[0];if(!t||te.busy)return;
+  var from=t.status||'disponible',holder=t.current_holder_name||this.names()[t.current_holder]||t.current_holder||'';
+  var body={status:to,updated_at:nowIso()};if(to==='disponible'&&from==='sorti')Object.assign(body,{current_holder:'',current_holder_name:'',current_punch_task_id:'',current_punch_week:''});
+  this.setState({te:Object.assign({},te,{busy:true})});
+  rest('PATCH','outils?id=eq.'+encodeURIComponent(t.id)+'&status='+(t.status?'eq.'+encodeURIComponent(t.status):'is.null'),body).then(function(w){
+    if(Array.isArray(w)&&!w.length)throw new Error('l’outil vient de changer d’état (pris ou retourné sur le terrain) — rechargé');
+    var forced=from==='sorti';return (forced?self.toolMove(t,'retour','Retour forcé par '+(self.user.prenom+' '+self.user.nom).trim()+' (détenu par '+holder+')'):Promise.resolve()).then(function(){
+      self.toolAudit('MODIFICATION',t.id,forced?{action:'retour',force:true}:{action:'maintenance',statut:to});self.setState({te:Object.assign({},self.state.te,{busy:false})});
+      self.flash(forced?'Retour forcé enregistré':(to==='maintenance'?'Mis en maintenance':'Remis en service'));self.loadOutils(true);});})
+    .catch(function(e){self.setState({te:Object.assign({},self.state.te,{busy:false})});self.flash('Échec : '+netMsg(e));self.loadOutils(true);});};
+Comp.prototype.deleteTool=function(){var self=this,te=this.state.te;if(!te||!te.id)return;if(!te.confirm){this.setState({te:Object.assign({},te,{confirm:true})});return;}
+  rest('DELETE','outils?id=eq.'+encodeURIComponent(te.id)).then(function(){self.toolAudit('SUPPRESSION',te.id);self.setState({te:null});self.flash('Outil supprimé (historique conservé)');self.loadOutils(true);}).catch(function(e){self.flash('Échec : '+netMsg(e));});};
+Comp.prototype.printLabels=function(items){var w=window.open('','_blank');if(!w){this.flash('Fenêtre bloquée — autorisez les fenêtres pour imprimer');return;}
+  var h='<!doctype html><meta charset="utf-8"><title>Étiquettes QR</title><style>@page{margin:8mm}body{margin:0;font-family:Arial,sans-serif;display:flex;flex-wrap:wrap;gap:3mm}.l{width:3cm;height:3cm;border:1px dashed #bbb;box-sizing:border-box;padding:1mm;display:flex;flex-direction:column;align-items:center;justify-content:center;page-break-inside:avoid}.l img{width:2.2cm;height:2.2cm}.r{font-size:6pt;font-weight:700;margin-top:.6mm}.s{font-size:5pt;text-align:center;overflow:hidden;white-space:nowrap;max-width:2.8cm}</style>';
+  items.forEach(function(i){h+='<div class="l"><img src="'+qrData(i.payload)+'" alt=""><div class="r">'+escH(i.code)+'</div>'+(i.sub?'<div class="s">'+escH(i.sub)+'</div>':'')+'</div>';});
+  w.document.write(h+'<script>setTimeout(function(){print();},300)<\/script>');w.document.close();};
+Comp.prototype.openKe=function(kind,id){var src=kind==='cat'?this.cfg('categories'):kind==='pre'?this.cfg('prefixes'):this.cfg('emplacements'),x=id?src.filter(function(r){return r.id===id;})[0]:null;
+  var f=x?JSON.parse(JSON.stringify(x)):({cat:{id:'',icon:'🔧',label:''},pre:{id:'',label:'',next:1,scope:'outils'},emp:{id:'EMP-',bat:'Entrepôt',zone:'',nom:''}})[kind];
+  this.setState({ke:{kind:kind,id:id||null,f:f,confirm:false,busy:false}});};
+Comp.prototype.keSet=function(k,v){var ke=this.state.ke,f=Object.assign({},ke.f);f[k]=v;this.setState({ke:Object.assign({},ke,{f:f,confirm:false})});};
+var KE_KEY={cat:'categories',pre:'prefixes',emp:'emplacements'};
+Comp.prototype.saveKe=function(del){var self=this,ke=this.state.ke;if(!ke||ke.busy)return;var f=ke.f,k=ke.kind,L=Array.isArray(this.tools)?this.tools:[];
+  if(del){var used=L.filter(function(t){return k==='cat'?t.categorie_id===ke.id:t.emplacement===ke.id;}).length;if(used){this.flash('Impossible : '+used+' outil(s) '+(k==='cat'?'dans cette catégorie':'rangé(s) ici'));return;}
+    if(!ke.confirm){this.setState({ke:Object.assign({},ke,{confirm:true})});return;}}
+  else{var id=k==='cat'?(ke.id||String(f.label).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'')):ke.id||String(f.id).toUpperCase().replace(/[^A-Z0-9-]/g,'');
+    if(k==='cat'&&!String(f.label).trim()||k==='pre'&&!String(f.label).trim()||k==='emp'&&!(String(f.zone).trim()&&String(f.nom).trim()&&String(f.bat).trim())){this.flash('Remplissez tous les champs');return;}
+    if(!id||k==='emp'&&id==='EMP-'){this.flash('Code invalide');return;}
+    if(!ke.id&&this.cfg(KE_KEY[k]).some(function(x){return x.id===id;})){this.flash('Ce code existe déjà');return;}
+    var row=k==='cat'?{id:id,icon:String(f.icon||'📋').trim(),label:String(f.label).trim()}:k==='pre'?{id:id,label:String(f.label).trim(),next:Math.max(1,parseInt(f.next,10)||1),scope:f.scope==='inventaire'?'inventaire':'outils'}:{id:id,bat:String(f.bat).trim(),zone:String(f.zone).trim(),nom:String(f.nom).trim()};}
+  this.setState({ke:Object.assign({},ke,{busy:true})});
+  this.mutCfg(KE_KEY[k],function(arr){var i=arr.findIndex(function(x){return x.id===(ke.id||row.id);});if(del){if(i>=0)arr.splice(i,1);}else if(i>=0)arr[i]=Object.assign({},arr[i],row);else arr.push(row);})
+    .then(function(){auditT(self,del?'SUPPRESSION':(ke.id?'MODIFICATION':'CREATION'),'logistique_config',KE_KEY[k],{id:ke.id||row.id});self.setState({ke:null});self.flash(del?'Supprimé':'Enregistré');self.loadOutils(true);})
+    .catch(function(e){self.setState({ke:Object.assign({},self.state.ke,{busy:false})});self.flash('Échec : '+netMsg(e));});};
+Comp.prototype.saveQrPrefix=function(){var self=this,v=String(this.state.qrIn==null?this.cfg('qr_prefix'):this.state.qrIn).trim();if(!v){this.flash('Préfixe requis');return;}
+  this.mutCfg('qr_prefix',function(){return v;}).then(function(){auditT(self,'MODIFICATION','logistique_config','qr_prefix',{valeur:v});self.setState({qrIn:null});self.flash('Préfixe QR enregistré — réimprimez les étiquettes des outils modifiés ensuite');self.loadOutils(true);}).catch(function(e){self.flash('Échec : '+netMsg(e));});};
+Comp.prototype.outilsVals=function(){var self=this,st=this.state,mod=st.mod,names=this.names();if(mod==='outils'&&!this.tools)this.loadOutils();
+  var tab=st.outTab||'outils',L=Array.isArray(this.tools)?this.tools:[],cats=this.cfg('categories'),emps=this.cfg('emplacements'),pres=this.cfg('prefixes'),qp=this.cfg('qr_prefix');
+  var catI={};cats.forEach(function(c){catI[c.id]=c;});var empI={};emps.forEach(function(e){empI[e.id]=e;});
+  var holderOf=function(t){return t.current_holder_name||names[t.current_holder]||t.current_holder||'';};
+  var q=norm(st.outQ),flt=st.outF||'tous';
+  var rows=L.filter(function(t){return(flt==='tous'||(t.status||'disponible')===flt)&&(!q||norm([t.nom,t.reperage,t.notes,holderOf(t)].join(' ')).indexOf(q)>=0);}).map(function(t){var s=t.status||'disponible',e=empI[t.emplacement];
+    return{nom:t.nom,rep:t.reperage||'',cat:catI[t.categorie_id]?catI[t.categorie_id].icon+' '+catI[t.categorie_id].label:(t.categorie_id||'—'),etat:TOOL_ST[s]+(s==='sorti'?' — '+holderOf(t):''),fw:s==='disponible'?400:700,emp:e?e.nom+' ('+e.id+')':(t.emplacement||'—'),open:function(){self.openTool(t.id);}};});
+  var cnt=function(s){return L.filter(function(t){return(t.status||'disponible')===s;}).length;};
+  var bats=[],byBat={};emps.forEach(function(e){if(!byBat[e.bat]){byBat[e.bat]=[];bats.push(e.bat);}byBat[e.bat].push(e);});
+  var empGroups=bats.map(function(b){return{bat:b,rows:byBat[b].map(function(e){var inn=L.filter(function(t){return t.emplacement===e.id;}),so=inn.filter(function(t){return t.status==='sorti';}).length;
+    return{id:e.id,zone:e.zone,nom:e.nom,n:inn.length+' outil(s)'+(so?' · '+so+' sorti(s)':''),items:inn.length?inn.slice(0,4).map(function(t){return t.nom;}).join(' · ')+(inn.length>4?' …':''):'vide',
+      edit:function(){self.openKe('emp',e.id);},print:function(){self.printLabels([{payload:qp+e.id+'|'+e.bat+' '+e.nom,code:e.id,sub:e.nom}]);}};})};});
+  var sansEmp=L.filter(function(t){return!t.emplacement;}).length;
+  var out={isOutils:mod==='outils',outTabs:[['outils','Outils ('+L.length+')'],['emp','Emplacements'],['cfg','Configuration']].map(function(x){return Object.assign({label:x[1],go:function(){self.setState({outTab:x[0]});}},segS(tab===x[0]));}),
+    otOutils:tab==='outils',otEmp:tab==='emp',otCfg:tab==='cfg',outLoading:this.tools==='loading',outErr:this.tools==='err'?'Lecture impossible : '+(this.toolErr||''):'',
+    outFilters:[['tous','Tous'],['disponible','Disponibles ('+cnt('disponible')+')'],['sorti','Sortis ('+cnt('sorti')+')'],['maintenance','Maintenance ('+cnt('maintenance')+')']].map(function(x){return Object.assign({label:x[1],go:function(){self.setState({outF:x[0]});}},segS(flt===x[0]));}),
+    outQ:st.outQ||'',onOutQ:function(e){self.setState({outQ:e.target.value});},oRows:rows,oNone:Array.isArray(this.tools)&&!rows.length,
+    oNew:function(){self.openTool(null);},oPrintAll:function(){var r=L.filter(function(t){return rows.some(function(x){return x.rep===t.reperage;});});if(!r.length){self.flash('Aucun outil à imprimer');return;}self.printLabels(r.map(function(t){return{payload:t.qr_payload||(qp+t.reperage+'|'+t.nom),code:t.reperage,sub:t.nom};}));},
+    empGroups:empGroups,empSans:sansEmp?sansEmp+' outil(s) sans emplacement — ouvrez leur fiche pour en assigner un.':'',empNew:function(){self.openKe('emp',null);},
+    empPrintAll:function(){self.printLabels(emps.map(function(e){return{payload:qp+e.id+'|'+e.bat+' '+e.nom,code:e.id,sub:e.nom};}));},
+    cfgCats:cats.map(function(c){return{icon:c.icon,label:c.label,n:L.filter(function(t){return t.categorie_id===c.id;}).length+' outil(s)',edit:function(){self.openKe('cat',c.id);}};}),
+    cfgPres:pres.map(function(p){return{id:p.id+'-',label:p.label,n:p.scope==='inventaire'?'(inventaire)':'prochain : '+String(p.next||1).padStart(4,'0'),edit:function(){self.openKe('pre',p.id);}};}),
+    catNew:function(){self.openKe('cat',null);},preNew:function(){self.openKe('pre',null);},
+    qrIn:st.qrIn==null?qp:st.qrIn,onQrIn:function(e){self.setState({qrIn:e.target.value});},qrSave:function(){self.saveQrPrefix();},qrFmt:'Format du code : '+(st.qrIn==null?qp:st.qrIn)+'{repérage}|{nom}'};
+  var te=st.te;out.teOpen=!!te;
+  if(te){var f=te.f,t=te.id?L.filter(function(x){return x.id===te.id;})[0]:null,s=t?(t.status||'disponible'):'disponible',rep=f.prefix+'-'+f.num,set=function(k){return function(e){self.teSet(k,e.target.value);};};
+    var mv=(Array.isArray(this.tmoves)?this.tmoves:[]).filter(function(m){return te.id&&m.tool_id===te.id;}).slice(0,10).map(function(m){return{txt:(m.action==='sortie'?'Sortie':'Retour')+' — '+(m.emp_nom||m.uid||''),sub:(m.punch_date||'')+' '+(m.heure||'')+(m.site_nom?' · '+m.site_nom:'')+(m.notes?' · '+m.notes:'')};});
+    Object.assign(out,{teTitle:t?t.nom:'Nouvel outil',teRep:rep,tePayload:qp+rep+'|'+(String(f.nom).trim()||'Nouvel outil'),teEtat:t?TOOL_ST[s]+(s==='sorti'?' par '+holderOf(t):''):'',teHasEtat:!!t,
+      tePres:pres.filter(function(p){return p.scope!=='inventaire'||p.id===f.prefix;}).map(function(p){return{v:p.id,l:p.id+' — '+p.label,sel:f.prefix===p.id};}),onTePre:set('prefix'),teNum:f.num,onTeNum:set('num'),teNom:f.nom,onTeNom:set('nom'),teNotes:f.notes,onTeNotes:set('notes'),
+      teCats:cats.map(function(c){return{v:c.id,l:c.icon+' '+c.label,sel:f.categorie_id===c.id};}),onTeCat:set('categorie_id'),
+      teEmps:[{v:'',l:'— Aucun —',sel:!f.emplacement}].concat(emps.map(function(e){return{v:e.id,l:e.bat+' · '+e.zone+' · '+e.nom,sel:f.emplacement===e.id};})),onTeEmp:set('emplacement'),
+      tePhotos:(f.photos||[]).map(function(p,i){return{name:'Photo '+(i+1),open:function(){var w=window.open('','_blank');if(w){w.document.write('<img src="'+p.data+'" style="max-width:100%">');w.document.close();}},del:function(){var a=f.photos.slice();a.splice(i,1);self.teSet('photos',a);}};}),
+      teAddPhoto:function(){pickImg(self.user,function(p){self.teSet('photos',(self.state.te.f.photos||[]).concat([p]));});},
+      teMoves:mv,teHasMoves:mv.length>0,teCanMaint:!!t&&s!=='sorti',teMaintLbl:s==='maintenance'?'Remettre en service':'Mettre en maintenance',teMaint:function(){self.toolStatus(s==='maintenance'?'disponible':'maintenance');},
+      teCanForce:!!t&&s==='sorti',teForce:function(){self.toolStatus('disponible');},
+      tePrint:function(){self.printLabels([{payload:qp+rep+'|'+(String(f.nom).trim()||'Nouvel outil'),code:rep,sub:String(f.nom).trim()}]);},
+      teSave:function(){self.saveTool();},teSaveLbl:te.busy?'Enregistrement…':(te.id?'Enregistrer':'Créer'),teCanDel:!!te.id,teDelLbl:te.confirm?'Confirmer la suppression':'Supprimer',teDel:function(){self.deleteTool();},
+      teClose:function(){self.setState({te:null});},teCloseBg:function(e){if(e.target===e.currentTarget)self.setState({te:null});}});}
+  var ke=st.ke;out.keOpen=!!ke;
+  if(ke){var kf=ke.f,ks=function(k){return function(e){self.keSet(k,e.target.value);};};
+    Object.assign(out,{keTitle:(ke.id?'Modifier · ':'Nouveau · ')+({cat:'catégorie',pre:'préfixe de repérage',emp:'emplacement'})[ke.kind],keCat:ke.kind==='cat',kePre:ke.kind==='pre',keEmp:ke.kind==='emp',keNew:!ke.id,keOld:!!ke.id,keCode:ke.id||'',
+      kIcon:kf.icon,onKIcon:ks('icon'),kLabel:kf.label,onKLabel:ks('label'),kId:kf.id,onKId:ks('id'),kNext:kf.next,onKNext:ks('next'),kZone:kf.zone,onKZone:ks('zone'),kNom:kf.nom,onKNom:ks('nom'),
+      kBats:['Entrepôt','Bureau'].concat(['Entrepôt','Bureau'].indexOf(kf.bat)<0&&kf.bat?[kf.bat]:[]).map(function(b){return{v:b,l:b,sel:kf.bat===b};}),onKBat:ks('bat'),
+      kScopes:[['outils','Outils'],['inventaire','Inventaire']].map(function(x){return{v:x[0],l:x[1],sel:(kf.scope||'outils')===x[0]};}),onKScope:ks('scope'),
+      keSave:function(){self.saveKe(false);},keSaveLbl:ke.busy?'Enregistrement…':'Enregistrer',keCanDel:!!ke.id&&ke.kind!=='pre',keDelLbl:ke.confirm?'Confirmer la suppression':'Supprimer',keDel:function(){self.saveKe(true);},
+      keClose:function(){self.setState({ke:null});},keCloseBg:function(e){if(e.target===e.currentTarget)self.setState({ke:null});}});}
+  return out;};
+
 /* Valeurs d'écran : Temps (Semaine · À valider · Paie · Cumul) et Stats */
 Comp.prototype.tempsVals=function(punchRows){var self=this,st=this.state,D=this.D,mod=st.mod,tMon=addDays(mondayOf(new Date()),7*st.tOff),wk=iso(tMon),today=iso(new Date());
   if((mod==='temps'||mod==='stats'||st.hj)&&this.ftw[wk]===undefined)this.loadWeekFT(wk);
@@ -989,11 +1108,11 @@ Comp.prototype.vals=function(){
   var poManquant=factAll.filter(function(b){return b.noPo;}).length;
 
   // ---- navigation
-  var G=[['Terrain',[['monitoring','Monitoring','activity',horsZone.length+urgDem.length,true],['carte','Carte des sites','map'],['inspections','Inspections','chart']]],['Gestion',[['planmatch','Plan de Match','clipboard'],['operations','Opérations','folder'],['planning','Planning équipe','calendar'],['sites','Sites','building',nouveaux.length],['facturation','Facturation','receipt'],['hivernage','Hivernage','snow']]],['Matériel',[['logistique','Logistique','send'],['stock','Stock','package'],['flotte','Flotte','truck']]],['Équipe',[['sondages','Sondages clients','star'],['communication','Communication','megaphone'],['temps','Temps · Paie','timer'],['stats','Stats','chart'],['comptes','Comptes','users']]]];
-  var LIVE=['stock','flotte','logistique','hivernage','comptes','planmatch','stats','monitoring','inspections','operations','sites','temps','planning','sondages','carte','facturation'];
+  var G=[['Terrain',[['monitoring','Monitoring','activity',horsZone.length+urgDem.length,true],['carte','Carte des sites','map'],['inspections','Inspections','chart']]],['Gestion',[['planmatch','Plan de Match','clipboard'],['operations','Opérations','folder'],['planning','Planning équipe','calendar'],['sites','Sites','building',nouveaux.length],['facturation','Facturation','receipt'],['hivernage','Hivernage','snow']]],['Matériel',[['logistique','Logistique','send'],['stock','Stock','package'],['flotte','Flotte','truck'],['outils','Outils · QR','wrench']]],['Équipe',[['sondages','Sondages clients','star'],['communication','Communication','megaphone'],['temps','Temps · Paie','timer'],['stats','Stats','chart'],['comptes','Comptes','users']]]];
+  var LIVE=['outils','stock','flotte','logistique','hivernage','comptes','planmatch','stats','monitoring','inspections','operations','sites','temps','planning','sondages','carte','facturation'];
   var navGroups=G.map(function(g){return{label:g[0],items:g[1].map(function(i){return{label:i[1],icon:i[2],badge:i[3]||null,badgeBg:i[4]?'var(--color-text)':'transparent',badgeFg:i[4]?'var(--color-bg)':'var(--color-text)',go:function(){self.go(i[0]);},bar:mod===i[0]?'var(--color-text)':'transparent',bg:mod===i[0]?'var(--color-accent-100)':'transparent',fw:mod===i[0]?600:400};})};});
   var TITLES={monitoring:['Monitoring en direct','Qui est où, activité terrain et relevés hors zone'],inspections:['Inspections et rapports','Relevés techniques saisis en tournée, par site et dans le temps'],operations:['Opérations','Dossiers clients — les visites d’un même contrat restent regroupées'],sites:['Sites','Répertoire et sites détectés automatiquement'],
-    carte:['Carte des sites','Sites et techniciens, d’après les punchs GPS'],sondages:['Sondages clients','Résultats de satisfaction — lecture seule'],planning:['Planning équipe','Qui fait quoi cette semaine — lecture seule'],temps:['Temps · Paie','Feuilles de temps de l’équipe — corriger, ajouter, approuver, sortir la paie'],comptes:['Comptes','Employés, rôles, droits, statut et mots de passe — partagés avec SA Platform et sa-terrain'],planmatch:['Plan de Match','Le plan de la journée de chaque employé — tâches, véhicule, travaux du jour'],stats:['Stats','Heures de l’équipe, bons de travail, stock — par semaine'],facturation:['Facturation','Depuis ton fichier Excel — ODT, prix, écarts. PO manquant sur '+poManquant+' dossier(s).'],communication:['Communication d’équipe','Bientôt'],logistique:['Logistique','Bons de livraison et sorties d’inventaire — les mêmes que SA Platform et sa-terrain'],stock:['Stock','Inventaire de l’entrepôt — quantités, seuils d’alerte, prix, entrées et sorties'],flotte:['Flotte','Véhicules de l’entreprise et à qui ils sont assignés'],hivernage:['Hivernage','Rapports de pré-hivernage par site — constats, travaux prévus, suivi']};
+    carte:['Carte des sites','Sites et techniciens, d’après les punchs GPS'],sondages:['Sondages clients','Résultats de satisfaction — lecture seule'],planning:['Planning équipe','Qui fait quoi cette semaine — lecture seule'],temps:['Temps · Paie','Feuilles de temps de l’équipe — corriger, ajouter, approuver, sortir la paie'],comptes:['Comptes','Employés, rôles, droits, statut et mots de passe — partagés avec SA Platform et sa-terrain'],planmatch:['Plan de Match','Le plan de la journée de chaque employé — tâches, véhicule, travaux du jour'],stats:['Stats','Heures de l’équipe, bons de travail, stock — par semaine'],facturation:['Facturation','Depuis ton fichier Excel — ODT, prix, écarts. PO manquant sur '+poManquant+' dossier(s).'],communication:['Communication d’équipe','Bientôt'],logistique:['Logistique','Bons de livraison et sorties d’inventaire — les mêmes que SA Platform et sa-terrain'],outils:['Outils · QR','Outils étiquetés, qui les a en main, emplacements de l’entrepôt et du bureau, étiquettes QR'],stock:['Stock','Inventaire de l’entrepôt — quantités, seuils d’alerte, prix, entrées et sorties'],flotte:['Flotte','Véhicules de l’entreprise et à qui ils sont assignés'],hivernage:['Hivernage','Rapports de pré-hivernage par site — constats, travaux prévus, suivi']};
   var soonName={communication:'Communication d’équipe'};
   var qq=st.q.trim().toLowerCase();
   var results=qq.length<2?[]:D.sites.filter(function(s){return(s.nom+s.ville+s.contrat).toLowerCase().indexOf(qq)>=0;}).slice(0,5).map(function(s){return{label:s.nom,sub:s.ville+' · '+self.T(s.type).court,go:function(){self.go('inspections',{inspSite:s.id,inspKey:null});}};})
@@ -1012,7 +1131,7 @@ Comp.prototype.vals=function(){
     exportMsg:function(){self.flash('Export PDF : bientôt');},
     opsFilters:opsFilters,dossiers:dossiers,newDossier:function(){self.openDlg({type:'Bon de travail'});},noDossier:dossiers.length===0,
     nouveaux:nouveaux,siteTypeOptions:siteTypeOptions,siteType:stype,onSiteType:function(e){self.setState({siteType:e.target.value});},siteRows:siteRows,siteCount:siteRows.length,noNouveaux:nouveaux.length===0},
-    this.tempsVals(punchRows),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals(),this.stockVals());
+    this.tempsVals(punchRows),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals(),this.stockVals(),this.outilsVals());
 };
 Comp.prototype.update=function(){if(!this._host)return;SARender(document.getElementById('tpl'),this._host,this.vals());this.syncMap();var el=this.rootRef.current;if(el)el.style.setProperty('--sa-row','10px');};
 Comp.prototype.mount=function(host){var self=this;this._host=host;this.update();

@@ -401,6 +401,49 @@ SE=WRAP('seOpen','seCloseBg',DLGHEAD('seTitle','seClose')
   +'<div class="dialog-actions" style="margin-top:0;flex-wrap:wrap">'+IF('seCanDel',BTNX('btn-secondary','seDel','{{ seDelLbl }}'))+'<span style="flex:1"></span>'+BTNX('btn-secondary','seClose','Fermer')+BTNX('btn-primary','seSave','{{ seSaveLbl }}')+'</div>')
 M=M.rstrip()+'\n'+SE
 
+# ---------- OUTILS · QR + EMPLACEMENTS + CONFIGURATION ----------
+OT_LIST=IF('otOutils','<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+SEG('outFilters')+'<input class="input" type="search" placeholder="Rechercher (nom, repérage, détenteur)…" value="{{ outQ }}" onInput="{{ onOutQ }}" style="max-width:300px"><span style="flex:1"></span>'
+  +BTNX('btn-secondary','oPrintAll','Imprimer les étiquettes')+'<button class="btn btn-primary" onClick="{{ oNew }}" style="gap:8px"><sa-i n="plus" s="17"></sa-i>Nouvel outil</button></div>'
+  '<sc-if value="{{ oNone }}"><div style="font-size:15px;border:1px dashed var(--color-text);padding:14px">Aucun outil pour ce filtre.</div></sc-if>'
+  +CARD('<table class="table" style="font-size:14px"><thead><tr>'+TH%('padding-left:18px','Outil')+TH%('','Repérage')+TH%('','Catégorie')+TH%('','État')+TH%('','Emplacement')+TH%('','')+'</tr></thead><tbody>'
+  '<sc-for list="{{ oRows }}" as="r"><tr><td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px;font-weight:600">{{ r.nom }}</td>'+TD%('font-family:monospace','{{ r.rep }}')+TD%('','{{ r.cat }}')+TD%('font-weight:{{ r.fw }}','{{ r.etat }}')+TD%('','{{ r.emp }}')
+  +'<td style="padding:4px 18px 4px 8px;text-align:right"><button class="btn btn-secondary" onClick="{{ r.open }}">Ouvrir</button></td></tr></sc-for></tbody></table>','overflow-x:auto'))
+OT_EMP=IF('otEmp','<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="font-size:14px">Chaque étagère a son étiquette QR : scannée sur le terrain, elle montre ce qui devrait s’y trouver.</span><span style="flex:1"></span>'
+  +BTNX('btn-secondary','empPrintAll','Imprimer toutes les étiquettes')+'<button class="btn btn-primary" onClick="{{ empNew }}" style="gap:8px"><sa-i n="plus" s="17"></sa-i>Nouvel emplacement</button></div>'
+  '<sc-if value="{{ empSans }}"><div role="status" style="padding:10px 14px;border:1px dashed var(--color-text)">{{ empSans }}</div></sc-if>'
+  '<sc-for list="{{ empGroups }}" as="g">'+CARD('<div style="padding:10px 18px;border-bottom:1px solid var(--color-divider);font:600 20px var(--font-heading)">{{ g.bat }}</div><table class="table" style="font-size:14px"><tbody>'
+  '<sc-for list="{{ g.rows }}" as="e"><tr><td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px"><div style="font-weight:600">{{ e.nom }}</div><div style="font-size:12px">{{ e.zone }}</div></td>'+TD%('font-family:monospace','{{ e.id }}')+TD%('','{{ e.n }}')+TD%('font-size:13px','{{ e.items }}')
+  +'<td style="padding:4px 18px 4px 8px;text-align:right;white-space:nowrap"><button class="btn btn-ghost" onClick="{{ e.print }}">Étiquette</button><button class="btn btn-secondary" onClick="{{ e.edit }}">Modifier</button></td></tr></sc-for></tbody></table>','overflow-x:auto')+'</sc-for>')
+CFGLIST=lambda title,lst,addfn,cols:CARD('<div style="padding:10px 18px;border-bottom:1px solid var(--color-divider);display:flex;align-items:center;gap:10px"><span style="font:600 20px var(--font-heading);flex:1">%s</span><button class="btn btn-ghost" onClick="{{ %s }}">+ Ajouter</button></div><table class="table" style="font-size:14px"><tbody><sc-for list="{{ %s }}" as="c"><tr>%s<td style="padding:4px 18px 4px 8px;text-align:right"><button class="btn btn-secondary" onClick="{{ c.edit }}">Modifier</button></td></tr></sc-for></tbody></table>'%(title,addfn,lst,cols))
+OT_CFG=IF('otCfg','<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:18px;align-items:start">'
+  +CFGLIST('Catégories d’outils','cfgCats','catNew','<td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px;width:30px">{{ c.icon }}</td>'+TD%('font-weight:600','{{ c.label }}')+TD%('','{{ c.n }}'))
+  +CFGLIST('Préfixes de repérage','cfgPres','preNew','<td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px;font-family:monospace;font-weight:700">{{ c.id }}</td>'+TD%('','{{ c.label }}')+TD%('','{{ c.n }}'))
+  +CARD('<div style="padding:14px 18px;display:flex;flex-direction:column;gap:10px"><span style="font:600 20px var(--font-heading)">Préfixe QR global</span>'+FL('Préfixe',INP('qrIn','onQrIn','text',' aria-label="Préfixe QR"'))+'<div style="font-size:13px;font-family:monospace">{{ qrFmt }}</div>'+BTNX('btn-primary','qrSave','Enregistrer le préfixe').replace('style="white-space:nowrap"','style="white-space:nowrap;align-self:flex-start"')+'</div>')
+  +'</div>')
+OUTSCR=('<sc-if value="{{ isOutils }}"><div style="display:flex;flex-direction:column;gap:14px">'+SEG('outTabs')
+  +'<sc-if value="{{ outLoading }}"><div>Chargement…</div></sc-if><sc-if value="{{ outErr }}"><div role="alert" style="padding:10px 14px;border:2px solid var(--color-accent-900)">{{ outErr }}</div></sc-if>'
+  +OT_LIST+OT_EMP+OT_CFG+'</div></sc-if>\n')
+bs=block(M,'isStats')
+if bs: M=M.replace(bs,bs+OUTSCR,1)
+else: print('!! ancre isStats (Outils)')
+TE=WRAP('teOpen','teCloseBg',DLGHEAD('teTitle','teClose')
+  +IF('teHasEtat','<div style="padding:8px 12px;border:1px solid var(--color-text);font-weight:600">{{ teEtat }}</div>')
+  +G2(G2(FL('Préfixe',SEL('tePres','onTePre')),FL('Numéro',INP('teNum','onTeNum'))),FL('Catégorie',SEL('teCats','onTeCat')))
+  +FL('Nom de l’outil',INP('teNom','onTeNom'))+FL('Emplacement',SEL('teEmps','onTeEmp'))+FL('Notes',TXT('teNotes','onTeNotes',''))
+  +FL('Photos','<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><sc-for list="{{ tePhotos }}" as="p"><span style="display:flex;align-items:center;gap:4px;border:1px solid var(--color-divider);padding:2px 4px 2px 8px;font-size:13px"><button onClick="{{ p.open }}" style="all:unset;cursor:pointer;text-decoration:underline">{{ p.name }}</button><button class="btn btn-ghost btn-icon" onClick="{{ p.del }}" aria-label="Retirer"><sa-i n="x" s="16"></sa-i></button></span></sc-for><button class="btn btn-ghost" onClick="{{ teAddPhoto }}" style="gap:6px"><sa-i n="camera" s="16"></sa-i>Ajouter une photo</button></div>')
+  +'<div style="font-size:13px">Repérage <b style="font-family:monospace">{{ teRep }}</b> · code QR : <span style="font-family:monospace;word-break:break-all">{{ tePayload }}</span></div>'
+  +IF('teHasMoves','<div style="border:1px solid var(--color-divider);padding:10px 12px;display:flex;flex-direction:column;gap:6px"><b>Historique récent</b><sc-for list="{{ teMoves }}" as="m"><div><div style="font-weight:600;font-size:14px">{{ m.txt }}</div><div style="font-size:12px">{{ m.sub }}</div></div></sc-for></div>')
+  +'<div class="dialog-actions" style="margin-top:0;flex-wrap:wrap">'+IF('teCanDel',BTNX('btn-secondary','teDel','{{ teDelLbl }}'))+BTNX('btn-secondary','tePrint','Imprimer l’étiquette')
+  +IF('teCanMaint',BTNX('btn-secondary','teMaint','{{ teMaintLbl }}'))+IF('teCanForce',BTNX('btn-secondary','teForce','Forcer le retour'))+'<span style="flex:1"></span>'+BTNX('btn-secondary','teClose','Fermer')+BTNX('btn-primary','teSave','{{ teSaveLbl }}')+'</div>')
+KE=WRAP('keOpen','keCloseBg',DLGHEAD('keTitle','keClose')
+  +IF('keCat',G2(FL('Icône (emoji)',INP('kIcon','onKIcon')),FL('Nom de la catégorie',INP('kLabel','onKLabel'))))
+  +IF('kePre',IF('keNew',FL('Préfixe (lettres)',INP('kId','onKId','text',' autocapitalize="characters" placeholder="ex. PER"')))+IF('keOld','<div style="font:700 18px monospace">{{ keCode }}-</div>')
+    +FL('Description',INP('kLabel','onKLabel'))+G2(FL('Prochain numéro',INP('kNext','onKNext','number',' min="1"')),FL('Pour',SEL('kScopes','onKScope'))))
+  +IF('keEmp',IF('keNew',FL('Code de repérage',INP('kId','onKId','text',' autocapitalize="characters" placeholder="ex. EMP-C1"')))+IF('keOld','<div style="font:700 18px monospace">{{ keCode }}</div>')
+    +G2(FL('Bâtiment',SEL('kBats','onKBat')),FL('Zone',INP('kZone','onKZone')))+FL('Étagère / local',INP('kNom','onKNom')))
+  +'<div class="dialog-actions" style="margin-top:0;flex-wrap:wrap">'+IF('keCanDel',BTNX('btn-secondary','keDel','{{ keDelLbl }}'))+'<span style="flex:1"></span>'+BTNX('btn-secondary','keClose','Fermer')+BTNX('btn-primary','keSave','{{ keSaveLbl }}')+'</div>')
+M=M.rstrip()+'\n'+TE+KE
+
 
 # Monitoring : lien vers la photo jointe à une demande du terrain (chargée seulement au clic)
 rep('<span style="font-size:12px">{{ f.who }} · {{ f.site }}</span>','<span style="font-size:12px">{{ f.who }} · {{ f.site }}</span><sc-if value="{{ f.hasPhoto }}"><button onClick="{{ f.openPhoto }}" style="all:unset;cursor:pointer;font-size:12px;text-decoration:underline;width:fit-content">Voir la photo jointe</button></sc-if>')
@@ -420,6 +463,8 @@ icons=open(os.path.join(SRC,'design')+'/sa-icons.js',encoding='utf-8').read()
 LF=os.path.join(SRC,'vendor','leaflet-1.9.4')
 lcss=open(os.path.join(LF,'leaflet.css'),encoding='utf-8').read(); ljs=open(os.path.join(LF,'leaflet.js'),encoding='utf-8').read()
 assert '</script' not in ljs.lower() and '</style' not in lcss.lower()
+# Générateur QR (qrcodejs, MIT — la même bibliothèque que SA Platform) pour les étiquettes d'outils et d'emplacements
+qjs=open(os.path.join(SRC,'vendor','qrcodejs','qrcode.min.js'),encoding='utf-8').read(); assert '</script' not in qjs.lower()
 rt=open(os.path.join(HERE,'runtime.js'),encoding='utf-8').read(); app=open(os.path.join(HERE,'app.js'),encoding='utf-8').read()
 html='''<!DOCTYPE html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -445,6 +490,7 @@ button{font-family:inherit}a{color:var(--color-accent-700)}
 <template id="tpl">'''+M+'''</template>
 <style>'''+lcss+'''</style>
 <script>'''+ljs+'''</script>
+<script>'''+qjs+'''</script>
 <script>'''+icons+'''</script><script>'''+rt+'''</script><script>'''+app+'''</script>
 </body></html>'''
 open(os.path.join(OUT,'admin.html'),'w',encoding='utf-8').write(html)
