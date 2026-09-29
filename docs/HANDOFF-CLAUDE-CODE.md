@@ -68,6 +68,14 @@ Les deux apps utilisent la **clé publique anon** de Supabase, en clair dans le 
 
 `sa-admin` vérifie `role==='admin'||'superviseur'` uniquement côté client, au login. **Un utilisateur qui contourne le login peut écrire directement via l'API REST publique.** Si ce risque est jugé important, la vraie solution est des Postgres Functions avec `security definer` qui vérifient le rôle serveur-side — pas fait aujourd'hui, faute de temps.
 
+### Mise à jour du 29/09/2026 — `SECURISATION_ETAPE2.sql` (appliqué en production)
+
+- **Constat :** l'étape 1 voulait rendre `comptes` illisible, mais l'ancienne politique `acces_equipe` (ALL, `true`) n'avait jamais été retirée. La table restait lisible et modifiable avec la clé publique : les 9 hachés `mdp_hash` étaient téléchargeables, et on pouvait y écrire un haché connu pour prendre un compte.
+- **Correctif :** les hachés sont dans `comptes_secrets` (RLS sans politique, aucun droit pour anon). Un déclencheur vide `mdp`/`mdp_hash` à chaque écriture dans `comptes`. `verifier_connexion`, `changer_mdp` et `reinitialiser_mdp` lisent `comptes_secrets`, avec la même signature. Aucune app n'a été modifiée pour ça.
+- **Vérifié en production :** 0 secret dans `comptes`, 9/9 hachés migrés, connexion OK, l'écriture d'un haché via l'API est sans effet, un vieux cache d'`index.html` n'annule plus un changement de mot de passe.
+- **`index.html` :** le repli de connexion « local » est supprimé. Il acceptait `admin`/`admin1234` quand le serveur ne répondait pas.
+- **Toujours ouvert (étape 3) :** la clé publique permet encore de modifier `role`/`droits` d'un compte ou d'en créer un. Il faut maintenant un vrai mot de passe pour en profiter, mais la vraie solution reste une authentification serveur (Supabase Auth, ou des fonctions `security definer` qui vérifient l'appelant).
+
 ## 6. Décision explicite de l'utilisateur, à respecter
 
 > « les punchs à valider restent dans SA Platform... une fois validé... on aura juste une mise à jour à faire »

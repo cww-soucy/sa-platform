@@ -2238,12 +2238,12 @@ var DL = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
 var LS = 'sa_plat_';
 
 var COMPTES = [
-  {id:'admin', mdp:'admin1234', nom:'Administrateur', prenom:'', dept:'Admin', email:'admin@soucyaquatik.com', tel:'', role:'admin'},
-  {id:'gmorin', mdp:'1234', nom:'Morin', prenom:'Gabriel', dept:'Terrain', email:'gmorin@soucyaquatik.com', tel:'', role:'employe'},
-  {id:'mbedard', mdp:'1234', nom:'Bédard', prenom:'Mathis', dept:'Terrain', email:'mbedard@soucyaquatik.com', tel:'', role:'employe'},
-  {id:'spomerleau', mdp:'1234', nom:'Pomerleau', prenom:'Samuel', dept:'Terrain', email:'spomerleau@soucyaquatik.com', tel:'', role:'employe'},
-  {id:'cndiaye', mdp:'1234', nom:'Ndiaye', prenom:'Cheikh', dept:'Terrain', email:'cndiaye@soucyaquatik.com', tel:'', role:'employe'},
-  {id:'cwweil', mdp:'1234', nom:'Weil', prenom:'Charles-William', dept:'Maintenance', email:'cwweil@soucyaquatik.com', tel:'418-781-0620', role:'employe'},
+  {id:'admin', nom:'Administrateur', prenom:'', dept:'Admin', email:'admin@soucyaquatik.com', tel:'', role:'admin'},
+  {id:'gmorin', nom:'Morin', prenom:'Gabriel', dept:'Terrain', email:'gmorin@soucyaquatik.com', tel:'', role:'employe'},
+  {id:'mbedard', nom:'Bédard', prenom:'Mathis', dept:'Terrain', email:'mbedard@soucyaquatik.com', tel:'', role:'employe'},
+  {id:'spomerleau', nom:'Pomerleau', prenom:'Samuel', dept:'Terrain', email:'spomerleau@soucyaquatik.com', tel:'', role:'employe'},
+  {id:'cndiaye', nom:'Ndiaye', prenom:'Cheikh', dept:'Terrain', email:'cndiaye@soucyaquatik.com', tel:'', role:'employe'},
+  {id:'cwweil', nom:'Weil', prenom:'Charles-William', dept:'Maintenance', email:'cwweil@soucyaquatik.com', tel:'418-781-0620', role:'employe'},
 ];
 
 // ═══════════════════════════════════════════════════════
@@ -4160,9 +4160,10 @@ function doLogin(){
     document.getElementById('loginErr').textContent='Vérification…';
     sb.rpc('verifier_connexion',{p_id:user,p_mdp:pass}).then(function(res){
       if(res.error){
-        // La fonction sécurisée n'existe pas encore (script SQL non exécuté) → repli local
-        console.warn('[SA SÉCURITÉ] verifier_connexion indisponible, repli local :', res.error.message);
-        syncPull('comptes',function(){doLoginCheck(user,pass);});
+        // ➕ SÉCURITÉ : plus de repli local. Il comparait le mot de passe à la liste COMPTES codée en dur
+        // (admin/admin1234…) dès que le serveur ne répondait pas — ex. réseau coupé → session admin.
+        console.warn('[SA SÉCURITÉ] verifier_connexion en échec :', res.error.message);
+        document.getElementById('loginErr').textContent='Réseau indisponible — réessayez dans un instant.';
         return;
       }
       var rows=res.data||[];
@@ -4181,7 +4182,8 @@ function doLogin(){
       ouvrirSession(propre, !!compte.doit_changer_mdp);
     });
   }else{
-    doLoginCheck(user,pass);
+    // ➕ SÉCURITÉ : jamais de vérification locale (un vieux cache peut contenir d'anciens mots de passe en clair)
+    document.getElementById('loginErr').textContent='Connexion au serveur en cours — réessayez dans un instant.';
   }
 }
 // Ouvre la session une fois l'identité confirmée

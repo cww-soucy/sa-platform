@@ -1,4 +1,9 @@
 // SA Platform — Service Worker
+// v77 — Sécurité connexion : plus aucun repli « local » quand le serveur ne répond pas. Ce repli comparait le
+// mot de passe à la liste COMPTES codée en dur (admin/admin1234…) ou à un vieux cache contenant d'anciens mots
+// de passe en clair — un réseau coupé suffisait pour ouvrir une session. Les mots de passe par défaut sont
+// retirés du fichier. Côté base (SECURISATION_ETAPE2.sql) : les hachés quittent la table comptes (lisible
+// par la clé publique) pour comptes_secrets, fermée à l'API. Aucune autre fonction touchée.
 // v73 — Correctif CRITIQUE lié au groupeId introduit en v72 : la colonne correspondante n'existait pas
 // encore côté serveur (Supabase), donc CHAQUE sauvegarde d'un WO multi-jours était rejetée par le serveur
 // (colonne inconnue) — d'où l'impression que "ça ne marche plus" et, très probablement, des tentatives
@@ -122,7 +127,7 @@
 // (v59 — Mise en page des fichiers Excel refaite d'après les maquettes validées avant codage. …)
 // (v58 … v49 — voir historique précédent, inchangé.)
 
-var CACHE_NAME = 'sa-platform-v76';
+var CACHE_NAME = 'sa-platform-v77';
 
 // Installation : s'activer tout de suite sans attendre
 self.addEventListener('install', function(event) {
