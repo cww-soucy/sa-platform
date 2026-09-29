@@ -198,6 +198,50 @@ HJ=WRAP('hjOpen','hjCloseBg',DLGHEAD('hjTitle','hjClose')+IF('hjLoading','<div>C
   +IF('hpClosed','<div class="dialog-actions" style="margin-top:0;flex-wrap:wrap">'+BTNX('btn-secondary','hjAdd','Ajouter un punch')+IF('hjCanApprove',BTNX('btn-primary','hjApprove','Approuver la journée'))+'</div>'))
 M=M.rstrip()+'\n'+HJ
 
+rep('<span>Nouveau créneau ou série</span></button>','<span>Nouveau bon, créneau ou tâche</span></button>',1)
+M=M.replace('<button class="btn btn-primary blueprint" onClick="{{ openDlg }}"','<button class="btn btn-secondary" onClick="{{ pPrint }}" style="white-space:nowrap">Imprimer la semaine</button><button class="btn btn-primary blueprint" onClick="{{ openDlg }}"',1)
+# ---------- ÉDITEUR COMPLET : bon de travail · créneau · tâche planning ----------
+CHK=lambda lst,lab: ('<div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ %s }}" as="c"><button onClick="{{ c.go }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--color-divider)">'
+  '<span style="width:16px;height:16px;border:1.5px solid var(--color-text);background:{{ c.box }};color:var(--color-bg);display:flex;align-items:center;justify-content:center"><sc-if value="{{ c.on }}"><sa-i n="check" s="12" w="3"></sa-i></sc-if></span>{{ c.%s }}</button></sc-for></div>')%(lst,lab)
+CBX=lambda val,fn,txt:'<label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" checked="{{ %s }}" onChange="{{ %s }}">%s</label>'%(val,fn,txt)
+G2=lambda a,b:'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'+a+b+'</div>'
+INP=lambda val,fn,t='text',extra='':'<input class="input" type="%s" value="{{ %s }}" onInput="{{ %s }}"%s>'%(t,val,fn,extra)
+TXT=lambda val,fn,ph:'<textarea class="input" value="{{ %s }}" onInput="{{ %s }}" placeholder="%s" style="min-height:70px"></textarea>'%(val,fn,ph)
+WHEN=(IF('feNew',FL('Quand ?',SEG('whenModes'))
+   +IF('whenJour',FL('Date',INP('wDebut','onWDebut','date')))
+   +IF('whenPlage',G2(FL('Du',INP('wDebut','onWDebut','date')),FL('Au',INP('wFin','onWFin','date'))))
+   +IF('whenRec',G2(FL('Première date',INP('wDebut','onWDebut','date')),FL('Jusqu’au',INP('wFin','onWFin','date')))+SEG('recOpts')
+       +'<div style="display:flex;gap:6px"><sc-for list="{{ dayToggles }}" as="d"><button onClick="{{ d.go }}" style="all:unset;cursor:pointer;width:34px;height:34px;display:flex;align-items:center;justify-content:center;border:1px solid var(--color-divider);font-weight:600;background:{{ d.bg }};color:{{ d.fg }}">{{ d.l }}</button></sc-for></div>')
+   +'<div style="font-size:13px">{{ whenCount }}</div>'))
+FEDLG=('<template data-sc="if" value="{{ feOpen }}"><div class="dialog-backdrop" onClick="{{ feCloseBg }}" style="z-index:60"><div class="dialog" onClick="{{ stop }}" style="width:min(720px,100%);background:var(--color-bg);max-height:calc(100vh - 40px);overflow-y:auto;gap:14px;padding:22px 24px;border:1px solid var(--color-text)">'
+  +DLGHEAD('feTitle','feClose')+IF('feLoading','<div>Chargement…</div>')
+  +IF('feReady',IF('feNew',SEG('feKinds'))
+    +'<datalist id="saSites"><sc-for list="{{ sitesList }}" as="s"><option value="{{ s.v }}"></option></sc-for></datalist>'
+    +IF('isWO',G2(FL('Client','<input class="input" list="saSites" value="{{ fClient }}" onInput="{{ onClient }}" placeholder="Nom du client ou du site">'),FL('Site / adresse',INP('fSite','onSite')))
+       +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">'+FL('Type',SEL('fTypes','onType'))+FL('Priorité',SEL('fPrios','onPrio'))+FL('Statut',SEL('fStats','onStat'))+'</div>')
+    +IF('isPlanF',G2(FL('Client / site','<input class="input" list="saSites" value="{{ fClient }}" onInput="{{ onClient }}">'),FL('Adresse',INP('fAddr','onAddr')))
+       +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">'+FL('Heure',INP('fHeure','onHeure','time'))+FL('Type',SEL('fTypes','onType'))+FL('Statut',SEL('fStats','onStat'))+'</div>'
+       +IF('hasWoLinks',FL('Bon de travail lié (optionnel)','<select class="input" onChange="{{ onWo }}"><option value="">— Aucun —</option><sc-for list="{{ fWo }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></sc-for></select>')))
+    +IF('isPT',G2(FL('Titre',INP('fTitre','onTitre')),FL('Site (optionnel)','<input class="input" list="saSites" value="{{ fSiteNom }}" onInput="{{ onSiteNom }}">'))
+       +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">'+FL('Heure début',INP('fHD','onHD','time'))+FL('Heure fin',INP('fHF','onHF','time'))+FL('Statut',SEL('fStats','onStat'))+'</div>')
+    +WHEN
+    +IF('feEditDate',IF('isPT',G2(FL('Du',INP('fDD','onDD','date')),FL('Au',INP('fDF','onDF','date'))))+IF('isNotPT',FL('Date',INP('fDate','onDate','date'))))
+    +FL('Technicien(s)',CHK('fTechs','l'))+IF('showIndep','<button class="btn btn-ghost" onClick="{{ toggleIndep }}" style="align-self:flex-start">{{ indepLbl }} (changer)</button>')
+    +FL('Description / travaux à effectuer',TXT('fDescr','onDescr','Décrivez les travaux…'))
+    +IF('isWO',FL('Liste de tâches','<div style="display:flex;flex-direction:column;gap:4px"><sc-for list="{{ fTasks }}" as="t"><div style="display:flex;align-items:center;gap:8px">'
+        '<button onClick="{{ t.toggle }}" aria-label="Cocher" style="all:unset;cursor:pointer;width:20px;height:20px;border:1.5px solid var(--color-text);background:{{ t.box }};color:var(--color-bg);display:flex;align-items:center;justify-content:center"><sc-if value="{{ t.on }}"><sa-i n="check" s="14" w="3"></sa-i></sc-if></button>'
+        '<span style="flex:1">{{ t.label }}</span><button class="btn btn-ghost btn-icon" onClick="{{ t.del }}" aria-label="Retirer"><sa-i n="x" s="16"></sa-i></button></div></sc-for>'
+        '<div style="display:flex;gap:8px"><input class="input" value="{{ taskIn }}" onInput="{{ onTaskIn }}" placeholder="Ajouter une tâche…" style="flex:1"><button class="btn btn-secondary" onClick="{{ addTask }}">Ajouter</button></div></div>')
+       +FL('Photos / documents','<div style="display:flex;flex-direction:column;gap:4px"><sc-for list="{{ fFiles }}" as="x"><div style="display:flex;align-items:center;gap:8px"><button onClick="{{ x.open }}" style="all:unset;cursor:pointer;text-decoration:underline;flex:1">{{ x.name }}</button><button class="btn btn-ghost btn-icon" onClick="{{ x.del }}" aria-label="Retirer"><sa-i n="x" s="16"></sa-i></button></div></sc-for>'
+        '<button class="btn btn-secondary" onClick="{{ addFile }}" style="align-self:flex-start">Joindre une photo ou un PDF</button></div>')
+       +FL('Notes techniques',TXT('fNotes','onNotes','Notes, références équipements…'))
+       +FL('Exigences obligatoires au punch',CBX('fReqB','onReqB','Relevés de bassin (chlore, pH…)')+CBX('fReqP','onReqP','Photo')+CBX('fReqN','onReqN','Notes')))
+    +IF('isPlanF',FL('Notes',TXT('fNotes','onNotes','')))
+    +'<div class="dialog-actions" style="margin-top:0;flex-wrap:wrap">'+IF('feCanDel',BTNX('btn-secondary','feDel1','{{ feDel1Lbl }}'))+IF('feHasSerie',BTNX('btn-secondary','feDel2','{{ feDel2Lbl }}'))
+      +IF('canPrint',BTNX('btn-secondary','fePrint','Imprimer'))+'<span style="flex:1"></span>'+BTNX('btn-secondary','feClose','Annuler')+BTNX('btn-primary','feSave','{{ feSaveLbl }}')+'</div>')
+  +'</div></div></template>\n')
+M=M.rstrip()+'\n'+FEDLG
+
 # Monitoring : lien vers la photo jointe à une demande du terrain (chargée seulement au clic)
 rep('<span style="font-size:12px">{{ f.who }} · {{ f.site }}</span>','<span style="font-size:12px">{{ f.who }} · {{ f.site }}</span><sc-if value="{{ f.hasPhoto }}"><button onClick="{{ f.openPhoto }}" style="all:unset;cursor:pointer;font-size:12px;text-decoration:underline;width:fit-content">Voir la photo jointe</button></sc-if>')
 # Carte : la maquette affichait une <iframe src="SA Carte.html"> (fichier de démo jamais déployé : en production,

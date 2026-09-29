@@ -102,6 +102,7 @@ Une longue session de débogage a eu lieu ce matin : des doublons de WO/tâches 
 - [x] Photo dans une demande — 29/09 : colonne `demandes.photo` (+ `has_photo`), lien « Voir la photo jointe » dans le Monitoring de sa-admin
 
 ### Priorité 3 — modules absents dans sa-admin
+- [x] Bons de travail · créneaux · tâches planning (29/09) : éditeur complet (tous les champs de SA Platform : client/site, type, priorité, statut ouvert/en cours/complété/facturé, plusieurs techniciens, description, liste de tâches, notes, exigences au punch, pièces jointes ; créneau : heure, adresse, WO lié ; tâche : période, heures, statut, copies indépendantes), création sur un jour / une période / une récurrence, suppression (ou série à venir), impression du bon et de la semaine de planning, journal d'audit
 - [x] Stats (29/09) : heures de l'équipe par semaine, punchs à valider, bons de travail, stock sous le seuil, rapport d'équipe (copier / .txt)
 - [ ] **Communication d'équipe** (infolettre du lundi) — nature différente des autres écrans (rédaction de contenu, pas affichage de données), mérite sa propre conception
 - [ ] Gestion des comptes et des droits — créer/désactiver un employé, changer un mot de passe, gérer les rôles : tout ça reste dans SA Platform, sa-admin n'a aucun écran pour ça
