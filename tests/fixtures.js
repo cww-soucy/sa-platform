@@ -54,6 +54,12 @@ function base() {
         items_liv: [{ item: 'Chlore liquide 20 L', qteSortie: '4', unite: 'bidon', qteLivree: '4', statut: '' }], items_ret: [], photos: [], created_by: 'cwweil' },
       { id: 'bl-b', no_bon: 'SA-20260901-222', client: 'Ancien client', status: 'livre', technicien: 'Kaël Test', items_liv: [], photos: [] },
     ],
+    flotte: [{ id: 'v1', nom: 'Dodge Promaster', plaque: 'ABC 123' }],
+    plan_match: [{ id: 'pm1', emp: 'kael', date: t, vehicule: 'Dodge Promaster', superviseur: 'Bureau SA', resume: 'Tournée Québec', obstacles: 'Valve grippée', bonscoups: '', status: null, updated_at: '2026-01-01T00:00:00Z',
+      sections: [{ id: 's1', title: 'Piscine Alpha', color: 'vert', note: 'Attention valve fermée', tasks: [
+        { id: 't1', label: 'Tests d’eau', est: '15', done: true, status: '✅ Fait', notes: '', photos: [] },
+        { id: 't2', label: 'Nettoyage', est: '45', done: false, status: 'À faire', notes: '', photos: [] },
+        { id: 't3', label: 'Registre', est: '', done: false, status: 'À faire', notes: '', photos: [] }] }] }],
     rapports_hivernage: [{ id: 'hv-old', site_id: '2', site_nom: 'Piscine Beta', status: 'brouillon', date_inspection: t, technicien: 'Kaël Test' }],
   };
 }

@@ -246,5 +246,20 @@
     "details",
     "ip_hint",
     "appareil"
+  ],
+  "plan_match": [
+    "id",
+    "emp",
+    "date",
+    "vehicule",
+    "superviseur",
+    "resume",
+    "sections",
+    "obstacles",
+    "bonscoups",
+    "status",
+    "created_by",
+    "created_at",
+    "updated_at"
   ]
 }

@@ -242,6 +242,49 @@ FEDLG=('<template data-sc="if" value="{{ feOpen }}"><div class="dialog-backdrop"
   +'</div></div></template>\n')
 M=M.rstrip()+'\n'+FEDLG
 
+# ---------- PLAN DE MATCH ----------
+PMMSCR=('<sc-if value="{{ isPlanMatch }}"><div style="display:flex;flex-direction:column;gap:18px">'
+  '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><button class="btn btn-secondary btn-icon" aria-label="Jour précédent" onClick="{{ pmmPrev }}"><sa-i n="left" s="18"></sa-i></button>'
+  '<span style="font:600 20px var(--font-heading);padding:0 8px">{{ pmmLabel }}</span><button class="btn btn-secondary btn-icon" aria-label="Jour suivant" onClick="{{ pmmNext }}"><sa-i n="right" s="18"></sa-i></button>'
+  '<button class="btn btn-ghost" onClick="{{ pmmToday }}">Aujourd’hui</button><input class="input" type="date" value="{{ pmmDateVal }}" onChange="{{ onPmmDate }}" style="width:auto">'
+  '<span style="flex:1"></span><span style="font-size:14px">{{ pmmCount }}</span><button class="btn btn-secondary" onClick="{{ pmmPrint }}">Imprimer la journée de l’équipe</button><button class="btn btn-primary" onClick="{{ pmmNew }}">Nouveau Plan de Match</button></div>'
+  '<sc-if value="{{ pmmLoading }}"><div>Chargement…</div></sc-if><sc-if value="{{ pmmErrTxt }}"><div role="alert" style="padding:10px 14px;border:2px solid var(--color-accent-900)">{{ pmmErrTxt }}</div></sc-if>'
+  '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:14px"><sc-for list="{{ pmmCards }}" as="c">'
+  +CARD('<div style="padding:14px 18px;display:flex;flex-direction:column;gap:8px">'
+    '<div style="display:flex;align-items:center;gap:10px"><b style="font:600 20px var(--font-heading);flex:1">{{ c.nom }}</b><button class="btn btn-secondary" onClick="{{ c.edit }}" style="white-space:nowrap">{{ c.editLbl }}</button></div>'
+    '<sc-if value="{{ c.noPlan }}"><div style="font-size:14px">Aucun plan pour cette journée.</div></sc-if>'
+    '<sc-if value="{{ c.hasPlan }}"><div style="font-size:13px">{{ c.meta }}</div><sc-if value="{{ c.resume }}"><div style="font-size:14px">{{ c.resume }}</div></sc-if>'
+    '<div style="display:flex;align-items:center;gap:10px"><span style="flex:1;height:8px;background:var(--color-accent-100);position:relative"><span style="position:absolute;left:0;top:0;bottom:0;width:{{ c.pct }}%;background:var(--color-accent-700)"></span></span><span style="font-size:13px">{{ c.prog }}</span></div>'
+    '<sc-for list="{{ c.sections }}" as="s"><div style="display:flex;flex-direction:column"><div style="background:{{ s.bg }};color:#fff;padding:4px 10px;font:600 15px var(--font-heading)">{{ s.title }}</div>'
+    '<sc-if value="{{ s.hasNote }}"><div style="border:1px solid var(--color-accent-900);padding:4px 10px;font-size:13px">{{ s.note }}</div></sc-if>'
+    '<sc-for list="{{ s.tasks }}" as="t"><div style="display:flex;align-items:center;gap:8px;padding:5px 10px;border:1px solid var(--color-divider);border-top:0">'
+    '<span style="width:16px;height:16px;flex:none;border:1.5px solid var(--color-text);background:{{ t.box }};color:var(--color-bg);display:flex;align-items:center;justify-content:center"><sc-if value="{{ t.on }}"><sa-i n="check" s="12" w="3"></sa-i></sc-if></span>'
+    '<span style="flex:1;font-size:14px">{{ t.label }}</span><span style="font-size:12px">{{ t.etat }}</span><sc-if value="{{ t.canVal }}"><button class="btn btn-secondary" onClick="{{ t.valider }}" style="min-height:28px;padding:2px 10px">Valider</button></sc-if></div></sc-for></div></sc-for>'
+    '<sc-if value="{{ c.hasFF }}"><div style="font-size:13px"><b>Obstacles :</b> {{ c.obstacles }}<br><b>Bons coups :</b> {{ c.bonscoups }}</div></sc-if></sc-if>'
+    '<sc-if value="{{ c.hasJobs }}"><div style="font-size:13px;border-top:1px solid var(--color-divider);padding-top:6px"><b>Travaux du jour</b><sc-for list="{{ c.jobs }}" as="j"><div>{{ j.txt }} <b>{{ j.done }}</b></div></sc-for></div></sc-if>'
+    '</div>')
+  +'</sc-for></div></div></sc-if>\n')
+bs=block(M,'isStats')
+if bs: M=M.replace(bs,bs+PMMSCR,1)
+else: print('!! ancre isStats (PMM)')
+PB=WRAP('pbOpen','pbCloseBg',DLGHEAD('pbTitle','pbClose')
+  +'<datalist id="saVeh"><sc-for list="{{ vehList }}" as="v"><option value="{{ v.v }}"></option></sc-for></datalist>'
+  +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">'+FL('Date','<input class="input" type="date" value="{{ pbDate }}" onInput="{{ onPbDate }}">')+FL('Véhicule','<input class="input" list="saVeh" value="{{ pbVeh }}" onInput="{{ onPbVeh }}">')+FL('Superviseur','<input class="input" value="{{ pbSup }}" onInput="{{ onPbSup }}">')+'</div>'
+  +FL('Employé(s)',CHK('pbTechs','l'))+FL('Résumé de la journée','<input class="input" value="{{ pbRes }}" onInput="{{ onPbRes }}" placeholder="Ex. Tournée Rive-Sud, fermetures">')
+  +'<sc-for list="{{ pbSecs }}" as="s"><div style="border:1px solid var(--color-divider);border-top:4px solid {{ s.bar }};padding:10px;display:flex;flex-direction:column;gap:8px">'
+  '<div style="display:flex;gap:8px"><input class="input" value="{{ s.title }}" onInput="{{ s.onTitle }}" placeholder="Titre de la section (ex. SDC3 — ~2 h)" style="flex:1">'
+  '<select class="input" onChange="{{ s.onColor }}" style="width:auto"><sc-for list="{{ s.colors }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></sc-for></select>'
+  '<button class="btn btn-ghost btn-icon" onClick="{{ s.del }}" aria-label="Supprimer la section"><sa-i n="x" s="16"></sa-i></button></div>'
+  '<input class="input" value="{{ s.note }}" onInput="{{ s.onNote }}" placeholder="Note / alerte pour cette section (optionnelle)">'
+  '<sc-for list="{{ s.tasks }}" as="t"><div style="display:flex;gap:8px;align-items:center"><input class="input" value="{{ t.label }}" onInput="{{ t.onLabel }}" placeholder="Tâche…" style="flex:1">'
+  '<input class="input" value="{{ t.est }}" onInput="{{ t.onEst }}" placeholder="min" style="width:70px"><span style="font-size:12px;width:28px">{{ t.done }}</span><button class="btn btn-ghost btn-icon" onClick="{{ t.del }}" aria-label="Retirer la tâche"><sa-i n="x" s="16"></sa-i></button></div></sc-for>'
+  '<button class="btn btn-ghost" onClick="{{ s.addTask }}" style="align-self:flex-start">Ajouter une tâche</button></div></sc-for>'
+  +'<button class="btn btn-secondary" onClick="{{ pbAddSec }}" style="align-self:flex-start">Ajouter une section</button>'
+  +'<div style="font-size:13px">Ce que le technicien a déjà coché ou noté est conservé à l’enregistrement.</div>'
+  +'<div class="dialog-actions" style="margin-top:0;flex-wrap:wrap">'+IF('pbCanDel',BTNX('btn-secondary','pbDel','{{ pbDelLbl }}'))+'<span style="flex:1"></span>'+BTNX('btn-secondary','pbClose','Annuler')+BTNX('btn-primary','pbSave','{{ pbSaveLbl }}')+'</div>')
+M=M.rstrip()+'\n'+PB
+
+
 # Monitoring : lien vers la photo jointe à une demande du terrain (chargée seulement au clic)
 rep('<span style="font-size:12px">{{ f.who }} · {{ f.site }}</span>','<span style="font-size:12px">{{ f.who }} · {{ f.site }}</span><sc-if value="{{ f.hasPhoto }}"><button onClick="{{ f.openPhoto }}" style="all:unset;cursor:pointer;font-size:12px;text-decoration:underline;width:fit-content">Voir la photo jointe</button></sc-if>')
 # Carte : la maquette affichait une <iframe src="SA Carte.html"> (fichier de démo jamais déployé : en production,
