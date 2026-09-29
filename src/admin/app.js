@@ -26,7 +26,7 @@ var SUN={},segS=function(on){return{bg:on?'var(--color-text)':'transparent',fg:o
 
 function Comp(user){
   this.user=user;this.rootRef={current:null};this.D=null;this.ftw={};this._ftwL={};this.envois={};this.pmm={};this.loadedAt=null;this.err='';
-  this.state={mod:'monitoring',q:'',toast:null,inspSite:null,inspKey:null,inspFilter:'all',opsFilter:'Tous',opsOpen:{},siteType:'all',carteView:'geo',factFilter:'Tous',tempsTab:'semaine',tOff:0,sOff:0,fe:null,pmmDate:null,pb:null,hj:null,hp:null,paieSel:{},paieOpen:{},paieMode:'synthese',pOff:0,ed:null,sed:null,survey:null,sondKey:(function(){try{return localStorage.getItem('sa_admin_sondkey')||'';}catch(e){return '';}})(),keyIn:'',dlg:false,busy:false,f:{type:'Bon de travail',site:'',tech:'',debut:'',heure:'07:00',rec:'aucune',jours:{},fin:''}};this.pl={};this._pl={};this.sd={};this._sd={};
+  this.state={mod:'monitoring',q:'',toast:null,inspSite:null,inspKey:null,inspFilter:'all',opsFilter:'Tous',opsOpen:{},siteType:'all',carteView:'geo',factFilter:'Tous',tempsTab:'semaine',tOff:0,sOff:0,fe:null,pmmDate:null,pb:null,ce:null,hj:null,hp:null,paieSel:{},paieOpen:{},paieMode:'synthese',pOff:0,ed:null,sed:null,survey:null,sondKey:(function(){try{return localStorage.getItem('sa_admin_sondkey')||'';}catch(e){return '';}})(),keyIn:'',dlg:false,busy:false,f:{type:'Bon de travail',site:'',tech:'',debut:'',heure:'07:00',rec:'aucune',jours:{},fin:''}};this.pl={};this._pl={};this.sd={};this._sd={};
 }
 Comp.prototype.setState=function(p){this.state=Object.assign({},this.state,typeof p==='function'?p(this.state):p);this.update();};
 Comp.prototype.flash=function(t){var s=this;clearTimeout(this._tt);this.state.toast=t;this.update();this._tt=setTimeout(function(){s.state.toast=null;s.update();},2800);};
@@ -525,6 +525,63 @@ Comp.prototype.pmmVals=function(){var self=this,st=this.state,D=this.D,day=this.
     pmmDateVal:day,onPmmDate:function(e){if(e.target.value)self.setState({pmmDate:e.target.value});},pmmCards:cards,pmmLoading:this.pmm[day]===undefined||this.pmm[day]===null,pmmErrTxt:this.pmm[day]==='err'?'Plans illisibles : '+(this.pmmErr||''):'',
     pmmPrint:function(){self.printPMMDay();},pmmNew:function(){self.openPMM(null);},pmmCount:plans.length+' plan'+(plans.length>1?'s':'')+' ce jour'});};
 
+/* ═════════════ COMPTES : employés, rôles, droits, statut, mot de passe (même table que SA Platform) ═════════════ */
+var DROITS=[['plan','Plan journalier'],['ft','Feuilles de temps'],['suivi','Suivi opérations (live)'],['wo','Work Orders'],['sites','Sites & Clients'],['flotte','Flotte véhicules'],['inventaire','Inventaire / Stock'],['comptes','Gestion des comptes'],['stats','Statistiques'],['map','Carte GPS']];
+var ROLES=[['employe','Employé'],['superviseur','Superviseur'],['admin','Administrateur']];
+Comp.prototype.loadComptes=function(force){var self=this;if(!force&&this.cptes)return;this.cptes='loading';
+  get('comptes?select=id,prenom,nom,dept,email,tel,role,droits,statut,saisonnier,updated_at&order=nom.asc').then(function(r){self.cptes=r;self.update();}).catch(function(e){self.cptes='err';self.cptErr=netMsg(e);self.update();});};
+Comp.prototype.openCompte=function(id){var c=id&&Array.isArray(this.cptes)?this.cptes.filter(function(x){return x.id===id;})[0]:null;
+  var dr={};DROITS.forEach(function(d){dr[d[0]]=c?!!(c.droits&&c.droits[d[0]]):(d[0]!=='comptes');});
+  this.setState({ce:{id:c?c.id:'',isNew:!c,prenom:c?c.prenom||'':'',nom:c?c.nom||'':'',dept:c?c.dept||'':'Terrain',email:c?c.email||'':'',tel:c?c.tel||'':'',role:c?c.role||'employe':'employe',
+    statut:c?(c.statut||'actif'):'actif',saisonnier:!!(c&&c.saisonnier),droits:dr,pw1:'',pw2:'',adminPw:'',confirm:false,busy:false}});};
+Comp.prototype.ceSet=function(k,v){var o={};o[k]=v;this.setState({ce:Object.assign({},this.state.ce,o,{confirm:false})});};
+function rpc(name,body){return fetch(SB+'/rest/v1/rpc/'+name,{method:'POST',headers:Object.assign({'Content-Type':'application/json'},H),body:JSON.stringify(body)})
+  .then(function(r){return r.text().then(function(t){var j=t?JSON.parse(t):null;if(!r.ok)throw new Error((j&&j.message)||('HTTP '+r.status));return j;});});}
+Comp.prototype.saveCompte=function(){var self=this,e=this.state.ce;if(!e||e.busy)return;var id=String(e.id||'').trim().toLowerCase();
+  if(this.user.role!=='admin'){this.flash('Réservé aux administrateurs');return;}
+  if(!/^[a-z0-9._-]{2,40}$/.test(id)){this.flash('Identifiant : lettres minuscules, chiffres, point ou tiret (2 caractères min.)');return;}
+  if(!String(e.prenom).trim()&&!String(e.nom).trim()){this.flash('Indiquez le prénom ou le nom');return;}
+  if(e.isNew&&Array.isArray(this.cptes)&&this.cptes.some(function(c){return c.id===id;})){this.flash('Identifiant déjà utilisé');return;}
+  var pw=e.pw1||e.pw2;if(e.isNew&&!pw){this.flash('Choisissez un mot de passe pour le nouveau compte');return;}
+  if(pw){if(e.pw1!==e.pw2){this.flash('Les deux mots de passe ne correspondent pas');return;}if(e.pw1.length<8){this.flash('Mot de passe : 8 caractères minimum');return;}if(!e.adminPw){this.flash('Confirmez avec VOTRE mot de passe administrateur');return;}}
+  if(id===this.user.id&&e.role!=='admin'){this.flash('Vous ne pouvez pas retirer votre propre rôle d’administrateur');return;}
+  var dr=Object.assign({},e.droits);if(e.role==='admin')DROITS.forEach(function(d){dr[d[0]]=true;});
+  var body={prenom:String(e.prenom).trim(),nom:String(e.nom).trim(),dept:String(e.dept||'').trim(),email:String(e.email||'').trim(),tel:String(e.tel||'').trim(),role:e.role,droits:dr,statut:e.statut,saisonnier:!!e.saisonnier,updated_at:new Date().toISOString()};
+  this.setState({ce:Object.assign({},e,{busy:true})});
+  var w=e.isNew?postRows('comptes',[Object.assign({id:id},body)]):rest('PATCH','comptes?id=eq.'+encodeURIComponent(id),body);
+  w.then(function(){auditT(self,e.isNew?'CREATION':'MODIFICATION','comptes',id);
+      if(!pw)return true;return rpc('admin_definir_mdp',{p_admin_id:self.user.id,p_admin_mdp:e.adminPw,p_cible_id:id,p_nouveau:e.pw1});})
+    .then(function(ok){if(ok===false){self.setState({ce:Object.assign({},self.state.ce,{busy:false,isNew:false,adminPw:''})});self.loadComptes(true);self.flash('Compte enregistré, mais mot de passe NON défini : votre mot de passe administrateur est incorrect');return;}
+      self.setState({ce:null});self.flash(e.isNew?'Compte créé — l’employé changera son mot de passe à la 1re connexion':(pw?'Compte et mot de passe enregistrés':'Compte enregistré'));self.loadComptes(true);return self.load().then(function(){self.update();});})
+    .catch(function(err){self.setState({ce:Object.assign({},self.state.ce,{busy:false})});self.flash('Échec : '+netMsg(err));});};
+Comp.prototype.deleteCompte=function(){var self=this,e=this.state.ce;if(!e||e.isNew)return;
+  if(e.id===this.user.id||e.id==='admin'){this.flash('Ce compte ne peut pas être supprimé');return;}
+  if(!e.confirm){this.setState({ce:Object.assign({},e,{confirm:true})});return;}
+  rest('DELETE','comptes?id=eq.'+encodeURIComponent(e.id)).then(function(){auditT(self,'SUPPRESSION','comptes',e.id);self.setState({ce:null});self.flash('Compte supprimé');self.loadComptes(true);return self.load().then(function(){self.update();});})
+    .catch(function(err){self.flash('Échec : '+netMsg(err));});};
+/* Sauvegarde complète (comme SA Platform › Comptes) : toutes les tables de travail dans un fichier JSON */
+Comp.prototype.exportAll=function(){var self=this,T=['sites','contrats','workorders','plan','planning_tasks','plan_match','feuilles_temps','feuilles_temps_envois','releves','demandes','facturation','projets_excel','inventaire','flotte','sorties_inventaire','bons_livraison','rapports_hivernage','punch_gps_log','types_bassin','sondages'];
+  this.flash('Préparation de la sauvegarde…');
+  Promise.all(T.map(function(t){return get(t+'?select=*').catch(function(e){return{_erreur:netMsg(e)};});})).then(function(r){var o={_app:'sa-admin',_date:new Date().toISOString(),_par:self.user.id,comptes:Array.isArray(self.cptes)?self.cptes:[]};
+    T.forEach(function(t,i){o[t]=r[i];});saveBlob(new Blob([JSON.stringify(o)],{type:'application/json'}),'SoucyAquatik_sauvegarde_'+iso(new Date())+'.json');auditT(self,'EXPORT','sauvegarde','complete');self.flash('Sauvegarde téléchargée ('+T.length+' tables, sans aucun mot de passe)');});};
+Comp.prototype.comptesVals=function(){var self=this,st=this.state,isAdm=this.user.role==='admin';if(st.mod==='comptes'&&!this.cptes)this.loadComptes();
+  var L=Array.isArray(this.cptes)?this.cptes:[],rl={};ROLES.forEach(function(r){rl[r[0]]=r[1];});
+  var rows=L.map(function(c){var inact=(c.statut||'actif')==='inactif';return{nom:((c.prenom||'')+' '+(c.nom||'')).trim()||c.id,id:c.id,role:rl[c.role]||c.role||'—',dept:c.dept||'—',etat:(inact?'Inactif':'Actif')+(c.saisonnier?' · saisonnier':''),op:inact?0.55:1,
+    open:function(){self.openCompte(c.id);}};});
+  var e=st.ce,ceV={ceOpen:!!e};
+  if(e){var set=function(k){return function(ev){self.ceSet(k,ev.target.type==='checkbox'?ev.target.checked:ev.target.value);};};
+    ceV=Object.assign(ceV,{ceNotNewId:!e.isNew,ceTitle:e.isNew?'Nouveau compte':'Compte — '+((e.prenom+' '+e.nom).trim()||e.id),ceNew:e.isNew,ceId:e.id,onCeId:function(ev){self.ceSet('id',ev.target.value.toLowerCase().replace(/\s+/g,''));},
+      cePrenom:e.prenom,onCePrenom:set('prenom'),ceNom:e.nom,onCeNom:set('nom'),ceDept:e.dept,onCeDept:set('dept'),ceEmail:e.email,onCeEmail:set('email'),ceTel:e.tel,onCeTel:set('tel'),
+      ceRoles:ROLES.map(function(r){return{v:r[0],l:r[1],sel:e.role===r[0]};}),onCeRole:set('role'),ceStatuts:[['actif','Actif'],['inactif','Inactif (ne peut plus se connecter)']].map(function(r){return{v:r[0],l:r[1],sel:e.statut===r[0]};}),onCeStatut:set('statut'),
+      ceSais:!!e.saisonnier,onCeSais:set('saisonnier'),ceIsAdmin:e.role==='admin',ceNotAdmin:e.role!=='admin',
+      ceDroits:DROITS.map(function(d){var on=!!e.droits[d[0]];return{l:d[1],on:on,box:on?'var(--color-text)':'transparent',go:function(){var o=Object.assign({},self.state.ce.droits);o[d[0]]=!o[d[0]];self.ceSet('droits',o);}};}),
+      cePw1:e.pw1,onCePw1:set('pw1'),cePw2:e.pw2,onCePw2:set('pw2'),ceAdminPw:e.adminPw,onCeAdminPw:set('adminPw'),cePwLbl:e.isNew?'Mot de passe initial':'Nouveau mot de passe (laisser vide pour ne pas le changer)',
+      ceCanEdit:isAdm,ceReadOnly:!isAdm,ceSave:function(){self.saveCompte();},ceSaveLbl:e.busy?'Enregistrement…':(e.isNew?'Créer le compte':'Enregistrer'),
+      ceCanDel:isAdm&&!e.isNew&&e.id!==self.user.id&&e.id!=='admin',ceDelLbl:e.confirm?'Confirmer la suppression':'Supprimer le compte',ceDel:function(){self.deleteCompte();},
+      ceClose:function(){self.setState({ce:null});},ceCloseBg:function(ev){if(ev.target===ev.currentTarget)self.setState({ce:null});}});}
+  return Object.assign(ceV,{isComptes:st.mod==='comptes',cRows:rows,cLoading:this.cptes==='loading',cErr:this.cptes==='err'?'Comptes illisibles : '+(this.cptErr||''):'',cCanEdit:isAdm,cReadOnly:!isAdm,
+    cNew:function(){self.openCompte(null);},cExport:function(){self.exportAll();},cCount:rows.length+' compte(s)'});};
+
 /* Valeurs d'écran : Temps (Semaine · À valider · Paie · Cumul) et Stats */
 Comp.prototype.tempsVals=function(punchRows){var self=this,st=this.state,D=this.D,mod=st.mod,tMon=addDays(mondayOf(new Date()),7*st.tOff),wk=iso(tMon),today=iso(new Date());
   if((mod==='temps'||mod==='stats'||st.hj)&&this.ftw[wk]===undefined)this.loadWeekFT(wk);
@@ -763,11 +820,11 @@ Comp.prototype.vals=function(){
   var poManquant=factAll.filter(function(b){return b.noPo;}).length;
 
   // ---- navigation
-  var G=[['Terrain',[['monitoring','Monitoring','activity',horsZone.length+urgDem.length,true],['carte','Carte des sites','map'],['inspections','Inspections','chart']]],['Gestion',[['planmatch','Plan de Match','clipboard'],['operations','Opérations','folder'],['planning','Planning équipe','calendar'],['sites','Sites','building',nouveaux.length],['facturation','Facturation','receipt']]],['Équipe',[['sondages','Sondages clients','star'],['communication','Communication','megaphone'],['temps','Temps · Paie','timer'],['stats','Stats','chart']]]];
-  var LIVE=['planmatch','stats','monitoring','inspections','operations','sites','temps','planning','sondages','carte','facturation'];
+  var G=[['Terrain',[['monitoring','Monitoring','activity',horsZone.length+urgDem.length,true],['carte','Carte des sites','map'],['inspections','Inspections','chart']]],['Gestion',[['planmatch','Plan de Match','clipboard'],['operations','Opérations','folder'],['planning','Planning équipe','calendar'],['sites','Sites','building',nouveaux.length],['facturation','Facturation','receipt']]],['Équipe',[['sondages','Sondages clients','star'],['communication','Communication','megaphone'],['temps','Temps · Paie','timer'],['stats','Stats','chart'],['comptes','Comptes','users']]]];
+  var LIVE=['comptes','planmatch','stats','monitoring','inspections','operations','sites','temps','planning','sondages','carte','facturation'];
   var navGroups=G.map(function(g){return{label:g[0],items:g[1].map(function(i){return{label:i[1],icon:i[2],badge:i[3]||null,badgeBg:i[4]?'var(--color-text)':'transparent',badgeFg:i[4]?'var(--color-bg)':'var(--color-text)',go:function(){self.go(i[0]);},bar:mod===i[0]?'var(--color-text)':'transparent',bg:mod===i[0]?'var(--color-accent-100)':'transparent',fw:mod===i[0]?600:400};})};});
   var TITLES={monitoring:['Monitoring en direct','Qui est où, activité terrain et relevés hors zone'],inspections:['Inspections et rapports','Relevés techniques saisis en tournée, par site et dans le temps'],operations:['Opérations','Dossiers clients — les visites d’un même contrat restent regroupées'],sites:['Sites','Répertoire et sites détectés automatiquement'],
-    carte:['Carte des sites','Sites et techniciens, d’après les punchs GPS'],sondages:['Sondages clients','Résultats de satisfaction — lecture seule'],planning:['Planning équipe','Qui fait quoi cette semaine — lecture seule'],temps:['Temps · Paie','Feuilles de temps de l’équipe — corriger, ajouter, approuver, sortir la paie'],planmatch:['Plan de Match','Le plan de la journée de chaque employé — tâches, véhicule, travaux du jour'],stats:['Stats','Heures de l’équipe, bons de travail, stock — par semaine'],facturation:['Facturation','Depuis ton fichier Excel — ODT, prix, écarts. PO manquant sur '+poManquant+' dossier(s).'],communication:['Communication d’équipe','Bientôt']};
+    carte:['Carte des sites','Sites et techniciens, d’après les punchs GPS'],sondages:['Sondages clients','Résultats de satisfaction — lecture seule'],planning:['Planning équipe','Qui fait quoi cette semaine — lecture seule'],temps:['Temps · Paie','Feuilles de temps de l’équipe — corriger, ajouter, approuver, sortir la paie'],comptes:['Comptes','Employés, rôles, droits, statut et mots de passe — partagés avec SA Platform et sa-terrain'],planmatch:['Plan de Match','Le plan de la journée de chaque employé — tâches, véhicule, travaux du jour'],stats:['Stats','Heures de l’équipe, bons de travail, stock — par semaine'],facturation:['Facturation','Depuis ton fichier Excel — ODT, prix, écarts. PO manquant sur '+poManquant+' dossier(s).'],communication:['Communication d’équipe','Bientôt']};
   var soonName={communication:'Communication d’équipe'};
   var qq=st.q.trim().toLowerCase();
   var results=qq.length<2?[]:D.sites.filter(function(s){return(s.nom+s.ville+s.contrat).toLowerCase().indexOf(qq)>=0;}).slice(0,5).map(function(s){return{label:s.nom,sub:s.ville+' · '+self.T(s.type).court,go:function(){self.go('inspections',{inspSite:s.id,inspKey:null});}};})
@@ -786,7 +843,7 @@ Comp.prototype.vals=function(){
     exportMsg:function(){self.flash('Export PDF : bientôt');},
     opsFilters:opsFilters,dossiers:dossiers,newDossier:function(){self.openDlg({type:'Bon de travail'});},noDossier:dossiers.length===0,
     nouveaux:nouveaux,siteTypeOptions:siteTypeOptions,siteType:stype,onSiteType:function(e){self.setState({siteType:e.target.value});},siteRows:siteRows,siteCount:siteRows.length,noNouveaux:nouveaux.length===0},
-    this.tempsVals(punchRows),this.statsVals(),this.feVals(),this.pmmVals());
+    this.tempsVals(punchRows),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals());
 };
 Comp.prototype.update=function(){if(!this._host)return;SARender(document.getElementById('tpl'),this._host,this.vals());this.syncMap();var el=this.rootRef.current;if(el)el.style.setProperty('--sa-row','10px');};
 Comp.prototype.mount=function(host){var self=this;this._host=host;this.update();

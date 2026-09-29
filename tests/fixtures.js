@@ -28,7 +28,11 @@ function base() {
       { id: 'kael2', prenom: 'Autre', nom: 'Tech', role: 'technicien', dept: 'Terrain', tel: '' },
       { id: 'cwweil', prenom: 'Bureau', nom: 'SA', role: 'admin', dept: 'Bureau', tel: '418-555-0100' },
     ],
-    comptes: [{ id: 'kael', statut: 'actif' }, { id: 'kael2', statut: 'actif' }],
+    comptes: [
+      { id: 'kael', prenom: 'Kaël', nom: 'Test', dept: 'Terrain', email: 'kael@x.ca', tel: '', role: 'technicien', droits: { ft: true }, statut: 'actif', saisonnier: false },
+      { id: 'kael2', prenom: 'Autre', nom: 'Tech', dept: 'Terrain', email: '', tel: '', role: 'technicien', droits: {}, statut: 'actif', saisonnier: true },
+      { id: 'cwweil', prenom: 'Bureau', nom: 'SA', dept: 'Bureau', email: '', tel: '', role: 'admin', droits: {}, statut: 'actif', saisonnier: false },
+    ],
     feuilles_temps: [{ id: 'kael_' + wk, uid: 'kael', emp: 'Kaël Test', week: wk, days, total_h: 1, updated_at: '2026-01-01T00:00:00Z' }],
     workorders: [
       { id: 'wo-mine', client: 'Piscine Alpha', site: '1 rue A, Québec', type: 'entretien', priorite: 'normal', status: 'ouvert', date: t, assigne: 'kael', descr: 'Entretien hebdo', groupe_id: null },

@@ -284,6 +284,33 @@ PB=WRAP('pbOpen','pbCloseBg',DLGHEAD('pbTitle','pbClose')
   +'<div class="dialog-actions" style="margin-top:0;flex-wrap:wrap">'+IF('pbCanDel',BTNX('btn-secondary','pbDel','{{ pbDelLbl }}'))+'<span style="flex:1"></span>'+BTNX('btn-secondary','pbClose','Annuler')+BTNX('btn-primary','pbSave','{{ pbSaveLbl }}')+'</div>')
 M=M.rstrip()+'\n'+PB
 
+# ---------- COMPTES ----------
+CPT=('<sc-if value="{{ isComptes }}"><div style="display:flex;flex-direction:column;gap:18px">'
+  '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="font-size:14px">{{ cCount }}</span><span style="flex:1"></span>'
+  '<button class="btn btn-secondary" onClick="{{ cExport }}">Sauvegarde complète (.json)</button><sc-if value="{{ cCanEdit }}"><button class="btn btn-primary" onClick="{{ cNew }}">Nouveau compte</button></sc-if></div>'
+  '<sc-if value="{{ cReadOnly }}"><div style="font-size:14px;border:1px dashed var(--color-text);padding:10px 14px">Lecture seule : seul un administrateur peut créer ou modifier des comptes.</div></sc-if>'
+  '<sc-if value="{{ cLoading }}"><div>Chargement…</div></sc-if><sc-if value="{{ cErr }}"><div role="alert" style="padding:10px 14px;border:2px solid var(--color-accent-900)">{{ cErr }}</div></sc-if>'
+  +CARD('<table class="table" style="font-size:14px"><thead><tr>'+TH%('padding-left:18px','Nom')+TH%('','Identifiant')+TH%('','Rôle')+TH%('','Département')+TH%('','État')+TH%('','')+'</tr></thead><tbody>'
+  '<sc-for list="{{ cRows }}" as="r"><tr style="opacity:{{ r.op }}"><td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px;font-weight:500">{{ r.nom }}</td>'+TD%('','{{ r.id }}')+TD%('','{{ r.role }}')+TD%('','{{ r.dept }}')+TD%('','{{ r.etat }}')
+  +'<td style="padding:4px 18px 4px 8px;text-align:right"><button class="btn btn-secondary" onClick="{{ r.open }}">Ouvrir</button></td></tr></sc-for></tbody></table>','overflow-x:auto')
+  +'</div></sc-if>\n')
+bs=block(M,'isStats')
+if bs: M=M.replace(bs,bs+CPT,1)
+else: print('!! ancre isStats (Comptes)')
+CE=WRAP('ceOpen','ceCloseBg',DLGHEAD('ceTitle','ceClose')
+  +G2(FL('Prénom',INP('cePrenom','onCePrenom')),FL('Nom',INP('ceNom','onCeNom')))
+  +G2(IF('ceNew',FL('Identifiant de connexion',INP('ceId','onCeId','text',' autocapitalize="off" placeholder="ex. jtremblay"')))+'<sc-if value="{{ ceNotNewId }}"><div class="field"><label>Identifiant de connexion</label><div style="padding:8px 0;font-weight:600">{{ ceId }}</div></div></sc-if>',FL('Département',INP('ceDept','onCeDept')))
+  +G2(FL('Courriel',INP('ceEmail','onCeEmail','email')),FL('Téléphone',INP('ceTel','onCeTel','tel')))
+  +G2(FL('Rôle',SEL('ceRoles','onCeRole')),FL('Statut',SEL('ceStatuts','onCeStatut')))
+  +CBX('ceSais','onCeSais','Employé saisonnier')
+  +IF('ceNotAdmin',FL('Droits d’accès (SA Platform)',CHK('ceDroits','l')))+IF('ceIsAdmin','<div style="font-size:13px">Un administrateur a tous les droits.</div>')
+  +IF('ceCanEdit','<div style="border:1px solid var(--color-divider);padding:12px;display:flex;flex-direction:column;gap:10px"><b>{{ cePwLbl }}</b>'
+    +G2(FL('Mot de passe (8 caractères min.)',INP('cePw1','onCePw1','password',' autocomplete="new-password"')),FL('Confirmer',INP('cePw2','onCePw2','password',' autocomplete="new-password"')))
+    +FL('Votre mot de passe administrateur (confirmation)',INP('ceAdminPw','onCeAdminPw','password',' autocomplete="current-password"'))
+    +'<div style="font-size:13px">L’employé devra choisir son propre mot de passe à sa première connexion. Le mot de passe n’est jamais stocké en clair.</div></div>')
+  +'<div class="dialog-actions" style="margin-top:0;flex-wrap:wrap">'+IF('ceCanDel',BTNX('btn-secondary','ceDel','{{ ceDelLbl }}'))+'<span style="flex:1"></span>'+BTNX('btn-secondary','ceClose','Fermer')+IF('ceCanEdit',BTNX('btn-primary','ceSave','{{ ceSaveLbl }}'))+'</div>')
+M=M.rstrip()+'\n'+CE
+
 
 # Monitoring : lien vers la photo jointe à une demande du terrain (chargée seulement au clic)
 rep('<span style="font-size:12px">{{ f.who }} · {{ f.site }}</span>','<span style="font-size:12px">{{ f.who }} · {{ f.site }}</span><sc-if value="{{ f.hasPhoto }}"><button onClick="{{ f.openPhoto }}" style="all:unset;cursor:pointer;font-size:12px;text-decoration:underline;width:fit-content">Voir la photo jointe</button></sc-if>')

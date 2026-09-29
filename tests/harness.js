@@ -44,7 +44,7 @@ function filters(qs) {
 }
 
 class FakeDB {
-  constructor(tables) { this.t = JSON.parse(JSON.stringify(tables || {})); this.log = []; this.fail = {}; }
+  constructor(tables) { this.t = JSON.parse(JSON.stringify(tables || {})); this.log = []; this.fail = {}; this.rpc = {}; }
   rows(name) { return (this.t[name] = this.t[name] || []); }
   async handle(route) {
     const req = route.request(), u = new URL(req.url()), m = req.method();
@@ -55,7 +55,7 @@ class FakeDB {
     if (f === 'network') return route.abort('failed');
     if (f) return route.fulfill({ status: f, contentType: 'application/json', body: JSON.stringify({ message: 'échec simulé' }) });
     const json = (status, data) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(data) });
-    if (name.startsWith('rpc/')) return json(200, []);
+    if (name.startsWith('rpc/')) { const fn = this.rpc[name.slice(4)]; if (!fn) return json(200, []); try { return json(200, fn(body, this)); } catch (e) { return json(400, { message: e.message }); } }
     // Comme PostgREST : une écriture qui cite une colonne inexistante est refusée en entier (400).
     if ((m === 'POST' || m === 'PATCH') && SCHEMA[name] && body) {
       const bad = [].concat(body).flatMap((r) => Object.keys(r)).filter((k) => !SCHEMA[name].includes(k));

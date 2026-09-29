@@ -261,5 +261,22 @@
     "created_by",
     "created_at",
     "updated_at"
+  ],
+  "comptes": [
+    "id",
+    "nom",
+    "prenom",
+    "dept",
+    "email",
+    "tel",
+    "role",
+    "mdp",
+    "droits",
+    "updated_at",
+    "mdp_hash",
+    "mdp_maj_le",
+    "doit_changer_mdp",
+    "statut",
+    "saisonnier"
   ]
 }
