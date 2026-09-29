@@ -14,5 +14,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      # relecture des fichiers Excel produits par sa-admin (feuilles de temps, facturation)
+      - run: pip install openpyxl
       # build.py --check : échoue si admin.html / terrain.html ne correspondent pas aux sources de src/
       - run: npm test

@@ -215,7 +215,9 @@ Comp.prototype.failLoad=function(k,label,e){var first=!Object.keys(this.loadErr)
 Comp.prototype.loadDem=function(){var self=this;return get('demandes?tech=eq.'+encodeURIComponent(this.user.id)+'&select=id,type,motif,texte,statut,created_at&order=created_at.desc&limit=15').then(function(r){self.dem=r;self.okLoad('dem');self.update();}).catch(function(e){self.failLoad('dem','demandes',e);});};
 Comp.prototype.loadLog=function(){var self=this;return Promise.all([get('inventaire?select=id,nom,unite,qte,categorie&order=nom.asc'),
     get('bons_livraison?select=id,no_bon,client,tel,adresse,date,heure,technicien,urgent,status,items_liv,photos&status=neq.livre&order=date.asc')])
-  .then(function(r){self.inv=r[0];self.bons=r[1].filter(function(b){return b.status!=='livre';});self.okLoad('log');self.update();}).catch(function(e){self.failLoad('log','logistique',e);self.update();});};
+  .then(function(r){var cur=self.curBon();self.inv=r[0];self.bons=r[1].filter(function(b){return b.status!=='livre';});
+    // le bon qu'on vient de faire signer reste affiché (avec sa confirmation) jusqu'au retour à la liste
+    if(cur&&cur.status==='livre'&&!self.bons.some(function(b){return b.id===cur.id;}))self.bons.unshift(cur);self.okLoad('log');self.update();}).catch(function(e){self.failLoad('log','logistique',e);self.update();});};
 Comp.prototype.loadHiv=function(){var self=this,y=new Date().getFullYear();
   return get('rapports_hivernage?select=id,site_id,site_nom,status,date_inspection,technicien&date_inspection=gte.'+y+'-01-01&order=date_inspection.desc')
   .then(function(r){self.hivRep={};r.filter(function(x){return String(x.date_inspection||'').slice(0,4)===String(y);}).forEach(function(x){if(x.site_id&&!self.hivRep[x.site_id])self.hivRep[x.site_id]=x;});self.okLoad('hiv');self.update();})

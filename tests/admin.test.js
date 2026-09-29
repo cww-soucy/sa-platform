@@ -124,11 +124,3 @@ test('Monitoring : la photo jointe à une demande s’ouvre à la demande (jamai
   assert.equal(await popup.locator('img').getAttribute('src'), 'data:image/png;base64,iVBORw0KGgo=');
   await page.close();
 });
-
-test('Temps : navigation limitée aux semaines réellement chargées', async () => {
-  const { page } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: base() });
-  await ready(page);
-  const off = await page.evaluate(() => { const a = window.__admin; for (let i = 0; i < 12; i++) a.vals().tPrev(); return a.state.tOff; });
-  assert.equal(off, -7);
-  await page.close();
-});

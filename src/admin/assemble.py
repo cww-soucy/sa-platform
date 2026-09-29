@@ -132,6 +132,72 @@ if b:
     nb=b.replace('<sc-if value="{{ isSites }}">','<sc-if value="{{ isSites }}"><sc-if value="{{ noNouveaux }}"><div style="margin:12px 28px 0;padding:12px 14px;border:1px dashed var(--color-text);font-size:15px">Aucun site détecté automatiquement en attente.</div></sc-if>',1)
     M=M.replace(b,nb,1)
 
+
+# ---------- TEMPS · PAIE (gestion complète, comme SA Platform) et STATS ----------
+TH='<th style="text-transform:none;letter-spacing:0;font-size:12px;%s">%s</th>'
+TD='<td style="padding:var(--sa-row,10px) 8px;%s">%s</td>'
+CARD=lambda inner,st='': '<section class="blueprint" style="display:flex;flex-direction:column;%s"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>%s</section>'%(st,inner)
+NAV=lambda prev,lab,nxt,today: ('<div style="display:flex;align-items:center;gap:8px"><button class="btn btn-secondary btn-icon" aria-label="Semaine précédente" onClick="{{ %s }}"><sa-i n="left" s="18"></sa-i></button>'
+  '<span style="font:600 20px var(--font-heading);padding:0 8px">{{ %s }}</span><button class="btn btn-secondary btn-icon" aria-label="Semaine suivante" onClick="{{ %s }}"><sa-i n="right" s="18"></sa-i></button>'
+  '<button class="btn btn-ghost" onClick="{{ %s }}">Cette semaine</button></div>')%(prev,lab,nxt,today)
+TABS=('<div style="display:flex;border:1px solid var(--color-divider)"><sc-for list="{{ tempsTabs }}" as="t"><button onClick="{{ t.go }}" style="all:unset;cursor:pointer;white-space:nowrap;padding:8px 18px;font:600 16px var(--font-heading);border-right:1px solid var(--color-divider);background:{{ t.bg }};color:{{ t.fg }}">{{ t.label }} <span style="font-weight:400">{{ t.n }}</span></button></sc-for></div>')
+SEMAINE=CARD('<div style="padding:12px 18px;border-bottom:1px solid var(--color-divider);display:flex;gap:10px;align-items:baseline;flex-wrap:wrap"><span style="font:600 22px var(--font-heading)">Équipe : {{ tTeam }}</span><span style="font-size:14px">{{ tTeamSupp }}</span></div>'
+  '<table class="table" style="font-size:14px"><thead><tr>'+TH%('padding-left:18px','Technicien')+'<sc-for list="{{ tDays }}" as="w">'+TH%('text-align:center;background:{{ w.bg }}','{{ w.label }}')+'</sc-for>'
+  +TH%('text-align:right','Total')+TH%('text-align:right','Régulières')+TH%('text-align:right','Supp.')+TH%('','État')+TH%('','')+'</tr></thead><tbody>'
+  '<sc-for list="{{ tRows }}" as="r"><tr><td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px;font-weight:500;white-space:nowrap">{{ r.nom }}</td>'
+  '<sc-for list="{{ r.jours }}" as="j"><td style="padding:2px;text-align:center"><button onClick="{{ j.open }}" style="all:unset;cursor:pointer;display:block;min-width:58px;padding:7px 4px;background:{{ j.bg }};font-variant-numeric:tabular-nums">{{ j.txt }} <b>{{ j.ok }}</b></button></td></sc-for>'
+  +TD%('text-align:right;font:600 16px var(--font-heading);white-space:nowrap','{{ r.total }}')+TD%('text-align:right;white-space:nowrap','{{ r.reg }}')+TD%('text-align:right;white-space:nowrap;color:{{ r.suppFg }}','{{ r.supp }}')
+  +TD%('font-size:13px;white-space:nowrap','{{ r.etat }}')+'<td style="padding:4px 18px 4px 8px"><sc-if value="{{ r.canApprove }}"><button class="btn btn-secondary" onClick="{{ r.approve }}" style="white-space:nowrap">Approuver la semaine</button></sc-if></td></tr></sc-for></tbody></table>'
+  '<sc-if value="{{ noTRows }}"><div style="padding:14px 18px">Aucun employé actif.</div></sc-if>'
+  '<div style="padding:10px 18px;font-size:13px;border-top:1px solid var(--color-divider)">Touchez une journée pour voir, corriger, ajouter ou supprimer des punchs. ● = punch en cours · ✓ = journée approuvée · 40 h régulières, le surplus en supplémentaires.</div>','overflow-x:auto')
+PAIE=('<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="font-size:14px">{{ paieCount }}</span><button class="btn btn-ghost" onClick="{{ paieAll }}">Tout</button><button class="btn btn-ghost" onClick="{{ paieNoneSel }}">Aucun</button>'
+  +SEG('paieModes')+'<span style="flex:1"></span><button class="btn btn-primary" onClick="{{ paieXlsx }}" style="gap:8px"><sa-i n="download" s="17"></sa-i>Télécharger Excel</button>'
+  '<button class="btn btn-secondary" onClick="{{ paiePrint }}">Imprimer</button><button class="btn btn-secondary" onClick="{{ paieSent }}">Marquer envoyée(s) à la paie</button></div>'
+  '<div style="font-size:13px">Heures en décimal pour la paie (7,25 = 7 h 15). La feuille regroupe les punchs d’une même journée sur un même lieu et ODT ; le journal les montre un par un. Le fichier Excel contient un sommaire, une feuille par employé et le journal complet.</div>'
+  +CARD('<sc-for list="{{ paie }}" as="p"><div style="display:grid;grid-template-columns:40px minmax(160px,1.4fr) repeat(3,90px) 70px minmax(160px,1.6fr) 44px;gap:10px;align-items:center;padding:10px 18px;border-bottom:1px solid var(--color-divider)">'
+  '<button onClick="{{ p.toggle }}" aria-label="Sélectionner" style="all:unset;cursor:pointer;width:24px;height:24px;border:1.5px solid var(--color-text);background:{{ p.box }};color:var(--color-bg);display:flex;align-items:center;justify-content:center"><sc-if value="{{ p.on }}"><sa-i n="check" s="16" w="2.5"></sa-i></sc-if></button>'
+  '<span style="font-weight:500">{{ p.nom }}</span><span style="text-align:right;font:600 16px var(--font-heading)">{{ p.total }} h</span><span style="text-align:right">{{ p.reg }} rég.</span><span style="text-align:right">{{ p.supp }} supp.</span><span style="text-align:right">{{ p.punchs }}</span>'
+  '<span style="font-size:13px">{{ p.statut }}</span><button class="btn btn-ghost btn-icon" onClick="{{ p.expand }}" aria-label="Détail"><sa-i n="{{ p.chev }}" s="18"></sa-i></button></div>'
+  '<sc-if value="{{ p.open }}"><div style="padding:6px 18px 14px 68px;border-bottom:1px solid var(--color-divider);background:var(--color-accent-100)"><sc-for list="{{ p.detail }}" as="d"><div style="font:600 15px var(--font-heading);margin-top:8px">{{ d.jour }}</div>'
+  '<sc-for list="{{ d.lines }}" as="l"><div style="display:grid;grid-template-columns:minmax(160px,2fr) 90px 120px 70px minmax(120px,1.4fr);gap:10px;font-size:14px;padding:3px 0"><span>{{ l.lieu }}</span><span>{{ l.odt }}</span><span>{{ l.debut }} → {{ l.fin }}</span><span style="text-align:right">{{ l.h }}</span><span style="font-size:12px">{{ l.note }}</span></div></sc-for></sc-for></div></sc-if></sc-for>'
+  '<sc-if value="{{ paieNone }}"><div style="padding:14px 18px">Aucune heure cette semaine.</div></sc-if>','overflow-x:auto'))
+CUMUL=CARD('<table class="table" style="font-size:14px"><thead><tr>'+TH%('padding-left:18px','Technicien')+TH%('text-align:right','{{ tLabel }}')+TH%('text-align:right','Cumul saison')+'</tr></thead><tbody><sc-for list="{{ tempsRows }}" as="r"><tr style="opacity:{{ r.op }}">'
+  '<td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px;font-weight:500">{{ r.nom }}</td>'+TD%('text-align:right','{{ r.semaine }}')+TD%('text-align:right;font:600 16px var(--font-heading);padding-right:18px','{{ r.cumul }}')+'</tr></sc-for></tbody></table>','overflow-x:auto')
+bt=block(M,'isTemps')
+if bt:
+    SUIVI=block(bt,'isSuiviTab')
+    TEMPS=('<sc-if value="{{ isTemps }}"><div style="display:flex;flex-direction:column;gap:18px"><div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">'
+      +NAV('tPrev','tLabel','tNext','tToday')+TABS+'</div>'
+      '<sc-if value="{{ tWeekLoading }}"><div>Chargement de la semaine…</div></sc-if><sc-if value="{{ tWeekErr }}"><div role="alert" style="padding:10px 14px;border:2px solid var(--color-accent-900)">{{ tWeekErr }}</div></sc-if>'
+      '<sc-if value="{{ isTempsTab }}">'+SEMAINE+'</sc-if>'+(SUIVI or '')+'<sc-if value="{{ isPaieTab }}">'+PAIE+'</sc-if><sc-if value="{{ isCumulTab }}">'+CUMUL+'</sc-if></div></sc-if>')
+    if not SUIVI: print('!! bloc isSuiviTab')
+    STATS=('<sc-if value="{{ isStats }}"><div style="display:flex;flex-direction:column;gap:18px">'+NAV('sPrev','sLabel','sNext','sToday')
+      +'<sc-if value="{{ sLoading }}"><div>Chargement…</div></sc-if>'
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px"><sc-for list="{{ sKpis }}" as="k">'+CARD('<div style="padding:14px 18px;display:flex;flex-direction:column;gap:4px"><span style="font-size:13px">{{ k.l }}</span><span style="font:600 34px/1 var(--font-heading)">{{ k.v }}</span><span style="font-size:12px">{{ k.s }}</span></div>')+'</sc-for></div>'
+      +CARD('<h3 style="margin:0;padding:14px 18px 6px;font-size:20px">Heures par employé</h3><sc-for list="{{ sBars }}" as="b"><button onClick="{{ b.open }}" style="all:unset;cursor:pointer;display:grid;grid-template-columns:minmax(140px,220px) minmax(0,1fr) 150px;gap:12px;align-items:center;padding:6px 18px">'
+      '<span style="font-weight:500">{{ b.nom }}</span><span style="height:18px;background:var(--color-accent-100);position:relative"><span style="position:absolute;left:0;top:0;bottom:0;width:{{ b.w }}%;background:{{ b.bg }}"></span></span><span style="text-align:right;font-variant-numeric:tabular-nums">{{ b.h }} <span style="font-size:12px">{{ b.sub }}</span></span></button></sc-for>'
+      '<sc-if value="{{ sNoBars }}"><div style="padding:6px 18px 14px">Aucune heure cette semaine.</div></sc-if><div style="height:10px"></div>')
+      +CARD('<h3 style="margin:0;padding:14px 18px 6px;font-size:20px">Bons de travail par statut</h3><div style="display:flex;gap:28px;padding:4px 18px 16px;flex-wrap:wrap"><sc-for list="{{ sWo }}" as="w"><div style="display:flex;flex-direction:column"><span style="font-size:13px">{{ w.l }}</span><span style="font:600 28px var(--font-heading)">{{ w.n }}</span></div></sc-for></div>')
+      +CARD('<h3 style="margin:0;padding:14px 18px 6px;font-size:20px">Rapport de l’équipe</h3><div style="padding:0 18px 16px;display:flex;flex-direction:column;gap:10px"><span style="font-size:14px">Toutes les heures de la semaine, une ligne par punch, avec les totaux par employé — à transmettre ou à analyser.</span>'
+      '<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-primary" onClick="{{ sCopy }}">Copier</button><button class="btn btn-secondary" onClick="{{ sDownload }}">Télécharger (.txt)</button><button class="btn btn-secondary" onClick="{{ sXlsx }}">Feuilles de temps Excel</button></div></div>')
+      +'</div></sc-if>\n')
+    M=M.replace(bt,TEMPS+STATS,1)
+else: print('!! bloc isTemps')
+HJ=WRAP('hjOpen','hjCloseBg',DLGHEAD('hjTitle','hjClose')+IF('hjLoading','<div>Chargement…</div>')
+  +'<div style="display:flex;gap:10px;align-items:baseline"><span style="font:600 28px var(--font-heading)">{{ hjTotal }}</span><span>{{ hjCount }}</span></div>'
+  +'<sc-for list="{{ hjTasks }}" as="t"><button onClick="{{ t.edit }}" style="all:unset;cursor:pointer;display:flex;flex-direction:column;gap:2px;padding:10px 12px;border:1px solid var(--color-divider);border-left:4px solid {{ t.bd }}">'
+  '<span style="display:flex;justify-content:space-between;gap:10px"><b>{{ t.lieu }}</b><span style="font:600 16px var(--font-heading)">{{ t.dur }}</span></span><span style="font-size:14px">{{ t.h }} {{ t.detail }}</span><span style="font-size:12px">{{ t.tags }}</span></button></sc-for>'
+  +IF('hjEmpty','<div>Aucun punch ce jour.</div>')
+  +IF('hpOpen','<div style="border:1px solid var(--color-text);padding:14px;display:flex;flex-direction:column;gap:12px"><b style="font-size:18px">{{ hpTitle }}</b>'
+    +FL('Lieu / site','<input class="input" value="{{ hpLieu }}" onInput="{{ onHpLieu }}">')
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'+FL('Début','<input class="input" type="time" value="{{ hpStart }}" onInput="{{ onHpStart }}">')+FL('Fin','<input class="input" type="time" value="{{ hpEnd }}" onInput="{{ onHpEnd }}">')+'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 2fr;gap:12px">'+FL('ODT','<input class="input" value="{{ hpOdt }}" onInput="{{ onHpOdt }}">')+FL('Détail','<input class="input" value="{{ hpDetail }}" onInput="{{ onHpDetail }}">')+'</div>'
+    +IF('hpActive','<div style="font-size:13px">Punch en cours : laissez la fin vide pour qu’il continue.</div>')
+    +'<div style="font-size:13px">Chaque correction est inscrite au journal d’audit (qui, quoi, quand).</div>'
+    +'<div class="dialog-actions" style="margin-top:0;flex-wrap:wrap">'+BTNX('btn-secondary','hpCancel','Annuler')+IF('hpCanDel',BTNX('btn-secondary','hpDel','{{ hpDelLbl }}'))+BTNX('btn-primary','hpSave','Enregistrer')+'</div></div>')
+  +IF('hpClosed','<div class="dialog-actions" style="margin-top:0;flex-wrap:wrap">'+BTNX('btn-secondary','hjAdd','Ajouter un punch')+IF('hjCanApprove',BTNX('btn-primary','hjApprove','Approuver la journée'))+'</div>'))
+M=M.rstrip()+'\n'+HJ
+
 # Monitoring : lien vers la photo jointe à une demande du terrain (chargée seulement au clic)
 rep('<span style="font-size:12px">{{ f.who }} · {{ f.site }}</span>','<span style="font-size:12px">{{ f.who }} · {{ f.site }}</span><sc-if value="{{ f.hasPhoto }}"><button onClick="{{ f.openPhoto }}" style="all:unset;cursor:pointer;font-size:12px;text-decoration:underline;width:fit-content">Voir la photo jointe</button></sc-if>')
 # Carte : la maquette affichait une <iframe src="SA Carte.html"> (fichier de démo jamais déployé : en production,

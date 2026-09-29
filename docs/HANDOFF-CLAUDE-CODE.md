@@ -102,13 +102,14 @@ Une longue session de débogage a eu lieu ce matin : des doublons de WO/tâches 
 - [x] Photo dans une demande — 29/09 : colonne `demandes.photo` (+ `has_photo`), lien « Voir la photo jointe » dans le Monitoring de sa-admin
 
 ### Priorité 3 — modules absents dans sa-admin
+- [x] Stats (29/09) : heures de l'équipe par semaine, punchs à valider, bons de travail, stock sous le seuil, rapport d'équipe (copier / .txt)
 - [ ] **Communication d'équipe** (infolettre du lundi) — nature différente des autres écrans (rédaction de contenu, pas affichage de données), mérite sa propre conception
 - [ ] Gestion des comptes et des droits — créer/désactiver un employé, changer un mot de passe, gérer les rôles : tout ça reste dans SA Platform, sa-admin n'a aucun écran pour ça
 - [ ] Paramètres / configuration de l'app — aucun écran, dans aucune des deux apps, pour changer quoi que ce soit sur le fonctionnement de l'app elle-même (valeurs par défaut, seuils, préférences d'organisation)
 - [ ] Flotte, Stock — n'existent dans aucun des deux nouveaux designs, à ajouter au périmètre si nécessaire
-- [ ] Banque d'heures / heures supplémentaires dans Temps · Cumul (affiché « — » — la logique de calcul de `index.html` n'a jamais été portée, volontairement, par prudence sur la paie)
+- [x] Temps · Paie (29/09) : grille de l'équipe par semaine (toutes les semaines, chargées à la demande), journée d'un employé (voir, corriger, ajouter, supprimer, approuver — journal d'audit), approbation de la semaine, onglet Paie (feuille regroupée / journal, Excel .xlsx, impression avec signatures, « envoyée à la paie » dans `feuilles_temps_envois`). Règle de SA Platform reprise telle quelle : 40 h régulières, le surplus en supplémentaires — SA Platform n'a pas de banque d'heures.
 - [ ] Recherche globale (barre visible en haut de chaque écran, jamais branchée à une vraie recherche)
-- [ ] Export Facturation réel en `.xlsx` (aujourd'hui : `.csv`, lisible par Excel mais pas un vrai classeur)
+- [x] Export Facturation réel en `.xlsx` (29/09 — générateur .xlsx intégré, sans bibliothèque externe)
 
 ### Priorité 3bis — absents des DEUX apps, signalés par l'utilisateur après une vraie utilisation
 - [ ] **Export PDF** — aucun écran (inspections, facturation, rapports) ne peut être exporté en PDF

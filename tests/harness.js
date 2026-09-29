@@ -66,10 +66,11 @@ class FakeDB {
     if (m === 'PATCH') { const hit = this.rows(name).filter(match); hit.forEach((r) => Object.assign(r, body)); return json(200, hit); }
     if (m === 'DELETE') { const all = this.rows(name), hit = all.filter(match); this.t[name] = all.filter((r) => !hit.includes(r)); return json(200, hit); }
     if (m === 'POST') {
-      const list = Array.isArray(body) ? body : [body], rows = this.rows(name), upsert = /merge-duplicates/.test(req.headers()['prefer'] || '');
+      const pref = req.headers()['prefer'] || '', list = Array.isArray(body) ? body : [body], rows = this.rows(name), upsert = /merge-duplicates/.test(pref), ignore = /ignore-duplicates/.test(pref);
       const out = [];
       for (const r of list) {
         const ex = r.id != null && rows.find((x) => x.id === r.id);
+        if (ex && ignore) continue;
         if (ex && !upsert) return json(409, { message: 'duplicate key' });
         if (ex) Object.assign(ex, r); else rows.push(Object.assign({}, r));
         out.push(r);
