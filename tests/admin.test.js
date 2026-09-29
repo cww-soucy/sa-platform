@@ -82,6 +82,7 @@ test('Suivi : corriger seulement l’heure d’entrée recalcule les heures du p
   assert.equal(t.end, '08:00');
   assert.equal(t.hrs, 1.5, 'les heures doivent suivre la nouvelle entrée');
   assert.equal(t.pendingValidation, false);
+  assert.ok(t.k && t.k0 === '07:00|Entrepôt' && t.mod > 0, 'protocole SA Platform : sinon le téléphone de l’employé annule la correction');
   await page.close();
 });
 
@@ -110,6 +111,17 @@ test('Monitoring : le flux met les événements d’aujourd’hui avant ceux d�
   await ready(page);
   const flux = await page.evaluate(() => window.__admin.vals().flux.map((f) => f.txt));
   assert.deepEqual(flux, ['Punch', 'Punch', 'Matériel — Trousse DPD']);
+  await page.close();
+});
+
+test('Monitoring : la photo jointe à une demande s’ouvre à la demande (jamais chargée avec la liste)', async () => {
+  const tables = base(); Object.assign(tables.demandes[0], { has_photo: true, photo: 'data:image/png;base64,iVBORw0KGgo=' });
+  const { page, db } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables });
+  await ready(page);
+  assert.ok(!db.log.some((l) => l.table === 'demandes' && /select=[^&]*\bphoto\b/.test(l.query)), 'la liste ne charge pas les photos');
+  const [popup] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: 'Voir la photo jointe' }).click()]);
+  await popup.waitForSelector('img');
+  assert.equal(await popup.locator('img').getAttribute('src'), 'data:image/png;base64,iVBORw0KGgo=');
   await page.close();
 });
 

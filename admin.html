@@ -404,7 +404,7 @@ button{font-family:inherit}a{color:var(--color-accent-700)}
                   <div style="display:grid;grid-template-columns:48px 26px minmax(0,1fr);gap:10px;align-items:start;padding:9px 18px;border-bottom:1px solid var(--color-divider);background:{{ f.bg }};color:{{ f.fg }}">
                     <span style="font:600 15px var(--font-heading)">{{ f.h }}</span>
                     <sa-i n="{{ f.icon }}" s="18"></sa-i>
-                    <div style="display:flex;flex-direction:column;line-height:1.3"><span>{{ f.txt }}</span><span style="font-size:12px">{{ f.who }} · {{ f.site }}</span></div>
+                    <div style="display:flex;flex-direction:column;line-height:1.3"><span>{{ f.txt }}</span><span style="font-size:12px">{{ f.who }} · {{ f.site }}</span><template data-sc="if" value="{{ f.hasPhoto }}"><button onClick="{{ f.openPhoto }}" style="all:unset;cursor:pointer;font-size:12px;text-decoration:underline;width:fit-content">Voir la photo jointe</button></template></div>
                   </div>
                 </template>
               </div>
@@ -1796,7 +1796,7 @@ Comp.prototype.load=function(){
     soft('workorders?select=id,client,site,type,priorite,status,date,assigne,descr,groupe_id&order=date.asc',[]),
     soft('releves?select=id,site_id,site_nom,tech,tech_nom,date,heure,type_code,vals,touched,checks,prods,note,hors_zone&date=gte.'+since+'&order=date.asc,heure.asc',[]),
     soft('punch_gps_log?select=emp,heure,lieu,date&date=eq.'+today+'&order=heure.desc&limit=30',[]),
-    soft('plan?select=id&date=eq.'+today,[]),soft('planning_tasks?select=id&date_debut=lte.'+today+'&date_fin=gte.'+today,[]),soft('demandes?select=id,tech,tech_nom,site_nom,type,motif,texte,statut,created_at&order=created_at.desc&limit=40',[]),soft('feuilles_temps?select=uid,week,total_h',[]),soft('facturation?select=*',[]),soft('projets_excel?select=*',[]),soft('comptes?select=id,statut',[]),soft('sondages?select=id,slug,titre,client,actif,created_at&order=created_at.desc',[]),soft('punch_gps_log?select=site_id,emp,lat,lng,acc,date,heure,lieu&lat=not.is.null&order=date.desc,heure.desc&limit=800',[])
+    soft('plan?select=id&date=eq.'+today,[]),soft('planning_tasks?select=id&date_debut=lte.'+today+'&date_fin=gte.'+today,[]),soft('demandes?select=id,tech,tech_nom,site_nom,type,motif,texte,statut,created_at,has_photo&order=created_at.desc&limit=40',[]),soft('feuilles_temps?select=uid,week,total_h',[]),soft('facturation?select=*',[]),soft('projets_excel?select=*',[]),soft('comptes?select=id,statut',[]),soft('sondages?select=id,slug,titre,client,actif,created_at&order=created_at.desc',[]),soft('punch_gps_log?select=site_id,emp,lat,lng,acc,date,heure,lieu&lat=not.is.null&order=date.desc,heure.desc&limit=800',[])
   ]).then(function(r){
     var T={};r[2].forEach(function(t){T[t.code]=t;});var ct={};r[1].forEach(function(c){ct[c.site_id]=c;});
     var sites=r[0].map(function(s){var c=ct[s.id],code=(c&&c.type_code&&T[c.type_code])?c.type_code:'GEN';return{id:String(s.id),nom:s.nom||'(sans nom)',addr:s.addr||'',ville:villeOf(s.addr),type:code,contrat:(c&&c.code)||'',notes:s.notes||''};})
@@ -1903,16 +1903,23 @@ Comp.prototype.writeFT=function(uid,week,fn,tries){var self=this,id=uid+'_'+week
     return fetch(SB+'/rest/v1/feuilles_temps?id=eq.'+encodeURIComponent(id)+'&updated_at='+(row.updated_at==null?'is.null':'eq.'+encodeURIComponent(row.updated_at)),{method:'PATCH',headers:Object.assign({'Content-Type':'application/json',Prefer:'return=representation'},H),body:JSON.stringify({days:nd,total_h:tot,updated_at:now})})
      .then(function(res){if(!res.ok)throw new Error('HTTP '+res.status);return res.json();})
      .then(function(rows){if(rows.length)return rows[0];if(tries>=5)throw new Error('conflit, réessayez');return self.writeFT(uid,week,fn,tries+1);});});};
+/* Même protocole que SA Platform (v64) : un punch touché à la main reçoit une identité stable (k, k0 = signature
+   d'origine) et l'heure de la modification (mod). Sans mod, la fusion d'index.html garde la version « la plus complète »
+   — le téléphone de l'employé pouvait donc annuler une correction ou une validation faite ici. */
+function marquerModif(t){if(!t.k){t.k0=(t.start||'')+'|'+(t.lieu||'');t.k=Date.now().toString(36)+Math.random().toString(36).slice(2,6);}t.mod=Date.now();return t;}
+Comp.prototype.openDemPhoto=function(id){var w=window.open('','_blank');if(w)w.document.write('<p style="font:16px sans-serif">Chargement de la photo…</p>');
+  get('demandes?id=eq.'+encodeURIComponent(id)+'&select=photo').then(function(r){var ph=r[0]&&r[0].photo;if(!ph)throw new Error('photo introuvable');if(w){w.document.open();w.document.write('<title>Photo de la demande</title><body style="margin:0;background:#111"><img src="'+ph+'" style="max-width:100%;display:block;margin:auto"></body>');w.document.close();}})
+   .catch(function(e){if(w)w.close();this.flash('Photo : '+netMsg(e));}.bind(this));};
 Comp.prototype.findTask=function(days,dayIdx,start,lieu){return((days[dayIdx]||{}).tasks||[]).filter(function(t){return t.start===start&&t.lieu===lieu;})[0];};
 Comp.prototype.validerPunch=function(p){var self=this;this.flash('Validation…');
-  this.writeFT(p.uid,p.week,function(days){var t=self.findTask(days,p.dayIdx,p._start,p._lieu);if(!t)throw new Error('punch introuvable — la feuille a changé');{t.pendingValidation=false;t.autoClosed=false;t.validatedBy=self.user.id;t.validatedAt=new Date().toISOString();}return days;})
+  this.writeFT(p.uid,p.week,function(days){var t=self.findTask(days,p.dayIdx,p._start,p._lieu);if(!t)throw new Error('punch introuvable — la feuille a changé');marquerModif(t);{t.pendingValidation=false;t.autoClosed=false;t.validatedBy=self.user.id;t.validatedAt=new Date().toISOString();}return days;})
    .then(function(){self.flash('Punch validé');return self.reloadAll();}).catch(function(e){self.flash('Échec — rien n’a été modifié : '+e.message);});};
 Comp.prototype.openFix=function(p){this.setState({fx:Object.assign({},p,{lieu2:p._lieu,entree2:p._start,sortie2:p.sortie==='—'?'':p.sortie})});};
 var HM=/^([01]\d|2[0-3]):[0-5]\d$/;
 Comp.prototype.saveFix=function(){var self=this,f=this.state.fx;if(!f)return;
   var lieu2=String(f.lieu2||'').trim(),e2=String(f.entree2||'').trim(),s2=String(f.sortie2||'').trim();
   if(!lieu2){this.flash('Le lieu ne peut pas être vide');return;}if(!HM.test(e2)){this.flash('Heure d’entrée invalide (HH:MM)');return;}if(s2&&!HM.test(s2)){this.flash('Heure de sortie invalide (HH:MM)');return;}
-  this.writeFT(f.uid,f.week,function(days){var t=self.findTask(days,f.dayIdx,f._start,f._lieu);if(!t)throw new Error('punch introuvable — la feuille a changé');
+  this.writeFT(f.uid,f.week,function(days){var t=self.findTask(days,f.dayIdx,f._start,f._lieu);if(!t)throw new Error('punch introuvable — la feuille a changé');marquerModif(t);
     t.lieu=lieu2;t.start=e2;if(s2){t.end=s2;t.active=false;}if(t.end&&!t.active)t.hrs=hrsFrom(t.start,t.end);t.pendingValidation=false;t.autoClosed=false;t.correctedBy=self.user.id;t.correctedAt=new Date().toISOString();return days;})
    .then(function(){self.setState({fx:null});self.flash('Punch corrigé');return self.reloadAll();}).catch(function(e){self.flash('Échec — rien n’a été modifié : '+e.message);});};
 function hrsFrom(s,e){var sp=String(s).split(':'),ep=String(e).split(':'),sm=+sp[0]*60+ +sp[1],em=+ep[0]*60+ +ep[1];if(em<sm)em+=1440;return Math.max(0,(em-sm)/60);}
@@ -1959,7 +1966,7 @@ Comp.prototype.vals=function(){
   var flux=[];
   D.gps.forEach(function(g){flux.push({t:D.today+' '+(g.heure||''),h:g.heure||'',txt:'Punch',who:g.emp,site:g.lieu||'—',icon:'login',bg:'transparent',fg:'var(--color-text)'});});
   relToday.forEach(function(r){var no=self.outOf(r).length;flux.push({t:D.today+' '+(r.heure||''),h:r.heure||'',txt:no?'Relevé — '+no+' valeur(s) hors zone':'Relevé enregistré',who:r.tech_nom||r.tech,site:r.site_nom,icon:no?'alert':'clipboard',bg:no?'var(--color-accent-900)':'transparent',fg:no?'#ffffff':'var(--color-text)'});});
-  D.dem.slice(0,10).forEach(function(d){var t=new Date(d.created_at),urg=d.type==='Urgence'&&d.statut!=='Traitée',tod=iso(t)===D.today;flux.push({t:iso(t)+' '+pad(t.getHours())+':'+pad(t.getMinutes()),h:(tod?'':t.getDate()+' '+MOIS[t.getMonth()].slice(0,3)+'. ')+pad(t.getHours())+':'+pad(t.getMinutes()),txt:d.type+' — '+(d.texte||d.motif||''),who:d.tech_nom||d.tech,site:d.site_nom||'hors site',icon:urg?'alert':'message',bg:urg?'var(--color-accent-900)':'transparent',fg:urg?'#ffffff':'var(--color-text)'});});
+  D.dem.slice(0,10).forEach(function(d){var t=new Date(d.created_at),urg=d.type==='Urgence'&&d.statut!=='Traitée',tod=iso(t)===D.today;flux.push({t:iso(t)+' '+pad(t.getHours())+':'+pad(t.getMinutes()),h:(tod?'':t.getDate()+' '+MOIS[t.getMonth()].slice(0,3)+'. ')+pad(t.getHours())+':'+pad(t.getMinutes()),txt:d.type+' — '+(d.texte||d.motif||''),who:d.tech_nom||d.tech,site:d.site_nom||'hors site',hasPhoto:!!d.has_photo,openPhoto:function(){self.openDemPhoto(d.id);},icon:urg?'alert':'message',bg:urg?'var(--color-accent-900)':'transparent',fg:urg?'#ffffff':'var(--color-text)'});});
   flux.sort(function(a,b){return String(b.t).localeCompare(String(a.t));});flux=flux.slice(0,16);
   // ---- inspections
   var fil=st.inspFilter,typesArr=Object.keys(D.types);
@@ -2011,7 +2018,7 @@ Comp.prototype.vals=function(){
     var cum=D.ftAll.filter(function(f){return f.uid===c.id;}).reduce(function(s,f){return s+(Number(f.total_h)||0);},0);
     return{_keep:actif(c.id)||tot>0||live,nom:(c.prenom+' '+c.nom).trim()+(actif(c.id)?'':' (inactif)'),op:(tot>0||live)?1:0.5,jours:jours,semaine:tot>0?fmtH(tot):'—',cumul:fmtH(cum),banque:'—',sup:'—'};}).filter(function(r){return r._keep||st.tempsTab==='cumul';});
   var punchRows=[];D.ft.filter(function(f){return f.week===tWk;}).forEach(function(f){(f.days||[]).forEach(function(d,i){var di=iso(addDays(tMon,i));((d&&d.tasks)||[]).forEach(function(t){
-    var flag=t.pendingValidation?(t.pendingReason==='nouveau_site'?'Nouveau site à valider':'Entrepôt / bureau à confirmer'):(t.autoClosed?'Fermé automatiquement à 20 h':((t.active&&di<D.today)?'Punch resté ouvert':''));if(!flag)return;
+    var flag=t.pendingValidation?(t.pendingReason==='nouveau_site'?'Nouveau site à valider':t.pendingReason==='correction_employe'?'Corrigé par l’employé — à valider':'Entrepôt / bureau à confirmer'):(t.autoClosed?'Fermé automatiquement à 20 h':((t.active&&di<D.today)?'Punch resté ouvert':''));if(!flag)return;
     var nomE=cn[f.uid]||f.emp||f.uid,pRow={uid:f.uid,week:tWk,dayIdx:i,_start:t.start||'',_lieu:t.lieu||'',nom:nomE,jour:DJ[i]+' '+addDays(tMon,i).getDate(),entree:t.start||'—',sortie:t.end||'—',site:t.lieu||'—',flag:flag,pending:true,done:false,etat:'',bg:'var(--color-accent-100)'};
     pRow.fix=function(){self.openFix(pRow);};pRow.ok=function(){self.validerPunch(pRow);};punchRows.push(pRow);});});});
   var tt=st.tempsTab,tempsTabs=[['temps','Temps',''],['suivi','Suivi',punchRows.length||''],['cumul','Cumul','']].map(function(x){var on=tt===x[0];return{label:x[1],n:x[2],bg:on?'var(--color-text)':'transparent',fg:on?'var(--color-bg)':'var(--color-text)',go:function(){self.setState({tempsTab:x[0]});}};});

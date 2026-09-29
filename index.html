@@ -2843,9 +2843,20 @@ function mapRowToDb(localKey,row){
   if(localKey==='calconn'){
     if(row.icsToken!==undefined){row.ics_token=row.icsToken;delete row.icsToken;}
   }
+  // ➕ CORRIGÉ : sortie d'inventaire — aucun champ n'était converti (noBon, noEmploye, sentAt) et une date
+  // vide était refusée par la colonne date → chaque envoi échouait, les sorties restaient sur l'appareil.
+  if(localKey==='sortie'){
+    if(row.noBon!==undefined){row.no_bon=row.noBon;delete row.noBon;}
+    if(row.noEmploye!==undefined){row.no_employe=row.noEmploye;delete row.noEmploye;}
+    if(row.sentAt!==undefined){row.sent_at=row.sentAt||null;delete row.sentAt;}
+    if(row.date==='')row.date=null;
+  }
   if(localKey==='hivernage'){
     if(row.siteId!==undefined){row.site_id=row.siteId;delete row.siteId;}
     if(row.siteNom!==undefined){row.site_nom=row.siteNom;delete row.siteNom;}
+    // ➕ CORRIGÉ : le rapport local garde le nom du site dans « site », colonne inexistante au serveur
+    // (site_nom) → chaque envoi de rapport d'hivernage était refusé et le rapport restait sur l'appareil.
+    if(row.site!==undefined){row.site_nom=row.site;delete row.site;}
     if(row.dateRapport!==undefined){row.date_rapport=row.dateRapport;delete row.dateRapport;}
     if(row.dateInspection!==undefined){row.date_inspection=row.dateInspection;delete row.dateInspection;}
     if(row.preparePar!==undefined){row.prepare_par=row.preparePar;delete row.preparePar;}
@@ -2902,9 +2913,15 @@ function mapRowFromDb(localKey,r){
   if(localKey==='calconn'){
     if(r.ics_token!==undefined){r.icsToken=r.ics_token;delete r.ics_token;}
   }
+  if(localKey==='sortie'){
+    if(r.no_bon!==undefined){r.noBon=r.no_bon;delete r.no_bon;}
+    if(r.no_employe!==undefined){r.noEmploye=r.no_employe;delete r.no_employe;}
+    if(r.sent_at!==undefined){r.sentAt=r.sent_at;delete r.sent_at;}
+    if(r.date===null)r.date='';
+  }
   if(localKey==='hivernage'){
     if(r.site_id!==undefined){r.siteId=r.site_id;delete r.site_id;}
-    if(r.site_nom!==undefined){r.siteNom=r.site_nom;delete r.site_nom;}
+    if(r.site_nom!==undefined){r.siteNom=r.site_nom;if(r.site===undefined)r.site=r.site_nom;delete r.site_nom;}
     if(r.date_rapport!==undefined){r.dateRapport=r.date_rapport;delete r.date_rapport;}
     if(r.date_inspection!==undefined){r.dateInspection=r.date_inspection;delete r.date_inspection;}
     if(r.prepare_par!==undefined){r.preparePar=r.prepare_par;delete r.prepare_par;}
@@ -3016,6 +3033,9 @@ function mergeFTDay(localDay, serverDay){
   });
   st.forEach(function(sv){
     var i = (sv.k!==undefined && sv.k!==null && parK[sv.k]!==undefined) ? parK[sv.k] : parSig[_ftSig(sv)];
+    // ➕ CORRIGÉ : punch dont l'heure de début ou le lieu a été corrigé sur un AUTRE appareil (ou dans sa-admin /
+    // sa-terrain) : sa signature a changé, on le retrouve par sa signature d'origine (k0) — sinon doublon.
+    if(i===undefined && sv.k0) i = parSig[sv.k0];
     if(i===undefined){ // punch que ce téléphone n'a jamais vu → on l'ajoute
       out.push(sv); i=out.length-1;
       if(sv.k)parK[sv.k]=i;

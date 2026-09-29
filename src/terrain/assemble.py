@@ -60,8 +60,8 @@ FIELD=lambda lab,inner: '<div class="field"><label style="font-size:15px">%s</la
 TEMPS=('<sc-if value="{{ isTemps }}"><div style="padding:20px;display:flex;flex-direction:column;gap:20px"><h1 style="margin:0;font-size:38px;line-height:1">Temps</h1>'+PANEL+
  '<div style="display:flex;flex-direction:column"><h3 style="margin:0 0 6px;font-size:24px">Cette semaine</h3>'
  '<sc-for list="{{ pn.days }}" as="d"><div style="border-top:1px solid var(--color-divider);padding:10px 8px;background:{{ d.bg }}"><div style="display:flex;justify-content:space-between;font:600 20px var(--font-heading)"><span>{{ d.label }}</span><span>{{ d.total }}</span></div>'
- '<sc-for list="{{ d.tasks }}" as="t"><div style="display:flex;gap:10px;font-size:15px;padding:3px 0"><span style="flex:none;min-width:118px">{{ t.h }}</span><span style="flex:1;min-width:0">{{ t.lieu }} <b>{{ t.pend }}</b></span><span style="flex:none">{{ t.dur }}</span></div></sc-for></div></sc-for></div>'
- '<div style="font-size:14px;line-height:1.4">Pour corriger ou supprimer un punch, ouvrez SA Platform.</div></div></sc-if>\n')
+ '<sc-for list="{{ d.tasks }}" as="t"><button onClick="{{ t.edit }}" style="all:unset;cursor:pointer;display:flex;gap:10px;font-size:15px;padding:8px 0;min-height:32px"><span style="flex:none;min-width:118px">{{ t.h }}</span><span style="flex:1;min-width:0;text-decoration:underline">{{ t.lieu }} <b>{{ t.pend }}</b></span><span style="flex:none">{{ t.dur }}</span></button></sc-for></div></sc-for></div>'
+ '<div style="font-size:14px;line-height:1.4">Touchez un punch de la semaine pour le corriger ou le supprimer. Chaque correction est soumise au superviseur.</div></div></sc-if>\n')
 PUNCHF=('<sc-if value="{{ isPunchForm }}"><div style="padding:20px;display:flex;flex-direction:column;gap:16px"><h1 style="margin:0;font-size:34px;line-height:1.05">Démarrer un punch</h1>'
  '<sc-if value="{{ pf.willClose }}"><div style="font-size:15px;border:1px solid var(--color-divider);padding:10px;line-height:1.35">{{ pf.closeTxt }}</div></sc-if>'
  '<sc-if value="{{ pf.hasJobs }}"><div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:15px">Depuis la tournée</div><sc-for list="{{ pf.jobs }}" as="j"><button onClick="{{ j.go }}" style="all:unset;cursor:pointer;padding:12px;border:1px solid var(--color-divider);background:{{ j.bg }};color:{{ j.fg }};display:flex;justify-content:space-between;font-size:17px"><span>{{ j.nom }}</span><span>{{ j.h }}</span></button></sc-for></div></sc-if>'
@@ -106,10 +106,65 @@ a2='<h3 style="margin:0;font-size:24px">Tournée</h3>'
 if M.count(a2)==1: M=M.replace(a2,a2+EMPTY,1)
 else: print('!! ancre Tournée',M.count(a2))
 
+# ---------- MODULES AJOUTÉS : Logistique, Hivernage, correction de punch, photo de demande ----------
+def sc_block(M,start):
+    i=M.find(start)
+    if i<0: return None
+    depth=0
+    for m in re.finditer(r'<sc-if\b|</sc-if>',M[i:]):
+        depth+= 1 if m.group(0).startswith('<sc-if') else -1
+        if depth==0: return M[i:i+m.end()]
+rep('{{ hivDoneCount }}<span style="font-weight:400;font-size:22px"> / 33</span>','{{ hivDoneCount }}<span style="font-weight:400;font-size:22px"> / {{ hivTotalSites }}</span>',1)
+# Sortie : plus de « camion » fictif — stock réel de l'inventaire, destination = site du punch en cours
+rep('Camion 07 → {{ logSite }}','Pour : {{ logSite }}',1)
+rep('En camion : {{ p.reste }} {{ p.unite }}','En stock : {{ p.reste }} {{ p.unite }}',1)
+rep('<sc-for list="{{ inventaire }}" as="p">','<input class="input" value="{{ invQ }}" onInput="{{ invQ_ }}" placeholder="Chercher un article…" style="min-height:48px;font-size:17px;margin-bottom:8px"><sc-if value="{{ noInv }}"><div style="font-size:15px;padding:8px 0">Inventaire en chargement ou indisponible.</div></sc-if><sc-for list="{{ inventaire }}" as="p">',1)
+M=M.replace('onInput="{{ invQ_ }}"','onInput="{{ onInvQ }}"')
+# Bon : liste des bons en attente, puis le bon choisi (signature du client)
+B=sc_block(M,'<sc-if value="{{ isBon }}">')
+if B:
+    head='<sc-if value="{{ isBon }}">'
+    inner=B[len(head):-len('</sc-if>')]
+    PICK=('<sc-if value="{{ bonPick }}"><div style="display:flex;flex-direction:column;gap:12px">'
+      '<sc-if value="{{ hasLastSortie }}"><button class="btn btn-primary" onClick="{{ newBon }}" style="min-height:56px;font-size:18px">Nouveau bon depuis la sortie · {{ lastSortieTxt }}</button></sc-if>'
+      '<h3 style="margin:4px 0 0;font-size:22px">Bons à livrer</h3>'
+      '<sc-if value="{{ noBons }}"><div style="font-size:15px">Aucun bon en attente de livraison.</div></sc-if>'
+      '<sc-for list="{{ bonList }}" as="b"><button onClick="{{ b.open }}" style="all:unset;cursor:pointer;display:flex;flex-direction:column;gap:2px;padding:12px 0;border-top:1px solid var(--color-divider)">'
+      '<span style="font:600 19px var(--font-heading)">{{ b.no }} · {{ b.client }}</span><span style="font-size:14px">{{ b.sub }}</span></button></sc-for></div></sc-if>')
+    BACK='<button onClick="{{ bonBack }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:4px;height:40px;font-size:16px;color:var(--color-accent-700)"><sa-i n="left" s="20"></sa-i>Bons à livrer</button>'
+    M=M.replace(B,head+PICK+'<sc-if value="{{ bonOpen }}">'+BACK+inner+'</sc-if></sc-if>',1)
+else: print('!! bloc isBon')
+rep('<span style="font:600 24px var(--font-heading)">BL-26-0932</span>','<span style="font:600 24px var(--font-heading)">{{ bon.no }}</span>',1)
+rep('<span style="font-size:15px">{{ logClient }} · {{ logSite }}</span>','<span style="font-size:15px">{{ bon.client }} · {{ bon.addr }}</span>',1)
+rep('— copie envoyée au client','— bon marqué livré',1)
+# légende hivernage : pas de planification « cette semaine » dans les données → deux états réels seulement
+rep(r'<span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;box-sizing:border-box;border:1px solid var\(--color-text\);background:repeating-linear-gradient[^"]*"></span>Cette semaine</span>','',1,regex=True)
+rep('>À planifier</span>','>À faire</span>',1)
+# nom lu à chaque frappe (onChange n'arrive qu'à la sortie du champ : « Confirmer » touché juste après aurait lu un nom vide)
+rep('value="{{ signer }}" onChange="{{ onSigner }}"','value="{{ signer }}" onInput="{{ onSigner }}"',1)
+# Hivernage : remarques réellement enregistrées
+rep('<textarea class="input" placeholder="Bris, pièces à commander, remarques"','<textarea class="input" value="{{ hivNoteTxt }}" onInput="{{ onHivNote }}" placeholder="Bris, pièces à commander, remarques"',1)
+# Demande : photo jointe ; plus de promesse de rappel automatique (aucun répartiteur n'est avisé automatiquement)
+rep('Le répartiteur est avisé immédiatement et vous rappelle.','La demande part au bureau tout de suite. Pour une urgence, appelez aussi le bureau.',1)
+rep('<button class="btn btn-primary" onClick="{{ sendDemande }}"','<button class="btn btn-secondary" onClick="{{ demPhotoBtn }}" style="min-height:52px;font-size:18px;gap:10px"><sa-i n="camera" s="20"></sa-i>{{ demPhotoLbl }}</button><button class="btn btn-primary" onClick="{{ sendDemande }}"',1)
+# Correction d'un punch
+PEDIT=('<sc-if value="{{ isPunchEdit }}"><div style="padding:20px;display:flex;flex-direction:column;gap:16px"><h1 style="margin:0;font-size:34px;line-height:1.05">Corriger un punch</h1>'
+ +FIELD('Lieu','<input class="input" value="{{ pe.lieu }}" onInput="{{ pe.onLieu }}" style="min-height:52px;font-size:18px">')
+ +FIELD('Début','<input class="input" type="time" value="{{ pe.start }}" onInput="{{ pe.onStart }}" style="min-height:52px;font-size:18px">')
+ +FIELD('Fin','<input class="input" type="time" value="{{ pe.end }}" onInput="{{ pe.onEnd }}" style="min-height:52px;font-size:18px">')
+ +'<sc-if value="{{ pe.active }}"><div style="font-size:15px">Punch en cours : laissez la fin vide pour qu’il continue.</div></sc-if>'
+ +'<div style="font-size:15px;line-height:1.4">La correction sera marquée « à valider » pour le superviseur.</div>'
+ +BTN('btn-primary','pe.save','check','Enregistrer')+BTN('btn-secondary','pe.del','x','{{ pe.delLabel }}','52px;font-size:18px')+BTN('btn-secondary','pe.cancel','left','Annuler','52px;font-size:18px')+'</div></sc-if>\n')
+anchor3='<sc-if value="{{ isLog }}">'
+if anchor3 in M: M=M.replace(anchor3,PEDIT+anchor3,1)
+else: print('!! ancre isLog (PEDIT)')
+
+# Message temporaire : visible mais « traversable » — sinon il bloque 2,6 s ce qui est dessous (ex. le cadre de signature)
+rep('bottom:100px;z-index:30;padding:14px 16px;','bottom:100px;z-index:30;pointer-events:none;padding:14px 16px;',1)
 # --- finitions ---
 rep('Punché à {{ punchAt }} · {{ cur.ville }}','{{ punchShort }} · {{ cur.ville }}',1)
 rep('<span class="tag tag-outline" style="font-size:13px;padding:4px 10px;display:inline-block;white-space:nowrap">Contrat {{ cur.contrat }}</span>','<sc-if value="{{ cur.hasContrat }}"><span class="tag tag-outline" style="font-size:13px;padding:4px 10px;display:inline-block;white-space:nowrap">Contrat {{ cur.contrat }}</span></sc-if>',1)
-rep('{{ hivDoneCount }}/33','Bientôt')
+rep('{{ hivDoneCount }}/33','{{ hivDoneCount }}/{{ hivTotalSites }}',1)
 
 open(os.path.join(OUT,'terrain.markup.html'),'w',encoding='utf-8').write(M)
 ds=open(os.path.join(SRC,'design')+'/ds/styles.css',encoding='utf-8').read()

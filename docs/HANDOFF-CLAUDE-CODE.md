@@ -96,10 +96,10 @@ Une longue session de débogage a eu lieu ce matin : des doublons de WO/tâches 
 - [ ] Gestion d'erreur réseau : `soft()` avale silencieusement les échecs de lecture (retourne `[]`) — un site injoignable donne une app qui a l'air vide plutôt qu'un message d'erreur clair
 
 ### Priorité 2 — modules absents dans sa-terrain
-- [ ] **Logistique** (sortie d'inventaire, bon de livraison depuis le terrain)
-- [ ] **Hivernage** (rapports de pré-hivernage, 33 sites — existe déjà comme module dans `index.html`, à porter)
-- [ ] Corriger/supprimer un punch depuis le téléphone (aujourd'hui : lecture seule sur son propre historique)
-- [ ] Photo dans une demande
+- [x] **Logistique** (sortie d'inventaire, bon de livraison depuis le terrain) — 29/09 : sortie au format de SA Platform, bons en attente + nouveau bon depuis la sortie, signature au doigt (stockée comme photo du bon, validation en PATCH partiel)
+- [x] **Hivernage** — 29/09 : liste de contrôle du design → rapport `rapports_hivernage` en brouillon, que le bureau complète et imprime dans SA Platform. Les « 33 sites » du design étaient fictifs : la liste = sites réels hors piscines intérieures (MI) et spas (SP), avancement = rapports de l'année
+- [x] Corriger/supprimer un punch depuis le téléphone — 29/09 : semaine en cours, protocole v64 de SA Platform (k/k0/mod, pierre tombale), chaque correction marquée « à valider » (Suivi de sa-admin)
+- [x] Photo dans une demande — 29/09 : colonne `demandes.photo` (+ `has_photo`), lien « Voir la photo jointe » dans le Monitoring de sa-admin
 
 ### Priorité 3 — modules absents dans sa-admin
 - [ ] **Communication d'équipe** (infolettre du lundi) — nature différente des autres écrans (rédaction de contenu, pas affichage de données), mérite sa propre conception

@@ -1,4 +1,11 @@
 // SA Platform — Service Worker
+// v78 — Trois correctifs de synchronisation, aucune autre fonction touchée :
+// (1) Rapports d'hivernage : le nom du site était envoyé dans une colonne « site » qui n'existe pas au serveur
+// (site_nom) → chaque envoi était refusé et les rapports restaient sur l'appareil. (2) Sorties d'inventaire :
+// aucun champ n'était converti (noBon, noEmploye, sentAt) et la colonne client manquait (ajoutée) → même
+// symptôme. Les rapports et sorties restés sur un appareil partent à sa prochaine ouverture. (3) Fusion des
+// feuilles de temps : un punch dont l'heure de début ou le lieu avait été corrigé sur un AUTRE appareil (ou
+// dans sa-admin / sa-terrain) était ajouté en double ; il est maintenant retrouvé par sa signature d'origine.
 // v77 — Sécurité connexion : plus aucun repli « local » quand le serveur ne répond pas. Ce repli comparait le
 // mot de passe à la liste COMPTES codée en dur (admin/admin1234…) ou à un vieux cache contenant d'anciens mots
 // de passe en clair — un réseau coupé suffisait pour ouvrir une session. Les mots de passe par défaut sont
@@ -127,7 +134,7 @@
 // (v59 — Mise en page des fichiers Excel refaite d'après les maquettes validées avant codage. …)
 // (v58 … v49 — voir historique précédent, inchangé.)
 
-var CACHE_NAME = 'sa-platform-v77';
+var CACHE_NAME = 'sa-platform-v78';
 
 // Installation : s'activer tout de suite sans attendre
 self.addEventListener('install', function(event) {

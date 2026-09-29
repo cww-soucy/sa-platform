@@ -8,6 +8,7 @@ const { chromium } = require('playwright');
 
 const ROOT = path.join(__dirname, '..');
 const SB = 'https://ldqvdiaewvhnukuaxdmc.supabase.co';
+const SCHEMA = require('./schema.json');
 const PNG = Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478da6364f8cf00000301010018dd8db40000000049454e44ae426082', 'hex');
 
 function pad(n) { return n < 10 ? '0' + n : '' + n; }
@@ -37,6 +38,7 @@ function filters(qs) {
     if (['select', 'order', 'limit', 'offset'].includes(k)) continue;
     if (v.startsWith('eq.')) out.push((r) => String(r[k]) === v.slice(3));
     else if (v === 'is.null') out.push((r) => r[k] == null);
+    else if (v.startsWith('neq.')) out.push((r) => String(r[k]) !== v.slice(4));
   }
   return (r) => out.every((f) => f(r));
 }
@@ -54,6 +56,11 @@ class FakeDB {
     if (f) return route.fulfill({ status: f, contentType: 'application/json', body: JSON.stringify({ message: 'échec simulé' }) });
     const json = (status, data) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(data) });
     if (name.startsWith('rpc/')) return json(200, []);
+    // Comme PostgREST : une écriture qui cite une colonne inexistante est refusée en entier (400).
+    if ((m === 'POST' || m === 'PATCH') && SCHEMA[name] && body) {
+      const bad = [].concat(body).flatMap((r) => Object.keys(r)).filter((k) => !SCHEMA[name].includes(k));
+      if (bad.length) { this.log[this.log.length - 1].rejected = bad; return json(400, { code: 'PGRST204', message: 'colonne inconnue : ' + bad.join(', ') }); }
+    }
     const match = filters(u.search);
     if (m === 'GET') return json(200, this.rows(name).filter(match));
     if (m === 'PATCH') { const hit = this.rows(name).filter(match); hit.forEach((r) => Object.assign(r, body)); return json(200, hit); }

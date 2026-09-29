@@ -44,6 +44,17 @@ function base() {
     facturation: [{ id: 'f1', id_projet: 'P1', client: 'Ville X', ville: 'Québec', date: t, odt: 'ODT-1', po: null, prix_calcule: 1000, prix_facture: 1200, statut_facturation: 'À facturer', technicien: 'kael' }],
     projets_excel: [{ id_projet: 'P1', nom: 'Projet 1' }],
     sondages: [],
+    inventaire: [
+      { id: 'i1', nom: 'Chlore liquide 20 L', unite: 'bidon', qte: 12, categorie: 'chimique' },
+      { id: 'i2', nom: 'Bicarbonate de sodium', unite: 'sac', qte: 8, categorie: 'chimique' },
+      { id: 'i3', nom: 'Joint torique 2 po', unite: 'u', qte: 30, categorie: 'piece' },
+    ],
+    bons_livraison: [
+      { id: 'bl-a', no_bon: 'SA-20260928-111', client: 'Piscine Beta', tel: '', adresse: '2 rue B, Lévis', date: t, heure: '', technicien: 'Kaël Test', urgent: true, status: 'brouillon',
+        items_liv: [{ item: 'Chlore liquide 20 L', qteSortie: '4', unite: 'bidon', qteLivree: '4', statut: '' }], items_ret: [], photos: [], created_by: 'cwweil' },
+      { id: 'bl-b', no_bon: 'SA-20260901-222', client: 'Ancien client', status: 'livre', technicien: 'Kaël Test', items_liv: [], photos: [] },
+    ],
+    rapports_hivernage: [{ id: 'hv-old', site_id: '2', site_nom: 'Piscine Beta', status: 'brouillon', date_inspection: t, technicien: 'Kaël Test' }],
   };
 }
 
