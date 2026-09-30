@@ -26,7 +26,7 @@ var SUN={},segS=function(on){return{bg:on?'var(--color-text)':'transparent',fg:o
 
 function Comp(user){
   this.user=user;this.rootRef={current:null};this.D=null;this.ftw={};this._ftwL={};this.envois={};this.pmm={};this.docs={};this.stk=null;this.flt=null;this.tools=null;this.tmoves=null;this.lcfg=null;this.loadedAt=null;this.err='';
-  this.state={portail:!hashMod()&&portailPref(),mod:'monitoring',q:'',toast:null,inspSite:null,inspKey:null,inspFilter:'all',opsFilter:'Tous',opsOpen:{},siteType:'all',carteView:'geo',factFilter:'Tous',tempsTab:'semaine',eUid:null,eDay:null,tOff:0,sOff:0,fe:null,pmmDate:null,pb:null,ce:null,de:null,docQ:'',docF:'tous',logTab:'bl',se:null,stkQ:'',stkCat:'tous',te:null,ke:null,outTab:'outils',outF:'tous',outQ:'',qrIn:null,hj:null,hp:null,paieSel:{},paieOpen:{},paieMode:'synthese',pOff:0,ed:null,sed:null,survey:null,sondKey:(function(){try{return localStorage.getItem('sa_admin_sondkey')||'';}catch(e){return '';}})(),keyIn:'',dlg:false,busy:false,f:{type:'Bon de travail',site:'',tech:'',debut:'',heure:'07:00',rec:'aucune',jours:{},fin:''}};this.pl={};this._pl={};this.sd={};this._sd={};
+  this.state={portail:!hashMod()&&portailPref(),mod:'monitoring',q:'',toast:null,inspSite:null,inspKey:null,inspFilter:'all',opsFilter:'Tous',opsOpen:{},siteType:'all',carteView:'geo',monPer:'jour',monWall:false,factFilter:'Tous',tempsTab:'semaine',eUid:null,eDay:null,tOff:0,sOff:0,fe:null,pmmDate:null,pb:null,ce:null,de:null,docQ:'',docF:'tous',logTab:'bl',se:null,stkQ:'',stkCat:'tous',te:null,ke:null,outTab:'outils',outF:'tous',outQ:'',qrIn:null,hj:null,hp:null,paieSel:{},paieOpen:{},paieMode:'synthese',pOff:0,ed:null,sed:null,survey:null,sondKey:(function(){try{return localStorage.getItem('sa_admin_sondkey')||'';}catch(e){return '';}})(),keyIn:'',dlg:false,busy:false,f:{type:'Bon de travail',site:'',tech:'',debut:'',heure:'07:00',rec:'aucune',jours:{},fin:''}};this.pl={};this._pl={};this.sd={};this._sd={};
 }
 Comp.prototype.setState=function(p){this.state=Object.assign({},this.state,typeof p==='function'?p(this.state):p);this.update();};
 Comp.prototype.flash=function(t){var s=this;clearTimeout(this._tt);this.state.toast=t;this.update();this._tt=setTimeout(function(){s.state.toast=null;s.update();},2800);};
@@ -983,6 +983,54 @@ Comp.prototype.empVals=function(){var self=this,st=this.state,D=this.D;if(!D)ret
     eCanApprove:!!(e&&e.any&&!e.approuvee&&!e.enCours),eApprove:function(){self.approve(uid,wk,null);},eAdd:function(){self.openDay(uid,wk,eDay!=null?eDay:(new Date().getDay()+6)%7);self.newPunch();},
     eOdt:function(){self.openFE('wo',null,{tech:uid,debut:today});},eHas:!!(e&&e.any)};};
 
+/* ═════════════ MONITORING : période (aujourd'hui / hier / 7 jours), salles mécaniques, mur de contrôle grand écran ═════════════ */
+var MON_PER=[['jour','Aujourd’hui'],['hier','Hier'],['7j','7 derniers jours']];
+function ageTxt(d){var n=Math.round((new Date(iso(new Date())+'T12:00:00')-new Date(d+'T12:00:00'))/864e5);return n<=0?'aujourd’hui':n===1?'hier':'il y a '+n+' j';}
+Comp.prototype.monVals=function(){var self=this,st=this.state,D=this.D;if(!D)return{};var now=new Date(),today=D.today,yest=iso(addDays(now,-1)),per=st.monPer||'jour';
+  var inPer=function(d){return per==='jour'?d===today:per==='hier'?d===yest:d>=iso(addDays(now,-6));},perLbl=per==='jour'?'aujourd’hui':per==='hier'?'hier':'sur 7 jours';
+  var relP=D.rel.filter(function(r){return inPer(r.date);}).slice().sort(function(a,b){return(b.date+(b.heure||'')).localeCompare(a.date+(a.heure||''));});
+  var nVals=function(r){var n=0;Object.keys(r.vals||{}).forEach(function(k){if(r.vals[k]!=null&&(!r.touched||r.touched[k]))n++;});return n;};
+  var relRows=relP.map(function(r){var no=self.outOf(r).length,nv=nVals(r);return{d:(r.date===today?'':fdate(r.date)+' ')+(r.heure||''),site:r.site_nom||(D.byId[r.site_id]||{}).nom||'—',tech:r.tech_nom||r.tech||'—',
+    n:nv?nv+' valeur(s)':'aucune valeur saisie',hz:no?no+' hors zone':'',fw:no?700:400,note:r.note||'',go:function(){self.setState({monWall:false});self.go('inspections',{inspSite:String(r.site_id),inspKey:null});}};});
+  // Salles mécaniques : une tuile par site ayant au moins un relevé (dernier relevé, valeurs colorées, qui est sur place)
+  var last={};D.rel.forEach(function(r){var k=String(r.site_id),p=last[k];if(!p||(r.date+(r.heure||''))>(p.date+(p.heure||'')))last[k]=r;});
+  var onSite={};var wk=iso(mondayOf(now)),di=(now.getDay()+6)%7,nm=this.names();
+  D.ft.forEach(function(f){if(f.week!==wk)return;var d=f.days&&f.days[di];((d&&d.tasks)||[]).forEach(function(t){if(!t.active)return;var s=D.sites.filter(function(x){return String(x.id)===String(t.siteId)||norm(x.nom)===norm(t.lieu);})[0];if(s)(onSite[s.id]=onSite[s.id]||[]).push({nom:nm[f.uid]||f.emp||f.uid,depuis:t.start});});});
+  var salles=Object.keys(last).map(function(sid){var r=last[sid],s=D.byId[sid],T=self.T(s?s.type:r.type_code),out=self.outOf(r),nv=nVals(r),age=Math.round((new Date(today+'T12:00:00')-new Date(r.date+'T12:00:00'))/864e5);
+    var lvl=out.length?3:(age>7?2:(nv?0:1)),who=onSite[sid]||[];
+    return{_lvl:lvl,_age:age,id:sid,nom:s?s.nom:(r.site_nom||'—'),ville:s?s.ville:'',debit:T.court||'',
+      headBg:lvl===3?'var(--color-accent-900)':'var(--color-text)',headFg:'#ffffff',
+      etat:lvl===3?out.length+' valeur(s) hors zone':lvl===2?'Aucun relevé depuis '+age+' j':lvl===1?'Relevé sans valeur':'Dans les normes',
+      rows:(T.fields||[]).map(function(f){var v=r.vals&&r.vals[f.key],has=v!=null&&(!r.touched||r.touched[f.key]),o=has&&(v<f.lo||v>f.hi);return{l:f.label,txt:has?fr(v,f.step)+(f.unit?' '+f.unit:''):'—',bg:!has?'transparent':(o?'var(--color-accent-900)':'var(--color-accent-100)'),o:o,has:has};}),
+      note:'Dernier relevé '+ageTxt(r.date)+(r.heure?' à '+r.heure:'')+' par '+(r.tech_nom||r.tech||'—')+(r.note?' — « '+r.note+' »':''),
+      live:who.length?'Sur place : '+who.map(function(w){return w.nom+' depuis '+w.depuis;}).join(', '):'',hasLive:who.length>0,
+      go:function(){self.setState({monWall:false});self.go('inspections',{inspSite:sid,inspKey:null});}};})
+    .sort(function(a,b){return b._lvl-a._lvl||(b.hasLive?1:0)-(a.hasLive?1:0)||a.nom.localeCompare(b.nom,'fr');});
+  var nOut=salles.filter(function(s){return s._lvl===3;}).length,nOld=salles.filter(function(s){return s._lvl===2;}).length;
+  // Mur de contrôle (grand écran)
+  var team=[];D.ft.forEach(function(f){if(f.week!==wk)return;var d=f.days&&f.days[di],ts=(d&&d.tasks)||[],run=ts.filter(function(t){return t.active;})[0],h=ts.reduce(function(s,t){return s+(t.active||!t.end?0:(Number(t.hrs)||0));},0);
+    if(ts.length)team.push({nom:nm[f.uid]||f.emp||f.uid,on:!!run,lieu:run?run.lieu:(ts[ts.length-1].lieu||'—'),depuis:run?'depuis '+run.start:'fini à '+(ts[ts.length-1].end||'—'),h:fmtH(h),dot:run?'#3ddc84':'#6b7c93'});});
+  team.sort(function(a,b){return(b.on?1:0)-(a.on?1:0)||a.nom.localeCompare(b.nom,'fr');});
+  var openDem=D.dem.filter(function(d){return d.statut!=='Traitée';}),urg=openDem.filter(function(d){return d.type==='Urgence';});
+  var woToday=D.wo.filter(function(w){return w.date===today;}),woDoneT=woToday.filter(function(w){return woDone(w.status);}).length;
+  var wallK=[{l:'En punch',v:String(team.filter(function(t){return t.on;}).length),s:'sur '+team.length+' au travail aujourd’hui'},{l:'Relevés aujourd’hui',v:String(D.rel.filter(function(r){return r.date===today;}).length),s:'hier : '+D.rel.filter(function(r){return r.date===yest;}).length},
+    {l:'Salles hors zone',v:String(nOut),s:nOld+' sans relevé depuis 7 j',hot:nOut>0},{l:'Bons de travail du jour',v:woDoneT+' / '+woToday.length,s:'terminés'},{l:'Demandes ouvertes',v:String(openDem.length),s:urg.length+' urgence(s)',hot:urg.length>0}];
+  var fl=[];relP.slice(0,12).forEach(function(r){var no=self.outOf(r).length;fl.push({t:r.date+' '+(r.heure||''),h:(r.date===today?'':fdate(r.date)+' ')+(r.heure||''),txt:no?'Relevé — '+no+' hors zone':'Relevé',who:r.tech_nom||r.tech,site:r.site_nom,hot:no>0});});
+  D.dem.slice(0,8).forEach(function(d){var t=new Date(d.created_at),ds=iso(t);if(!inPer(ds)&&!(d.type==='Urgence'&&d.statut!=='Traitée'))return;fl.push({t:ds+' '+pad(t.getHours())+':'+pad(t.getMinutes()),h:(ds===today?'':fdate(ds)+' ')+pad(t.getHours())+':'+pad(t.getMinutes()),txt:d.type+' — '+(d.texte||d.motif||''),who:d.tech_nom||d.tech,site:d.site_nom||'hors site',hot:d.type==='Urgence'&&d.statut!=='Traitée'});});
+  fl.sort(function(a,b){return String(b.t).localeCompare(String(a.t));});
+  return{monPers:MON_PER.map(function(p){return Object.assign({label:p[1],go:function(){self.setState({monPer:p[0]});}},segS(per===p[0]));}),monPerLbl:perLbl,
+    relRows:relRows,relNone:!relRows.length,relTitle:'Relevés '+perLbl+' ('+relRows.length+')',
+    salles:salles,sallesSummary:salles.length?salles.length+' salle(s) suivie(s) · '+nOut+' hors zone · '+nOld+' sans relevé depuis 7 j':'Aucun relevé enregistré pour l’instant — les salles apparaissent dès le premier relevé saisi dans sa-terrain.',
+    monWall:!!st.monWall,openWall:function(){self.setState({monWall:true});var el=document.documentElement;try{if(el.requestFullscreen&&!document.fullscreenElement)el.requestFullscreen().catch(function(){});}catch(e){}self.startWallTimer();},
+    closeWall:function(){self.setState({monWall:false});try{if(document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen();}catch(e){}},
+    wallClock:pad(now.getHours())+':'+pad(now.getMinutes()),wallDate:JS[now.getDay()]+' '+now.getDate()+' '+MOIS[now.getMonth()]+' '+now.getFullYear(),
+    wallSync:this.err?'Hors ligne — dernière lecture '+(this.loadedAt?pad(this.loadedAt.getHours())+':'+pad(this.loadedAt.getMinutes()):'—'):'En direct · mis à jour à '+(this.loadedAt?pad(this.loadedAt.getHours())+':'+pad(this.loadedAt.getMinutes())+':'+pad(this.loadedAt.getSeconds()):'—'),
+    wallKpis:wallK.map(function(k){return Object.assign(k,{bg:k.hot?'#c0392b':'rgba(255,255,255,.06)'});}),wallTeam:team,wallNoTeam:!team.length,wallFlux:fl.slice(0,10).map(function(f){return Object.assign(f,{bg:f.hot?'#c0392b':'transparent'});}),
+    wallSalles:salles.map(function(s){return Object.assign({},s,{bd:s._lvl===3?'#e74c3c':s._lvl===2?'#f39c12':s._lvl===1?'#6b7c93':'#3ddc84',tag:s._lvl===3?'#e74c3c':s._lvl===2?'#f39c12':'transparent',
+      rows:s.rows.map(function(r){return Object.assign({},r,{bg:!r.has?'transparent':(r.o?'#e74c3c':'#3ddc84'),fg:r.o?'#ff8a80':'#ffffff'});})});}),wallNoSalles:!salles.length};};
+/* Mur de contrôle : relecture toutes les 30 s et horloge à la minute, tant qu'il est affiché */
+Comp.prototype.startWallTimer=function(){var self=this;if(this._wallT)return;this._wallT=setInterval(function(){if(!self.state.monWall){clearInterval(self._wallT);self._wallT=null;return;}self._wn=(self._wn||0)+1;if(self._wn%2===0)self.load().then(function(){self.update();});else self.update();},15000);};
+
 /* Valeurs d'écran : Temps (Semaine · À valider · Paie · Cumul) et Stats */
 Comp.prototype.tempsVals=function(punchRows){var self=this,st=this.state,D=this.D,mod=st.mod,tMon=addDays(mondayOf(new Date()),7*st.tOff),wk=iso(tMon),today=iso(new Date());
   if((mod==='temps'||mod==='stats'||st.hj)&&this.ftw[wk]===undefined)this.loadWeekFT(wk);
@@ -1250,7 +1298,7 @@ Comp.prototype.vals=function(){
     exportMsg:function(){self.flash('Export PDF : bientôt');},
     opsFilters:opsFilters,dossiers:dossiers,newDossier:function(){self.openDlg({type:'Bon de travail'});},noDossier:dossiers.length===0,
     nouveaux:nouveaux,siteTypeOptions:siteTypeOptions,siteType:stype,onSiteType:function(e){self.setState({siteType:e.target.value});},siteRows:siteRows,siteCount:siteRows.length,noNouveaux:nouveaux.length===0},
-    this.tempsVals(punchRows),this.empVals(),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals(),this.stockVals(),this.outilsVals());
+    this.tempsVals(punchRows),this.empVals(),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals(),this.stockVals(),this.outilsVals(),this.monVals());
 };
 Comp.prototype.update=function(){if(!this._host)return;SARender(document.getElementById('tpl'),this._host,this.vals());this.syncMap();var el=this.rootRef.current;if(el)el.style.setProperty('--sa-row','10px');};
 Comp.prototype.mount=function(host){var self=this;this._host=host;var hm=hashMod();if(hm&&TITLES_OK(hm))this.state.mod=hm;this.update();

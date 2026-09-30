@@ -486,6 +486,42 @@ PORTAIL=('<sc-if value="{{ isPortail }}"><div role="dialog" aria-label="Portail 
   '<span style="flex:1"></span><span style="font-size:13px">Astuce : admin.html#temps ouvre directement Temps · Paie</span></div>'
   '</div></div></sc-if>\n')
 M=M.rstrip()+'\n'+PORTAIL
+
+# ---------- MONITORING : période, relevés de la période, salles réelles, mur de contrôle ----------
+_mon='<sc-if value="{{ isMonitoring }}">\n        <div style="display:flex;flex-direction:column;gap:26px">'
+MONBAR=('<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">'+SEG('monPers')+'<span style="font-size:14px">Relevés et flux {{ monPerLbl }}</span><span style="flex:1"></span>'
+  '<button class="btn btn-primary" onClick="{{ openWall }}" style="gap:8px"><sa-i n="grid" s="17"></sa-i>Mur de contrôle (grand écran)</button></div>')
+if M.count(_mon)==1: M=M.replace(_mon,_mon+MONBAR,1)
+else: print('!! ancre monitoring',M.count(_mon))
+RELP=CARD('<div style="padding:14px 18px;border-bottom:1px solid var(--color-divider);display:flex;align-items:baseline;justify-content:space-between"><h3 style="margin:0;font-size:22px">{{ relTitle }}</h3></div>'
+  '<sc-if value="{{ relNone }}"><div style="padding:12px 18px">Aucun relevé {{ monPerLbl }}.</div></sc-if><table class="table" style="font-size:14px"><tbody><sc-for list="{{ relRows }}" as="r"><tr onClick="{{ r.go }}" style="cursor:pointer">'
+  '<td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px;font:600 15px var(--font-heading);white-space:nowrap">{{ r.d }}</td>'+TD%('font-weight:600','{{ r.site }}')+TD%('','{{ r.tech }}')+TD%('','{{ r.n }}')+TD%('font-weight:{{ r.fw }}','{{ r.hz }}')+TD%('font-size:13px','{{ r.note }}')+'</tr></sc-for></tbody></table>')
+_sal='<section style="display:flex;flex-direction:column;gap:12px">\n            <div style="display:flex;align-items:baseline;justify-content:space-between"><h3 style="margin:0;font-size:22px">Salles mécaniques</h3>'
+if M.count(_sal)==1: M=M.replace(_sal,RELP+_sal,1)
+else: print('!! ancre salles',M.count(_sal))
+rep('<span style="font-size:12px">{{ s.ville }} · {{ s.debit }}</span>','<span style="font-size:12px">{{ s.ville }} · {{ s.debit }}</span><span style="font-size:12px;font-weight:600">{{ s.etat }}</span>')
+rep('<sc-if value="{{ s.note }}">','<sc-if value="{{ s.hasLive }}"><div style="font-size:12px;font-weight:600;margin-top:4px">{{ s.live }}</div></sc-if><sc-if value="{{ s.note }}">')
+WALL=('<sc-if value="{{ monWall }}"><div role="dialog" aria-label="Mur de contrôle" style="position:fixed;inset:0;z-index:45;background:#0a1a2b;color:#ffffff;overflow:auto;font-size:16px">'
+  '<div style="padding:22px 28px;display:flex;flex-direction:column;gap:20px;min-height:100%;box-sizing:border-box">'
+  '<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap"><div style="width:52px;height:52px;background:#004987;display:flex;align-items:flex-end;padding:6px;box-sizing:border-box;font:600 12px/0.95 var(--font-heading)">Soucy<br>Aquatik</div>'
+  '<div style="display:flex;flex-direction:column"><span style="font:600 34px/1 var(--font-heading)">Mur de contrôle</span><span style="font-size:15px;opacity:.8">{{ wallDate }} · {{ wallSync }}</span></div><span style="flex:1"></span>'
+  '<span style="font:600 64px/1 var(--font-heading);font-variant-numeric:tabular-nums">{{ wallClock }}</span><button onClick="{{ closeWall }}" style="all:unset;cursor:pointer;border:1px solid rgba(255,255,255,.5);padding:8px 14px;font-weight:600">Quitter</button></div>'
+  '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px"><sc-for list="{{ wallKpis }}" as="k"><div style="background:{{ k.bg }};padding:14px 18px;display:flex;flex-direction:column;gap:4px;border:1px solid rgba(255,255,255,.12)">'
+  '<span style="font-size:15px;opacity:.85">{{ k.l }}</span><span style="font:600 52px/1 var(--font-heading)">{{ k.v }}</span><span style="font-size:14px;opacity:.8">{{ k.s }}</span></div></sc-for></div>'
+  '<div style="display:grid;grid-template-columns:minmax(0,3fr) minmax(300px,1fr);gap:20px;align-items:start">'
+  '<div style="display:flex;flex-direction:column;gap:10px"><span style="font:600 24px var(--font-heading)">Salles mécaniques</span><sc-if value="{{ wallNoSalles }}"><div style="opacity:.8">Aucune salle suivie pour l’instant.</div></sc-if>'
+  '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px"><sc-for list="{{ wallSalles }}" as="s"><div style="border:2px solid {{ s.bd }};background:rgba(255,255,255,.04);display:flex;flex-direction:column">'
+  '<div style="padding:10px 14px;display:flex;flex-direction:column;gap:2px;border-bottom:1px solid rgba(255,255,255,.12)"><span style="font:600 20px/1.15 var(--font-heading)">{{ s.nom }}</span><span style="font-size:14px;font-weight:600;color:{{ s.bd }}">{{ s.etat }}</span></div>'
+  '<div style="padding:6px 14px 10px;display:flex;flex-direction:column"><sc-for list="{{ s.rows }}" as="r"><div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:15px"><span style="opacity:.85">{{ r.l }}</span>'
+  '<span style="display:flex;align-items:center;gap:8px;font:600 18px var(--font-heading);color:{{ r.fg }}">{{ r.txt }}<span style="width:12px;height:12px;border-radius:50%;background:{{ r.bg }};border:1px solid rgba(255,255,255,.4)"></span></span></div></sc-for>'
+  '<sc-if value="{{ s.hasLive }}"><div style="font-size:14px;font-weight:600;color:#3ddc84;margin-top:4px">{{ s.live }}</div></sc-if><div style="font-size:12px;opacity:.7;margin-top:4px">{{ s.note }}</div></div></div></sc-for></div></div>'
+  '<div style="display:flex;flex-direction:column;gap:20px"><div style="display:flex;flex-direction:column;gap:8px"><span style="font:600 24px var(--font-heading)">Équipe</span><sc-if value="{{ wallNoTeam }}"><div style="opacity:.8">Personne n’a encore punché aujourd’hui.</div></sc-if>'
+  '<sc-for list="{{ wallTeam }}" as="t"><div style="display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 10px;background:rgba(255,255,255,.05)"><span style="width:12px;height:12px;border-radius:50%;background:{{ t.dot }}"></span>'
+  '<div style="display:flex;flex-direction:column;min-width:0"><b style="font-size:16px">{{ t.nom }}</b><span style="font-size:14px;opacity:.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ t.lieu }} · {{ t.depuis }}</span></div><span style="font:600 18px var(--font-heading)">{{ t.h }}</span></div></sc-for></div>'
+  '<div style="display:flex;flex-direction:column;gap:6px"><span style="font:600 24px var(--font-heading)">Flux terrain</span><sc-for list="{{ wallFlux }}" as="f"><div style="padding:7px 10px;background:{{ f.bg }};border-bottom:1px solid rgba(255,255,255,.1)">'
+  '<div style="display:flex;gap:8px"><b style="font-variant-numeric:tabular-nums">{{ f.h }}</b><span>{{ f.txt }}</span></div><div style="font-size:13px;opacity:.8">{{ f.who }} · {{ f.site }}</div></div></sc-for></div></div></div>'
+  '</div></div></sc-if>\n')
+M=M.rstrip()+'\n'+WALL
 _logo='<div style="display:flex;flex-direction:column;line-height:1.15"><span style="font:600 20px var(--font-heading)">sa-admin</span><span style="font-size:12px;color:var(--color-accent-700)">Centre des opérations</span></div>\n    </div>'
 if M.count(_logo)==1: M=M.replace(_logo,_logo+'<button onClick="{{ openPortail }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;height:38px;padding:0 14px 0 16px;border-bottom:1px solid var(--color-divider);font-weight:600" data-hv="1"><sa-i n="home" s="18"></sa-i>Accueil · toutes les applications</button>',1)
 else: print('!! logo sa-admin introuvable',M.count(_logo))
