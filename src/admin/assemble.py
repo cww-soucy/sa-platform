@@ -274,9 +274,12 @@ PMMSCR=('<sc-if value="{{ isPlanMatch }}"><div style="display:flex;flex-directio
   '<button class="btn btn-ghost" onClick="{{ pmmToday }}">Aujourd’hui</button><input class="input" type="date" value="{{ pmmDateVal }}" onChange="{{ onPmmDate }}" style="width:auto">'
   '<span style="flex:1"></span><span style="font-size:14px">{{ pmmCount }}</span><button class="btn btn-secondary" onClick="{{ pmmPrint }}">Imprimer la journée de l’équipe</button><button class="btn btn-primary" onClick="{{ pmmNew }}">Nouveau Plan de Match</button></div>'
   '<sc-if value="{{ pmmLoading }}"><div>Chargement…</div></sc-if><sc-if value="{{ pmmErrTxt }}"><div role="alert" style="padding:10px 14px;border:2px solid var(--color-accent-900)">{{ pmmErrTxt }}</div></sc-if>'
+  '<div class="blueprint" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><sc-for list="{{ pmmSum }}" as="k"><div style="padding:12px 16px;border-right:1px solid var(--color-divider);background:{{ k.bg }};color:{{ k.fg }};display:flex;flex-direction:column"><span style="font-size:13px">{{ k.l }}</span><span style="font:600 32px/1.1 var(--font-heading)">{{ k.v }}</span></div></sc-for></div>'
+  '<sc-if value="{{ pmmHasUna }}">'+CARD('<div style="padding:10px 18px;display:flex;flex-direction:column;gap:6px"><b style="font:600 18px var(--font-heading)">Travaux sans personne assignée</b><sc-for list="{{ pmmUna }}" as="j"><button onClick="{{ j.open }}" style="all:unset;cursor:pointer;padding:6px 10px;border-left:4px solid var(--color-accent-900);font-size:14px">{{ j.txt }}</button></sc-for></div>')+'</sc-if>'
   '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:14px"><sc-for list="{{ pmmCards }}" as="c">'
   +CARD('<div style="padding:14px 18px;display:flex;flex-direction:column;gap:8px">'
     '<div style="display:flex;align-items:center;gap:10px"><b style="font:600 20px var(--font-heading);flex:1">{{ c.nom }}</b><button class="btn btn-secondary" onClick="{{ c.edit }}" style="white-space:nowrap">{{ c.editLbl }}</button></div>'
+    '<div style="padding:6px 10px;border-left:4px solid {{ c.liveBd }};font-size:14px;font-weight:{{ c.liveFw }}">{{ c.live }}</div>'
     '<sc-if value="{{ c.noPlan }}"><div style="font-size:14px">Aucun plan pour cette journée.</div></sc-if>'
     '<sc-if value="{{ c.hasPlan }}"><div style="font-size:13px">{{ c.meta }}</div><sc-if value="{{ c.resume }}"><div style="font-size:14px">{{ c.resume }}</div></sc-if>'
     '<div style="display:flex;align-items:center;gap:10px"><span style="flex:1;height:8px;background:var(--color-accent-100);position:relative"><span style="position:absolute;left:0;top:0;bottom:0;width:{{ c.pct }}%;background:var(--color-accent-700)"></span></span><span style="font-size:13px">{{ c.prog }}</span></div>'
@@ -286,7 +289,10 @@ PMMSCR=('<sc-if value="{{ isPlanMatch }}"><div style="display:flex;flex-directio
     '<span style="width:16px;height:16px;flex:none;border:1.5px solid var(--color-text);background:{{ t.box }};color:var(--color-bg);display:flex;align-items:center;justify-content:center"><sc-if value="{{ t.on }}"><sa-i n="check" s="12" w="3"></sa-i></sc-if></span>'
     '<span style="flex:1;font-size:14px">{{ t.label }}</span><span style="font-size:12px">{{ t.etat }}</span><sc-if value="{{ t.canVal }}"><button class="btn btn-secondary" onClick="{{ t.valider }}" style="min-height:28px;padding:2px 10px">Valider</button></sc-if></div></sc-for></div></sc-for>'
     '<sc-if value="{{ c.hasFF }}"><div style="font-size:13px"><b>Obstacles :</b> {{ c.obstacles }}<br><b>Bons coups :</b> {{ c.bonscoups }}</div></sc-if></sc-if>'
-    '<sc-if value="{{ c.hasJobs }}"><div style="font-size:13px;border-top:1px solid var(--color-divider);padding-top:6px"><b>Travaux du jour</b><sc-for list="{{ c.jobs }}" as="j"><div>{{ j.txt }} <b>{{ j.done }}</b></div></sc-for></div></sc-if>'
+    '<div style="border-top:1px solid var(--color-divider);padding-top:6px;display:flex;flex-direction:column;gap:3px"><div style="display:flex;justify-content:space-between"><b style="font-size:14px">Travaux du jour</b><span style="font-size:13px">{{ c.jobsSum }}</span></div>'
+    '<sc-if value="{{ c.noJobs }}"><div style="font-size:13px">Aucun bon de travail, créneau ou tâche.</div></sc-if>'
+    +''.join('<sc-for list="{{ c.%s }}" as="j"><button onClick="{{ j.open }}" style="all:unset;cursor:pointer;display:flex;gap:8px;align-items:baseline;padding:4px 8px;border-left:4px solid {{ j.bd }};opacity:{{ j.op }};font-size:13px"><b style="white-space:nowrap;font-size:12px">{{ j.etat }}</b><span>{{ j.txt }}</span></button></sc-for>'%k for k in ('jobsCur','jobsLate','jobsTodo','jobsDone'))
+    +'</div>'
     '</div>')
   +'</sc-for></div></div></sc-if>\n')
 bs=block(M,'isStats')
