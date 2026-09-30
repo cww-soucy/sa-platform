@@ -342,5 +342,20 @@
     "id",
     "value",
     "updated_at"
+  ],
+  "site_journal": [
+    "id",
+    "site_id",
+    "task_id",
+    "wo_id",
+    "uid",
+    "emp",
+    "date",
+    "heure",
+    "lieu",
+    "notes",
+    "photos",
+    "created_at",
+    "updated_at"
   ]
 }
