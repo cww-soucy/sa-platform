@@ -26,7 +26,7 @@ var SUN={},segS=function(on){return{bg:on?'var(--color-text)':'transparent',fg:o
 
 function Comp(user){
   this.user=user;this.rootRef={current:null};this.D=null;this.ftw={};this._ftwL={};this.envois={};this.pmm={};this.docs={};this.stk=null;this.flt=null;this.tools=null;this.tmoves=null;this.lcfg=null;this.loadedAt=null;this.err='';
-  this.state={portail:!hashMod()&&portailPref(),mod:'monitoring',q:'',toast:null,inspSite:null,inspKey:null,inspFilter:'all',opsFilter:'Tous',opsOpen:{},siteType:'all',carteView:'geo',factFilter:'Tous',tempsTab:'semaine',tOff:0,sOff:0,fe:null,pmmDate:null,pb:null,ce:null,de:null,docQ:'',docF:'tous',logTab:'bl',se:null,stkQ:'',stkCat:'tous',te:null,ke:null,outTab:'outils',outF:'tous',outQ:'',qrIn:null,hj:null,hp:null,paieSel:{},paieOpen:{},paieMode:'synthese',pOff:0,ed:null,sed:null,survey:null,sondKey:(function(){try{return localStorage.getItem('sa_admin_sondkey')||'';}catch(e){return '';}})(),keyIn:'',dlg:false,busy:false,f:{type:'Bon de travail',site:'',tech:'',debut:'',heure:'07:00',rec:'aucune',jours:{},fin:''}};this.pl={};this._pl={};this.sd={};this._sd={};
+  this.state={portail:!hashMod()&&portailPref(),mod:'monitoring',q:'',toast:null,inspSite:null,inspKey:null,inspFilter:'all',opsFilter:'Tous',opsOpen:{},siteType:'all',carteView:'geo',factFilter:'Tous',tempsTab:'semaine',eUid:null,eDay:null,tOff:0,sOff:0,fe:null,pmmDate:null,pb:null,ce:null,de:null,docQ:'',docF:'tous',logTab:'bl',se:null,stkQ:'',stkCat:'tous',te:null,ke:null,outTab:'outils',outF:'tous',outQ:'',qrIn:null,hj:null,hp:null,paieSel:{},paieOpen:{},paieMode:'synthese',pOff:0,ed:null,sed:null,survey:null,sondKey:(function(){try{return localStorage.getItem('sa_admin_sondkey')||'';}catch(e){return '';}})(),keyIn:'',dlg:false,busy:false,f:{type:'Bon de travail',site:'',tech:'',debut:'',heure:'07:00',rec:'aucune',jours:{},fin:''}};this.pl={};this._pl={};this.sd={};this._sd={};
 }
 Comp.prototype.setState=function(p){this.state=Object.assign({},this.state,typeof p==='function'?p(this.state):p);this.update();};
 Comp.prototype.flash=function(t){var s=this;clearTimeout(this._tt);this.state.toast=t;this.update();this._tt=setTimeout(function(){s.state.toast=null;s.update();},2800);};
@@ -293,7 +293,7 @@ function grouperJour(ps){var m={},o=[];ps.forEach(function(p){var k=norm(p.lieu)
   var l=m[k];l.nb++;if(p.act)l.act=true;else l.h+=p.hrs;if(p.start&&(!l.debut||p.start<l.debut))l.debut=p.start;if(p.end&&(!l.fin||p.end>l.fin))l.fin=p.end;if(!l.detail&&p.detail)l.detail=p.detail;if(p.av)l.av=true;});
   return o.map(function(k){return m[k];}).sort(function(a,b){return(a.debut||'').localeCompare(b.debut||'');});}
 Comp.prototype.paieSel=function(wk,data){var s=this.state.paieSel[wk];if(!s){s={};data.forEach(function(e){s[e.id]=e.any&&!e.enCours;});}return s;};
-Comp.prototype.exportPaie=function(){var wk=iso(addDays(mondayOf(new Date()),7*this.state.tOff)),data=this.weekData(wk),sel=this.paieSel(wk,data),emps=data.filter(function(e){return sel[e.id]&&e.any;});
+Comp.prototype.exportPaie=function(only){var wk=iso(addDays(mondayOf(new Date()),7*this.state.tOff)),data=this.weekData(wk),sel=this.paieSel(wk,data),emps=data.filter(function(e){return(only?e.id===only:sel[e.id])&&e.any;});
   if(!emps.length){this.flash('Sélectionnez au moins un employé qui a des heures');return;}
   var H1=function(v){return{v:v,s:1};},N=function(v){return{v:dec(v),s:3};},T=function(v){return{v:v,s:4};},mon=new Date(wk+'T12:00:00'),fin=addDays(mon,6);
   var titre='Feuilles de temps — semaine du '+fdate(wk)+' au '+fdate(iso(fin));
@@ -310,7 +310,7 @@ Comp.prototype.exportPaie=function(){var wk=iso(addDays(mondayOf(new Date()),7*t
   sheets.push({name:'Journal des punchs',widths:[24,10,11,7,9,8,32,10,30,9],rows:j});
   saveBlob(xlsxBlob(sheets),'SoucyAquatik_Feuilles_de_temps_'+wk+'.xlsx');this.audit('EXPORT',wk,{action:'sortie_feuilles_temps',format:'xlsx',employes:emps.map(function(e){return e.id;})});
   this.flash('Fichier Excel téléchargé — '+emps.length+' employé(s)');};
-Comp.prototype.markSent=function(methode){var self=this,wk=iso(addDays(mondayOf(new Date()),7*this.state.tOff)),data=this.weekData(wk),sel=this.paieSel(wk,data),emps=data.filter(function(e){return sel[e.id]&&e.any;}),now=new Date().toISOString();
+Comp.prototype.markSent=function(methode,only){var self=this,wk=iso(addDays(mondayOf(new Date()),7*this.state.tOff)),data=this.weekData(wk),sel=this.paieSel(wk,data),emps=data.filter(function(e){return(only?e.id===only:sel[e.id])&&e.any;}),now=new Date().toISOString();
   if(!emps.length){this.flash('Sélectionnez au moins un employé');return;}
   rest('POST','feuilles_temps_envois',emps.map(function(e){return{id:e.id+'_'+wk,uid:e.id,emp:e.nom,semaine:wk,email:e.email,methode:methode||'sa-admin',punchs:e.nbPunchs,heures:dec(e.total),par:self.user.id,le:now,updated_at:now};}),'resolution=merge-duplicates,return=minimal')
     .then(function(){self.flash(emps.length+' feuille(s) marquée(s) envoyée(s) à la paie');return self.loadWeekFT(wk,true);}).catch(function(e){self.flash('Échec : '+netMsg(e));});};
@@ -318,12 +318,12 @@ Comp.prototype.markSent=function(methode){var self=this,wk=iso(addDays(mondayOf(
    (Outlook, Mail…) avec un message prêt ; le fichier Excel vient d'être téléchargé, il reste à le joindre. */
 function mailto(to,sujet,corps){var u='mailto:'+encodeURIComponent(to||'').replace(/%40/g,'@')+'?subject='+encodeURIComponent(sujet)+'&body='+encodeURIComponent(corps);if(window.__openMail)return window.__openMail(u);/* point d'observation pour les tests */try{window.location.href=u;}catch(e){window.open(u,'_blank');}}
 function emailPaie(){try{return localStorage.getItem('sa_admin_email_paie')||'';}catch(e){return '';}}
-Comp.prototype.mailPaie=function(){var wk=iso(addDays(mondayOf(new Date()),7*this.state.tOff)),data=this.weekData(wk),sel=this.paieSel(wk,data),emps=data.filter(function(e){return sel[e.id]&&e.any;});
+Comp.prototype.mailPaie=function(only){var wk=iso(addDays(mondayOf(new Date()),7*this.state.tOff)),data=this.weekData(wk),sel=this.paieSel(wk,data),emps=data.filter(function(e){return(only?e.id===only:sel[e.id])&&e.any;});
   if(!emps.length){this.flash('Sélectionnez au moins un employé');return;}var fin=iso(addDays(new Date(wk+'T12:00:00'),6)),tt=0;
   var b='Bonjour,\n\nVoici les feuilles de temps de la semaine du '+wk+' au '+fin+'.\n\n';
   emps.forEach(function(e){tt+=e.total;b+='• '+e.nom+' : '+decTxt(e.total)+' h (régulières '+decTxt(e.reg)+(e.supp>0?', supplémentaires '+decTxt(e.supp):'')+')'+(e.enCours?' — punch encore en cours':'')+(e.nbAV?' — '+e.nbAV+' punch(s) à valider':'')+'\n';});
   b+='\nTotal de l’équipe : '+decTxt(tt)+' h\n\nLe détail complet est dans le fichier Excel joint.\n\nMerci.';
-  this.exportPaie();mailto(this.state.emailPaie!=null?this.state.emailPaie:emailPaie(),'Feuilles de temps — semaine du '+wk,b);this.markSent('courriel');};
+  this.exportPaie(only);mailto(this.state.emailPaie!=null?this.state.emailPaie:emailPaie(),(only?'Feuille de temps — '+emps[0].nom+' — ':'Feuilles de temps — ')+'semaine du '+wk,b);this.markSent('courriel',only);};
 Comp.prototype.mailEmp=function(id){var wk=iso(addDays(mondayOf(new Date()),7*this.state.tOff)),e=this.weekData(wk).filter(function(x){return x.id===id;})[0];if(!e)return;
   if(!e.email)this.flash('Aucun courriel dans le compte de '+e.nom+' — ajoutez-le dans Comptes (le message s’ouvre quand même)');var mon=new Date(wk+'T12:00:00');
   var b='Bonjour '+e.nom.split(' ')[0]+',\n\nVoici ta feuille de temps pour la semaine du '+wk+' au '+iso(addDays(mon,6))+'.\n\nTotal : '+decTxt(e.total)+' h (régulières '+decTxt(e.reg)+(e.supp>0?', supplémentaires '+decTxt(e.supp):'')+')\n';
@@ -331,7 +331,7 @@ Comp.prototype.mailEmp=function(id){var wk=iso(addDays(mondayOf(new Date()),7*th
     grouperJour(ps).forEach(function(l){b+='   • '+l.lieu+(l.odt?' ['+l.odt+']':'')+' : '+l.debut+' → '+(l.act?'en cours':l.fin)+' = '+decTxt(l.h)+' h\n';});}
   b+='\nSi quelque chose ne correspond pas, dis-le-moi avant l’envoi à la paie.\n\nMerci.';
   mailto(e.email,'Ta feuille de temps — semaine du '+wk,b);auditT(this,'EXPORT','feuilles_temps',e.id+'_'+wk,{action:'courriel_employe'});};
-Comp.prototype.printPaie=function(){var wk=iso(addDays(mondayOf(new Date()),7*this.state.tOff)),data=this.weekData(wk),sel=this.paieSel(wk,data),emps=data.filter(function(e){return sel[e.id]&&e.any;}),mon=new Date(wk+'T12:00:00');
+Comp.prototype.printPaie=function(only){var wk=iso(addDays(mondayOf(new Date()),7*this.state.tOff)),data=this.weekData(wk),sel=this.paieSel(wk,data),emps=data.filter(function(e){return(only?e.id===only:sel[e.id])&&e.any;}),mon=new Date(wk+'T12:00:00');
   if(!emps.length){this.flash('Sélectionnez au moins un employé');return;}
   var E=function(s){return String(s==null?'':s).replace(/[&<>]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});};
   var h='<!doctype html><meta charset="utf-8"><title>Feuilles de temps '+wk+'</title><style>body{font:12px Arial,sans-serif;margin:18px}h2{margin:0 0 4px;font-size:17px}table{border-collapse:collapse;width:100%;margin:6px 0 4px}td,th{border:1px solid #bbb;padding:3px 6px;text-align:left}th{background:#e8f2fb}.n{text-align:right}section{page-break-after:always}.s{margin-top:26px;display:flex;gap:40px}.s div{border-top:1px solid #555;flex:1;padding-top:3px;font-size:10px}</style>';
@@ -922,13 +922,50 @@ Comp.prototype.portalVals=function(){var self=this,st=this.state,D=this.D,now=ne
     openPortail:function(){self.setState({portail:true});try{history.replaceState(null,'','#');}catch(e){}},
     closePortail:go(st.mod||'monitoring')};};
 
+/* Temps · « Par employé » : la feuille d'UN employé, avec tout le détail des punchs (notes, mesures, pièces, GPS, lien au travail)
+   et toutes les actions de publication pour lui seul (imprimer, Excel, courriel, envoyée à la paie, approuver). */
+var BP=[['cl','Chlore libre','ppm'],['ph','pH',''],['alc','Alcalinité','ppm'],['temp','Temp.','°C']];
+Comp.prototype.empVals=function(){var self=this,st=this.state,D=this.D;if(!D)return{};var tMon=addDays(mondayOf(new Date()),7*st.tOff),wk=iso(tMon),today=iso(new Date()),yest=iso(addDays(new Date(),-1));
+  var emps=D.comptes.filter(function(c){return c.role!=='admin'&&D.statut[c.id]!=='inactif';}).sort(function(a,b){return(a.prenom+a.nom).localeCompare(b.prenom+b.nom,'fr');});
+  var uid=st.eUid&&emps.some(function(c){return c.id===st.eUid;})?st.eUid:(emps[0]&&emps[0].id);
+  var rows=Array.isArray(this.ftw[wk])?this.ftw[wk]:null,row=rows&&rows.filter(function(r){return r.uid===uid;})[0],e=rows?this.weekData(wk).filter(function(x){return x.id===uid;})[0]:null;
+  var nm=this.names(),eDay=st.eDay==null?null:st.eDay,siteBy=function(l){return D.sites.filter(function(s){return norm(s.nom)===norm(l);})[0];};
+  var days=[];for(var i=0;i<7;i++){(function(i){if(eDay!=null&&eDay!==i)return;var d=row&&row.days&&row.days[i],ts=(d&&d.tasks)||[],dd=addDays(tMon,i),date=iso(dd);
+    var tot=ts.reduce(function(s,t){return s+(t.active||!t.end?0:(Number(t.hrs)||0));},0);
+    days.push({jour:DLF[i]+' '+dd.getDate()+' '+MOIS[dd.getMonth()]+(date===today?' — aujourd’hui':(date===yest?' — hier':'')),tot:ts.length?fmtH(tot):'',none:!ts.length,
+      add:function(){self.openDay(uid,wk,i);self.newPunch();},canApprove:ts.some(function(t){return!t.approuve&&!(t.active||!t.end);}),approve:function(){self.approve(uid,wk,i);},
+      punchs:ts.map(function(t,ti){var act=!!(t.active||!t.end),b=(t.bassins||[]).filter(function(x){return x;}),s=siteBy(t.lieu);
+        var mes=b.map(function(x){var v=BP.filter(function(p){return x[p[0]]!=null&&x[p[0]]!=='';}).map(function(p){return p[1]+' '+x[p[0]]+(p[2]?' '+p[2]:'');});return v.length?(x.bassin||'Bassin')+' : '+v.join(' · '):'';}).filter(Boolean);
+        var files=(t.files||[]).map(function(f){return f&&(f.name||'pièce jointe');}).filter(Boolean);
+        return{h:(t.start||'?')+' → '+(act?'en cours':(t.end||'?')),dur:act?'en cours':fmtH(Number(t.hrs)||0),lieu:t.lieu||'—',odt:t.odt?'ODT '+t.odt:'',detail:t.detail||'',
+          notes:t.notes||'',hasNotes:!!t.notes,mes:mes.join('   |   '),hasMes:mes.length>0,
+          files:files.length?files.length+' pièce(s) : '+files.join(', ')+((t.files||[]).some(function(f){return f&&f._local;})?' — les photos restent sur le téléphone et dans le journal du site':''):'',hasFiles:files.length>0,
+          lien:t.sourceLabel?'Lié à : '+t.sourceLabel:'',hasLien:!!t.sourceLabel,km:(t.kmDep||t.kmArr)?'Km : '+(t.kmDep||'?')+' → '+(t.kmArr||'?'):'',hasKm:!!(t.kmDep||t.kmArr),
+          gps:t.gps&&t.gps.lat?'https://maps.google.com/?q='+t.gps.lat+','+t.gps.lng:'',hasGps:!!(t.gps&&t.gps.lat),gpsLbl:t.gps&&t.gps.acc?'Position GPS (±'+Math.round(t.gps.acc)+' m)':'Position GPS',
+          tags:[t.pendingValidation?'À valider':'',t.approuve?'Approuvé'+(t.approuvePar?' par '+(nm[t.approuvePar]||t.approuvePar):''):'',t.correctedBy?'Corrigé par '+(nm[t.correctedBy]||t.correctedBy):'',t.ajoutePar?'Ajouté au bureau':'',t.autoClosed?'Fermé automatiquement':''].filter(Boolean).join(' · '),
+          bd:act?'var(--color-accent-700)':(t.pendingValidation?'var(--color-accent-900)':'var(--color-text)'),
+          edit:function(){self.openDay(uid,wk,i);self.editPunch(ti);},
+          odtNew:function(){self.openFE('wo',null,{site:s?s.id:null,client:s?null:t.lieu,tech:uid,debut:today});}};})});})(i);}
+  var chips=[{l:'Toute la semaine',on:eDay==null,go:function(){self.setState({eDay:null});}}];
+  for(var j=0;j<7;j++)(function(j){chips.push({l:DJ[j]+' '+addDays(tMon,j).getDate(),on:eDay===j,go:function(){self.setState({eDay:j});}});})(j);
+  var jump=function(dt){var off=Math.round((mondayOf(dt)-mondayOf(new Date()))/(7*864e5));self.setState({tOff:off,eDay:(dt.getDay()+6)%7});};
+  var env=e&&e.envoi;
+  return{isEmpTab:st.tempsTab==='employe',eEmps:emps.map(function(c){return{v:c.id,l:(c.prenom+' '+c.nom).trim(),sel:c.id===uid};}),onEUid:function(ev){self.setState({eUid:ev.target.value});},
+    eChips:chips.map(function(c){return Object.assign({label:c.l,go:c.go},segS(c.on));}),eToday:function(){jump(new Date());},eYest:function(){jump(addDays(new Date(),-1));},
+    eDays:days,eLoading:!rows,eNoRow:!!rows&&!row,
+    eSum:e?[{l:'Total',v:fmtH(e.total)},{l:'Régulières',v:fmtH(e.reg)},{l:'Supplémentaires',v:e.supp>0?fmtH(e.supp):'—'},{l:'Punchs',v:String(e.nbPunchs)},{l:'À valider',v:e.nbAV?String(e.nbAV):'—'}]:[],
+    eEtat:e?(e.enCours?'Punch en cours — semaine pas terminée':(env?'Envoyée à la paie le '+fdate(env.le)+(env.methode?' ('+env.methode+')':''):(e.approuvee?'Semaine approuvée':(e.any?'Pas encore approuvée':'Aucun punch cette semaine')))):'',
+    ePrint:function(){self.printPaie(uid);},eXlsx:function(){self.exportPaie(uid);},eMailEmp:function(){self.mailEmp(uid);},eMailPaie:function(){self.mailPaie(uid);},eSent:function(){self.markSent('sa-admin',uid);},
+    eCanApprove:!!(e&&e.any&&!e.approuvee&&!e.enCours),eApprove:function(){self.approve(uid,wk,null);},eAdd:function(){self.openDay(uid,wk,eDay!=null?eDay:(new Date().getDay()+6)%7);self.newPunch();},
+    eOdt:function(){self.openFE('wo',null,{tech:uid,debut:today});},eHas:!!(e&&e.any)};};
+
 /* Valeurs d'écran : Temps (Semaine · À valider · Paie · Cumul) et Stats */
 Comp.prototype.tempsVals=function(punchRows){var self=this,st=this.state,D=this.D,mod=st.mod,tMon=addDays(mondayOf(new Date()),7*st.tOff),wk=iso(tMon),today=iso(new Date());
   if((mod==='temps'||mod==='stats'||st.hj)&&this.ftw[wk]===undefined)this.loadWeekFT(wk);
   var loaded=Array.isArray(this.ftw[wk]),data=loaded?this.weekData(wk):[],tt=st.tempsTab;
   var days=[];for(var i=0;i<7;i++){var d=addDays(tMon,i);days.push({label:DJ[i]+' '+d.getDate(),bg:iso(d)===today?'var(--color-accent-100)':'transparent'});}
   var rows=data.map(function(e){return{nom:e.nom,total:e.any?fmtH(e.total):'—',reg:e.any?fmtH(e.reg):'—',supp:e.supp>0?'+'+fmtH(e.supp):'—',suppFg:e.supp>0?'var(--color-accent-900)':'var(--color-text)',
-    etat:e.enCours?'● en cours':(e.approuvee?'Approuvée':(e.nbAV?e.nbAV+' à valider':'')),canApprove:e.any&&!e.approuvee&&!e.enCours,approve:function(){self.approve(e.id,wk,null);},
+    etat:e.enCours?'● en cours':(e.approuvee?'Approuvée':(e.nbAV?e.nbAV+' à valider':'')),canApprove:e.any&&!e.approuvee&&!e.enCours,approve:function(){self.approve(e.id,wk,null);},fiche:function(){self.setState({tempsTab:'employe',eUid:e.id,eDay:null});},
     jours:e.jours.map(function(j,i){return{txt:j.nb?(j.h>0?fmtH(j.h):'')+(j.live?' ●':''):'—',ok:j.ap?'✓':'',bg:j.ap?'var(--color-accent-100)':'transparent',open:function(){self.openDay(e.id,wk,i);}};})};});
   var teamT=data.reduce(function(s,e){return s+e.total;},0),teamS=data.reduce(function(s,e){return s+e.supp;},0);
   // Paie
@@ -956,7 +993,7 @@ Comp.prototype.tempsVals=function(punchRows){var self=this,st=this.state,D=this.
     hpOpen:!!hp,hpNew:!!hp&&hp.i<0,hpTitle:hp?(hp.i<0?'Ajouter un punch':'Corriger le punch'):'',hpLieu:hp?hp.lieu:'',hpStart:hp?hp.start:'',hpEnd:hp?hp.end:'',hpDetail:hp?hp.detail:'',hpOdt:hp?hp.odt:'',hpActive:!!(hp&&hp.active),
     onHpLieu:setP('lieu'),onHpStart:setP('start'),onHpEnd:setP('end'),onHpDetail:setP('detail'),onHpOdt:setP('odt'),hpSave:function(){self.savePunch();},hpDel:function(){self.delPunch();},hpCancel:function(){self.setState({hp:null});},
     hpClosed:!hp,hpCanDel:!!hp&&hp.i>=0,hpDelLbl:hp&&hp.confirm?'Confirmer la suppression':'Supprimer ce punch'};
-  var TT=[['semaine','Semaine',''],['valider','À valider',punchRows.length||''],['paie','Paie',''],['cumul','Cumul','']];
+  var TT=[['semaine','Semaine',''],['employe','Par employé',''],['valider','À valider',punchRows.length||''],['paie','Paie',''],['cumul','Cumul','']];
   return Object.assign(hjV,{tempsTabs:TT.map(function(x){var on=tt===x[0];return{label:x[1],n:x[2],bg:on?'var(--color-text)':'transparent',fg:on?'var(--color-bg)':'var(--color-text)',go:function(){self.setState({tempsTab:x[0]});}};}),
     isTempsTab:tt==='semaine',isSuiviTab:tt==='valider',isPaieTab:tt==='paie',isCumulTab:tt==='cumul',tWeekLoading:!loaded&&this.ftw[wk]!=='err',tWeekErr:this.ftw[wk]==='err'?'Feuilles de temps illisibles : '+(this.ftwErr||''):'',
     tLabel:wkLabel(tMon),tPrev:function(){self.setState({tOff:st.tOff-1});},tNext:function(){self.setState({tOff:Math.min(0,st.tOff+1)});},tToday:function(){self.setState({tOff:0});},
@@ -978,7 +1015,7 @@ Comp.prototype.statsVals=function(){var self=this,st=this.state,D=this.D,sMon=ad
     sKpis:[{l:'Heures de l’équipe',v:fmtH(tot),s:supp>0?'dont '+fmtH(supp)+' supplémentaires':'aucune heure supplémentaire'},{l:'Punchs à valider',v:String(av),s:'cette semaine'},
       {l:'Bons de travail ouverts',v:String(woOuv),s:woUrg?woUrg+' urgent(s)':'aucun urgent'},{l:'Stock sous le seuil',v:String(bas.length),s:bas.slice(0,3).map(function(i){return i.nom;}).join(', ')||'—'}],
     sBars:data.filter(function(e){return e.any||e.total>0;}).sort(function(a,b){return b.total-a.total;}).map(function(e){return{nom:e.nom,h:fmtH(e.total),w:Math.round(e.total/max*100),bg:e.total>40?'var(--color-accent-900)':'var(--color-accent-700)',
-      sub:e.supp>0?'+'+fmtH(e.supp)+' supp.':'',open:function(){self.setState({mod:'temps',tempsTab:'semaine',tOff:st.sOff});}};}),sNoBars:loaded&&!data.some(function(e){return e.any;}),
+      sub:e.supp>0?'+'+fmtH(e.supp)+' supp.':'',open:function(){self.setState({mod:'temps',tempsTab:'employe',eUid:e.id,eDay:null,tOff:st.sOff});}};}),sNoBars:loaded&&!data.some(function(e){return e.any;}),
     sWo:WS.map(function(x){return{l:x[1],n:D.wo.filter(function(w){return w.status===x[0]||(x[0]==='complete'&&w.status==='termine');}).length};}),
     sCopy:copy,sDownload:function(){var t=self.teamReport(wk);if(!t){self.flash('Aucune heure cette semaine');return;}saveBlob(new Blob([t],{type:'text/plain;charset=utf-8'}),'SoucyAquatik_Equipe_Semaine_'+wk+'.txt');},
     sXlsx:function(){self.setState({mod:'temps',tempsTab:'paie',tOff:st.sOff});self.flash('Choisissez les employés puis « Télécharger Excel »');}};};
@@ -1184,7 +1221,7 @@ Comp.prototype.vals=function(){
     exportMsg:function(){self.flash('Export PDF : bientôt');},
     opsFilters:opsFilters,dossiers:dossiers,newDossier:function(){self.openDlg({type:'Bon de travail'});},noDossier:dossiers.length===0,
     nouveaux:nouveaux,siteTypeOptions:siteTypeOptions,siteType:stype,onSiteType:function(e){self.setState({siteType:e.target.value});},siteRows:siteRows,siteCount:siteRows.length,noNouveaux:nouveaux.length===0},
-    this.tempsVals(punchRows),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals(),this.stockVals(),this.outilsVals());
+    this.tempsVals(punchRows),this.empVals(),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals(),this.stockVals(),this.outilsVals());
 };
 Comp.prototype.update=function(){if(!this._host)return;SARender(document.getElementById('tpl'),this._host,this.vals());this.syncMap();var el=this.rootRef.current;if(el)el.style.setProperty('--sa-row','10px');};
 Comp.prototype.mount=function(host){var self=this;this._host=host;var hm=hashMod();if(hm&&TITLES_OK(hm))this.state.mod=hm;this.update();

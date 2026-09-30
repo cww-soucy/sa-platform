@@ -144,7 +144,7 @@ TABS=('<div style="display:flex;border:1px solid var(--color-divider)"><sc-for l
 SEMAINE=CARD('<div style="padding:12px 18px;border-bottom:1px solid var(--color-divider);display:flex;gap:10px;align-items:baseline;flex-wrap:wrap"><span style="font:600 22px var(--font-heading)">Équipe : {{ tTeam }}</span><span style="font-size:14px">{{ tTeamSupp }}</span></div>'
   '<table class="table" style="font-size:14px"><thead><tr>'+TH%('padding-left:18px','Technicien')+'<sc-for list="{{ tDays }}" as="w">'+TH%('text-align:center;background:{{ w.bg }}','{{ w.label }}')+'</sc-for>'
   +TH%('text-align:right','Total')+TH%('text-align:right','Régulières')+TH%('text-align:right','Supp.')+TH%('','État')+TH%('','')+'</tr></thead><tbody>'
-  '<sc-for list="{{ tRows }}" as="r"><tr><td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px;font-weight:500;white-space:nowrap">{{ r.nom }}</td>'
+  '<sc-for list="{{ tRows }}" as="r"><tr><td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px;font-weight:500;white-space:nowrap"><button onClick="{{ r.fiche }}" title="Ouvrir la feuille de cet employé" style="all:unset;cursor:pointer;text-decoration:underline;text-underline-offset:3px">{{ r.nom }}</button></td>'
   '<sc-for list="{{ r.jours }}" as="j"><td style="padding:2px;text-align:center"><button onClick="{{ j.open }}" style="all:unset;cursor:pointer;display:block;min-width:58px;padding:7px 4px;background:{{ j.bg }};font-variant-numeric:tabular-nums">{{ j.txt }} <b>{{ j.ok }}</b></button></td></sc-for>'
   +TD%('text-align:right;font:600 16px var(--font-heading);white-space:nowrap','{{ r.total }}')+TD%('text-align:right;white-space:nowrap','{{ r.reg }}')+TD%('text-align:right;white-space:nowrap;color:{{ r.suppFg }}','{{ r.supp }}')
   +TD%('font-size:13px;white-space:nowrap','{{ r.etat }}')+'<td style="padding:4px 18px 4px 8px"><sc-if value="{{ r.canApprove }}"><button class="btn btn-secondary" onClick="{{ r.approve }}" style="white-space:nowrap">Approuver la semaine</button></sc-if></td></tr></sc-for></tbody></table>'
@@ -165,13 +165,36 @@ PAIE=('<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><spa
   '<sc-if value="{{ paieNone }}"><div style="padding:14px 18px">Aucune heure cette semaine.</div></sc-if>','overflow-x:auto'))
 CUMUL=CARD('<table class="table" style="font-size:14px"><thead><tr>'+TH%('padding-left:18px','Technicien')+TH%('text-align:right','{{ tLabel }}')+TH%('text-align:right','Cumul saison')+'</tr></thead><tbody><sc-for list="{{ tempsRows }}" as="r"><tr style="opacity:{{ r.op }}">'
   '<td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px;font-weight:500">{{ r.nom }}</td>'+TD%('text-align:right','{{ r.semaine }}')+TD%('text-align:right;font:600 16px var(--font-heading);padding-right:18px','{{ r.cumul }}')+'</tr></sc-for></tbody></table>','overflow-x:auto')
+EMP=('<div style="display:flex;flex-direction:column;gap:14px">'
+  '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><label for="eUid" style="font-weight:600">Employé</label><select id="eUid" class="input" onChange="{{ onEUid }}" style="max-width:280px;font-weight:600"><template data-sc="for" list="{{ eEmps }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select>'
+  '<button class="btn btn-secondary" onClick="{{ eYest }}">Hier</button><button class="btn btn-secondary" onClick="{{ eToday }}">Aujourd’hui</button><span style="flex:1"></span><span style="font-weight:600">{{ eEtat }}</span></div>'
+  +SEG('eChips')
+  +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px"><sc-for list="{{ eSum }}" as="k">'+CARD('<div style="padding:10px 14px;display:flex;flex-direction:column"><span style="font-size:13px">{{ k.l }}</span><span style="font:600 26px/1.1 var(--font-heading)">{{ k.v }}</span></div>')+'</sc-for></div>'
+  +'<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary" onClick="{{ ePrint }}">Imprimer la feuille</button><button class="btn btn-secondary" onClick="{{ eXlsx }}" style="gap:6px"><sa-i n="download" s="16"></sa-i>Excel</button>'
+  '<button class="btn btn-secondary" onClick="{{ eMailEmp }}" style="gap:6px"><sa-i n="send" s="16"></sa-i>Courriel à l’employé</button><button class="btn btn-secondary" onClick="{{ eMailPaie }}" style="gap:6px"><sa-i n="send" s="16"></sa-i>Courriel à la paie</button>'
+  '<button class="btn btn-secondary" onClick="{{ eSent }}">Marquer envoyée à la paie</button><sc-if value="{{ eCanApprove }}"><button class="btn btn-secondary" onClick="{{ eApprove }}">Approuver la semaine</button></sc-if>'
+  '<span style="flex:1"></span><button class="btn btn-secondary" onClick="{{ eAdd }}">+ Ajouter un punch</button><button class="btn btn-secondary" onClick="{{ eOdt }}">+ Bon de travail assigné</button></div>'
+  '<sc-if value="{{ eLoading }}"><div>Chargement de la feuille…</div></sc-if><sc-if value="{{ eNoRow }}"><div style="border:1px dashed var(--color-text);padding:12px">Aucune feuille cette semaine pour cet employé. « Ajouter un punch » la crée.</div></sc-if>'
+  '<sc-for list="{{ eDays }}" as="d">'+CARD('<div style="padding:10px 18px;border-bottom:1px solid var(--color-divider);display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span style="font:600 20px var(--font-heading)">{{ d.jour }}</span><span style="font:600 18px var(--font-heading)">{{ d.tot }}</span><span style="flex:1"></span>'
+    '<sc-if value="{{ d.canApprove }}"><button class="btn btn-ghost" onClick="{{ d.approve }}">Approuver la journée</button></sc-if><button class="btn btn-ghost" onClick="{{ d.add }}">+ Punch</button></div>'
+    '<sc-if value="{{ d.none }}"><div style="padding:10px 18px;font-size:14px">Aucun punch.</div></sc-if>'
+    '<sc-for list="{{ d.punchs }}" as="p"><div style="padding:10px 18px 10px 14px;border-bottom:1px solid var(--color-divider);border-left:4px solid {{ p.bd }};display:flex;flex-direction:column;gap:4px">'
+    '<div style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap"><span style="font:600 16px var(--font-heading);min-width:120px">{{ p.h }}</span><b style="font-size:15px">{{ p.lieu }}</b><span>{{ p.odt }}</span><span style="flex:1"></span><span style="font:600 16px var(--font-heading)">{{ p.dur }}</span></div>'
+    '<sc-if value="{{ p.detail }}"><div style="font-size:14px">{{ p.detail }}</div></sc-if>'
+    '<sc-if value="{{ p.hasNotes }}"><div style="font-size:14px"><b>Commentaire :</b> {{ p.notes }}</div></sc-if>'
+    '<sc-if value="{{ p.hasMes }}"><div style="font-size:14px"><b>Mesures :</b> {{ p.mes }}</div></sc-if>'
+    '<sc-if value="{{ p.hasFiles }}"><div style="font-size:13px"><b>Pièces :</b> {{ p.files }}</div></sc-if>'
+    '<sc-if value="{{ p.hasLien }}"><div style="font-size:13px">{{ p.lien }}</div></sc-if><sc-if value="{{ p.hasKm }}"><div style="font-size:13px">{{ p.km }}</div></sc-if>'
+    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="font-size:12px;flex:1">{{ p.tags }}</span><sc-if value="{{ p.hasGps }}"><a href="{{ p.gps }}" target="_blank" rel="noopener" style="font-size:13px">{{ p.gpsLbl }}</a></sc-if>'
+    '<button class="btn btn-ghost" onClick="{{ p.odtNew }}">Créer un ODT / bon de travail</button><button class="btn btn-secondary" onClick="{{ p.edit }}">Corriger</button></div></div></sc-for>')+'</sc-for>'
+  '</div>')
 bt=block(M,'isTemps')
 if bt:
     SUIVI=block(bt,'isSuiviTab')
     TEMPS=('<sc-if value="{{ isTemps }}"><div style="display:flex;flex-direction:column;gap:18px"><div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">'
       +NAV('tPrev','tLabel','tNext','tToday')+TABS+'</div>'
       '<sc-if value="{{ tWeekLoading }}"><div>Chargement de la semaine…</div></sc-if><sc-if value="{{ tWeekErr }}"><div role="alert" style="padding:10px 14px;border:2px solid var(--color-accent-900)">{{ tWeekErr }}</div></sc-if>'
-      '<sc-if value="{{ isTempsTab }}">'+SEMAINE+'</sc-if>'+(SUIVI or '')+'<sc-if value="{{ isPaieTab }}">'+PAIE+'</sc-if><sc-if value="{{ isCumulTab }}">'+CUMUL+'</sc-if></div></sc-if>')
+      '<sc-if value="{{ isTempsTab }}">'+SEMAINE+'</sc-if><sc-if value="{{ isEmpTab }}">'+EMP+'</sc-if>'+(SUIVI or '')+'<sc-if value="{{ isPaieTab }}">'+PAIE+'</sc-if><sc-if value="{{ isCumulTab }}">'+CUMUL+'</sc-if></div></sc-if>')
     if not SUIVI: print('!! bloc isSuiviTab')
     STATS=('<sc-if value="{{ isStats }}"><div style="display:flex;flex-direction:column;gap:18px">'+NAV('sPrev','sLabel','sNext','sToday')
       +'<sc-if value="{{ sLoading }}"><div>Chargement…</div></sc-if>'
