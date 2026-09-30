@@ -26,7 +26,7 @@ var SUN={},segS=function(on){return{bg:on?'var(--color-text)':'transparent',fg:o
 
 function Comp(user){
   this.user=user;this.rootRef={current:null};this.D=null;this.ftw={};this._ftwL={};this.envois={};this.pmm={};this.docs={};this.stk=null;this.flt=null;this.tools=null;this.tmoves=null;this.lcfg=null;this.loadedAt=null;this.err='';
-  this.state={mod:'monitoring',q:'',toast:null,inspSite:null,inspKey:null,inspFilter:'all',opsFilter:'Tous',opsOpen:{},siteType:'all',carteView:'geo',factFilter:'Tous',tempsTab:'semaine',tOff:0,sOff:0,fe:null,pmmDate:null,pb:null,ce:null,de:null,docQ:'',docF:'tous',logTab:'bl',se:null,stkQ:'',stkCat:'tous',te:null,ke:null,outTab:'outils',outF:'tous',outQ:'',qrIn:null,hj:null,hp:null,paieSel:{},paieOpen:{},paieMode:'synthese',pOff:0,ed:null,sed:null,survey:null,sondKey:(function(){try{return localStorage.getItem('sa_admin_sondkey')||'';}catch(e){return '';}})(),keyIn:'',dlg:false,busy:false,f:{type:'Bon de travail',site:'',tech:'',debut:'',heure:'07:00',rec:'aucune',jours:{},fin:''}};this.pl={};this._pl={};this.sd={};this._sd={};
+  this.state={portail:!hashMod()&&portailPref(),mod:'monitoring',q:'',toast:null,inspSite:null,inspKey:null,inspFilter:'all',opsFilter:'Tous',opsOpen:{},siteType:'all',carteView:'geo',factFilter:'Tous',tempsTab:'semaine',tOff:0,sOff:0,fe:null,pmmDate:null,pb:null,ce:null,de:null,docQ:'',docF:'tous',logTab:'bl',se:null,stkQ:'',stkCat:'tous',te:null,ke:null,outTab:'outils',outF:'tous',outQ:'',qrIn:null,hj:null,hp:null,paieSel:{},paieOpen:{},paieMode:'synthese',pOff:0,ed:null,sed:null,survey:null,sondKey:(function(){try{return localStorage.getItem('sa_admin_sondkey')||'';}catch(e){return '';}})(),keyIn:'',dlg:false,busy:false,f:{type:'Bon de travail',site:'',tech:'',debut:'',heure:'07:00',rec:'aucune',jours:{},fin:''}};this.pl={};this._pl={};this.sd={};this._sd={};
 }
 Comp.prototype.setState=function(p){this.state=Object.assign({},this.state,typeof p==='function'?p(this.state):p);this.update();};
 Comp.prototype.flash=function(t){var s=this;clearTimeout(this._tt);this.state.toast=t;this.update();this._tt=setTimeout(function(){s.state.toast=null;s.update();},2800);};
@@ -897,6 +897,31 @@ Comp.prototype.outilsVals=function(){var self=this,st=this.state,mod=st.mod,name
       keClose:function(){self.setState({ke:null});},keCloseBg:function(e){if(e.target===e.currentTarget)self.setState({ke:null});}});}
   return out;};
 
+/* ═════════════ PORTAIL : page d'accueil après la connexion — SA Platform, sa-admin, Temps · Paie, sa-terrain ═════════════
+   admin.html#temps (ou #stock, #planning…) ouvre directement l'écran demandé, sans passer par le portail. */
+var MODS=['monitoring','carte','inspections','planmatch','operations','planning','sites','facturation','hivernage','logistique','stock','flotte','outils','sondages','communication','temps','stats','comptes'];
+function TITLES_OK(m){return MODS.indexOf(m)>=0;}
+function portailPref(){try{return localStorage.getItem('sa_admin_portail')!=='off';}catch(e){return true;}}
+function hashMod(){var h=String(location.hash||'').replace(/^#/,'');return /^[a-z]+$/.test(h)?h:'';}
+Comp.prototype.openApp=function(url){var u=this.user;
+  /* sa-terrain garde sa propre session sur ce poste : on la prépare avec le même compte (déjà vérifié par le serveur) si elle est vide */
+  if(/terrain/.test(url)){try{if(!localStorage.getItem('sa_terrain_user'))localStorage.setItem('sa_terrain_user',JSON.stringify({id:u.id,prenom:u.prenom,nom:u.nom,role:u.role,dept:u.dept||'',tel:u.tel||'',email:u.email||''}));}catch(e){}}
+  auditT(this,'CONNEXION','portail',u.id,{vers:url});location.href=url;};
+Comp.prototype.portalVals=function(){var self=this,st=this.state,D=this.D,now=new Date(),h=now.getHours(),av=null,urg=null,hz=null,live=null;
+  if(D){av=0;live=0;var wk=iso(mondayOf(now)),di=(now.getDay()+6)%7;(D.ft||[]).forEach(function(r){(r.days||[]).forEach(function(d,i){((d&&d.tasks)||[]).forEach(function(t){if(t.pendingValidation)av++;if(r.week===wk&&i===di&&(t.active||!t.end))live++;});});});
+    urg=D.dem.filter(function(d){return d.statut!=='Traitée'&&d.type==='Urgence';}).length;}
+  var n=function(v,one,many){return v==null?'…':v+' '+(v>1?many:one);};
+  var go=function(m){return function(){self.setState({portail:false});self.go(m);try{history.replaceState(null,'','#'+m);}catch(e){}};};
+  return{isPortail:!!st.portail,portHello:(h<12?'Bonjour':h<18?'Bon après-midi':'Bonsoir')+' '+(this.user.prenom||''),portDate:JS[now.getDay()]+' '+now.getDate()+' '+MOIS[now.getMonth()]+' '+now.getFullYear(),
+    portTiles:[
+      {icon:'layers',title:'SA Platform',sub:'L’application complète d’origine — punch, bons de travail, planning, feuilles de temps, logistique.',info:'Se connecte avec le même identifiant',btn:'Ouvrir SA Platform',go:function(){self.openApp('index.html');},primary:false,sec:true},
+      {icon:'activity',title:'sa-admin',sub:'Centre des opérations — monitoring en direct, opérations, sites, matériel, comptes.',info:D?n(live,'employé en punch','employés en punch')+' · '+n(urg,'urgence','urgences'):'Chargement des données…',btn:'Entrer dans sa-admin',go:go('monitoring'),primary:true,sec:false},
+      {icon:'timer',title:'Temps · Paie',sub:'Feuilles de temps de l’équipe — corriger, approuver, sortir la paie en Excel ou par courriel.',info:D?n(av,'punch à valider','punchs à valider'):'Chargement des données…',btn:'Ouvrir Temps · Paie',go:go('temps'),primary:false,sec:true},
+      {icon:'nav',title:'sa-terrain',sub:'L’app du technicien — punch, fiche du site, relevés, demandes, logistique.',info:'Pour téléphone ; s’ouvre aussi ici',btn:'Ouvrir sa-terrain',go:function(){self.openApp('terrain.html');},primary:false,sec:true}],
+    portSkip:!portailPref(),onPortSkip:function(e){try{localStorage.setItem('sa_admin_portail',e.target.checked?'off':'on');}catch(x){}self.update();},
+    openPortail:function(){self.setState({portail:true});try{history.replaceState(null,'','#');}catch(e){}},
+    closePortail:go(st.mod||'monitoring')};};
+
 /* Valeurs d'écran : Temps (Semaine · À valider · Paie · Cumul) et Stats */
 Comp.prototype.tempsVals=function(punchRows){var self=this,st=this.state,D=this.D,mod=st.mod,tMon=addDays(mondayOf(new Date()),7*st.tOff),wk=iso(tMon),today=iso(new Date());
   if((mod==='temps'||mod==='stats'||st.hj)&&this.ftw[wk]===undefined)this.loadWeekFT(wk);
@@ -962,6 +987,7 @@ Comp.prototype.vals=function(){
   var self=this,st=this.state,D=this.D,mod=st.mod;
   var base={rootRef:this.rootRef,hasToast:!!st.toast,toast:st.toast,q:st.q,onQ:function(e){self.setState({q:e.target.value});},meNom:(this.user.prenom+' '+this.user.nom).trim(),meIni:((this.user.prenom||'?')[0]+(this.user.nom||'?')[0]).toUpperCase(),meRole:this.user.role==='admin'?'Administration':'Supervision',
     logout:function(){localStorage.removeItem('sa_admin_user');location.reload();}};
+  Object.assign(base,this.portalVals());
   if(!D)return Object.assign(base,{navGroups:[],modTitle:'Chargement…',modSub:this.err||'Lecture des données en cours',results:[],hasResults:false,liveTxt:'Connexion…',isLoading:true,loadErr:this.err,isMonitoring:false,isInspections:false,isOperations:false,isSites:false,isSoon:false});
   var now=new Date(),lastRel=this.latest();
   // ---- équipe (feuilles de temps de la semaine : lecture seule)
@@ -1161,7 +1187,8 @@ Comp.prototype.vals=function(){
     this.tempsVals(punchRows),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals(),this.stockVals(),this.outilsVals());
 };
 Comp.prototype.update=function(){if(!this._host)return;SARender(document.getElementById('tpl'),this._host,this.vals());this.syncMap();var el=this.rootRef.current;if(el)el.style.setProperty('--sa-row','10px');};
-Comp.prototype.mount=function(host){var self=this;this._host=host;this.update();
+Comp.prototype.mount=function(host){var self=this;this._host=host;var hm=hashMod();if(hm&&TITLES_OK(hm))this.state.mod=hm;this.update();
+  window.addEventListener('hashchange',function(){var m=hashMod();if(m&&TITLES_OK(m)&&(m!==self.state.mod||self.state.portail)){self.setState({portail:false});self.go(m);}});
   this.load().then(function(){self.update();});
   setInterval(function(){if(document.visibilityState==='visible')self.load().then(function(){self.update();});},60000);
   document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')self.load().then(function(){self.update();});});};
