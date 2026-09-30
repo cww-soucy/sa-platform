@@ -200,6 +200,26 @@ test('Stats : heures de l’équipe, bons de travail, rapport téléchargeable',
   await page.close();
 });
 
+test('Stats : « Analyser avec Claude » copie le rapport (format SA Platform + demande d’analyse) et ouvre Claude', async () => {
+  const { page, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: base() });
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: srv.url });
+  await page.context().route('https://claude.ai/**', (r) => r.fulfill({ status: 200, contentType: 'text/html', body: 'Claude' }));
+  await page.waitForFunction(() => window.__admin && window.__admin.D);
+  await A(page, () => window.__admin.go('stats'));
+  await page.waitForFunction(() => !window.__admin.vals().sLoading);
+  const [pop] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: 'Analyser avec Claude' }).click()]);
+  assert.match(pop.url(), /claude\.ai\/new/);
+  await pop.close();
+  await toast(page, /collez-le dans Claude/);
+  const t = await A(page, () => navigator.clipboard.readText());
+  assert.match(t, /^Tu es l’assistant de gestion de Soucy Aquatik/);
+  assert.match(t, /Employé \| Jour \| Début \| Fin \| Durée \| Lieu \| Adresse \| ODT \| Détail \| Km/);
+  assert.match(t, /Kaël Test \| Total: 1 h 00 .*\| Sem\. préc\./);
+  assert.match(t, /── BONS DE TRAVAIL OUVERTS \(2\) ──/);
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
 test('Facturation : export en vrai classeur Excel', { skip: !openpyxl && 'openpyxl absent' }, async () => {
   const { page } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: base() });
   await page.waitForFunction(() => window.__admin && window.__admin.D);

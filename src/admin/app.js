@@ -339,10 +339,34 @@ Comp.prototype.printPaie=function(only){var wk=iso(addDays(mondayOf(new Date()),
     for(var i=0;i<7;i++)grouperJour(e.punchs.filter(function(p){return p.di===i;})).forEach(function(l){h+='<tr><td>'+DLF[i]+' '+addDays(mon,i).getDate()+'</td><td>'+E(l.lieu)+'</td><td>'+E(l.odt)+'</td><td>'+E(l.debut)+'</td><td>'+(l.act?'en cours':E(l.fin))+'</td><td class="n">'+decTxt(l.h)+'</td></tr>';});
     h+='</table><div class="s"><div>Signature de l’employé</div><div>Signature du superviseur</div></div></section>';});
   var w=window.open('','_blank');if(!w){this.flash('Fenêtre bloquée — autorisez les fenêtres pour imprimer');return;}w.document.write(h+'<script>setTimeout(function(){print();},300)<\/script>');w.document.close();};
-Comp.prototype.teamReport=function(wk){var data=this.weekData(wk).filter(function(e){return e.any;});if(!data.length)return null;var L=['DONNÉES BRUTES — FEUILLES DE TEMPS SOUCY AQUATIK','Semaine du '+fdate(wk)+' | '+data.length+' employé(s) actif(s)','','── PUNCHS (une ligne par tâche) ──','Employé | Jour | Début | Fin | Durée | Lieu | ODT | Détail'];
-  data.forEach(function(e){e.punchs.forEach(function(p){L.push([e.nom,DLF[p.di],p.start,p.act?'(en cours)':p.end,fmtH(p.hrs),p.lieu,p.odt,p.detail].join(' | '));});});
-  L.push('','── TOTAUX PAR EMPLOYÉ ──');var tt=0,tr=0,ts=0;data.forEach(function(e){tt+=e.total;tr+=e.reg;ts+=e.supp;L.push(e.nom+' | Total: '+fmtH(e.total)+' | Régulier: '+fmtH(e.reg)+' | Supp: '+fmtH(e.supp)+' | Punchs: '+e.nbPunchs);});
-  L.push('','── TOTAL ÉQUIPE ──','Total: '+fmtH(tt)+' | Régulier: '+fmtH(tr)+' | Supplémentaire: '+fmtH(ts));return L.join('\n');};
+/* Rapport d'équipe — même format que SA Platform (« Copier pour Claude ») : une ligne par punch, données brutes, totaux,
+   comparaison avec la semaine précédente ; plus le contexte bons de travail / stock. Avec prompt=true, une demande d'analyse en tête. */
+var CLAUDE_PROMPT='Tu es l’assistant de gestion de Soucy Aquatik (entretien de piscines et de salles mécaniques). Analyse les données brutes ci-dessous et réponds en français, de façon concise :\n'
+  +'1. Heures : total, heures supplémentaires par employé, écarts marqués avec la semaine précédente et causes probables.\n'
+  +'2. Anomalies : punchs très longs ou très courts, punchs en cours ou fermés automatiquement, lieux inhabituels, ODT manquants, trous dans les journées.\n'
+  +'3. Charge : sites qui prennent le plus de temps, répartition entre employés, déplacements (km).\n'
+  +'4. Bons de travail et stock : urgences ouvertes, retards, produits sous le seuil.\n'
+  +'5. Trois actions concrètes recommandées pour la semaine prochaine.\n'
+  +'N’invente aucune donnée : si une information manque, dis-le.\n\n';
+Comp.prototype.teamReport=function(wk,prompt){var self=this,D=this.D,data=this.weekData(wk).filter(function(e){return e.any;});if(!data.length)return null;
+  var prev=iso(addDays(new Date(wk+'T12:00:00'),-7)),prevRows=Array.isArray(this.ftw[prev])?this.ftw[prev]:null,raw=Array.isArray(this.ftw[wk])?this.ftw[wk]:[],by={};raw.forEach(function(r){by[r.uid]=r;});
+  var prevTot=function(uid){var r=prevRows&&prevRows.filter(function(x){return x.uid===uid;})[0],h=0;if(r)(r.days||[]).forEach(function(d){((d&&d.tasks)||[]).forEach(function(t){h+=Number(t.hrs)||0;});});return h;};
+  var L=[];if(prompt)L.push(CLAUDE_PROMPT);
+  L.push('DONNÉES BRUTES — FEUILLES DE TEMPS SOUCY AQUATIK','Semaine du '+fdate(wk)+' au '+fdate(iso(addDays(new Date(wk+'T12:00:00'),6)))+' | '+data.length+' employé(s) actif(s) | Généré le '+new Date().toLocaleString('fr-CA'),
+    'Note: aucune interprétation faite ici — lieu/adresse/durée/km bruts, tels que saisis par les employés. Notes et photos de chantier exclues.','','── PUNCHS (une ligne par tâche) ──','Employé | Jour | Début | Fin | Durée | Lieu | Adresse | ODT | Détail | Km');
+  data.forEach(function(e){var row=by[e.id];for(var i=0;i<7;i++){((row&&row.days&&row.days[i]&&row.days[i].tasks)||[]).forEach(function(t){var act=!!(t.active||!t.end);
+    var km=(t.kmDep&&t.kmArr)?Math.round(Math.abs(parseFloat(t.kmArr)-parseFloat(t.kmDep))):'';
+    L.push([e.nom,DLF[i],t.start||'',act?'(en cours)':(t.end||''),fmtH(act?0:(Number(t.hrs)||0)),t.lieu||'—',t.addr||'',t.odt||'',t.detail||'',km].join(' | '));});}});
+  L.push('','── TOTAUX PAR EMPLOYÉ ──');var tt=0,tr=0,ts=0,tp=0;
+  data.forEach(function(e){var ph=prevTot(e.id);tt+=e.total;tr+=e.reg;ts+=e.supp;tp+=ph;L.push(e.nom+' | Total: '+fmtH(e.total)+' | Régulier: '+fmtH(e.reg)+' | Supp: '+fmtH(e.supp)+' | Punchs: '+e.nbPunchs+(e.nbAV?' | À valider: '+e.nbAV:'')+' | Sem. préc. ('+fdate(prev)+'): '+(prevRows?fmtH(ph):'non chargée'));});
+  L.push('','── TOTAL ÉQUIPE ──','Total: '+fmtH(tt)+' | Régulier: '+fmtH(tr)+' | Supplémentaire: '+fmtH(ts)+' (ratio '+(tt>0?(ts/tt*100).toFixed(1):'0')+'%)');
+  if(prevRows)L.push('Semaine précédente ('+fdate(prev)+', mêmes employés): '+fmtH(tp)+' | Δ: '+(tt>=tp?'+':'-')+fmtH(Math.abs(tt-tp)));
+  var open=D.wo.filter(function(w){return!woDone(w.status);}),nm=this.names();
+  L.push('','── BONS DE TRAVAIL OUVERTS ('+open.length+') ──','Date | Client | Type | Priorité | Statut | Assigné');
+  open.slice(0,60).forEach(function(w){L.push([w.date||'',w.client||'',w.type||'',w.priorite||'',w.status||'',String(w.assigne||'').split(',').map(function(x){x=x.trim();return nm[x]||x;}).join(', ')].join(' | '));});
+  var low=(D.inv||[]).filter(function(i){return Number(i.seuil)>0&&Number(i.qte)<=Number(i.seuil);});
+  L.push('','── STOCK SOUS LE SEUIL ('+low.length+') ──');low.forEach(function(i){L.push(i.nom+' | Qté: '+i.qte+' | Seuil: '+i.seuil);});
+  L.push('','---','Soucy Aquatik · sa-admin');return L.join('\n');};
 
 /* ═════════════ Éditeur complet : bon de travail · créneau · tâche planning (mêmes champs que SA Platform) ═════════════ */
 var WO_TYPES=[['installation','Installation'],['entretien','Entretien'],['reparation','Réparation'],['inspection','Inspection'],['miseeneau','Mise en eau'],['autre','Autre']];
@@ -1010,14 +1034,19 @@ Comp.prototype.statsVals=function(){var self=this,st=this.state,D=this.D,sMon=ad
   var bas=(D.inv||[]).filter(function(i){return Number(i.seuil)>0&&Number(i.qte)<=Number(i.seuil);});
   var av=data.reduce(function(s,e){return s+e.nbAV;},0);
   var WS=[['ouvert','Ouverts'],['en_cours','En cours'],['complete','Complétés'],['facture','Facturés']];
-  var copy=function(){var t=self.teamReport(wk);if(!t){self.flash('Aucune heure cette semaine');return;}(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){self.flash('Rapport copié');}).catch(function(){self.flash('Copie impossible — utilisez Télécharger');});};
+  var prevWk=iso(addDays(sMon,-7));if(st.mod==='stats'&&loaded&&this.ftw[prevWk]===undefined)this.loadWeekFT(prevWk);
+  var copyT=function(prompt,thenOpen){var t=self.teamReport(wk,prompt);if(!t){self.flash('Aucune heure cette semaine');return;}self.audit('CONSULTATION',wk,{action:'rapport_equipe',format:prompt?'claude':'copie'});
+    var w=thenOpen?window.open('https://claude.ai/new','_blank'):null;
+    (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){self.flash(thenOpen?(w?'Copié — collez-le dans Claude (Ctrl+V / ⌘V) dans l’onglet qui vient de s’ouvrir':'Copié — ouvrez claude.ai et collez-le'):(prompt?'Copié avec la demande d’analyse — collez-le dans Claude':'Rapport copié — collez-le directement dans Claude'));})
+      .catch(function(){self.flash('Copie impossible — utilisez Télécharger');});};
+  var copy=function(){copyT(false,false);};
   return{isStats:st.mod==='stats',sLabel:wkLabel(sMon),sPrev:function(){self.setState({sOff:st.sOff-1});},sNext:function(){self.setState({sOff:Math.min(0,st.sOff+1)});},sToday:function(){self.setState({sOff:0});},sLoading:!loaded,
     sKpis:[{l:'Heures de l’équipe',v:fmtH(tot),s:supp>0?'dont '+fmtH(supp)+' supplémentaires':'aucune heure supplémentaire'},{l:'Punchs à valider',v:String(av),s:'cette semaine'},
       {l:'Bons de travail ouverts',v:String(woOuv),s:woUrg?woUrg+' urgent(s)':'aucun urgent'},{l:'Stock sous le seuil',v:String(bas.length),s:bas.slice(0,3).map(function(i){return i.nom;}).join(', ')||'—'}],
     sBars:data.filter(function(e){return e.any||e.total>0;}).sort(function(a,b){return b.total-a.total;}).map(function(e){return{nom:e.nom,h:fmtH(e.total),w:Math.round(e.total/max*100),bg:e.total>40?'var(--color-accent-900)':'var(--color-accent-700)',
       sub:e.supp>0?'+'+fmtH(e.supp)+' supp.':'',open:function(){self.setState({mod:'temps',tempsTab:'employe',eUid:e.id,eDay:null,tOff:st.sOff});}};}),sNoBars:loaded&&!data.some(function(e){return e.any;}),
     sWo:WS.map(function(x){return{l:x[1],n:D.wo.filter(function(w){return w.status===x[0]||(x[0]==='complete'&&w.status==='termine');}).length};}),
-    sCopy:copy,sDownload:function(){var t=self.teamReport(wk);if(!t){self.flash('Aucune heure cette semaine');return;}saveBlob(new Blob([t],{type:'text/plain;charset=utf-8'}),'SoucyAquatik_Equipe_Semaine_'+wk+'.txt');},
+    sCopy:copy,sClaude:function(){copyT(true,true);},sCopyPrompt:function(){copyT(true,false);},sDownload:function(){var t=self.teamReport(wk);if(!t){self.flash('Aucune heure cette semaine');return;}saveBlob(new Blob([t],{type:'text/plain;charset=utf-8'}),'SoucyAquatik_Equipe_Semaine_'+wk+'.txt');},
     sXlsx:function(){self.setState({mod:'temps',tempsTab:'paie',tOff:st.sOff});self.flash('Choisissez les employés puis « Télécharger Excel »');}};};
 
 Comp.prototype.vals=function(){
