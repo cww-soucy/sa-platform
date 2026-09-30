@@ -887,6 +887,7 @@ button{font-family:inherit}a{color:var(--color-accent-700)}
           <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
             <div style="display:flex;border:1px solid var(--color-divider)">
               <template data-sc="for" list="{{ tempsTabs }}" as="t"><button onClick="{{ t.go }}" style="all:unset;cursor:pointer;white-space:nowrap;padding:8px 18px;font:600 16px var(--font-heading);border-right:1px solid var(--color-divider);background:{{ t.bg }};color:{{ t.fg }}">{{ t.label }} <span style="font-weight:400">{{ t.n }}</span></button></template>
+              <button class="btn btn-secondary" onClick="{{ imprimerEquipe }}" style="margin-left:auto;white-space:nowrap;font-size:12px;padding:6px 12px">Imprimer equipe</button><button class="btn btn-primary" onClick="{{ exportEquipe }}" style="white-space:nowrap;font-size:12px;padding:6px 12px">Exporter equipe (.xlsx)</button>
             </div>
             <div style="display:flex;align-items:center;gap:8px;font-size:13px;padding:6px 12px;border:1px dashed var(--color-text);flex:0 1 auto;min-width:0"><sa-i n="file" s="15"></sa-i><span>Lecture seule · heures des punchs terminés (● = punch en cours) · banque et heures sup. : SA Platform › Cumul</span></div>
           </div>
@@ -900,7 +901,7 @@ button{font-family:inherit}a{color:var(--color-accent-700)}
                   <template data-sc="for" list="{{ tempsRows }}" as="r">
                     <tr style="opacity:{{ r.op }}"><td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px;font-weight:500">{{ r.nom }}</td>
                       <template data-sc="for" list="{{ r.jours }}" as="j"><td style="padding:var(--sa-row,10px) 8px;text-align:right;font-variant-numeric:tabular-nums">{{ j }}</td></template>
-                      <td style="padding:var(--sa-row,10px) 18px var(--sa-row,10px) 8px;text-align:right;font:600 16px var(--font-heading)">{{ r.semaine }}</td><td style="padding:var(--sa-row,10px) 12px var(--sa-row,10px) 0;text-align:right"><button class="btn btn-secondary" onClick="{{ r.gerer }}" style="white-space:nowrap;font-size:11px;padding:4px 10px">Gerer les punchs</button></td></tr>
+                      <td style="padding:var(--sa-row,10px) 18px var(--sa-row,10px) 8px;text-align:right;font:600 16px var(--font-heading)">{{ r.semaine }}</td><td style="padding:var(--sa-row,10px) 12px var(--sa-row,10px) 0;text-align:right"><div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end"><button class="btn btn-secondary" onClick="{{ r.gerer }}" style="white-space:nowrap;font-size:11px;padding:4px 8px">Gerer</button><button class="btn btn-secondary" onClick="{{ r.exporter1 }}" style="white-space:nowrap;font-size:11px;padding:4px 8px">Excel</button><button class="btn btn-secondary" onClick="{{ r.imprimer1 }}" style="white-space:nowrap;font-size:11px;padding:4px 8px">Imprimer</button><button class="btn btn-secondary" onClick="{{ r.mailer1 }}" style="white-space:nowrap;font-size:11px;padding:4px 8px">Courriel</button></div><template data-sc="if" value="{{ r.envoyee }}"><div style="font-size:9px;color:var(--color-neutral-500);margin-top:2px;text-align:right">{{ r.envoiTxt }}</div></template></td></tr>
                   </template>
                 </tbody>
               </table>
@@ -955,6 +956,7 @@ button{font-family:inherit}a{color:var(--color-accent-700)}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script>window.addEventListener('error',function(e){if(e.target&&e.target.src&&e.target.src.indexOf('leaflet')>=0)window.__leafletLoadError='script bloqué ou introuvable ('+e.target.src+')';},true);</script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>/* <sa-i n="droplet" s="20"> — icônes Lucide, trait 1.5 (currentColor) */
 (function () {
   const P = {
@@ -1127,13 +1129,13 @@ Comp.prototype.load=function(){
     soft('workorders?select=id,client,site,type,priorite,status,date,assigne,descr,groupe_id&order=date.asc',[]),
     soft('releves?select=id,site_id,site_nom,tech,tech_nom,date,heure,type_code,vals,touched,checks,prods,note,hors_zone&date=gte.'+since+'&order=date.asc,heure.asc',[]),
     soft('punch_gps_log?select=emp,heure,lieu,date&date=eq.'+today+'&order=heure.desc&limit=30',[]),
-    soft('plan?select=id&date=eq.'+today,[]),soft('planning_tasks?select=id&date_debut=lte.'+today+'&date_fin=gte.'+today,[]),soft('demandes?select=id,tech,tech_nom,site_nom,type,motif,texte,statut,created_at&order=created_at.desc&limit=40',[]),soft('feuilles_temps?select=uid,week,total_h',[]),soft('facturation?select=*',[]),soft('projets_excel?select=*',[]),soft('comptes?select=id,statut',[]),soft('sondages?select=id,slug,titre,client,actif,created_at&order=created_at.desc',[]),soft('punch_gps_log?select=site_id,emp,lat,lng,acc,date,heure,lieu&lat=not.is.null&order=date.desc,heure.desc&limit=800',[])
+    soft('plan?select=id&date=eq.'+today,[]),soft('planning_tasks?select=id&date_debut=lte.'+today+'&date_fin=gte.'+today,[]),soft('demandes?select=id,tech,tech_nom,site_nom,type,motif,texte,statut,created_at&order=created_at.desc&limit=40',[]),soft('feuilles_temps?select=uid,week,total_h',[]),soft('facturation?select=*',[]),soft('projets_excel?select=*',[]),soft('ft_envois?select=*',[]),soft('comptes?select=id,statut',[]),soft('sondages?select=id,slug,titre,client,actif,created_at&order=created_at.desc',[]),soft('punch_gps_log?select=site_id,emp,lat,lng,acc,date,heure,lieu&lat=not.is.null&order=date.desc,heure.desc&limit=800',[])
   ]).then(function(r){
     var T={};r[2].forEach(function(t){T[t.code]=t;});var ct={};r[1].forEach(function(c){ct[c.site_id]=c;});
     var sites=r[0].map(function(s){var c=ct[s.id],code=(c&&c.type_code&&T[c.type_code])?c.type_code:'GEN';return{id:String(s.id),nom:s.nom||'(sans nom)',addr:s.addr||'',ville:villeOf(s.addr),type:code,contrat:(c&&c.code)||'',notes:s.notes||''};})
       .sort(function(a,b){return a.nom.localeCompare(b.nom,'fr');});
     var byId={};sites.forEach(function(s){byId[s.id]=s;s.merged=/^Fusionné →/.test(s.notes);});var sitesAll=sites;sites=sites.filter(function(s){return!s.merged;});
-    self.D={sites:sites,sitesAll:sitesAll,byId:byId,types:T,comptes:r[3],ft:r[4],wo:r[5],rel:r[6].map(function(x){x.site_id=String(x.site_id);return x;}),gps:r[7],nPlan:r[8].length,nPt:r[9].length,dem:r[10]||[],ftAll:r[11]||[],fact:r[12]||[],proj:r[13]||[],sond:r[15]||[],geo:r[16]||[],statut:(function(){var m={};(r[14]||[]).forEach(function(c){m[c.id]=c.statut;});return m;})(),today:today};
+    self.D={sites:sites,sitesAll:sitesAll,byId:byId,types:T,comptes:r[3],ft:r[4],wo:r[5],rel:r[6].map(function(x){x.site_id=String(x.site_id);return x;}),gps:r[7],nPlan:r[8].length,nPt:r[9].length,dem:r[10]||[],ftAll:r[11]||[],fact:r[12]||[],proj:r[13]||[],fteAll:r[14]||[],sond:r[16]||[],geo:r[17]||[],statut:(function(){var m={};(r[15]||[]).forEach(function(c){m[c.id]=c.statut;});return m;})(),today:today};
     self.loadedAt=new Date();self.err='';
     if(!self.state.inspSite){var w=self.D.rel.length?String(self.D.rel[self.D.rel.length-1].site_id):(sites[0]&&sites[0].id);self.state.inspSite=w||null;}
   }).catch(function(e){self.err='Chargement impossible : '+e.message;});
@@ -1236,13 +1238,19 @@ Comp.prototype.writeFT=function(uid,week,fn,tries){var self=this,id=uid+'_'+week
      .then(function(rows){if(rows.length)return rows[0];if(tries>=5)throw new Error('conflit, réessayez');return self.writeFT(uid,week,fn,tries+1);});});};
 Comp.prototype.findTask=function(days,dayIdx,start,lieu){return((days[dayIdx]||{}).tasks||[]).filter(function(t){return t.start===start&&t.lieu===lieu;})[0];};
 Comp.prototype.validerPunch=function(p){var self=this;this.flash('Validation…');
-  this.writeFT(p.uid,p.week,function(days){var t=self.findTask(days,p.dayIdx,p.entree,p.site);if(t){t.pendingValidation=false;t.autoClosed=false;t.validatedBy=self.user.id;t.validatedAt=new Date().toISOString();}return days;})
+  this.writeFT(p.uid,p.week,function(days){var t=self.findTask(days,p.dayIdx,p.entree,p.site);if(t){ftMarquerModif(t);t.pendingValidation=false;t.autoClosed=false;t.validatedBy=self.user.id;t.validatedAt=new Date().toISOString();}return days;})
    .then(function(){self.flash('Punch validé');return self.reloadAll();}).catch(function(e){self.flash('Échec — rien n’a été modifié : '+e.message);});};
 Comp.prototype.openFix=function(p){this.setState({fx:Object.assign({},p,{lieu2:p.site,entree2:p.entree,sortie2:p.sortie==='—'?'':p.sortie})});};
 Comp.prototype.saveFix=function(){var self=this,f=this.state.fx;if(!f)return;
   this.writeFT(f.uid,f.week,function(days){var t=self.findTask(days,f.dayIdx,f.entree,f.site);if(!t)throw new Error('punch introuvable — la feuille a changé');
-    t.lieu=f.lieu2;t.start=f.entree2;if(f.sortie2){t.end=f.sortie2;t.hrs=hrsFrom(f.entree2,f.sortie2);t.active=false;}t.pendingValidation=false;t.autoClosed=false;t.correctedBy=self.user.id;t.correctedAt=new Date().toISOString();return days;})
+    ftMarquerModif(t);t.lieu=f.lieu2;t.start=f.entree2;if(f.sortie2){t.end=f.sortie2;t.hrs=hrsFrom(f.entree2,f.sortie2);t.active=false;}t.pendingValidation=false;t.autoClosed=false;t.correctedBy=self.user.id;t.correctedAt=new Date().toISOString();return days;})
    .then(function(){self.setState({fx:null});self.flash('Punch corrigé');return self.reloadAll();}).catch(function(e){self.flash('Échec — rien n’a été modifié : '+e.message);});};
+function ftSig(t){return(t&&t.start||'')+'|'+(t&&t.lieu||'');}
+function ftUid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+/* Avant de changer l'heure ou le lieu d'un punch existant : capture l'identité stable (k) et la signature
+   d'origine (k0), pour que SA Platform retrouve ce punch après correction au lieu de le dupliquer — même
+   contrat que ftMarquerModif() dans index.html. */
+function ftMarquerModif(t){if(!t)return t;if(!t.k){t.k0=ftSig(t);t.k=ftUid();}t.mod=Date.now();return t;}
 function hrsFrom(s,e){var sp=String(s).split(':'),ep=String(e).split(':'),sm=+sp[0]*60+ +sp[1],em=+ep[0]*60+ +ep[1];if(em<sm)em+=1440;return Math.max(0,(em-sm)/60);}
 Comp.prototype.cycleStatut=function(b){var ORD=['À facturer','Facturé','Payé'],cur=b.statut,i=ORD.indexOf(cur),nx=ORD[(i+1)%ORD.length]||ORD[0];
   if(cur==='—'||!ORD.includes(cur))nx='À facturer';var self=this;
@@ -1262,7 +1270,7 @@ Comp.prototype.pmSaveAdd=function(){var self=this,p=this.state.pm;if(!p||p.addDa
   if(!lieu){this.flash('Le lieu est requis');return;}if(!start){this.flash('L’heure de début est requise');return;}
   this.setState(function(s){return{pm:Object.assign({},s.pm,{busy:true})};});
   this.writeFT(p.uid,p.week,function(days){var mx=0;days.forEach(function(d){(d.tasks||[]).forEach(function(t){if(typeof t.id==='number'&&t.id>mx)mx=t.id;});});
-    var t={id:mx+1,lieu:lieu,start:start,end:end||'',hrs:end?hrsFrom(start,end):0,active:!end,addedManually:true,addedBy:self.user.id,addedAt:new Date().toISOString()};
+    var t={id:mx+1,k:ftUid(),mod:Date.now(),lieu:lieu,start:start,end:end||'',hrs:end?hrsFrom(start,end):0,active:!end,addedManually:true,addedBy:self.user.id,addedAt:new Date().toISOString()};
     days[p.addDay].tasks=(days[p.addDay].tasks||[]).concat([t]);if(!days[p.addDay].tasks.some(function(x){return x.active;})||end)days[p.addDay].status=end?'done':'running';return days;})
    .then(function(){self.flash('Punch ajouté');return self.openPunchMgmt(p.uid,p.nom,p.week);}).then(function(){return self.reloadAll();})
    .catch(function(e){self.flash('Échec — rien n’a été ajouté : '+e.message);self.setState(function(s){return{pm:Object.assign({},s.pm,{busy:false})};});});};
@@ -1273,13 +1281,41 @@ Comp.prototype.pmSaveEdit=function(){var self=this,p=this.state.pm;if(!p||!p.edi
   if(!lieu||!start){this.flash('Lieu et heure de début requis');return;}
   this.setState(function(s){return{pm:Object.assign({},s.pm,{busy:true})};});
   this.writeFT(p.uid,p.week,function(days){var t=((days[dayIdx]||{}).tasks||[]).filter(function(x){return x.id===taskId;})[0];if(!t)throw new Error('punch introuvable — déjà modifié ailleurs');
-    t.lieu=lieu;t.start=start;t.end=end||'';t.hrs=end?hrsFrom(start,end):0;t.active=!end;t.correctedBy=self.user.id;t.correctedAt=new Date().toISOString();return days;})
+    ftMarquerModif(t);t.lieu=lieu;t.start=start;t.end=end||'';t.hrs=end?hrsFrom(start,end):0;t.active=!end;t.correctedBy=self.user.id;t.correctedAt=new Date().toISOString();return days;})
    .then(function(){self.flash('Punch modifié');return self.openPunchMgmt(p.uid,p.nom,p.week);}).then(function(){return self.reloadAll();})
    .catch(function(e){self.flash('Échec — rien n’a été modifié : '+e.message);self.setState(function(s){return{pm:Object.assign({},s.pm,{busy:false})};});});};
 Comp.prototype.pmDelete=function(dayIdx,taskId){var self=this,p=this.state.pm;
-  this.writeFT(p.uid,p.week,function(days){days[dayIdx].tasks=(days[dayIdx].tasks||[]).filter(function(t){return t.id!==taskId;});return days;})
+  this.writeFT(p.uid,p.week,function(days){var d=days[dayIdx],t=(d.tasks||[]).filter(function(x){return x.id===taskId;})[0];
+    d.tasks=(d.tasks||[]).filter(function(x){return x.id!==taskId;});
+    d.del=(d.del||[]).concat([{k:t&&t.k||'',sig:t?ftSig(t):'',at:Date.now()}]);return days;})
    .then(function(){self.flash('Punch supprimé — une copie est conservée');return self.openPunchMgmt(p.uid,p.nom,p.week);}).then(function(){return self.reloadAll();})
    .catch(function(e){self.flash('Échec — rien n’a été supprimé : '+e.message);});};
+Comp.prototype.exportFT=function(rows,methode){var self=this,wk=this._tWk;
+  if(typeof XLSX==='undefined'){this.flash('Bibliothèque Excel non chargée — vérifiez la connexion et réessayez');return;}
+  var jNoms=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+  var aoa=[['Feuille de temps — semaine du '+wk],[],['Employé'].concat(jNoms).concat(['Total','Cumul saison'])];
+  rows.forEach(function(r){aoa.push([r.nom].concat(r.jours).concat([r.semaine,r.cumul]));});
+  var ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:24}].concat(jNoms.map(function(){return{wch:9};})).concat([{wch:10},{wch:12}]);
+  var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Temps '+wk);
+  var fn=(rows.length===1?('Feuille_temps_'+rows[0].nom.replace(/[^A-Za-zÀ-ÿ0-9]+/g,'_')):'Temps_equipe')+'_'+wk+'.xlsx';
+  XLSX.writeFile(wb,fn);
+  var now=new Date().toISOString();
+  Promise.all(rows.map(function(r){return rest('POST','ft_envois',{id:r._uid+'_'+wk,uid:r._uid,emp:r.nom,semaine:wk,methode:methode,punchs:null,heures:r._h,par:self.user.id,le:now},'resolution=merge-duplicates,return=minimal');}))
+   .then(function(){self.flash((rows.length>1?rows.length+' feuilles exportées':'Feuille exportée')+' et marquée(s) envoyée(s)');return self.reloadAll();}).catch(function(e){self.flash('Fichier téléchargé, mais le marquage a échoué : '+e.message);});};
+Comp.prototype.printFT=function(rows){var self=this,wk=this._tWk,win=window.open('','_blank');if(!win){this.flash('Le navigateur a bloqué la fenêtre d’impression — autorisez les pop-ups');return;}
+  var jNoms=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+  var h='<html><head><meta charset="utf-8"><title>Feuilles de temps — '+wk+'</title><style>body{font-family:Arial,sans-serif;padding:20px}h1{font-size:16px}table{width:100%;border-collapse:collapse;margin-bottom:26px;page-break-inside:avoid}td,th{border:1px solid #333;padding:6px 8px;font-size:12px;text-align:left}th{background:#eee}.tot{text-align:right;font-weight:bold}.sig{display:flex;gap:30px;margin-top:14px}.sig div{flex:1;border-top:1px solid #333;padding-top:4px;font-size:11px}</style></head><body>';
+  rows.forEach(function(r){h+='<h1>'+r.nom+' — semaine du '+wk+'</h1><table><tr><th>Jour</th><th>Heures</th></tr>';
+    jNoms.forEach(function(jn,i){h+='<tr><td>'+jn+'</td><td>'+r.jours[i]+'</td></tr>';});
+    h+='<tr><td class="tot">Total</td><td class="tot">'+r.semaine+'</td></tr></table>'
+     +'<div class="sig"><div>Signature employé</div><div>Signature superviseur</div></div>';});
+  h+='</body></html>';win.document.write(h);win.document.close();win.focus();setTimeout(function(){win.print();},300);
+  var now=new Date().toISOString();
+  Promise.all(rows.map(function(r){return rest('POST','ft_envois',{id:r._uid+'_'+wk,uid:r._uid,emp:r.nom,semaine:wk,methode:'impression',punchs:null,heures:r._h,par:self.user.id,le:now},'resolution=merge-duplicates,return=minimal');}))
+   .then(function(){return self.reloadAll();}).catch(function(){});};
+Comp.prototype.mailtoFT=function(r){var sujet='Feuille de temps — '+r.nom+' — semaine du '+this._tWk;
+  var corps='Bonjour,\n\nVoici la feuille de temps de '+r.nom+' pour la semaine du '+this._tWk+' ('+r.semaine+' au total).\n\nLe fichier Excel vient d’être téléchargé — il ne reste qu’à le joindre à ce courriel.\n\nMerci.';
+  window.location.href='mailto:?subject='+encodeURIComponent(sujet)+'&body='+encodeURIComponent(corps);};
 Comp.prototype.T=function(code){return this.D.types[code]||this.D.types.GEN||{label:'Bassin',court:'Bassin',norme:'',fields:[]};};
 Comp.prototype.outOf=function(rel){var T=this.T(rel.type_code),o=[];(T.fields||[]).forEach(function(f){var v=rel.vals&&rel.vals[f.key];if(v!=null&&rel.touched&&rel.touched[f.key]&&(v<f.lo||v>f.hi))o.push({f:f,v:v});});return o;};
 Comp.prototype.latest=function(){var m={};this.D.rel.forEach(function(r){m[r.site_id]=r;});return m;};
@@ -1362,11 +1398,11 @@ Comp.prototype.vals=function(){
   var siteRows=D.sites.filter(function(s){return stype==='all'||s.type===stype;}).map(function(s){return{nom:s.nom,client:'—',ville:s.ville||'—',court:self.T(s.type).court,freq:'—',tech:'—',gps:'Non défini',bassin:'—',contrat:s.contrat||'—',go:function(){self.openSiteEdit(s.id);}};});
 
   // ---- TEMPS · SUIVI · CUMUL (lecture seule des feuilles de temps existantes)
-  var tMon=addDays(mondayOf(now),7*st.tOff),tWk=iso(tMon),allTeam=D.comptes.filter(function(c){return c.role!=='admin';}),actif=function(id){return D.statut[id]!=='inactif';},team=allTeam.filter(function(c){return actif(c.id);}),cn={};D.comptes.forEach(function(c){cn[c.id]=(c.prenom+' '+c.nom).trim();});
+  this._tWk=iso(addDays(mondayOf(now),7*st.tOff));var tMon=addDays(mondayOf(now),7*st.tOff),tWk=iso(tMon),allTeam=D.comptes.filter(function(c){return c.role!=='admin';}),actif=function(id){return D.statut[id]!=='inactif';},team=allTeam.filter(function(c){return actif(c.id);}),cn={};D.comptes.forEach(function(c){cn[c.id]=(c.prenom+' '+c.nom).trim();});
   var tempsRows=allTeam.map(function(c){var row=D.ft.filter(function(f){return f.uid===c.id&&f.week===tWk;})[0],tot=0,live=false,jours=[];
     for(var i=0;i<7;i++){var d=row&&row.days&&row.days[i],h=0,lv=false;((d&&d.tasks)||[]).forEach(function(t){h+=Number(t.hrs)||0;if(t.active)lv=true;});tot+=h;if(lv)live=true;jours.push((h>0?fmtH(h):'—')+(lv?' ●':''));}
     var cum=D.ftAll.filter(function(f){return f.uid===c.id;}).reduce(function(s,f){return s+(Number(f.total_h)||0);},0);
-    var nomC=(c.prenom+' '+c.nom).trim();return{_keep:actif(c.id)||tot>0||live,nom:nomC+(actif(c.id)?'':' (inactif)'),op:(tot>0||live)?1:0.5,jours:jours,semaine:tot>0?fmtH(tot):'—',cumul:fmtH(cum),banque:'—',sup:'—',gerer:function(){self.openPunchMgmt(c.id,nomC,tWk);}};}).filter(function(r){return r._keep||st.tempsTab==='cumul';});
+    var nomC=(c.prenom+' '+c.nom).trim(),envoi=D.fteAll.filter(function(e){return e.uid===c.id&&e.semaine===tWk;})[0];return{_keep:actif(c.id)||tot>0||live,_uid:c.id,_h:tot,nom:nomC+(actif(c.id)?'':' (inactif)'),op:(tot>0||live)?1:0.5,jours:jours,semaine:tot>0?fmtH(tot):'—',cumul:fmtH(cum),banque:'—',sup:'—',gerer:function(){self.openPunchMgmt(c.id,nomC,tWk);},exporter1:function(){self.exportFT([this_row()],'excel_employe');},imprimer1:function(){self.printFT([this_row()]);},mailer1:function(){self.mailtoFT(this_row());},envoyee:!!envoi,envoiTxt:envoi?('Envoyée '+fdate(envoi.le)):''};function this_row(){return tempsRows.filter(function(x){return x._uid===c.id;})[0];}}).filter(function(r){return r._keep||st.tempsTab==='cumul';});
   var punchRows=[];D.ft.filter(function(f){return f.week===tWk;}).forEach(function(f){(f.days||[]).forEach(function(d,i){var di=iso(addDays(tMon,i));((d&&d.tasks)||[]).forEach(function(t){
     var flag=t.pendingValidation?(t.pendingReason==='nouveau_site'?'Nouveau site à valider':'Entrepôt / bureau à confirmer'):(t.autoClosed?'Fermé automatiquement à 20 h':((t.active&&di<D.today)?'Punch resté ouvert':''));if(!flag)return;
     var nomE=cn[f.uid]||f.emp||f.uid,pRow={uid:f.uid,week:tWk,dayIdx:i,nom:nomE,jour:DJ[i]+' '+addDays(tMon,i).getDate(),entree:t.start||'—',sortie:t.end||'—',site:t.lieu||'—',flag:flag,pending:true,done:false,etat:'',bg:'var(--color-accent-100)'};
@@ -1460,6 +1496,7 @@ Comp.prototype.vals=function(){
   var exportXls=function(){self.exportFact(factRows);};
   var poManquant=factAll.filter(function(b){return b.noPo;}).length;
 
+  var tempsExport={exportEquipe:function(){self.exportFT(tempsRows.filter(function(r){return r._keep;}),'excel_equipe');},imprimerEquipe:function(){self.printFT(tempsRows.filter(function(r){return r._keep;}));},nEmployes:tempsRows.filter(function(r){return r._keep;}).length};
   var pm=st.pm,pmV={pmOpen:!!pm,pmLoading:!!(pm&&pm.loading),pmReady:!!(pm&&!pm.loading),pmTitle:pm?(pm.nom+' — '+wkLabel(new Date(pm.week+'T12:00:00'))):'',pmBusy:!!(pm&&pm.busy),
     pmClose:function(){self.closePunchMgmt();},pmCloseBg:function(e){if(e.target===e.currentTarget)self.closePunchMgmt();}};
   if(pm&&pm.days){
@@ -1491,7 +1528,7 @@ Comp.prototype.vals=function(){
   var qq=st.q.trim().toLowerCase();
   var results=qq.length<2?[]:D.sites.filter(function(s){return(s.nom+s.ville+s.contrat).toLowerCase().indexOf(qq)>=0;}).slice(0,5).map(function(s){return{label:s.nom,sub:s.ville+' · '+self.T(s.type).court,go:function(){self.go('inspections',{inspSite:s.id,inspKey:null});}};})
     .concat(all.filter(function(d){return(d.client+d.objet+d.id).toLowerCase().indexOf(qq)>=0;}).slice(0,3).map(function(d){return{label:d.id+' · '+d.client,sub:d.objet,go:function(){var o={};o[d.id]=true;self.go('operations',{opsOpen:o,opsFilter:'Tous'});}};}));
-  return Object.assign(base,dlgV,edV,sdV,svV,carteV,fxV,pmV,{isFacturation:mod==='facturation',factKpis:factKpis,factFilters:factFilters,factRows:factRows,factCount:factCount,factTotCalc:factTotCalc,factTotFact:factTotFact,factTotEcart:factTotEcart,exportXls:exportXls,isSondages:mod==='sondages',isCarte:mod==='carte',carteInfo:carteInfo,navGroups:navGroups,modTitle:TITLES[mod][0],modSub:TITLES[mod][1],results:results,hasResults:results.length>0,
+  return Object.assign(base,dlgV,edV,sdV,svV,carteV,fxV,pmV,tempsExport,{isFacturation:mod==='facturation',factKpis:factKpis,factFilters:factFilters,factRows:factRows,factCount:factCount,factTotCalc:factTotCalc,factTotFact:factTotFact,factTotEcart:factTotEcart,exportXls:exportXls,isSondages:mod==='sondages',isCarte:mod==='carte',carteInfo:carteInfo,navGroups:navGroups,modTitle:TITLES[mod][0],modSub:TITLES[mod][1],results:results,hasResults:results.length>0,
     liveTxt:'En direct · '+JS[now.getDay()]+' '+now.getDate()+' '+MOIS[now.getMonth()].slice(0,4)+'. · '+pad(now.getHours())+':'+pad(now.getMinutes()),isLoading:false,loadErr:this.err,
     isTemps:mod==='temps',isTempsTab:tt==='temps',isSuiviTab:tt==='suivi',isCumulTab:tt==='cumul',tempsTabs:tempsTabs,weekDays:mod==='planning'?pDays:tDays,tempsRows:tempsRows,punchRows:punchRows,tLabel:wkLabel(tMon),tPrev:function(){self.setState({tOff:st.tOff-1});},tNext:function(){self.setState({tOff:Math.min(0,st.tOff+1)});},
     isPlanning:mod==='planning',planRows:planRows,pLabel:wkLabel(pMon),pPrev:function(){self.setState({pOff:st.pOff-1});},pNext:function(){self.setState({pOff:st.pOff+1});},openDlg:function(){self.openDlg({});},pLoading:!PL,
