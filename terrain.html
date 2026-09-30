@@ -401,7 +401,7 @@ button{font-family:inherit}
 
             <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--color-divider);border:1px solid var(--color-divider)">
               <button onClick="{{ goLog }}" style="all:unset;cursor:pointer;background:var(--color-bg);padding:16px;min-height:96px;display:flex;flex-direction:column;justify-content:space-between" data-hv="2"><sa-i n="truck" s="28"></sa-i><span style="font:600 20px/1.1 var(--font-heading)">Logistique</span></button>
-              <button onClick="{{ goHiv }}" style="all:unset;cursor:pointer;background:var(--color-bg);padding:16px;min-height:96px;display:flex;flex-direction:column;justify-content:space-between" data-hv="3"><sa-i n="snow" s="28"></sa-i><span style="font:600 20px/1.1 var(--font-heading)">Hivernage <span style="font-weight:400">Bientôt</span></span></button>
+              <button onClick="{{ goHiv }}" style="all:unset;cursor:pointer;background:var(--color-bg);padding:16px;min-height:96px;display:flex;flex-direction:column;justify-content:space-between" data-hv="3"><sa-i n="snow" s="28"></sa-i><span style="font:600 20px/1.1 var(--font-heading)">Hivernage <span style="font-weight:400">{{ hivDoneCount }}/{{ hivTotalSites }}</span></span></button>
               <button onClick="{{ goDemandes }}" style="all:unset;cursor:pointer;background:var(--color-bg);padding:16px;min-height:96px;display:flex;flex-direction:column;justify-content:space-between" data-hv="4"><sa-i n="message" s="28"></sa-i><span style="font:600 20px/1.1 var(--font-heading)">Demande</span></button>
               <a href="tel:{{ bureauTel }}" style="text-decoration:none;color:inherit;background:var(--color-bg);padding:16px;min-height:96px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between" data-hv="5"><sa-i n="phone" s="28"></sa-i><span style="font:600 20px/1.1 var(--font-heading)">Appeler le bureau</span></a>
             </div>
@@ -517,7 +517,7 @@ button{font-family:inherit}
 
         <!-- ═════ LOGISTIQUE ═════ -->
         <sc-if value="{{ isTemps }}"><div style="padding:20px;display:flex;flex-direction:column;gap:20px"><h1 style="margin:0;font-size:38px;line-height:1">Temps</h1><div class="blueprint" style="padding:18px;display:flex;flex-direction:column;gap:12px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><div style="display:flex;align-items:center;gap:8px;font-size:15px"><span style="width:10px;height:10px;background:var(--color-accent);flex:none"></span><span>{{ pn.statusTxt }}</span></div><div style="font:600 26px/1.05 var(--font-heading)">{{ pn.title }}</div><div style="font-size:15px">Aujourd’hui {{ pn.dayTotal }} · Semaine {{ pn.weekTotal }}</div><sc-if value="{{ pn.active }}"><button class="btn btn-secondary" onClick="{{ pn.openStart }}" style="min-height:52px;font-size:18px;gap:10px"><sa-i n="login" s="22"></sa-i>Changer de site</button><button class="btn btn-primary" onClick="{{ pn.openStop }}" style="min-height:58px;font-size:20px;gap:10px"><sa-i n="logout" s="22"></sa-i>Terminer la journée</button></sc-if><sc-if value="{{ pn.idle }}"><button class="btn btn-primary" onClick="{{ pn.openStart }}" style="min-height:58px;font-size:20px;gap:10px"><sa-i n="login" s="22"></sa-i>Démarrer un punch</button></sc-if><sc-if value="{{ pn.hasPending }}"><div style="font-size:14px">{{ pn.pendingTxt }}</div></sc-if></div>
-<div style="display:flex;flex-direction:column"><h3 style="margin:0 0 6px;font-size:24px">Cette semaine</h3><sc-for list="{{ pn.days }}" as="d"><div style="border-top:1px solid var(--color-divider);padding:10px 8px;background:{{ d.bg }}"><div style="display:flex;justify-content:space-between;font:600 20px var(--font-heading)"><span>{{ d.label }}</span><span>{{ d.total }}</span></div><sc-for list="{{ d.tasks }}" as="t"><div style="display:flex;gap:10px;font-size:15px;padding:3px 0"><span style="flex:none;min-width:118px">{{ t.h }}</span><span style="flex:1;min-width:0">{{ t.lieu }} <b>{{ t.pend }}</b></span><span style="flex:none">{{ t.dur }}</span></div></sc-for></div></sc-for></div><div style="font-size:14px;line-height:1.4">Pour corriger ou supprimer un punch, ouvrez SA Platform.</div></div></sc-if>
+<div style="display:flex;flex-direction:column"><h3 style="margin:0 0 6px;font-size:24px">Cette semaine</h3><sc-for list="{{ pn.days }}" as="d"><div style="border-top:1px solid var(--color-divider);padding:10px 8px;background:{{ d.bg }}"><div style="display:flex;justify-content:space-between;font:600 20px var(--font-heading)"><span>{{ d.label }}</span><span>{{ d.total }}</span></div><sc-for list="{{ d.tasks }}" as="t"><button onClick="{{ t.edit }}" style="all:unset;cursor:pointer;display:flex;gap:10px;font-size:15px;padding:8px 0;min-height:32px"><span style="flex:none;min-width:118px">{{ t.h }}</span><span style="flex:1;min-width:0;text-decoration:underline">{{ t.lieu }} <b>{{ t.pend }}</b></span><span style="flex:none">{{ t.dur }}</span></button></sc-for></div></sc-for></div><div style="font-size:14px;line-height:1.4">Touchez un punch de la semaine pour le corriger ou le supprimer. Chaque correction est soumise au superviseur.</div></div></sc-if>
 <sc-if value="{{ isPunchForm }}"><div style="padding:20px;display:flex;flex-direction:column;gap:16px"><h1 style="margin:0;font-size:34px;line-height:1.05">Démarrer un punch</h1><sc-if value="{{ pf.willClose }}"><div style="font-size:15px;border:1px solid var(--color-divider);padding:10px;line-height:1.35">{{ pf.closeTxt }}</div></sc-if><sc-if value="{{ pf.hasJobs }}"><div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:15px">Depuis la tournée</div><sc-for list="{{ pf.jobs }}" as="j"><button onClick="{{ j.go }}" style="all:unset;cursor:pointer;padding:12px;border:1px solid var(--color-divider);background:{{ j.bg }};color:{{ j.fg }};display:flex;justify-content:space-between;font-size:17px"><span>{{ j.nom }}</span><span>{{ j.h }}</span></button></sc-for></div></sc-if><div class="field"><label style="font-size:15px">Chercher un site</label><input class="input" value="{{ pf.q }}" onInput="{{ pf.onQ }}" placeholder="Nom du site…" style="min-height:52px;font-size:18px"></div><div style="display:flex;flex-direction:column;border:1px solid var(--color-divider);max-height:260px;overflow-y:auto"><sc-for list="{{ pf.sites }}" as="s"><button onClick="{{ s.go }}" style="all:unset;cursor:pointer;padding:12px;border-bottom:1px solid var(--color-divider);background:{{ s.bg }};color:{{ s.fg }};display:flex;flex-direction:column"><span style="font-size:17px">{{ s.nom }}</span><span style="font-size:13px">{{ s.ville }}</span></button></sc-for></div><div class="field"><label style="font-size:15px">Lieu (ou tapez un autre lieu)</label><input class="input" value="{{ pf.lieu }}" onInput="{{ pf.onLieu }}" placeholder="Site ou lieu" style="min-height:52px;font-size:18px"></div><div class="field"><label style="font-size:15px">N° ODT (optionnel)</label><input class="input" value="{{ pf.odt }}" onInput="{{ pf.onOdt }}" style="min-height:52px;font-size:18px"></div><div class="field"><label style="font-size:15px">Détail (optionnel)</label><textarea class="input" value="{{ pf.detail }}" onInput="{{ pf.onDetail }}" style="min-height:70px;font-size:17px"></textarea></div><div class="field"><label style="font-size:15px">Km départ (optionnel)</label><input class="input" inputmode="decimal" value="{{ pf.km }}" onInput="{{ pf.onKm }}" style="min-height:52px;font-size:18px"></div><sc-if value="{{ pf.hasSource }}"><div style="font-size:15px">Lié à : {{ pf.sourceLabel }}</div></sc-if><button class="btn btn-primary" onClick="{{ pf.submit }}" style="min-height:58px;font-size:20px;gap:10px"><sa-i n="login" s="22"></sa-i>Démarrer le punch</button><button class="btn btn-secondary" onClick="{{ pf.cancel }}" style="min-height:52px;font-size:18px;gap:10px"><sa-i n="left" s="22"></sa-i>Annuler</button></div></sc-if>
 <sc-if value="{{ isStopForm }}"><div style="padding:20px;display:flex;flex-direction:column;gap:16px"><h1 style="margin:0;font-size:34px;line-height:1.05">Terminer la journée</h1><div class="blueprint" style="padding:18px;display:flex;flex-direction:column;gap:6px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><div style="font:600 34px/1 var(--font-heading)">{{ sf.total }}</div><div style="font-size:16px">{{ sf.nPunchs }} punch(s) · {{ sf.lieux }}</div></div><div class="field"><label style="font-size:15px">Km arrivée (optionnel)</label><input class="input" inputmode="decimal" value="{{ sf.km }}" onInput="{{ sf.onKm }}" style="min-height:52px;font-size:18px"></div><div style="font-size:15px;line-height:1.4">Le punch actif sera terminé maintenant et la journée enregistrée.</div><button class="btn btn-primary" onClick="{{ sf.submit }}" style="min-height:58px;font-size:20px;gap:10px"><sa-i n="check" s="22"></sa-i>Valider la journée</button><button class="btn btn-secondary" onClick="{{ sf.cancel }}" style="min-height:52px;font-size:18px;gap:10px"><sa-i n="left" s="22"></sa-i>Annuler</button></div></sc-if>
 <sc-if value="{{ isSoon }}"><div style="padding:24px 20px;display:flex;flex-direction:column;gap:16px">
@@ -527,6 +527,7 @@ button{font-family:inherit}
 <a class="btn btn-secondary" href="tel:{{ bureauTel }}" style="min-height:58px;font-size:20px;text-decoration:none;display:flex;align-items:center;justify-content:center">Appeler le bureau</a>
 <button class="btn btn-secondary" onClick="{{ goToday }}" style="min-height:58px;font-size:20px">Retour à la tournée</button>
 </div></sc-if>
+<sc-if value="{{ isPunchEdit }}"><div style="padding:20px;display:flex;flex-direction:column;gap:16px"><h1 style="margin:0;font-size:34px;line-height:1.05">Corriger un punch</h1><div class="field"><label style="font-size:15px">Lieu</label><input class="input" value="{{ pe.lieu }}" onInput="{{ pe.onLieu }}" style="min-height:52px;font-size:18px"></div><div class="field"><label style="font-size:15px">Début</label><input class="input" type="time" value="{{ pe.start }}" onInput="{{ pe.onStart }}" style="min-height:52px;font-size:18px"></div><div class="field"><label style="font-size:15px">Fin</label><input class="input" type="time" value="{{ pe.end }}" onInput="{{ pe.onEnd }}" style="min-height:52px;font-size:18px"></div><sc-if value="{{ pe.active }}"><div style="font-size:15px">Punch en cours : laissez la fin vide pour qu’il continue.</div></sc-if><div style="font-size:15px;line-height:1.4">La correction sera marquée « à valider » pour le superviseur.</div><button class="btn btn-primary" onClick="{{ pe.save }}" style="min-height:58px;font-size:20px;gap:10px"><sa-i n="check" s="22"></sa-i>Enregistrer</button><button class="btn btn-secondary" onClick="{{ pe.del }}" style="min-height:52px;font-size:18px;gap:10px"><sa-i n="x" s="22"></sa-i>{{ pe.delLabel }}</button><button class="btn btn-secondary" onClick="{{ pe.cancel }}" style="min-height:52px;font-size:18px;gap:10px"><sa-i n="left" s="22"></sa-i>Annuler</button></div></sc-if>
 <sc-if value="{{ isLog }}">
           <div style="padding:12px 20px 24px;display:flex;flex-direction:column;gap:18px">
             <button onClick="{{ goToday }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:4px;height:44px;font-size:16px;color:var(--color-accent-700)"><sa-i n="left" s="22"></sa-i>Aujourd’hui</button>
@@ -537,10 +538,10 @@ button{font-family:inherit}
             </div>
             <sc-if value="{{ isSortie }}">
               <div style="display:flex;flex-direction:column;gap:0">
-                <div style="font-size:15px;padding-bottom:10px">Camion 07 → {{ logSite }}</div>
-                <sc-for list="{{ inventaire }}" as="p">
+                <div style="font-size:15px;padding-bottom:10px">Pour : {{ logSite }}</div>
+                <input class="input" value="{{ invQ }}" onInput="{{ onInvQ }}" placeholder="Chercher un article…" style="min-height:48px;font-size:17px;margin-bottom:8px"><sc-if value="{{ noInv }}"><div style="font-size:15px;padding:8px 0">Inventaire en chargement ou indisponible.</div></sc-if><sc-for list="{{ inventaire }}" as="p">
                   <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--color-divider)">
-                    <div style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:16px;line-height:1.25">{{ p.nom }}</span><span style="font-size:13px">En camion : {{ p.reste }} {{ p.unite }}</span></div>
+                    <div style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:16px;line-height:1.25">{{ p.nom }}</span><span style="font-size:13px">En stock : {{ p.reste }} {{ p.unite }}</span></div>
                     <button onClick="{{ p.minus }}" aria-label="Moins" style="all:unset;cursor:pointer;width:50px;height:50px;display:flex;align-items:center;justify-content:center;border:1px solid var(--color-divider)"><sa-i n="minus" s="22" w="2"></sa-i></button>
                     <span style="width:44px;text-align:center;font:600 24px var(--font-heading)">{{ p.qty }}</span>
                     <button onClick="{{ p.plus }}" aria-label="Plus" style="all:unset;cursor:pointer;width:50px;height:50px;display:flex;align-items:center;justify-content:center;border:1px solid var(--color-divider)"><sa-i n="plus" s="22" w="2"></sa-i></button>
@@ -549,16 +550,16 @@ button{font-family:inherit}
                 <button class="btn btn-primary" onClick="{{ saveSortie }}" style="min-height:58px;font-size:20px;margin-top:14px"><span>Enregistrer la sortie · {{ sortieCount }} article(s)</span></button>
               </div>
             </sc-if>
-            <sc-if value="{{ isBon }}">
+            <sc-if value="{{ isBon }}"><sc-if value="{{ bonPick }}"><div style="display:flex;flex-direction:column;gap:12px"><sc-if value="{{ hasLastSortie }}"><button class="btn btn-primary" onClick="{{ newBon }}" style="min-height:56px;font-size:18px">Nouveau bon depuis la sortie · {{ lastSortieTxt }}</button></sc-if><h3 style="margin:4px 0 0;font-size:22px">Bons à livrer</h3><sc-if value="{{ noBons }}"><div style="font-size:15px">Aucun bon en attente de livraison.</div></sc-if><sc-for list="{{ bonList }}" as="b"><button onClick="{{ b.open }}" style="all:unset;cursor:pointer;display:flex;flex-direction:column;gap:2px;padding:12px 0;border-top:1px solid var(--color-divider)"><span style="font:600 19px var(--font-heading)">{{ b.no }} · {{ b.client }}</span><span style="font-size:14px">{{ b.sub }}</span></button></sc-for></div></sc-if><sc-if value="{{ bonOpen }}"><button onClick="{{ bonBack }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:4px;height:40px;font-size:16px;color:var(--color-accent-700)"><sa-i n="left" s="20"></sa-i>Bons à livrer</button>
               <div style="display:flex;flex-direction:column;gap:14px">
                 <div style="display:flex;flex-direction:column;gap:2px;border-bottom:1px solid var(--color-divider);padding-bottom:12px">
-                  <span style="font:600 24px var(--font-heading)">BL-26-0932</span>
-                  <span style="font-size:15px">{{ logClient }} · {{ logSite }}</span>
+                  <span style="font:600 24px var(--font-heading)">{{ bon.no }}</span>
+                  <span style="font-size:15px">{{ bon.client }} · {{ bon.addr }}</span>
                 </div>
                 <sc-for list="{{ bonItems }}" as="b">
                   <div style="display:flex;justify-content:space-between;font-size:16px;padding:4px 0"><span>{{ b.nom }}</span><span style="font:600 18px var(--font-heading)">{{ b.qty }} {{ b.unite }}</span></div>
                 </sc-for>
-                <div class="field"><label style="font-size:14px">Nom du signataire</label><input class="input" value="{{ signer }}" onChange="{{ onSigner }}" placeholder="Ex. responsable de la piscine" style="min-height:52px;font-size:17px"></div>
+                <div class="field"><label style="font-size:14px">Nom du signataire</label><input class="input" value="{{ signer }}" onInput="{{ onSigner }}" placeholder="Ex. responsable de la piscine" style="min-height:52px;font-size:17px"></div>
                 <div class="blueprint" style="position:relative;border:1px solid var(--color-divider);height:170px">
                   <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
                   <canvas ref="{{ sigRef }}" style="position:absolute;inset:0;width:100%;height:100%;touch-action:none;color:var(--color-text)"></canvas>
@@ -572,10 +573,10 @@ button{font-family:inherit}
                   </div>
                 </sc-if>
                 <sc-if value="{{ isSigned }}">
-                  <div style="padding:14px;border:1px solid var(--color-accent);display:flex;gap:10px;align-items:center;font-size:16px"><sa-i n="check" s="22" w="2"></sa-i><span>Signé par {{ signedBy }} à {{ signedAt }} — copie envoyée au client</span></div>
+                  <div style="padding:14px;border:1px solid var(--color-accent);display:flex;gap:10px;align-items:center;font-size:16px"><sa-i n="check" s="22" w="2"></sa-i><span>Signé par {{ signedBy }} à {{ signedAt }} — bon marqué livré</span></div>
                 </sc-if>
               </div>
-            </sc-if>
+            </sc-if></sc-if>
           </div>
         </sc-if>
 
@@ -585,7 +586,7 @@ button{font-family:inherit}
             <button onClick="{{ goToday }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:4px;height:44px;font-size:16px;color:var(--color-accent-700)"><sa-i n="left" s="22"></sa-i>Aujourd’hui</button>
             <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px">
               <h1 style="margin:0;font-size:38px;line-height:1">Hivernage</h1>
-              <div style="font:600 34px/1 var(--font-heading)">{{ hivDoneCount }}<span style="font-weight:400;font-size:22px"> / 33</span></div>
+              <div style="font:600 34px/1 var(--font-heading)">{{ hivDoneCount }}<span style="font-weight:400;font-size:22px"> / {{ hivTotalSites }}</span></div>
             </div>
             <div style="display:grid;grid-template-columns:repeat(11,minmax(0,1fr));gap:3px">
               <sc-for list="{{ hivCells }}" as="h">
@@ -594,8 +595,8 @@ button{font-family:inherit}
             </div>
             <div style="display:flex;gap:16px;font-size:13px;flex-wrap:wrap">
               <span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;background:var(--color-accent-700)"></span>Fait</span>
-              <span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;box-sizing:border-box;border:1px solid var(--color-text);background:repeating-linear-gradient(135deg,var(--color-text) 0 1px,transparent 1px 4px)"></span>Cette semaine</span>
-              <span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;box-sizing:border-box;border:1px solid var(--color-text)"></span>À planifier</span>
+              
+              <span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;box-sizing:border-box;border:1px solid var(--color-text)"></span>À faire</span>
             </div>
             <div style="display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--color-divider)">
               <sc-for list="{{ hivFilters }}" as="o">
@@ -640,7 +641,7 @@ button{font-family:inherit}
                   <button onClick="{{ e.go }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:12px;padding:0 16px;height:56px;font-size:17px;background:{{ e.bg }};color:{{ e.fg }}"><span style="width:18px;height:18px;border-radius:50%;box-sizing:border-box;border:1.5px solid currentColor;background:{{ e.dot }}"></span>{{ e.label }}</button>
                 </sc-for>
               </div>
-              <textarea class="input" placeholder="Bris, pièces à commander, remarques" style="min-height:90px;font-size:17px;margin-top:6px"></textarea>
+              <textarea class="input" value="{{ hivNoteTxt }}" onInput="{{ onHivNote }}" placeholder="Bris, pièces à commander, remarques" style="min-height:90px;font-size:17px;margin-top:6px"></textarea>
               <button class="btn btn-primary" onClick="{{ sendHiv }}" style="min-height:60px;font-size:21px;margin-top:6px">Envoyer le rapport</button>
             </div>
           </div>
@@ -660,7 +661,7 @@ button{font-family:inherit}
               <div class="blueprint" style="padding:16px;display:flex;flex-direction:column;gap:12px">
                 <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
                 <div style="display:flex;align-items:center;justify-content:space-between"><span style="font:600 24px var(--font-heading)">{{ composer.label }}</span><button onClick="{{ closeComposer }}" aria-label="Fermer" style="all:unset;cursor:pointer;width:44px;height:44px;display:flex;align-items:center;justify-content:center"><sa-i n="x" s="24"></sa-i></button></div>
-                <sc-if value="{{ composer.urgent }}"><div style="padding:10px 12px;background:var(--color-accent-900);color:var(--color-bg);font-size:15px">Le répartiteur est avisé immédiatement et vous rappelle.</div></sc-if>
+                <sc-if value="{{ composer.urgent }}"><div style="padding:10px 12px;background:var(--color-accent-900);color:var(--color-bg);font-size:15px">La demande part au bureau tout de suite. Pour une urgence, appelez aussi le bureau.</div></sc-if>
                 <div style="display:flex;flex-wrap:wrap;gap:8px">
                   <sc-for list="{{ composer.chips }}" as="c">
                     <button onClick="{{ c.go }}" style="all:unset;cursor:pointer;min-height:46px;padding:0 14px;display:flex;align-items:center;font-size:16px;box-sizing:border-box;border:1px solid var(--color-divider);background:{{ c.bg }};color:{{ c.fg }}">{{ c.label }}</button>
@@ -668,7 +669,7 @@ button{font-family:inherit}
                 </div>
                 <textarea class="input" value="{{ demandeTxt }}" onChange="{{ onDemTxt }}" placeholder="Détails (optionnel)" style="min-height:80px;font-size:17px"></textarea>
                 <div style="font-size:14px;display:flex;gap:6px;align-items:center"><sa-i n="pin" s="16"></sa-i><span>Site joint : {{ composerSite }}</span></div>
-                <button class="btn btn-primary" onClick="{{ sendDemande }}" style="min-height:58px;font-size:20px;gap:10px"><sa-i n="send" s="22"></sa-i>Envoyer</button>
+                <button class="btn btn-secondary" onClick="{{ demPhotoBtn }}" style="min-height:52px;font-size:18px;gap:10px"><sa-i n="camera" s="20"></sa-i>{{ demPhotoLbl }}</button><button class="btn btn-primary" onClick="{{ sendDemande }}" style="min-height:58px;font-size:20px;gap:10px"><sa-i n="send" s="22"></sa-i>Envoyer</button>
               </div>
             </sc-if>
             <div style="display:flex;flex-direction:column">
@@ -745,7 +746,7 @@ button{font-family:inherit}
       </div>
 
       <sc-if value="{{ hasToast }}">
-        <div style="position:absolute;left:16px;right:16px;bottom:100px;z-index:30;padding:14px 16px;background:var(--color-text);color:var(--color-bg);font-size:16px;display:flex;gap:10px;align-items:center;box-shadow:var(--shadow-lg)"><sa-i n="check" s="20" w="2"></sa-i>{{ toast }}</div>
+        <div style="position:absolute;left:16px;right:16px;bottom:100px;z-index:30;pointer-events:none;padding:14px 16px;background:var(--color-text);color:var(--color-bg);font-size:16px;display:flex;gap:10px;align-items:center;box-shadow:var(--shadow-lg)"><sa-i n="check" s="20" w="2"></sa-i>{{ toast }}</div>
       </sc-if>
 
       <div style="flex:none;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));border-top:1px solid var(--color-text);padding-bottom:26px;background:var(--color-bg)">
@@ -896,6 +897,9 @@ var SB='https://ldqvdiaewvhnukuaxdmc.supabase.co',KEY='sb_publishable_qVd_6eoAvw
 var H={apikey:KEY,Authorization:'Bearer '+KEY};
 function get(p){return fetch(SB+'/rest/v1/'+p,{headers:H}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();});}
 function post(p,b,pref){return fetch(SB+'/rest/v1/'+p,{method:'POST',headers:Object.assign({'Content-Type':'application/json',Prefer:pref||'return=minimal'},H),body:JSON.stringify(b)});}
+function netMsg(e){var m=String(e&&e.message||e);return /Failed to fetch|NetworkError|Load failed/i.test(m)?'réseau injoignable':m;}
+/* Un identifiant figure-t-il EXACTEMENT dans une liste « a, b, c » ? (le filtre serveur ilike.*id* accepte aussi les sous-chaînes) */
+function hasId(list,id){return String(list||'').split(/,\s*/).indexOf(String(id))>=0;}
 function jget(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
 function jset(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true;}catch(e){return false;}}
 var MOIS=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
@@ -935,9 +939,27 @@ function applyOp(days,op){
     if(c)d.status='done';
   }else if(op.type==='gps'){
     d.tasks.forEach(function(t){if(t.opId===op.opId&&!t.gps)t.gps=op.gps;});
+  }else if(op.type==='edit'||op.type==='delete'){
+    /* Même protocole que SA Platform (v64) : identité stable k (+ k0 = signature d'origine), heure de modification
+       mod, et pierre tombale dans d.del pour une suppression — sinon la synchro d'index.html ramènerait l'ancien punch. */
+    var tk=findTask(d,op);if(!tk)return days;
+    if(op.type==='edit'){
+      if(!tk.k){tk.k0=sig(tk);tk.k=op.id;}tk.mod=op.ts;tk.lieu=op.lieu;tk.start=op.start;
+      if(op.end){tk.end=op.end;tk.active=false;}if(tk.end&&!tk.active)tk.hrs=hrsFrom(tk.start,tk.end);
+      tk.pendingValidation=true;tk.pendingReason='correction_employe';tk.correctedBy=op.uid;tk.correctedAt=new Date(op.ts).toISOString();
+    }else{
+      d.del=d.del||[];if(!d.del.some(function(x){return x.at===op.ts;}))d.del.push({k:tk.k||'',sig:sig(tk),at:op.ts});
+      d.tasks=d.tasks.filter(function(x){return x!==tk;});
+    }
+    d.status=d.tasks.some(function(x){return x.active;})?'running':(d.tasks.length?'done':'idle');
   }
   return days;
 }
+function sig(t){return(t.start||'')+'|'+(t.lieu||'');}
+function findTask(d,op){return(d.tasks||[]).filter(function(t){return(op.k&&t.k===op.k)||sig(t)===op.sig||(t.k0&&t.k0===op.sig);})[0]||null;}
+var HM=/^([01]\d|2[0-3]):[0-5]\d$/;
+function rid(p){return p+Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
+function noBon(prefix){var d=new Date();return prefix+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+(Math.floor(Math.random()*900)+100);}
 function cap(s){s=String(s||'');return s.charAt(0).toUpperCase()+s.slice(1);}
 
 /* ---------- Données de référence (types, sites, contrats) : cache local pour le hors-ligne ---------- */
@@ -948,7 +970,7 @@ function buildRef(raw){
   var ct={};(raw.contrats||[]).forEach(function(c){ct[c.site_id]=c;});
   REF.sites={};REF.list=[];
   (raw.sites||[]).forEach(function(s){var c=ct[s.id];var code=(c&&c.type_code&&REF.types[c.type_code])?c.type_code:'GEN';
-    var o={id:String(s.id),nom:s.nom||'(sans nom)',ville:villeOf(s.addr),addr:s.addr||'',type:code,bassin:'',contrat:(c&&c.code)||'',client:''};REF.sites[o.id]=o;REF.list.push(o);});
+    var o={id:String(s.id),nom:s.nom||'(sans nom)',ville:villeOf(s.addr),addr:s.addr||'',type:code,bassin:'',contrat:(c&&c.code)||'',client:''};REF.sites[o.id]=o;if(!/^Fusionné →/.test(s.notes||''))REF.list.push(o);});
 }
 function siteById(id){return REF.sites[String(id)]||null;}
 function pseudoSite(nom,addr){var id='x:'+norm(nom||addr||'inconnu').replace(/ /g,'-');
@@ -965,17 +987,18 @@ function Comp(user){
   var self=this;this.user=user;this.today=iso(new Date());
   this.rootRef={current:null};this.contentRef={current:null};this.sigRef={current:null};
   this.jobs=[];this.days=[];this.punch=null;this.last={};this.hours=null;this.bureau='';this.me={nom:(user.prenom+' '+user.nom).trim(),role:cap(user.dept||'Technicien'),dept:user.dept||'—',tel:user.tel||'—'};
-  this.online=navigator.onLine;this.syncAt=null;this.queueN=(jget('sa_terrain_queue',[])).length;
+  this.online=navigator.onLine;this.syncAt=null;this.loadErr={};this.sendErr='';this.queueN=(jget('sa_terrain_queue',[])).length;
   var prefs=jget('sa_terrain_prefs',{});this.prefs={sun:!!prefs.sun,big:!!prefs.big};
   var saved=jget('sa_terrain_state_'+user.id+'_'+this.today,{});
-  this.dem=[];this.ft=jget(LSK_FT+user.id+'_'+iso(mondayOf(new Date())),null);this.state=Object.assign({pf:{q:'',lieu:'',siteId:null,odt:'',detail:'',km:'',src:null},sf:{km:''},demande:null,demChip:null,demandeTxt:'',screen:'today',openJob:null,vals:{},touched:{},checks:{},prods:{},photo:{},photoData:{},notes:{},validated:{},sync:{},planDay:0,toast:null,soon:''},saved);
+  this.inv=[];this.bons=[];this.hivRep={};this.lastSortie=null;this._sig={strokes:[],w:0};
+  this.dem=[];this.ft=jget(LSK_FT+user.id+'_'+iso(mondayOf(new Date())),null);this.state=Object.assign({pf:{q:'',lieu:'',siteId:null,odt:'',detail:'',km:'',src:null},sf:{km:''},demande:null,demChip:null,demandeTxt:'',screen:'today',logTab:'sortie',sortie:{},invQ:'',bonSel:null,signer:'',hivFilter:'todo',hivSel:null,hivChecks:{},hivAntigel:{},hivEtat:{},hivNote:{},hivSent:{},demPhoto:null,pe:null,openJob:null,vals:{},touched:{},checks:{},prods:{},photo:{},photoData:{},notes:{},validated:{},sync:{},planDay:0,toast:null,soon:''},saved);
   this.state.toast=null;this.state.screen='today';this.state.pf={q:'',lieu:'',siteId:null,odt:'',detail:'',km:'',src:null};this.state.sf={km:''};
 }
-Comp.prototype.persist=function(){var s=this.state,keep={vals:s.vals,touched:s.touched,checks:s.checks,prods:s.prods,photo:s.photo,notes:s.notes,validated:s.validated,sync:s.sync,photoData:s.photoData};
+Comp.prototype.persist=function(){var s=this.state,keep={vals:s.vals,touched:s.touched,checks:s.checks,prods:s.prods,photo:s.photo,notes:s.notes,validated:s.validated,sync:s.sync,photoData:s.photoData,hivChecks:s.hivChecks,hivAntigel:s.hivAntigel,hivEtat:s.hivEtat,hivNote:s.hivNote,hivSent:s.hivSent};
   if(!jset('sa_terrain_state_'+this.user.id+'_'+this.today,keep)){keep.photoData={};jset('sa_terrain_state_'+this.user.id+'_'+this.today,keep);}};
 Comp.prototype.setState=function(p){var n=typeof p==='function'?p(this.state):p;this.state=Object.assign({},this.state,n);this.persist();this.update();};
 Comp.prototype.flash=function(t){var s=this;clearTimeout(this._tt);this.state.toast=t;this.update();this._tt=setTimeout(function(){s.state.toast=null;s.update();},2600);};
-Comp.prototype.go=function(s){this.setState({screen:s});var c=this.contentRef.current;if(c)c.scrollTop=0;};
+Comp.prototype.go=function(s){this.setState({screen:s});var c=this.contentRef.current;if(c)c.scrollTop=0;if(s==='logistique')this.loadLog();if(s==='hivernage')this.loadHiv();};
 Comp.prototype.applyTheme=function(){var el=this.rootRef.current;if(!el)return;
   var SUN={'--color-bg':'#ffffff','--color-surface':'#ededed','--color-text':'#000000','--color-divider':'rgba(0,0,0,.6)','--color-accent':'#1d2d3d','--color-accent-600':'#000000','--color-accent-700':'#1d2d3d','--color-accent-800':'#000000','--color-accent-200':'#94bce3','--color-accent-300':'#416180','--color-neutral-500':'#6a6a6d','--color-neutral-600':'#3a3a3c','--color-neutral-700':'#2b2b2d'};
   var on=this.prefs.sun;Object.keys(SUN).forEach(function(k){if(on)el.style.setProperty(k,SUN[k]);else el.style.removeProperty(k);});
@@ -997,15 +1020,16 @@ Comp.prototype.soon=function(t){this.setState({soon:t});this.go('soon');};
 
 /* ---------- Chargements ---------- */
 Comp.prototype.loadRef=function(){var self=this;var cached=jget('sa_terrain_ref',null);if(cached)buildRef(cached);
-  return Promise.all([get('types_bassin?select=*'),get('sites?select=id,nom,addr'),get('contrats?select=*')]).then(function(r){var raw={types:r[0],sites:r[1],contrats:r[2]};jset('sa_terrain_ref',raw);buildRef(raw);self.syncAt=new Date();}).catch(function(){});};
+  return Promise.all([get('types_bassin?select=*'),get('sites?select=id,nom,addr,notes'),get('contrats?select=*')]).then(function(r){var raw={types:r[0],sites:r[1],contrats:r[2]};jset('sa_terrain_ref',raw);buildRef(raw);self.syncAt=new Date();self.okLoad('ref');}).catch(function(e){self.failLoad('ref','sites et contrats'+(cached?' (copie locale utilisée)':''),e);});};
 Comp.prototype.loadJobs=function(){var self=this,uid=encodeURIComponent(this.user.id),d0=this.today,d6=iso(addDays(new Date(),6));
   var q=[get('workorders?select=id,client,site,type,date,assigne,status,descr,groupe_id&date=gte.'+d0+'&date=lte.'+d6+'&assigne=ilike.*'+uid+'*'),
     get('planning_tasks?select=id,titre,emp,site_id,site_nom,date_debut,date_fin,heure_debut,heure_fin,statut,recurrence,wo_id,plan_id&date_debut=lte.'+d6+'&date_fin=gte.'+d0+'&emp=ilike.*'+uid+'*'),
     get('plan?select=id,client,addr,date,heure,emp,site_id,descr,type,status&date=gte.'+d0+'&date=lte.'+d6+'&emp=ilike.*'+uid+'*')];
-  return Promise.all(q).then(function(r){var wo=r[0],pt=r[1],pl=r[2];var all=[];
+  var me=this.user.id;
+  return Promise.all(q).then(function(r){var wo=r[0].filter(function(w){return hasId(w.assigne,me);}),pt=r[1].filter(function(t){return hasId(t.emp,me);}),pl=r[2].filter(function(p){return hasId(p.emp,me);});var all=[];
     var woIds={},plIds={};wo.forEach(function(w){woIds[w.id]=1;});pl.forEach(function(p){plIds[p.id]=1;});
     wo.forEach(function(w){var s=matchSite(w.client,w.site)||pseudoSite(w.client,w.site);
-      all.push({id:'wo:'+w.id,date:w.date,site:s.id,h:'',fin:'',statut:w.status==='termine'?'fait':'à venir',tache:(String(w.descr||'').split('\n')[0].slice(0,90))||cap(w.type||'Visite'),rec:w.groupe_id?'Visite récurrente':''});});
+      all.push({id:'wo:'+w.id,date:w.date,site:s.id,h:'',fin:'',statut:(w.status==='termine'||w.status==='complete'||w.status==='facture')?'fait':'à venir',tache:(String(w.descr||'').split('\n')[0].slice(0,90))||cap(w.type||'Visite'),rec:w.groupe_id?'Visite récurrente':''});});
     pl.forEach(function(p){var s=(p.site_id&&siteById(p.site_id))||matchSite(p.client,p.addr)||pseudoSite(p.client,p.addr);
       all.push({id:'pl:'+p.id,date:p.date,site:s.id,h:p.heure||'',fin:'',statut:p.status==='termine'?'fait':'à venir',tache:(String(p.descr||'').split('\n')[0].slice(0,90))||cap(p.type||'Intervention'),rec:''});});
     pt.forEach(function(t){if((t.wo_id&&woIds[t.wo_id])||(t.plan_id&&plIds[t.plan_id]))return;
@@ -1015,7 +1039,7 @@ Comp.prototype.loadJobs=function(){var self=this,uid=encodeURIComponent(this.use
     self.days=[];for(var i=0;i<7;i++){var dt=addDays(new Date(),i),ds=iso(dt);
       self.days.push({dow:JOURS[dt.getDay()].slice(0,3),num:dnum(dt),title:(i===0?'Aujourd’hui · ':'')+JOURS[dt.getDay()].toLowerCase()+' '+dnum(dt)+' '+MOIS[dt.getMonth()],
         items:all.filter(function(j){return j.date===ds;}).sort(function(a,b){return(a.h||'99').localeCompare(b.h||'99');}).map(function(j){return[j.h,j.site,j.tache,j.rec];})});}
-    self.syncAt=new Date();}).catch(function(){});};
+    self.syncAt=new Date();self.okLoad('jobs');}).catch(function(e){self.failLoad('jobs','tournée du jour',e);});};
 Comp.prototype.weekKey=function(){return iso(mondayOf(new Date()));};
 Comp.prototype.ftSet=function(row){this.ft={days:row.days,updated_at:row.updated_at,total_h:row.total_h};jset(LSK_FT+this.user.id+'_'+this.weekKey(),this.ft);};
 Comp.prototype.ops=function(){return jget(LSK_OPS,[]);};
@@ -1024,14 +1048,14 @@ Comp.prototype.activeTask=function(days){var i=(new Date().getDay()+6)%7,ts=(day
 Comp.prototype.syncDerived=function(){var d=this.viewDays(),act=this.activeTask(d),h=0;d.forEach(function(x){(x.tasks||[]).forEach(function(t){h+=t.hrs||0;});});this.hours=h;this.punch=act?{start:act.start,siteId:act.siteId,lieu:act.lieu,addr:act.addr}:null;};
 Comp.prototype.loadPunch=function(){return this.loadWeek();};
 Comp.prototype.loadWeek=function(){var self=this,id=this.user.id+'_'+this.weekKey();
-  return get('feuilles_temps?id=eq.'+encodeURIComponent(id)+'&select=days,updated_at,total_h').then(function(r){if(r[0])self.ftSet(r[0]);else if(!self.ft)self.ft={days:[],updated_at:null,total_h:0};self.autoClose();}).catch(function(){});};
+  return get('feuilles_temps?id=eq.'+encodeURIComponent(id)+'&select=days,updated_at,total_h').then(function(r){if(r[0])self.ftSet(r[0]);else if(!self.ft)self.ft={days:[],updated_at:null,total_h:0};self.okLoad('week');self.autoClose();}).catch(function(e){self.failLoad('week','feuille de temps',e);});};
 /* Relit la feuille, applique l'opération sur la version LA PLUS RÉCENTE, écrit seulement si la ligne n'a pas changé entre-temps. */
 Comp.prototype.writeWeek=function(week,fn,tries){var self=this,id=this.user.id+'_'+week;tries=tries||0;
   return get('feuilles_temps?id=eq.'+encodeURIComponent(id)+'&select=*').then(function(r){
     var row=r[0],days=row&&row.days?row.days:[];while(days.length<7)days.push(emptyDay());var nd=fn(days);
     var tot=0;nd.forEach(function(d){(d.tasks||[]).forEach(function(t){tot+=t.hrs||0;});});var now=new Date().toISOString();
     if(row){
-      return fetch(SB+'/rest/v1/feuilles_temps?id=eq.'+encodeURIComponent(id)+'&updated_at=eq.'+encodeURIComponent(row.updated_at),{method:'PATCH',headers:Object.assign({'Content-Type':'application/json',Prefer:'return=representation'},H),body:JSON.stringify({days:nd,total_h:tot,saved_at:now,updated_at:now})})
+      return fetch(SB+'/rest/v1/feuilles_temps?id=eq.'+encodeURIComponent(id)+'&updated_at='+(row.updated_at==null?'is.null':'eq.'+encodeURIComponent(row.updated_at)),{method:'PATCH',headers:Object.assign({'Content-Type':'application/json',Prefer:'return=representation'},H),body:JSON.stringify({days:nd,total_h:tot,saved_at:now,updated_at:now})})
         .then(function(res){if(!res.ok)throw new Error('HTTP '+res.status);return res.json();})
         .then(function(rows){if(rows.length)return{row:rows[0]};if(tries>=5)throw new Error('conflit');return self.writeWeek(week,fn,tries+1);});
     }
@@ -1047,8 +1071,8 @@ Comp.prototype.flushOps=function(){var self=this;if(this._fl||!navigator.onLine|
       if(op.type==='start')self.logGps(op,res.row);
       if(op.type==='gps')self.updGps(op);
       jset(LSK_OPS,self.ops().filter(function(x){return x.id!==op.id;}));
-      if(res.row&&op.week===self.weekKey())self.ftSet(res.row);self.update();next();
-    }).catch(function(){self._fl=false;self.update();});})();};
+      if(res.row&&op.week===self.weekKey())self.ftSet(res.row);self.sendErr='';self.update();next();
+    }).catch(function(e){self._fl=false;if(navigator.onLine)self.sendErr='punch non envoyé ('+netMsg(e)+')';self.update();});})();};
 Comp.prototype.logGps=function(op,row){var tk=null;((row&&row.days&&row.days[op.dayIdx]&&row.days[op.dayIdx].tasks)||[]).forEach(function(t){if(t.opId===op.id)tk=t;});
   post('punch_gps_log',{id:'g'+op.id,uid:this.user.id,emp:this.me.nom,date:op.date,heure:op.hhmm,lieu:op.lieu,addr:op.addr||'',site_id:op.siteId||null,task_id:tk?tk.id:null,src:'pending',created_at:new Date(op.ts).toISOString(),updated_at:new Date().toISOString()},'resolution=merge-duplicates,return=minimal').catch(function(){});};
 Comp.prototype.updGps=function(op){post('punch_gps_log',{id:'g'+op.opId,lat:op.gps.lat,lng:op.gps.lng,acc:op.gps.acc,src:'gps',updated_at:new Date().toISOString()},'resolution=merge-duplicates,return=minimal').catch(function(){});};
@@ -1079,29 +1103,101 @@ Comp.prototype.loadPunchOLD=function(){var self=this,wk=iso(mondayOf(new Date())
     self.punch=t?{start:t.start,siteId:t.siteId,lieu:t.lieu,addr:t.addr}:null;}).catch(function(){});};
 Comp.prototype.loadLast=function(sid){var self=this;if(self.last[sid]!==undefined)return;self.last[sid]=null;
   get('releves?site_id=eq.'+encodeURIComponent(sid)+'&select=vals,date&order=date.desc,updated_at.desc&limit=1').then(function(r){self.last[sid]=r[0]||null;self.update();}).catch(function(){self.last[sid]=undefined;});};
-Comp.prototype.loadDem=function(){var self=this;return get('demandes?tech=eq.'+encodeURIComponent(this.user.id)+'&select=id,type,motif,texte,statut,created_at&order=created_at.desc&limit=15').then(function(r){self.dem=r;self.update();}).catch(function(){});};
+Comp.prototype.okLoad=function(k){delete this.loadErr[k];};
+Comp.prototype.failLoad=function(k,label,e){var first=!Object.keys(this.loadErr).length;this.loadErr[k]=label+' ('+netMsg(e)+')';if(first&&navigator.onLine)this.flash('Lecture impossible : '+this.loadErr[k]);};
+Comp.prototype.loadDem=function(){var self=this;return get('demandes?tech=eq.'+encodeURIComponent(this.user.id)+'&select=id,type,motif,texte,statut,created_at&order=created_at.desc&limit=15').then(function(r){self.dem=r;self.okLoad('dem');self.update();}).catch(function(e){self.failLoad('dem','demandes',e);});};
+Comp.prototype.loadLog=function(){var self=this;return Promise.all([get('inventaire?select=id,nom,unite,qte,categorie&order=nom.asc'),
+    get('bons_livraison?select=id,no_bon,client,tel,adresse,date,heure,technicien,urgent,status,items_liv,photos&status=neq.livre&order=date.asc')])
+  .then(function(r){var cur=self.curBon();self.inv=r[0];self.bons=r[1].filter(function(b){return b.status!=='livre';});
+    // le bon qu'on vient de faire signer reste affiché (avec sa confirmation) jusqu'au retour à la liste
+    if(cur&&cur.status==='livre'&&!self.bons.some(function(b){return b.id===cur.id;}))self.bons.unshift(cur);self.okLoad('log');self.update();}).catch(function(e){self.failLoad('log','logistique',e);self.update();});};
+Comp.prototype.loadHiv=function(){var self=this,y=new Date().getFullYear();
+  return get('rapports_hivernage?select=id,site_id,site_nom,status,date_inspection,technicien&date_inspection=gte.'+y+'-01-01&order=date_inspection.desc')
+  .then(function(r){self.hivRep={};r.filter(function(x){return String(x.date_inspection||'').slice(0,4)===String(y);}).forEach(function(x){if(x.site_id&&!self.hivRep[x.site_id])self.hivRep[x.site_id]=x;});self.okLoad('hiv');self.update();})
+  .catch(function(e){self.failLoad('hiv','hivernage',e);self.update();});};
 Comp.prototype.loadBureau=function(){var self=this;return get('comptes_publics?id=eq.cwweil&select=tel').then(function(r){self.bureau=(r[0]&&r[0].tel)||'';}).catch(function(){});};
 Comp.prototype.refresh=function(){var self=this;return Promise.all([this.loadRef(),this.loadBureau(),this.loadDem()]).then(function(){return Promise.all([self.loadJobs(),self.loadPunch()]);}).then(function(){var c=self.curJob();if(c)self.loadLast(c.site);self.flush();self.flushOps();self.update();});};
 
 /* ---------- File d'attente : rien n'est perdu si le réseau tombe ---------- */
 Comp.prototype.flush=function(){var self=this,q=jget('sa_terrain_queue',[]);if(!q.length||!navigator.onLine){self.queueN=q.length;return;}
-  var item=q[0],tbl=item._t||'releves',body=Object.assign({},item);delete body._t;post(tbl,body,'resolution=merge-duplicates,return=minimal').then(function(r){
+  var item=q[0],tbl=item._t||'releves',body=Object.assign({},item);delete body._t;
+  /* _m:'PATCH' → mise à jour partielle (ex. bon de livraison validé) : on ne réécrit jamais toute la ligne,
+     pour ne pas écraser ce que le bureau a modifié entre-temps. */
+  var req=item._m==='PATCH'?fetch(SB+'/rest/v1/'+tbl+'?'+item._q,{method:'PATCH',headers:Object.assign({'Content-Type':'application/json',Prefer:'return=minimal'},H),body:JSON.stringify(item.body)}):post(tbl,body,'resolution=merge-duplicates,return=minimal');
+  req.then(function(r){
     if(r.ok){var cur=jget('sa_terrain_queue',[]).filter(function(x){return x.id!==item.id;});jset('sa_terrain_queue',cur);self.queueN=cur.length;
-      if(tbl==='releves'){var s=Object.assign({},self.state.sync);s[item.site_id]='ok';self.state=Object.assign({},self.state,{sync:s});self.persist();}else if(tbl==='demandes'){self.loadDem();}self.update();if(cur.length)self.flush();}
-    else{self.queueN=q.length;self.update();}}).catch(function(){self.queueN=q.length;self.update();});};
+      self.sendErr='';if(tbl==='releves'){var s=Object.assign({},self.state.sync);s[item.site_id]='ok';self.state=Object.assign({},self.state,{sync:s});self.persist();}else if(tbl==='demandes'){self.loadDem();}else if(tbl==='rapports_hivernage'){self.loadHiv();}else if(tbl==='bons_livraison'){self.loadLog();}self.update();if(cur.length)self.flush();}
+    else{self.queueN=q.length;self.sendErr=(tbl==='demandes'?'demande':'fiche')+' refusée par le serveur (HTTP '+r.status+') — gardée sur le téléphone, prévenez le bureau';self.update();}}).catch(function(){self.queueN=q.length;self.update();});};
 Comp.prototype.enqueue=function(rec){var q=jget('sa_terrain_queue',[]).filter(function(x){return x.id!==rec.id;});q.push(rec);
   if(!jset('sa_terrain_queue',q)){rec.photo=null;q[q.length-1]=rec;jset('sa_terrain_queue',q);}this.queueN=q.length;this.flush();};
 
 /* ---------- Photo compressée (max 900 px, JPEG) ---------- */
-Comp.prototype.pickPhoto=function(sid){var self=this,inp=document.getElementById('photoInput');inp.value='';inp.onchange=function(){var f=inp.files&&inp.files[0];if(!f)return;
+Comp.prototype.pickImage=function(cb){var inp=document.getElementById('photoInput');inp.value='';inp.onchange=function(){var f=inp.files&&inp.files[0];if(!f)return;
   var img=new Image(),u=URL.createObjectURL(f);img.onload=function(){var k=Math.min(1,900/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);
-    c.getContext('2d').drawImage(img,0,0,c.width,c.height);var data=c.toDataURL('image/jpeg',0.6);URL.revokeObjectURL(u);
-    self.setState(function(s){var a={},b={};a[sid]=hhmm(new Date());b[sid]=data;return{photo:Object.assign({},s.photo,a),photoData:Object.assign({},s.photoData,b)};});};img.src=u;};inp.click();};
+    c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);cb(c.toDataURL('image/jpeg',0.6));};img.src=u;};inp.click();};
+Comp.prototype.pickPhoto=function(sid){var self=this;this.pickImage(function(data){
+    self.setState(function(s){var a={},b={};a[sid]=hhmm(new Date());b[sid]=data;return{photo:Object.assign({},s.photo,a),photoData:Object.assign({},s.photoData,b)};});});};
+
+/* ---------- Correction / suppression d'un punch (semaine en cours) — soumise au superviseur ---------- */
+Comp.prototype.openPunchEdit=function(dayIdx,t){this.setState({pe:{dayIdx:dayIdx,k:t.k||'',sig:sig(t),lieu:t.lieu||'',start:t.start||'',end:t.end||'',active:!!t.active,confirm:false},screen:'punchedit'});};
+Comp.prototype.savePunchEdit=function(){var e=this.state.pe;if(!e)return;var lieu=String(e.lieu||'').trim(),st=String(e.start||'').trim(),en=String(e.end||'').trim();
+  if(!lieu){this.flash('Le lieu ne peut pas être vide');return;}if(!HM.test(st)){this.flash('Heure de début invalide (HH:MM)');return;}if(en&&!HM.test(en)){this.flash('Heure de fin invalide (HH:MM)');return;}
+  if(!e.active&&!en){this.flash('Indiquez l’heure de fin');return;}
+  var now=Date.now();this.setState({pe:null,screen:'temps'});
+  this.enqueueOp({type:'edit',id:rid('e'),ts:now,uid:this.user.id,week:this.weekKey(),dayIdx:e.dayIdx,k:e.k,sig:e.sig,lieu:lieu,start:st,end:en});
+  this.flash('Correction enregistrée — le superviseur la validera');};
+Comp.prototype.deletePunch=function(){var e=this.state.pe;if(!e)return;if(!e.confirm){this.setState({pe:Object.assign({},e,{confirm:true})});return;}
+  this.setState({pe:null,screen:'temps'});this.enqueueOp({type:'delete',id:rid('x'),ts:Date.now(),uid:this.user.id,week:this.weekKey(),dayIdx:e.dayIdx,k:e.k,sig:e.sig});this.flash('Punch supprimé');};
+
+/* ---------- Logistique : sortie d'inventaire → bon de livraison signé (mêmes tables et formats que SA Platform) ---------- */
+Comp.prototype.logSiteObj=function(){var cj=this.curJob();return cj?(siteById(cj.site)||pseudoSite(cj.site,'')):null;};
+Comp.prototype.saveSortie=function(){var self=this,sel=this.state.sortie,items=this.inv.filter(function(p){return sel[p.id]>0;}).map(function(p){return{nom:p.nom,qty:sel[p.id],unite:p.unite||''};});
+  if(!items.length){this.flash('Choisissez au moins un article');return;}var s=this.logSiteObj(),dest=s?s.nom:'',now=new Date();
+  this.enqueue({_t:'sorties_inventaire',id:rid('so'),no_bon:noBon('SA-INV-'),nom:this.me.nom,no_employe:this.user.id,departement:this.user.dept||'',date:iso(now),client:dest,
+    lignes:items.map(function(i){return{code:'',loc:'',desc:i.nom,qteSortie:String(i.qty),qteRetour:'',projet:dest,unite:i.unite};}),status:'envoye',sent_at:now.toISOString(),created_by:this.user.id,created_at:now.toISOString(),updated_at:now.toISOString()});
+  this.lastSortie={site:s,items:items};this.setState({sortie:{}});this.flash('Sortie enregistrée · '+items.length+' article(s)');};
+Comp.prototype.newBonFromSortie=function(){var L=this.lastSortie;if(!L)return;var s=L.site,now=new Date();
+  var b={id:rid('bl'),no_bon:noBon('SA-'),client:s?s.nom:'',tel:'',adresse:s?s.addr:'',date:iso(now),heure:hhmm(now),technicien:this.me.nom,urgent:false,status:'brouillon',
+    items_liv:L.items.map(function(i){return{item:i.nom,qteSortie:String(i.qty),unite:i.unite,qteLivree:String(i.qty),statut:''};}),items_ret:[],photos:[],created_by:this.user.id,created_at:now.toISOString(),_new:true};
+  this.bons=[b].concat(this.bons);this.lastSortie=null;this.openBon(b.id);};
+Comp.prototype.openBon=function(id){this._sig={strokes:[],w:0};this.setState({bonSel:id,signer:'',logTab:'bon'});};
+Comp.prototype.curBon=function(){var id=this.state.bonSel;return id?this.bons.filter(function(b){return b.id===id;})[0]||null:null;};
+Comp.prototype.clearSig=function(){this._sig.strokes=[];this.drawSig(true);this.update();};
+Comp.prototype.drawSig=function(force){var c=this.sigRef.current;if(!c)return;var w=c.clientWidth,h=c.clientHeight;if(!w||!h)return;
+  if(!force&&c.width===w*2&&c.height===h*2)return;c.width=w*2;c.height=h*2;var g=c.getContext('2d');g.setTransform(2,0,0,2,0,0);g.clearRect(0,0,w,h);
+  g.lineWidth=2.5;g.lineCap='round';g.lineJoin='round';g.strokeStyle=getComputedStyle(c).color||'#000';
+  this._sig.strokes.forEach(function(s){g.beginPath();s.forEach(function(p,i){if(i)g.lineTo(p[0],p[1]);else g.moveTo(p[0],p[1]);});g.stroke();});};
+/* Le rendu (morphing) retire les attributs width/height du canvas : on redessine les traits après chaque mise à jour. */
+Comp.prototype.bindSig=function(){var self=this,c=this.sigRef.current;if(!c)return;this.drawSig(false);if(c.__sa)return;c.__sa=true;var cur=null;
+  var pt=function(e){var r=c.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top];};
+  c.addEventListener('pointerdown',function(e){if(self.curBon()&&self.curBon().status==='livre')return;c.setPointerCapture(e.pointerId);cur=[pt(e)];self._sig.strokes.push(cur);});
+  c.addEventListener('pointermove',function(e){if(!cur)return;cur.push(pt(e));var g=c.getContext('2d'),n=cur.length;g.beginPath();g.moveTo(cur[n-2][0],cur[n-2][1]);g.lineTo(cur[n-1][0],cur[n-1][1]);g.stroke();});
+  var end=function(){if(cur){cur=null;self.update();}};c.addEventListener('pointerup',end);c.addEventListener('pointercancel',end);};
+Comp.prototype.confirmSig=function(){var b=this.curBon();if(!b)return;var nom=String(this.state.signer||'').trim();
+  if(!nom){this.flash('Inscrivez le nom du signataire');return;}if(!this._sig.strokes.some(function(s){return s.length>1;})){this.flash('Faites signer dans le cadre');return;}
+  var c=this.sigRef.current,out=document.createElement('canvas');out.width=c.width;out.height=c.height;var g=out.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,out.width,out.height);g.drawImage(c,0,0);
+  var now=new Date(),ph={data:out.toDataURL('image/jpeg',0.7),name:'Signature — '+nom,addedBy:this.user.id,addedAt:now.toISOString()};
+  var patch={status:'livre',livre_at:now.toISOString(),livre_by:this.user.id,livre_par_nom:this.me.nom,photos:(b.photos||[]).concat([ph]),updated_at:now.toISOString()};
+  if(b._new){var full=Object.assign({},b,patch,{_t:'bons_livraison'});delete full._new;delete full._signedBy;delete full._signedAt;this.enqueue(full);}
+  else this.enqueue({_t:'bons_livraison',_m:'PATCH',_q:'id=eq.'+encodeURIComponent(b.id)+'&status=neq.livre',id:'bl-'+b.id,body:patch});
+  Object.assign(b,patch,{_signedBy:nom,_signedAt:hhmm(now)});delete b._new;this.update();this.flash('Bon '+b.no_bon+' marqué livré');};
+
+/* ---------- Hivernage : liste de contrôle du pré-hivernage → rapport (brouillon) que le bureau complète dans SA Platform ---------- */
+var HIV_CHECKS=['Niveau d’eau abaissé sous les retours','Conduites purgées à l’air comprimé','Bouchons d’hivernage installés','Antigel versé dans les conduites','Pompe et filtre vidangés','Équipements amovibles rentrés','Couverture d’hiver installée et tendue'];
+var HIV_ETATS=[['Bon',''],['À surveiller','modere'],['Réparation requise','urgent']];
+Comp.prototype.hivSites=function(){return REF.list.filter(function(s){return s.type!=='SP'&&s.type!=='MI';});};
+Comp.prototype.sendHiv=function(){var st=this.state,sid=st.hivSel,s=sid&&siteById(sid);if(!s)return;var ck=st.hivChecks[sid]||{},now=new Date(),y=now.getFullYear();
+  var etat=st.hivEtat[sid]||'Bon',tag=(HIV_ETATS.filter(function(e){return e[0]===etat;})[0]||['',''])[1],ant=st.hivAntigel[sid]||0,note=String(st.hivNote[sid]||'').trim();
+  this.enqueue({_t:'rapports_hivernage',id:rid('hv'),site_id:s.id,site_nom:s.nom,client:'',objet:'Pré-hivernage '+y,titre:'Rapport de pré-hivernage',sous_titre:'',date_rapport:iso(now),date_inspection:iso(now),
+    prepare_par:this.me.nom,technicien:this.me.nom,sections:[{id:rid('s'),title:'Pré-hivernage — liste de contrôle',tag:tag,items:HIV_CHECKS.map(function(l,i){return(ck[i]?'Fait — ':'Non fait — ')+l;}),photos:[]}],
+    plan:[],suivi:[],timeline:{q1:'',q2:'',q3:'',q4:''},callout:'État général : '+etat+'. Antigel ajouté : '+ant+' L.'+(note?' '+note:''),signataire_sa:this.me.nom,signataire_client:'',
+    status:'brouillon',created_by:this.user.id,created_at:now.toISOString(),updated_at:now.toISOString()});
+  var o={};o[sid]=iso(now);this.setState(function(s2){return{hivSent:Object.assign({},s2.hivSent,o),screen:'hivernage'};});this.flash('Rapport envoyé au bureau — '+s.nom);};
 
 /* ---------- Valeurs dérivées pour le gabarit ---------- */
 Comp.prototype.vals=function(){
   var self=this,st=this.state,scr=st.screen,me=this;this.syncDerived();
-  var titles={temps:'Temps',punchform:'Démarrer un punch',stopform:'Terminer la journée',demandes:'Demandes',today:'La Tournée',fiche:'Fiche technique',planning:'Planning',profil:'Profil',soon:st.soon||'Bientôt'};
+  var titles={logistique:'Logistique',hivernage:'Hivernage',hivForm:'Hivernage',punchedit:'Corriger un punch',temps:'Temps',punchform:'Démarrer un punch',stopform:'Terminer la journée',demandes:'Demandes',today:'La Tournée',fiche:'Fiche technique',planning:'Planning',profil:'Profil',soon:st.soon||'Bientôt'};
   var cj=this.curJob();
   var jobs=this.jobs.map(function(j){var s=siteById(j.site)||pseudoSite(j.site,''),isDone=j.statut==='fait'||!!st.validated[j.site],isCur=!!cj&&cj.id===j.id&&!isDone;
     return Object.assign({},j,{nom:s.nom,ville:s.ville,typeCourt:TY(s.type).court,isDone:isDone,isCur:isCur,canPunch:!isDone&&!isCur,nodeBg:isDone?'var(--color-accent-700)':isCur?'var(--color-text)':'var(--color-bg)',op:isDone?0.6:1,fw:isCur?600:400,punch:function(){self.open(j.id);}});});
@@ -1134,7 +1230,7 @@ Comp.prototype.vals=function(){
   var dsel=days[Math.min(st.planDay,days.length-1)];
   var recMap={};days.forEach(function(d){d.items.forEach(function(it){if(it[3]&&!recMap[it[1]+it[2]]){var s=siteById(it[1]);recMap[it[1]+it[2]]={nom:s?s.nom:'—',rec:it[3]+' · '+it[2]};}});});
   var segStyle=function(on){return{bg:on?'var(--color-text)':'transparent',fg:on?'var(--color-bg)':'var(--color-text)'};};
-  var tabOf={temps:'temps',punchform:'temps',stopform:'temps',today:'today',fiche:'fiche',planning:'planning',profil:'profil',soon:'demandes',demandes:'demandes'}[scr];
+  var tabOf={logistique:'today',hivernage:'today',hivForm:'today',punchedit:'temps',temps:'temps',punchform:'temps',stopform:'temps',today:'today',fiche:'fiche',planning:'planning',profil:'profil',soon:'demandes',demandes:'demandes'}[scr];
   var TABS=[['today','Aujourd’hui','home'],['temps','Temps','clock'],['fiche','Fiche','clipboard'],['planning','Planning','calendar'],['demandes','Demandes','message'],['profil','Profil','user']];
 
   var DT={mat:{label:'Matériel',icon:'package',sub:'Produits, pièces',chips:['Hypochlorite 20 L','Trousse DPD','Bicarbonate','Joint ou pièce','Autre']},
@@ -1153,7 +1249,7 @@ Comp.prototype.vals=function(){
     statusTxt:act?('Punché depuis '+act.start+' · '+fmtMin(liveMin)):'Aucun punch actif',title:act?act.lieu:'Prêt à puncher',dayTotal:fmtH(dayH),weekTotal:fmtH(weekH),
     openStart:function(){self.openPunchForm(null);},openStop:function(){self.openStopForm();},
     days:vd.map(function(d,i){var dt=addDays(mon,i);return{label:DL3[i]+' '+dt.getDate(),total:fmtH(closedH(d)+(i===tIdx?liveMin/60:0)),bg:i===tIdx?'var(--color-accent-100)':'transparent',
-      tasks:(d.tasks||[]).map(function(t){return{h:t.start+(t.end?' → '+t.end:' → en cours'),lieu:t.lieu,dur:t.active?fmtMin(minsFrom(t.start,hhmm(nw))):fmtH(t.hrs||0),pend:t.pendingValidation?'À valider':''};})};})};
+      tasks:(d.tasks||[]).map(function(t){return{h:t.start+(t.end?' → '+t.end:' → en cours'),lieu:t.lieu,dur:t.active?fmtMin(minsFrom(t.start,hhmm(nw))):fmtH(t.hrs||0),pend:t.pendingValidation?'À valider':'',edit:function(){self.openPunchEdit(i,t);}};})};})};
   var pq=norm(st.pf.q);
   var pfSites=REF.list.filter(function(s){return!pq||norm(s.nom+' '+s.ville).indexOf(pq)>=0;}).slice(0,pq?20:8).map(function(s){var on=st.pf.siteId===s.id;
     return{nom:s.nom,ville:s.ville||'—',bg:on?'var(--color-text)':'transparent',fg:on?'var(--color-bg)':'var(--color-text)',go:function(){self.setState({pf:Object.assign({},st.pf,{siteId:s.id,lieu:s.nom})});}};});
@@ -1165,20 +1261,59 @@ Comp.prototype.vals=function(){
     submit:function(){self.submitPunch();},cancel:function(){self.go('today');}};
   var lieux=[];(vd[tIdx].tasks||[]).forEach(function(t){if(t.lieu&&lieux.indexOf(t.lieu)<0)lieux.push(t.lieu);});
   var sf={total:fmtH(dayH),nPunchs:(vd[tIdx].tasks||[]).length,lieux:lieux.join(', ')||'—',km:st.sf.km,onKm:function(e){self.setState({sf:{km:e.target.value}});},submit:function(){self.submitStop();},cancel:function(){self.go('today');}};
+
+  // ---- Logistique
+  var ls=this.logSiteObj(),sel=st.sortie,iq=norm(st.invQ),bon=this.curBon(),mine=norm(this.me.nom);
+  var inventaire=this.inv.filter(function(p){return!iq||norm(p.nom).indexOf(iq)>=0||(sel[p.id]>0);}).map(function(p){var q=sel[p.id]||0,set=function(n){self.setState(function(s2){var o=Object.assign({},s2.sortie);o[p.id]=Math.max(0,n);return{sortie:o};});};
+    return{nom:p.nom,unite:p.unite||'',qty:q,reste:p.qte==null?'—':fr(Math.round((Number(p.qte)-q)*100)/100),minus:function(){set(q-1);},plus:function(){set(q+1);}};});
+  var sortieCount=this.inv.filter(function(p){return sel[p.id]>0;}).length;
+  var bonList=this.bons.filter(function(b){return b.status!=='livre';}).map(function(b){var m=norm(b.technicien)===mine;return{_m:m,_d:b.date||'',no:b.no_bon||'—',client:b.client||'Client non précisé',sub:(b.date||'—')+(b.urgent?' · URGENT':'')+' · '+(m?'à vous':(b.technicien||'non assigné')),open:function(){self.openBon(b.id);}};})
+    .sort(function(a,b){return(b._m-a._m)||a._d.localeCompare(b._d);});
+  var logV={isLog:scr==='logistique',isSortie:st.logTab==='sortie',isBon:st.logTab==='bon',tabSortie:function(){self.setState({logTab:'sortie'});},tabBon:function(){self.setState({logTab:'bon'});},
+    sortieTabBg:segStyle(st.logTab==='sortie').bg,sortieTabFg:segStyle(st.logTab==='sortie').fg,bonTabBg:segStyle(st.logTab==='bon').bg,bonTabFg:segStyle(st.logTab==='bon').fg,
+    logSite:ls?ls.nom:'aucun site (pas de punch en cours)',inventaire:inventaire,noInv:!this.inv.length,sortieCount:sortieCount,saveSortie:function(){self.saveSortie();},invQ:st.invQ,onInvQ:function(e){self.setState({invQ:e.target.value});},
+    bonPick:!bon,bonOpen:!!bon,bonList:bonList,noBons:!bonList.length,hasLastSortie:!!this.lastSortie,lastSortieTxt:this.lastSortie?(this.lastSortie.items.length+' article(s) · '+(this.lastSortie.site?this.lastSortie.site.nom:'hors site')):'',newBon:function(){self.newBonFromSortie();},
+    bon:bon?{no:bon.no_bon||'—',client:bon.client||'—',addr:bon.adresse||''}:{},bonBack:function(){self.setState({bonSel:null});self.loadLog();},
+    bonItems:bon?(bon.items_liv||[]).filter(function(i){return i.item;}).map(function(i){return{nom:i.item,qty:i.qteLivree||i.qteSortie||'—',unite:i.unite||''};}):[],
+    signer:st.signer,onSigner:function(e){self.setState({signer:e.target.value});},clearSig:function(){self.clearSig();},confirmSig:function(){self.confirmSig();},
+    isSigned:!!(bon&&bon.status==='livre'),notSigned:!!(bon&&bon.status!=='livre'),signedBy:bon?(bon._signedBy||''):'',signedAt:bon?(bon._signedAt||''):''};
+  // ---- Hivernage
+  var hs=this.hivSites(),rep=this.hivRep,sent=st.hivSent,y=String(new Date().getFullYear());
+  var hivDone=function(s){var r=rep[s.id];return r?(r.date_inspection||''):(sent[s.id]&&String(sent[s.id]).slice(0,4)===y?sent[s.id]:'');};
+  var hivDoneCount=hs.filter(function(s){return!!hivDone(s);}).length,hf=st.hivFilter;
+  var HF=[['todo','À faire'],['done','Faits'],['all','Tous']];
+  var hivSel=st.hivSel&&siteById(st.hivSel),hck=hivSel?(st.hivChecks[hivSel.id]||{}):{};
+  var setH=function(key,val){var o={};o[hivSel.id]=val;self.setState(function(s2){var r={};r[key]=Object.assign({},s2[key],o);return r;});};
+  var hivV={isHiv:scr==='hivernage',isHivForm:scr==='hivForm'&&!!hivSel,hivDoneCount:hivDoneCount,hivTotalSites:hs.length,
+    hivCells:hs.map(function(s){return{bg:hivDone(s)?'var(--color-accent-700)':'transparent'};}),
+    hivFilters:HF.map(function(f,i){var on=hf===f[0];return{label:f[1],go:function(){self.setState({hivFilter:f[0]});},bl:i?'1px solid var(--color-divider)':'none',bg:segStyle(on).bg,fg:segStyle(on).fg};}),
+    hivList:hs.filter(function(s){var d=!!hivDone(s);return hf==='all'||(hf==='done'?d:!d);}).map(function(s){var d=hivDone(s);return{nom:s.nom,ville:s.ville||'—',statutTxt:d?'Fait le '+d:'À faire',icon:d?'check':'right',open:function(){self.setState({hivSel:s.id,screen:'hivForm'});}};}),
+    hivSite:hivSel?{nom:hivSel.nom,ville:hivSel.ville||'—'}:{},
+    hivChecks:HIV_CHECKS.map(function(l,i){return{label:l,on:!!hck[i],box:hck[i]?'var(--color-text)':'transparent',toggle:function(){var o=Object.assign({},hck);o[i]=!hck[i];setH('hivChecks',o);}};}),
+    hivProgress:HIV_CHECKS.filter(function(l,i){return hck[i];}).length,hivTotal:HIV_CHECKS.length,hivAntigel:hivSel?(st.hivAntigel[hivSel.id]||0):0,
+    antigelMinus:function(){setH('hivAntigel',Math.max(0,(st.hivAntigel[hivSel.id]||0)-1));},antigelPlus:function(){setH('hivAntigel',(st.hivAntigel[hivSel.id]||0)+1);},
+    hivEtats:HIV_ETATS.map(function(e){var on=hivSel&&(st.hivEtat[hivSel.id]||'Bon')===e[0];return{label:e[0],go:function(){setH('hivEtat',e[0]);},bg:segStyle(on).bg,fg:segStyle(on).fg,dot:on?'var(--color-bg)':'transparent'};}),
+    hivNoteTxt:hivSel?(st.hivNote[hivSel.id]||''):'',onHivNote:function(e){setH('hivNote',e.target.value);},sendHiv:function(){self.sendHiv();}};
+  // ---- Correction de punch
+  var pe=st.pe,setPe=function(k){return function(e){var o={};o[k]=e.target.value;self.setState({pe:Object.assign({},st.pe,o,{confirm:false})});};};
+  var peV={isPunchEdit:scr==='punchedit'&&!!pe,pe:pe?{lieu:pe.lieu,start:pe.start,end:pe.end,active:pe.active,onLieu:setPe('lieu'),onStart:setPe('start'),onEnd:setPe('end'),
+    delLabel:pe.confirm?'Confirmer la suppression':'Supprimer ce punch',save:function(){self.savePunchEdit();},del:function(){self.deletePunch();},cancel:function(){self.setState({pe:null,screen:'temps'});}}:{}};
+  // ---- Photo jointe à une demande
+  var demV={demPhotoLbl:st.demPhoto?'Photo jointe · retirer':'Joindre une photo',demPhotoBtn:function(){if(st.demPhoto)self.setState({demPhoto:null});else self.pickImage(function(d){self.setState({demPhoto:d});});}};
   var nowD=new Date(),sun=this.prefs.sun,big=this.prefs.big;
-  return{
+  return Object.assign(logV,hivV,peV,demV,{
     rootRef:this.rootRef,contentRef:this.contentRef,sigRef:this.sigRef,
     toggleSun:function(){self.setPref('sun');},toggleBig:function(){self.setPref('big');},
     sunLabel:sun?'activé':'désactivé',sunBtnBg:sun?'var(--color-text)':'transparent',sunBtnFg:sun?'var(--color-bg)':'var(--color-text)',
     sunJustify:sun?'flex-end':'flex-start',sunTrack:sun?'var(--color-text)':'transparent',sunKnob:sun?'var(--color-bg)':'var(--color-text)',
     bigJustify:big?'flex-end':'flex-start',bigTrack:big?'var(--color-text)':'transparent',bigKnob:big?'var(--color-bg)':'var(--color-text)',
     hasToast:!!st.toast,toast:st.toast,headerTitle:titles[scr]||'La Tournée',
-    syncLbl:this.online?((this.queueN+opsN)?(this.queueN+opsN)+' envoi(s) en attente':'Connecté · synchro '+(this.syncAt?hhmm(this.syncAt):'—')):'Hors-ligne · '+this.queueN+' fiche(s) en attente',
-    isToday:scr==='today',isTemps:scr==='temps',isPunchForm:scr==='punchform',isStopForm:scr==='stopform',pn:pn,pf:pf,sf:sf,isFiche:scr==='fiche'&&!!cj,isFicheEmpty:scr==='fiche'&&!cj,isLog:false,isHiv:false,isHivForm:false,isDem:scr==='demandes',isPlan:scr==='planning',isProfil:scr==='profil',isSoon:scr==='soon',soonTitle:st.soon,
-    goToday:function(){self.closeFiche();},goFiche:function(){self.go('fiche');},goLog:function(){self.soon('Logistique');},goHiv:function(){self.soon('Hivernage');},goDemandes:function(){self.go('demandes');},demTypes:demTypes,hasComposer:!!cd,composer:composer,composerSite:cj?(cur.nom||'—'):'Aucun (hors site)',closeComposer:function(){self.setState({demande:null});},demandeTxt:st.demandeTxt,onDemTxt:function(e){self.setState({demandeTxt:e.target.value});},demHist:demHist,
+    syncLbl:(this.online&&this.sendErr)?'⚠ '+cap(this.sendErr):(this.online&&Object.keys(this.loadErr).length)?'⚠ Données incomplètes : '+Object.keys(this.loadErr).map(function(k){return self.loadErr[k];}).join(', '):this.online?((this.queueN+opsN)?(this.queueN+opsN)+' envoi(s) en attente':'Connecté · synchro '+(this.syncAt?hhmm(this.syncAt):'—')):'Hors-ligne · '+this.queueN+' fiche(s) en attente',
+    isToday:scr==='today',isTemps:scr==='temps',isPunchForm:scr==='punchform',isStopForm:scr==='stopform',pn:pn,pf:pf,sf:sf,isFiche:scr==='fiche'&&!!cj,isFicheEmpty:scr==='fiche'&&!cj,isDem:scr==='demandes',isPlan:scr==='planning',isProfil:scr==='profil',isSoon:scr==='soon',soonTitle:st.soon,
+    goToday:function(){self.closeFiche();},goFiche:function(){self.go('fiche');},goLog:function(){self.go('logistique');},goHiv:function(){self.go('hivernage');},goDemandes:function(){self.go('demandes');},demTypes:demTypes,hasComposer:!!cd,composer:composer,composerSite:cj?(cur.nom||'—'):'Aucun (hors site)',closeComposer:function(){self.setState({demande:null});},demandeTxt:st.demandeTxt,onDemTxt:function(e){self.setState({demandeTxt:e.target.value});},demHist:demHist,
     sendDemande:function(){if(!st.demande)return;var t=DT[st.demande],txt=[st.demChip,st.demandeTxt].filter(Boolean).join(' — ')||t.label,s=cj?(cur._site||siteById(cj.site)):null,now=new Date();
-      var rec={_t:'demandes',id:self.user.id+'-'+now.getTime(),site_id:s?s.id:null,site_nom:s?s.nom:null,tech:self.user.id,tech_nom:self.me.nom,type:t.label,motif:st.demChip||null,texte:txt,statut:'Envoyée'};
-      self.dem=[{type:t.label,texte:txt,statut:navigator.onLine?'Envoyée':'En attente de réseau',created_at:now.toISOString()}].concat(self.dem);self.setState({demande:null,demChip:null,demandeTxt:''});self.enqueue(rec);self.flash(t.urgent?'Urgence envoyée — appelez aussi le bureau':'Demande envoyée au bureau');},
+      var rec={_t:'demandes',id:self.user.id+'-'+now.getTime(),site_id:s?s.id:null,site_nom:s?s.nom:null,tech:self.user.id,tech_nom:self.me.nom,type:t.label,motif:st.demChip||null,texte:txt,statut:'Envoyée',photo:st.demPhoto||null};
+      self.dem=[{type:t.label,texte:txt,statut:navigator.onLine?'Envoyée':'En attente de réseau',created_at:now.toISOString()}].concat(self.dem);self.setState({demande:null,demChip:null,demandeTxt:'',demPhoto:null});self.enqueue(rec);self.flash(t.urgent?'Urgence envoyée — appelez aussi le bureau':'Demande envoyée au bureau');},
     todayTxt:JOURS[nowD.getDay()]+' '+dnum(nowD)+' '+MOIS[nowD.getMonth()],
     jobs:jobs,jobCount:jobs.length,doneTxt:(function(n){return n+(n>1?' faits':' fait');})(jobs.filter(function(j){return j.isDone;}).length),emptyDay:!jobs.length&&!cj,
     hasPunch:!!cj,noPunch:!cj&&!!next,punchAt:cj&&this.punch?this.punch.start:'',
@@ -1202,8 +1337,8 @@ Comp.prototype.vals=function(){
     myWeek:this.hours==null?'—':fr(Math.round(this.hours*100)/100),me:this.me,queueLbl:this.queueN?this.queueN+' fiche(s) à envoyer':'Rien en attente',
     bureauTel:String(this.bureau||'').replace(/[^\d+]/g,''),logout:function(){localStorage.removeItem('sa_terrain_user');location.reload();},
     tabs:TABS.map(function(t){return{label:t[1],icon:t[2],go:function(){self.go(t[0]);},fg:tabOf===t[0]?'var(--color-text)':'var(--color-neutral-600)',fw:tabOf===t[0]?600:400,bar:tabOf===t[0]?'inset 0 3px 0 var(--color-text)':'none',dot:t[0]==='fiche'&&!!cj};})
-  };};
-Comp.prototype.update=function(){if(!this._host)return;SARender(document.getElementById('tpl'),this._host,this.vals());this.applyTheme();};
+  });};
+Comp.prototype.update=function(){if(!this._host)return;SARender(document.getElementById('tpl'),this._host,this.vals());this.applyTheme();this.bindSig();};
 Comp.prototype.mount=function(host){var self=this;this._host=host;this.update();
   window.addEventListener('online',function(){self.online=true;self.refresh();});window.addEventListener('offline',function(){self.online=false;self.update();});
   document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')self.refresh();});

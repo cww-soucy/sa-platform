@@ -1,0 +1,20 @@
+name: Tests sa-admin / sa-terrain
+on:
+  push:
+  pull_request:
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      # relecture des fichiers Excel produits par sa-admin (feuilles de temps, facturation)
+      - run: pip install openpyxl
+      # build.py --check : échoue si admin.html / terrain.html ne correspondent pas aux sources de src/
+      - run: npm test
