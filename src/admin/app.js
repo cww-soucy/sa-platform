@@ -35,20 +35,30 @@ Comp.prototype.go=function(m,x){this.setState(Object.assign({mod:m,q:''},x||{}))
 Comp.prototype.load=function(){
   var self=this,now=new Date(),wk=iso(mondayOf(now)),wk0=iso(addDays(mondayOf(now),-7)),today=iso(now),since=iso(addDays(now,-120));
   SOFT_ERR=[];
-  return Promise.all([
-    get('sites?select=id,nom,addr,type,notes'),get('contrats?select=site_id,type_code,code'),get('types_bassin?select=*'),
-    soft('comptes_publics?select=id,prenom,nom,role,dept,tel',[]),
-    soft('feuilles_temps?select=uid,emp,week,days,total_h&week=gte.'+iso(addDays(now,-56)),[]),
-    soft('workorders?select=id,client,site,type,priorite,status,date,assigne,descr,groupe_id&order=date.asc',[]),
-    soft('releves?select=id,site_id,site_nom,tech,tech_nom,date,heure,type_code,vals,touched,checks,prods,note,hors_zone&date=gte.'+since+'&order=date.asc,heure.asc',[]),
-    soft('punch_gps_log?select=emp,heure,lieu,date&date=eq.'+today+'&order=heure.desc&limit=30',[]),
-    soft('plan?select=id&date=eq.'+today,[]),soft('planning_tasks?select=id&date_debut=lte.'+today+'&date_fin=gte.'+today,[]),soft('demandes?select=id,tech,tech_nom,site_nom,type,motif,texte,statut,created_at,has_photo&order=created_at.desc&limit=40',[]),soft('feuilles_temps?select=uid,week,total_h',[]),soft('facturation?select=*',[]),soft('projets_excel?select=*',[]),soft('comptes?select=id,statut',[]),soft('sondages?select=id,slug,titre,client,actif,created_at&order=created_at.desc',[]),soft('punch_gps_log?select=site_id,emp,lat,lng,acc,date,heure,lieu&lat=not.is.null&order=date.desc,heure.desc&limit=800',[]),soft('inventaire?select=id,nom,qte,seuil',[]),soft('flotte?select=id,nom,plaque',[])
-  ]).then(function(r){
-    var T={};r[2].forEach(function(t){T[t.code]=t;});var ct={};r[1].forEach(function(c){ct[c.site_id]=c;});
-    var sites=r[0].map(function(s){var c=ct[s.id],code=(c&&c.type_code&&T[c.type_code])?c.type_code:'GEN';return{id:String(s.id),nom:s.nom||'(sans nom)',addr:s.addr||'',ville:villeOf(s.addr),type:code,contrat:(c&&c.code)||'',notes:s.notes||''};})
+  /* Requêtes nommées : chaque résultat est lu par son nom (plus par sa position), pour qu'ajouter ou retirer une
+     requête ne décale plus jamais les autres en silence. */
+  var Q={sites:get('sites?select=id,nom,addr,type,notes'),contrats:get('contrats?select=site_id,type_code,code'),types:get('types_bassin?select=*'),
+    comptes:soft('comptes_publics?select=id,prenom,nom,role,dept,tel',[]),
+    ft:soft('feuilles_temps?select=uid,emp,week,days,total_h&week=gte.'+iso(addDays(now,-56)),[]),
+    wo:soft('workorders?select=id,client,site,type,priorite,status,date,assigne,descr,groupe_id&order=date.asc',[]),
+    rel:soft('releves?select=id,site_id,site_nom,tech,tech_nom,date,heure,type_code,vals,touched,checks,prods,note,hors_zone&date=gte.'+since+'&order=date.asc,heure.asc',[]),
+    gps:soft('punch_gps_log?select=emp,heure,lieu,date&date=eq.'+today+'&order=heure.desc&limit=30',[]),
+    plan:soft('plan?select=id&date=eq.'+today,[]),pt:soft('planning_tasks?select=id&date_debut=lte.'+today+'&date_fin=gte.'+today,[]),
+    dem:soft('demandes?select=id,tech,tech_nom,site_nom,type,motif,texte,statut,created_at,has_photo&order=created_at.desc&limit=40',[]),
+    ftAll:soft('feuilles_temps?select=uid,week,total_h',[]),fact:soft('facturation?select=*',[]),proj:soft('projets_excel?select=*',[]),
+    statut:soft('comptes?select=id,statut,email',[]),sond:soft('sondages?select=id,slug,titre,client,actif,created_at&order=created_at.desc',[]),
+    geo:soft('punch_gps_log?select=site_id,emp,lat,lng,acc,date,heure,lieu&lat=not.is.null&order=date.desc,heure.desc&limit=800',[]),
+    inv:soft('inventaire?select=id,nom,qte,seuil',[]),flotte:soft('flotte?select=id,nom,plaque',[])};
+  var K=Object.keys(Q);
+  return Promise.all(K.map(function(k){return Q[k];})).then(function(arr){
+    var r={};K.forEach(function(k,i){r[k]=arr[i];});
+    var T={};r.types.forEach(function(t){T[t.code]=t;});var ct={};r.contrats.forEach(function(c){ct[c.site_id]=c;});
+    var sites=r.sites.map(function(s){var c=ct[s.id],code=(c&&c.type_code&&T[c.type_code])?c.type_code:'GEN';return{id:String(s.id),nom:s.nom||'(sans nom)',addr:s.addr||'',ville:villeOf(s.addr),type:code,contrat:(c&&c.code)||'',notes:s.notes||''};})
       .sort(function(a,b){return a.nom.localeCompare(b.nom,'fr');});
     var byId={};sites.forEach(function(s){byId[s.id]=s;s.merged=/^Fusionné →/.test(s.notes);});var sitesAll=sites;sites=sites.filter(function(s){return!s.merged;});
-    self.D={sites:sites,sitesAll:sitesAll,byId:byId,types:T,comptes:r[3],ft:r[4],wo:r[5],rel:r[6].map(function(x){x.site_id=String(x.site_id);return x;}),gps:r[7],nPlan:r[8].length,nPt:r[9].length,dem:r[10]||[],ftAll:r[11]||[],fact:r[12]||[],proj:r[13]||[],sond:r[15]||[],geo:r[16]||[],inv:r[17]||[],flotte:r[18]||[],statut:(function(){var m={};(r[14]||[]).forEach(function(c){m[c.id]=c.statut;});return m;})(),today:today};
+    var statut={},email={};(r.statut||[]).forEach(function(c){statut[c.id]=c.statut;if(c.email)email[c.id]=c.email;});
+    (r.comptes||[]).forEach(function(c){if(c.email==null&&email[c.id])c.email=email[c.id];});
+    self.D={sites:sites,sitesAll:sitesAll,byId:byId,types:T,comptes:r.comptes,ft:r.ft,wo:r.wo,rel:r.rel.map(function(x){x.site_id=String(x.site_id);return x;}),gps:r.gps,nPlan:r.plan.length,nPt:r.pt.length,dem:r.dem||[],ftAll:r.ftAll||[],fact:r.fact||[],proj:r.proj||[],sond:r.sond||[],geo:r.geo||[],inv:r.inv||[],flotte:r.flotte||[],statut:statut,today:today};
     self.loadedAt=new Date();self.err='';self.softErr=SOFT_ERR.slice();
     if(!self.state.inspSite){var w=self.D.rel.length?String(self.D.rel[self.D.rel.length-1].site_id):(sites[0]&&sites[0].id);self.state.inspSite=w||null;}
   }).catch(function(e){self.err='Chargement impossible : '+netMsg(e);});
@@ -300,10 +310,27 @@ Comp.prototype.exportPaie=function(){var wk=iso(addDays(mondayOf(new Date()),7*t
   sheets.push({name:'Journal des punchs',widths:[24,10,11,7,9,8,32,10,30,9],rows:j});
   saveBlob(xlsxBlob(sheets),'SoucyAquatik_Feuilles_de_temps_'+wk+'.xlsx');this.audit('EXPORT',wk,{action:'sortie_feuilles_temps',format:'xlsx',employes:emps.map(function(e){return e.id;})});
   this.flash('Fichier Excel téléchargé — '+emps.length+' employé(s)');};
-Comp.prototype.markSent=function(){var self=this,wk=iso(addDays(mondayOf(new Date()),7*this.state.tOff)),data=this.weekData(wk),sel=this.paieSel(wk,data),emps=data.filter(function(e){return sel[e.id]&&e.any;}),now=new Date().toISOString();
+Comp.prototype.markSent=function(methode){var self=this,wk=iso(addDays(mondayOf(new Date()),7*this.state.tOff)),data=this.weekData(wk),sel=this.paieSel(wk,data),emps=data.filter(function(e){return sel[e.id]&&e.any;}),now=new Date().toISOString();
   if(!emps.length){this.flash('Sélectionnez au moins un employé');return;}
-  rest('POST','feuilles_temps_envois',emps.map(function(e){return{id:e.id+'_'+wk,uid:e.id,emp:e.nom,semaine:wk,email:e.email,methode:'sa-admin',punchs:e.nbPunchs,heures:dec(e.total),par:self.user.id,le:now,updated_at:now};}),'resolution=merge-duplicates,return=minimal')
+  rest('POST','feuilles_temps_envois',emps.map(function(e){return{id:e.id+'_'+wk,uid:e.id,emp:e.nom,semaine:wk,email:e.email,methode:methode||'sa-admin',punchs:e.nbPunchs,heures:dec(e.total),par:self.user.id,le:now,updated_at:now};}),'resolution=merge-duplicates,return=minimal')
     .then(function(){self.flash(emps.length+' feuille(s) marquée(s) envoyée(s) à la paie');return self.loadWeekFT(wk,true);}).catch(function(e){self.flash('Échec : '+netMsg(e));});};
+/* Courriel — comme SA Platform : l'app n'a pas accès à un serveur de courriel, elle ouvre le logiciel de courriel installé
+   (Outlook, Mail…) avec un message prêt ; le fichier Excel vient d'être téléchargé, il reste à le joindre. */
+function mailto(to,sujet,corps){var u='mailto:'+encodeURIComponent(to||'').replace(/%40/g,'@')+'?subject='+encodeURIComponent(sujet)+'&body='+encodeURIComponent(corps);if(window.__openMail)return window.__openMail(u);/* point d'observation pour les tests */try{window.location.href=u;}catch(e){window.open(u,'_blank');}}
+function emailPaie(){try{return localStorage.getItem('sa_admin_email_paie')||'';}catch(e){return '';}}
+Comp.prototype.mailPaie=function(){var wk=iso(addDays(mondayOf(new Date()),7*this.state.tOff)),data=this.weekData(wk),sel=this.paieSel(wk,data),emps=data.filter(function(e){return sel[e.id]&&e.any;});
+  if(!emps.length){this.flash('Sélectionnez au moins un employé');return;}var fin=iso(addDays(new Date(wk+'T12:00:00'),6)),tt=0;
+  var b='Bonjour,\n\nVoici les feuilles de temps de la semaine du '+wk+' au '+fin+'.\n\n';
+  emps.forEach(function(e){tt+=e.total;b+='• '+e.nom+' : '+decTxt(e.total)+' h (régulières '+decTxt(e.reg)+(e.supp>0?', supplémentaires '+decTxt(e.supp):'')+')'+(e.enCours?' — punch encore en cours':'')+(e.nbAV?' — '+e.nbAV+' punch(s) à valider':'')+'\n';});
+  b+='\nTotal de l’équipe : '+decTxt(tt)+' h\n\nLe détail complet est dans le fichier Excel joint.\n\nMerci.';
+  this.exportPaie();mailto(this.state.emailPaie!=null?this.state.emailPaie:emailPaie(),'Feuilles de temps — semaine du '+wk,b);this.markSent('courriel');};
+Comp.prototype.mailEmp=function(id){var wk=iso(addDays(mondayOf(new Date()),7*this.state.tOff)),e=this.weekData(wk).filter(function(x){return x.id===id;})[0];if(!e)return;
+  if(!e.email)this.flash('Aucun courriel dans le compte de '+e.nom+' — ajoutez-le dans Comptes (le message s’ouvre quand même)');var mon=new Date(wk+'T12:00:00');
+  var b='Bonjour '+e.nom.split(' ')[0]+',\n\nVoici ta feuille de temps pour la semaine du '+wk+' au '+iso(addDays(mon,6))+'.\n\nTotal : '+decTxt(e.total)+' h (régulières '+decTxt(e.reg)+(e.supp>0?', supplémentaires '+decTxt(e.supp):'')+')\n';
+  for(var i=0;i<7;i++){var ps=e.punchs.filter(function(p){return p.di===i;});if(!ps.length)continue;b+='\n'+DLF[i]+' '+iso(addDays(mon,i))+'\n';
+    grouperJour(ps).forEach(function(l){b+='   • '+l.lieu+(l.odt?' ['+l.odt+']':'')+' : '+l.debut+' → '+(l.act?'en cours':l.fin)+' = '+decTxt(l.h)+' h\n';});}
+  b+='\nSi quelque chose ne correspond pas, dis-le-moi avant l’envoi à la paie.\n\nMerci.';
+  mailto(e.email,'Ta feuille de temps — semaine du '+wk,b);auditT(this,'EXPORT','feuilles_temps',e.id+'_'+wk,{action:'courriel_employe'});};
 Comp.prototype.printPaie=function(){var wk=iso(addDays(mondayOf(new Date()),7*this.state.tOff)),data=this.weekData(wk),sel=this.paieSel(wk,data),emps=data.filter(function(e){return sel[e.id]&&e.any;}),mon=new Date(wk+'T12:00:00');
   if(!emps.length){this.flash('Sélectionnez au moins un employé');return;}
   var E=function(s){return String(s==null?'':s).replace(/[&<>]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});};
@@ -889,7 +916,7 @@ Comp.prototype.tempsVals=function(punchRows){var self=this,st=this.state,D=this.
     return{nom:e.nom,total:decTxt(e.total),reg:decTxt(e.reg),supp:decTxt(e.supp),punchs:e.nbPunchs+(e.nbPunchs>1?' punchs':' punch'),box:on?'var(--color-text)':'transparent',on:on,
       statut:e.enCours?'Punch en cours — semaine pas finie':(e.envoi?'Envoyée à la paie le '+fdate(e.envoi.le):(e.nbAV?e.nbAV+' punch(s) à valider':(e.approuvee?'Approuvée':'Prête'))),
       toggle:function(){var s=Object.assign({},sel);s[e.id]=!on;var o={};o[wk]=s;self.setState({paieSel:Object.assign({},st.paieSel,o)});},
-      open:open,chev:open?'down':'right',expand:function(){var o=Object.assign({},op);o[e.id]=!open;self.setState({paieOpen:o});},detail:detail};});
+      open:open,chev:open?'down':'right',expand:function(){var o=Object.assign({},op);o[e.id]=!open;self.setState({paieOpen:o});},detail:detail,mail:function(){self.mailEmp(e.id);},mailLbl:'Courriel à '+e.nom.split(' ')[0]+(e.email?' ('+e.email+')':' (aucune adresse)')};});
   var nSel=paie.filter(function(p){return p.on;}).length;
   // Journée d'un employé (dialogue)
   var hj=st.hj,hp=st.hp,hjRows=hj&&Array.isArray(this.ftw[hj.wk])?this.ftw[hj.wk]:null,tasks=this.dayTasks(),nm=this.names();
@@ -910,7 +937,7 @@ Comp.prototype.tempsVals=function(punchRows){var self=this,st=this.state,D=this.
     tLabel:wkLabel(tMon),tPrev:function(){self.setState({tOff:st.tOff-1});},tNext:function(){self.setState({tOff:Math.min(0,st.tOff+1)});},tToday:function(){self.setState({tOff:0});},
     tDays:days,tRows:rows,tTeam:fmtH(teamT),tTeamSupp:teamS>0?'dont +'+fmtH(teamS)+' supplémentaires':'',noTRows:loaded&&!rows.length,
     paie:paie,paieNone:loaded&&!paie.length,paieCount:nSel+' sélectionné(s) sur '+paie.length,paieAll:function(){var s={};data.forEach(function(e){s[e.id]=e.any;});var o={};o[wk]=s;self.setState({paieSel:Object.assign({},st.paieSel,o)});},
-    paieNoneSel:function(){var o={};o[wk]={};self.setState({paieSel:Object.assign({},st.paieSel,o)});},paieXlsx:function(){self.exportPaie();},paiePrint:function(){self.printPaie();},paieSent:function(){self.markSent();},
+    paieNoneSel:function(){var o={};o[wk]={};self.setState({paieSel:Object.assign({},st.paieSel,o)});},paieXlsx:function(){self.exportPaie();},paiePrint:function(){self.printPaie();},paieSent:function(){self.markSent();},paieMail:function(){self.mailPaie();},emailPaie:st.emailPaie!=null?st.emailPaie:emailPaie(),onEmailPaie:function(ev){var v=ev.target.value;try{localStorage.setItem('sa_admin_email_paie',v.trim());}catch(x){}self.setState({emailPaie:v});},
     paieModes:[['synthese','Feuille (regroupée)'],['journal','Journal des punchs']].map(function(x){return Object.assign({label:x[1],go:function(){self.setState({paieMode:x[0]});}},segS(mode===x[0]));})});};
 
 Comp.prototype.statsVals=function(){var self=this,st=this.state,D=this.D,sMon=addDays(mondayOf(new Date()),7*st.sOff),wk=iso(sMon);

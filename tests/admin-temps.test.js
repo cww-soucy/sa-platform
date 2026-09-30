@@ -160,6 +160,31 @@ test('Paie : marquer envoyée à la paie (table partagée avec SA Platform)', as
   await page.close();
 });
 
+test('Paie : courriel à la paie (Excel + message prêt + marquée envoyée) et courriel à l’employé', async () => {
+  const tables = base(); tables.comptes.find((c) => c.id === 'kael').email = 'kael@exemple.com';
+  const { page, db, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables });
+  await temps(page);
+  await A(page, () => { window.__mails = []; window.__openMail = (u) => window.__mails.push(u); window.__admin.setState({ tempsTab: 'paie' }); });
+  await page.getByLabel('Courriel de la paie').fill('paie@soucy.test');
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Préparer le courriel à la paie' }).click()]);
+  assert.match(dl.suggestedFilename(), /\.xlsx$/);
+  await toast(page, /marquée\(s\) envoyée/);
+  const u = await A(page, () => window.__mails[0]);
+  assert.match(u, /^mailto:paie@soucy\.test\?subject=/);
+  const body = decodeURIComponent(u.split('&body=')[1]);
+  assert.match(body, /Kaël Test : 1,00 h \(régulières 1,00\)/);
+  assert.match(body, /Total de l’équipe : 1,00 h/);
+  assert.equal(db.rows('feuilles_temps_envois')[0].methode, 'courriel');
+  assert.equal(await A(page, () => localStorage.getItem('sa_admin_email_paie')), 'paie@soucy.test', 'adresse retenue');
+  await A(page, () => window.__admin.vals().paie[0].expand());
+  await page.getByRole('button', { name: /Courriel à Kaël \(kael@exemple\.com\)/ }).click();
+  const u2 = await A(page, () => window.__mails[1]);
+  assert.match(u2, /^mailto:kael@exemple\.com\?subject=Ta%20feuille%20de%20temps/);
+  assert.match(decodeURIComponent(u2.split('&body=')[1]), /Bonjour Kaël,[\s\S]*Total : 1,00 h/);
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
 test('Stats : heures de l’équipe, bons de travail, rapport téléchargeable', async () => {
   const { page, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: base() });
   await page.waitForFunction(() => window.__admin && window.__admin.D);
