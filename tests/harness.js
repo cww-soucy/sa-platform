@@ -82,7 +82,7 @@ class FakeDB {
   writes(table) { return this.log.filter((l) => l.table === table && l.method !== 'GET'); }
 }
 
-async function openApp(browser, base, { app, user, tables, fail, viewport }) {
+async function openApp(browser, base, { app, user, tables, fail, viewport, portail }) {
   const db = new FakeDB(tables);
   Object.assign(db.fail, fail || {});
   const page = await browser.newPage({ viewport: viewport || (app === 'terrain' ? { width: 402, height: 874 } : { width: 1440, height: 900 }) });
@@ -94,7 +94,8 @@ async function openApp(browser, base, { app, user, tables, fail, viewport }) {
   await page.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
   await page.route('https://unpkg.com/**', (r) => r.abort()); // l'app ne doit plus en dépendre
   const key = app === 'terrain' ? 'sa_terrain_user' : 'sa_admin_user';
-  await page.addInitScript(([k, u]) => { if (!sessionStorage.getItem('__init')) { localStorage.clear(); if (u) localStorage.setItem(k, JSON.stringify(u)); sessionStorage.setItem('__init', '1'); } }, [key, user]);
+  // Le portail d'accueil de sa-admin est désactivé par défaut dans les tests (sauf ceux qui le testent : portail: true)
+  await page.addInitScript(([k, u, pt]) => { if (!sessionStorage.getItem('__init')) { localStorage.clear(); if (u) localStorage.setItem(k, JSON.stringify(u)); if (!pt) localStorage.setItem('sa_admin_portail', 'off'); sessionStorage.setItem('__init', '1'); } }, [key, user, !!portail]);
   await page.goto(base + '/' + app + '.html');
   return { page, db, errors };
 }

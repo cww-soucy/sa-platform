@@ -446,6 +446,27 @@ KE=WRAP('keOpen','keCloseBg',DLGHEAD('keTitle','keClose')
   +'<div class="dialog-actions" style="margin-top:0;flex-wrap:wrap">'+IF('keCanDel',BTNX('btn-secondary','keDel','{{ keDelLbl }}'))+'<span style="flex:1"></span>'+BTNX('btn-secondary','keClose','Fermer')+BTNX('btn-primary','keSave','{{ keSaveLbl }}')+'</div>')
 M=M.rstrip()+'\n'+TE+KE
 
+# ---------- PORTAIL (page d'accueil après la connexion) ----------
+PTILE=('<sc-for list="{{ portTiles }}" as="t">'+CARD('<div style="padding:22px 22px 20px;display:flex;flex-direction:column;gap:12px;height:100%;box-sizing:border-box">'
+  '<div style="display:flex;align-items:center;gap:12px"><span style="width:46px;height:46px;flex:none;border:1.5px solid var(--color-text);display:flex;align-items:center;justify-content:center"><sa-i n="{{ t.icon }}" s="24"></sa-i></span>'
+  '<span style="font:600 24px/1.1 var(--font-heading);white-space:nowrap">{{ t.title }}</span></div>'
+  '<div style="font-size:15px;line-height:1.45;flex:1">{{ t.sub }}</div><div style="font-size:13px;color:var(--color-accent-700);font-weight:600">{{ t.info }}</div>'
+  '<sc-if value="{{ t.primary }}"><button class="btn btn-primary" onClick="{{ t.go }}" style="align-self:stretch;justify-content:center;min-height:44px">{{ t.btn }}</button></sc-if>'
+  '<sc-if value="{{ t.sec }}"><button class="btn btn-secondary" onClick="{{ t.go }}" style="align-self:stretch;justify-content:center;min-height:44px">{{ t.btn }}</button></sc-if></div>')+'</sc-for>')
+PORTAIL=('<sc-if value="{{ isPortail }}"><div role="dialog" aria-label="Portail Soucy Aquatik" style="position:fixed;inset:0;z-index:40;background:var(--color-bg);overflow-y:auto">'
+  '<div style="max-width:1120px;margin:0 auto;padding:40px 24px 32px;display:flex;flex-direction:column;gap:28px;min-height:100%;box-sizing:border-box">'
+  '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><div style="width:56px;height:56px;flex:none;background:#004987;color:#ffffff;display:flex;align-items:flex-end;padding:6px;box-sizing:border-box;font:600 13px/0.95 var(--font-heading)">Soucy<br>Aquatik</div>'
+  '<div style="display:flex;flex-direction:column;flex:1;min-width:220px"><span style="font:600 clamp(28px,5vw,40px)/1.05 var(--font-heading)">{{ portHello }}</span><span style="font-size:15px;color:var(--color-accent-700)">{{ portDate }} · Où voulez-vous aller ?</span></div>'
+  '<button class="btn btn-ghost" onClick="{{ logout }}">Se déconnecter</button></div>'
+  '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px">'+PTILE+'</div>'
+  '<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;font-size:14px;margin-top:auto"><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" checked="{{ portSkip }}" onChange="{{ onPortSkip }}">Sur ce poste, ouvrir directement sa-admin (le portail reste accessible par « Accueil »)</label>'
+  '<span style="flex:1"></span><span style="font-size:13px">Astuce : admin.html#temps ouvre directement Temps · Paie</span></div>'
+  '</div></div></sc-if>\n')
+M=M.rstrip()+'\n'+PORTAIL
+_logo='<div style="display:flex;flex-direction:column;line-height:1.15"><span style="font:600 20px var(--font-heading)">sa-admin</span><span style="font-size:12px;color:var(--color-accent-700)">Centre des opérations</span></div>\n    </div>'
+if M.count(_logo)==1: M=M.replace(_logo,_logo+'<button onClick="{{ openPortail }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;height:38px;padding:0 14px 0 16px;border-bottom:1px solid var(--color-divider);font-weight:600" data-hv="1"><sa-i n="home" s="18"></sa-i>Accueil · toutes les applications</button>',1)
+else: print('!! logo sa-admin introuvable',M.count(_logo))
+
 
 # Monitoring : lien vers la photo jointe à une demande du terrain (chargée seulement au clic)
 rep('<span style="font-size:12px">{{ f.who }} · {{ f.site }}</span>','<span style="font-size:12px">{{ f.who }} · {{ f.site }}</span><sc-if value="{{ f.hasPhoto }}"><button onClick="{{ f.openPhoto }}" style="all:unset;cursor:pointer;font-size:12px;text-decoration:underline;width:fit-content">Voir la photo jointe</button></sc-if>')
