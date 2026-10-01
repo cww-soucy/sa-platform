@@ -88,6 +88,17 @@ Une longue session de débogage a eu lieu ce matin : des doublons de WO/tâches 
 
 **Solution en place** : `app_meta.reset_epoch` (compteur entier) + une fonction `checkResetEpoch()` dans `index.html` qui compare l'epoch vu par l'appareil à celui du serveur ; si l'appareil est en retard, son cache local est vidé au lieu d'être repoussé. **Si vous touchez à `pushAllLocalToServer` ou à la logique de sync de `index.html`, relire cette section en entier d'abord.**
 
+### Retours du 30/09 (traités le 30/09 – 01/10)
+- [x] Temps : onglet « Par employé » (détail complet des punchs, publication pour un employé, ODT depuis un punch, Hier / Aujourd'hui)
+- [x] Stats : « Analyser avec Claude » (rapport au format SA Platform + demande d'analyse, ouvre claude.ai). Une analyse DANS l'app demanderait une clé d'API Claude côté serveur (fonction Supabase) — pas fait, à décider
+- [x] Monitoring : période aujourd'hui / hier / 7 jours ; salles mécaniques réelles ; mur de contrôle grand écran
+- [x] Plan de Match : activité réelle (punch en cours, travaux en cours / en retard / à faire / faits, non assignés)
+- [x] Sites : fiche complète (bassins, équipements, pièces, journal, bons de travail), création, écriture conditionnelle
+- [x] Inspections : bassins par site (onglets ; sa-terrain choisit le bassin, colonne `releves.bassin`), rapport imprimable, Excel, paramètres de relevé modifiables (politiques `tb_update` / `tb_insert` sur `types_bassin`)
+- [x] Carte : position = fiche ou médiane des punchs précis, filtre de précision, correction par clic, géolocalisation des adresses (Nominatim), tournée d'un technicien, schéma des tournées
+- [x] sa-terrain : logo sur la connexion, bienvenue au prénom
+- [ ] Communication : l'utilisateur a écrit « passe toujours par SA » — sens à confirmer (aucun module Communication dans SA Platform)
+
 ## 8. Backlog priorisé
 
 ### Priorité 1 — fiabilité de ce qui existe déjà (ce que l'utilisateur a demandé explicitement)
