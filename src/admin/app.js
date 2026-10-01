@@ -26,7 +26,7 @@ var SUN={},segS=function(on){return{bg:on?'var(--color-text)':'transparent',fg:o
 
 function Comp(user){
   this.user=user;this.rootRef={current:null};this.D=null;this.ftw={};this._ftwL={};this.envois={};this.pmm={};this.docs={};this.stk=null;this.flt=null;this.tools=null;this.tmoves=null;this.lcfg=null;this.loadedAt=null;this.err='';
-  this.state={portail:!hashMod()&&portailPref(),mod:'monitoring',q:'',toast:null,inspSite:null,inspKey:null,inspFilter:'all',opsFilter:'Tous',opsOpen:{},siteType:'all',carteView:'geo',factFilter:'Tous',tempsTab:'semaine',tOff:0,sOff:0,fe:null,pmmDate:null,pb:null,ce:null,de:null,docQ:'',docF:'tous',logTab:'bl',se:null,stkQ:'',stkCat:'tous',te:null,ke:null,outTab:'outils',outF:'tous',outQ:'',qrIn:null,hj:null,hp:null,paieSel:{},paieOpen:{},paieMode:'synthese',pOff:0,ed:null,sed:null,survey:null,sondKey:(function(){try{return localStorage.getItem('sa_admin_sondkey')||'';}catch(e){return '';}})(),keyIn:'',dlg:false,busy:false,f:{type:'Bon de travail',site:'',tech:'',debut:'',heure:'07:00',rec:'aucune',jours:{},fin:''}};this.pl={};this._pl={};this.sd={};this._sd={};
+  this.state={portail:!hashMod()&&portailPref(),mod:'monitoring',q:'',toast:null,inspSite:null,inspKey:null,inspFilter:'all',opsFilter:'Tous',opsOpen:{},siteType:'all',carteView:'geo',carteAcc:100,carteFix:null,carteTour:null,carteQ:'',carteType:'all',sf:null,ty:null,inspBassin:null,monPer:'jour',monWall:false,factFilter:'Tous',tempsTab:'semaine',eUid:null,eDay:null,tOff:0,sOff:0,fe:null,pmmDate:null,pb:null,ce:null,de:null,docQ:'',docF:'tous',logTab:'bl',se:null,stkQ:'',stkCat:'tous',te:null,ke:null,outTab:'outils',outF:'tous',outQ:'',qrIn:null,hj:null,hp:null,paieSel:{},paieOpen:{},paieMode:'synthese',pOff:0,ed:null,sed:null,survey:null,sondKey:(function(){try{return localStorage.getItem('sa_admin_sondkey')||'';}catch(e){return '';}})(),keyIn:'',dlg:false,busy:false,f:{type:'Bon de travail',site:'',tech:'',debut:'',heure:'07:00',rec:'aucune',jours:{},fin:''}};this.pl={};this._pl={};this.sd={};this._sd={};
 }
 Comp.prototype.setState=function(p){this.state=Object.assign({},this.state,typeof p==='function'?p(this.state):p);this.update();};
 Comp.prototype.flash=function(t){var s=this;clearTimeout(this._tt);this.state.toast=t;this.update();this._tt=setTimeout(function(){s.state.toast=null;s.update();},2800);};
@@ -37,11 +37,11 @@ Comp.prototype.load=function(){
   SOFT_ERR=[];
   /* Requêtes nommées : chaque résultat est lu par son nom (plus par sa position), pour qu'ajouter ou retirer une
      requête ne décale plus jamais les autres en silence. */
-  var Q={sites:get('sites?select=id,nom,addr,type,notes'),contrats:get('contrats?select=site_id,type_code,code'),types:get('types_bassin?select=*'),
+  var Q={sites:get('sites?select=id,nom,addr,type,notes,tel,bassins,gps'),contrats:get('contrats?select=site_id,type_code,code'),types:get('types_bassin?select=*'),
     comptes:soft('comptes_publics?select=id,prenom,nom,role,dept,tel',[]),
     ft:soft('feuilles_temps?select=uid,emp,week,days,total_h&week=gte.'+iso(addDays(now,-56)),[]),
     wo:soft('workorders?select=id,client,site,type,priorite,status,date,assigne,descr,groupe_id&order=date.asc',[]),
-    rel:soft('releves?select=id,site_id,site_nom,tech,tech_nom,date,heure,type_code,vals,touched,checks,prods,note,hors_zone&date=gte.'+since+'&order=date.asc,heure.asc',[]),
+    rel:soft('releves?select=id,site_id,site_nom,tech,tech_nom,date,heure,type_code,vals,touched,checks,prods,note,hors_zone,bassin&date=gte.'+since+'&order=date.asc,heure.asc',[]),
     gps:soft('punch_gps_log?select=emp,heure,lieu,date&date=eq.'+today+'&order=heure.desc&limit=30',[]),
     plan:soft('plan?select=id&date=eq.'+today,[]),pt:soft('planning_tasks?select=id&date_debut=lte.'+today+'&date_fin=gte.'+today,[]),
     dem:soft('demandes?select=id,tech,tech_nom,site_nom,type,motif,texte,statut,created_at,has_photo&order=created_at.desc&limit=40',[]),
@@ -53,7 +53,7 @@ Comp.prototype.load=function(){
   return Promise.all(K.map(function(k){return Q[k];})).then(function(arr){
     var r={};K.forEach(function(k,i){r[k]=arr[i];});
     var T={};r.types.forEach(function(t){T[t.code]=t;});var ct={};r.contrats.forEach(function(c){ct[c.site_id]=c;});
-    var sites=r.sites.map(function(s){var c=ct[s.id],code=(c&&c.type_code&&T[c.type_code])?c.type_code:'GEN';return{id:String(s.id),nom:s.nom||'(sans nom)',addr:s.addr||'',ville:villeOf(s.addr),type:code,contrat:(c&&c.code)||'',notes:s.notes||''};})
+    var sites=r.sites.map(function(s){var c=ct[s.id],code=(c&&c.type_code&&T[c.type_code])?c.type_code:'GEN';return{id:String(s.id),nom:s.nom||'(sans nom)',addr:s.addr||'',ville:villeOf(s.addr),type:code,contrat:(c&&c.code)||'',notes:s.notes||'',tel:s.tel||'',bassins:Array.isArray(s.bassins)?s.bassins:[],gps:s.gps&&s.gps.lat!=null?s.gps:null};})
       .sort(function(a,b){return a.nom.localeCompare(b.nom,'fr');});
     var byId={};sites.forEach(function(s){byId[s.id]=s;s.merged=/^Fusionné →/.test(s.notes);});var sitesAll=sites;sites=sites.filter(function(s){return!s.merged;});
     var statut={},email={};(r.statut||[]).forEach(function(c){statut[c.id]=c.statut;if(c.email)email[c.id]=c.email;});
@@ -112,7 +112,7 @@ Comp.prototype.doDel=function(level){var self=this,e=this.state.ed;if(!e||e.busy
   var path=level===2?this.serieFilter(e):(e.tb+'?id=eq.'+encodeURIComponent(e.id));
   rest('DELETE',path).then(function(rows){self.setState({ed:null});self.flash(rows.length+' supprimé'+(rows.length>1?'s':'')+' — une copie est conservée');return self.reloadAll();})
    .catch(function(err){self.setState({ed:Object.assign({},e,{busy:false})});self.flash('Échec — rien n’a été supprimé : '+err.message);});};
-Comp.prototype.openSiteEdit=function(id){var s=this.D.byId[id];if(!s)return;var t=this.D.types;this.setState({sed:{id:id,nom:s.nom,addr:s.addr,type:s.type,code:s.contrat,busy:false}});};
+Comp.prototype.openSiteEdit=function(id){this.openSiteFiche(id);};
 Comp.prototype.saveSite=function(){var self=this,e=this.state.sed;if(!e||e.busy)return;if(!String(e.nom||'').trim()){this.flash('Le nom ne peut pas être vide');return;}var now=new Date().toISOString();this.setState({sed:Object.assign({},e,{busy:true})});
   rest('PATCH','sites?id=eq.'+encodeURIComponent(e.id),{nom:String(e.nom).trim(),addr:String(e.addr||'').trim(),updated_at:now}).then(function(){return rest('POST','contrats',{site_id:e.id,type_code:e.type,code:e.code||null,actif:true,updated_at:now},'resolution=merge-duplicates,return=minimal');})
    .then(function(){self.setState({sed:null});self.flash('Site enregistré');return self.reloadAll();}).catch(function(err){self.setState({sed:Object.assign({},e,{busy:false})});self.flash('Échec — rien n’a été modifié : '+err.message);});};
@@ -147,11 +147,28 @@ Comp.prototype.syncMap=function(){var self=this;
   if(!this._mapHost){this._mapHost=document.createElement('div');this._mapHost.setAttribute('data-keep','1');this._mapHost.style.cssText='height:100%;width:100%';}
   if(this._mapHost.parentNode!==slot){slot.appendChild(this._mapHost);}
   if(!this._map){this._map=L.map(this._mapHost,{zoomControl:true,attributionControl:true}).setView([46.82,-71.25],10);L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OpenStreetMap'}).addTo(this._map);this._layer=L.layerGroup().addTo(this._map);this._fitted=false;}
-  var G=this.geoData(),names={};this.D.comptes.forEach(function(c){names[c.id]=(c.prenom+' '+c.nom).trim();});
-  this._layer.clearLayers();var pts=[];
-  G.sites.forEach(function(s){var m=L.circleMarker([s.lat,s.lng],{radius:7,color:'#1d2d3d',weight:2,fillColor:'#94bce3',fillOpacity:.95}).bindPopup('<b>'+s.nom.replace(/</g,'&lt;')+'</b><br>'+self.T(s.type).court+'<br>'+s.n+' punch(s) · dernier '+s.last);m.addTo(self._layer);pts.push([s.lat,s.lng]);});
-  Object.keys(G.techs).forEach(function(e){var t=G.techs[e];var m=L.circleMarker([Number(t.lat),Number(t.lng)],{radius:11,color:'#000',weight:3,fillColor:'#1d2d3d',fillOpacity:1}).bindPopup('<b>'+(names[e]||e)+'</b><br>Punch à '+t.heure+'<br>'+(t.lieu||'').replace(/</g,'&lt;'));m.addTo(self._layer);pts.push([Number(t.lat),Number(t.lng)]);});
-  setTimeout(function(){self._map.invalidateSize();if(!self._fitted&&pts.length){self._map.fitBounds(pts,{padding:[40,40],maxZoom:14});self._fitted=true;}},60);
+  var st=this.state,G=this.carteGeo(),names={};this.D.comptes.forEach(function(c){names[c.id]=(c.prenom+' '+c.nom).trim();});
+  var tour=Array.isArray(this._tour)?this._tour:[];
+  /* ne redessine que si quelque chose a changé (sinon une bulle ouverte se refermait à chaque relecture) */
+  var key=JSON.stringify([st.carteSites,st.carteTechs,st.cartePrec,st.carteAcc,st.carteType,st.carteQ,st.carteTour,G.sites.map(function(x){return x.id+x.lat+x.lng;}).join(),Object.keys(G.techs).join(),tour.length,this.loadedAt&&+this.loadedAt]);
+  if(!this._map._saClick){this._map._saClick=true;this._map.on('click',function(e){var fx=self.state.carteFix;if(fx)self.setSiteGps(fx,e.latlng.lat,e.latlng.lng,'corrigée sur la carte');});}
+  this._mapHost.style.cursor=st.carteFix?'crosshair':'';
+  if(key===this._mapKey&&!this._mapDirty){setTimeout(function(){self._map.invalidateSize();},60);return;}this._mapKey=key;this._mapDirty=false;
+  this._layer.clearLayers();var pts=[],E=function(x){return String(x==null?'':x).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});};
+  if(st.carteSites!==false)G.sites.forEach(function(s){var fiche=s.src==='fiche';
+    var pop='<b>'+E(s.nom)+'</b><br>'+E(self.T(s.type).court)+(s.addr?'<br>'+E(s.addr):'')+'<br>'+(fiche?'Position de la fiche du site':'Estimée d’après '+Math.min(20,s.n)+' punch(s) précis (± '+s.prec+' m)')
+      +'<div style="display:flex;flex-direction:column;gap:4px;margin-top:6px"><a href="#" onclick="window.__admin.openSiteFiche(\''+s.id+'\');return false">Ouvrir la fiche du site</a>'
+      +(fiche?'':'<a href="#" onclick="window.__admin.setSiteGps(\''+s.id+'\','+s.lat+','+s.lng+',\'estimation des punchs\');return false">Garder cette position dans la fiche</a>')
+      +'<a href="#" onclick="window.__admin.setState({carteFix:\''+s.id+'\'});window.__admin._map.closePopup();return false">Corriger : cliquer l’endroit exact sur la carte</a></div>';
+    if(!fiche&&st.cartePrec!==false&&s.prec)L.circle([s.lat,s.lng],{radius:Math.min(s.prec,400),color:'#5b86b0',weight:1,fillOpacity:.08,interactive:false}).addTo(self._layer);
+    var m=fiche?L.marker([s.lat,s.lng],{icon:L.divIcon({className:'',html:'<div style="width:14px;height:14px;background:#004987;border:2px solid #fff;box-shadow:0 0 0 1px #004987"></div>',iconSize:[14,14],iconAnchor:[7,7]})})
+      :L.circleMarker([s.lat,s.lng],{radius:7,color:'#1d2d3d',weight:2,fillColor:'#94bce3',fillOpacity:.95});
+    m.bindPopup(pop).addTo(self._layer);pts.push([s.lat,s.lng]);});
+  if(st.carteTechs!==false)Object.keys(G.techs).forEach(function(e){var t=G.techs[e];var m=L.circleMarker([Number(t.lat),Number(t.lng)],{radius:11,color:'#000',weight:3,fillColor:'#1d2d3d',fillOpacity:1}).bindPopup('<b>'+E(names[e]||e)+'</b><br>Punch à '+E(t.heure)+'<br>'+E(t.lieu||'')+(t.acc!=null?'<br>Précision ± '+Math.round(t.acc)+' m':''));m.addTo(self._layer);pts.push([Number(t.lat),Number(t.lng)]);});
+  if(tour.length){var lls=tour.map(function(p){return[Number(p.lat),Number(p.lng)];});L.polyline(lls,{color:'#c0392b',weight:3,dashArray:'6 6'}).addTo(this._layer);
+    tour.forEach(function(p,i){var bad=p.acc!=null&&Number(p.acc)>Number(st.carteAcc||100);L.marker([Number(p.lat),Number(p.lng)],{icon:L.divIcon({className:'',html:'<div style="width:22px;height:22px;border-radius:50%;background:'+(bad?'#999':'#c0392b')+';color:#fff;font:700 12px/22px Arial;text-align:center;border:2px solid #fff">'+(i+1)+'</div>',iconSize:[22,22],iconAnchor:[11,11]})})
+      .bindPopup('<b>'+(i+1)+'. '+E(p.heure)+'</b><br>'+E(p.lieu||'')+(p.acc!=null?'<br>Précision ± '+Math.round(p.acc)+' m'+(bad?' (imprécis)':''):'')).addTo(self._layer);});pts=lls.concat(tour.length?[]:pts);if(!this._fitted){this._fitted=false;}}
+  setTimeout(function(){self._map.invalidateSize();if(!self._fitted&&pts.length){self._map.fitBounds(pts,{padding:[40,40],maxZoom:15});self._fitted=true;}},60);
   }catch(e){console.error('[carte] erreur de rendu :',e);var s2=document.getElementById('mapSlot');if(s2)s2.innerHTML='<div style="padding:16px;font-size:13px">Erreur d’affichage de la carte : '+e.message+'</div>';}};
 Comp.prototype.writeFT=function(uid,week,fn,tries){var self=this,id=uid+'_'+week;tries=tries||0;
   return get('feuilles_temps?id=eq.'+encodeURIComponent(id)+'&select=*').then(function(r){var row=r[0];if(!row)throw new Error('feuille introuvable');var nd=fn(JSON.parse(JSON.stringify(row.days)));
@@ -293,7 +310,7 @@ function grouperJour(ps){var m={},o=[];ps.forEach(function(p){var k=norm(p.lieu)
   var l=m[k];l.nb++;if(p.act)l.act=true;else l.h+=p.hrs;if(p.start&&(!l.debut||p.start<l.debut))l.debut=p.start;if(p.end&&(!l.fin||p.end>l.fin))l.fin=p.end;if(!l.detail&&p.detail)l.detail=p.detail;if(p.av)l.av=true;});
   return o.map(function(k){return m[k];}).sort(function(a,b){return(a.debut||'').localeCompare(b.debut||'');});}
 Comp.prototype.paieSel=function(wk,data){var s=this.state.paieSel[wk];if(!s){s={};data.forEach(function(e){s[e.id]=e.any&&!e.enCours;});}return s;};
-Comp.prototype.exportPaie=function(){var wk=iso(addDays(mondayOf(new Date()),7*this.state.tOff)),data=this.weekData(wk),sel=this.paieSel(wk,data),emps=data.filter(function(e){return sel[e.id]&&e.any;});
+Comp.prototype.exportPaie=function(only){var wk=iso(addDays(mondayOf(new Date()),7*this.state.tOff)),data=this.weekData(wk),sel=this.paieSel(wk,data),emps=data.filter(function(e){return(only?e.id===only:sel[e.id])&&e.any;});
   if(!emps.length){this.flash('Sélectionnez au moins un employé qui a des heures');return;}
   var H1=function(v){return{v:v,s:1};},N=function(v){return{v:dec(v),s:3};},T=function(v){return{v:v,s:4};},mon=new Date(wk+'T12:00:00'),fin=addDays(mon,6);
   var titre='Feuilles de temps — semaine du '+fdate(wk)+' au '+fdate(iso(fin));
@@ -310,7 +327,7 @@ Comp.prototype.exportPaie=function(){var wk=iso(addDays(mondayOf(new Date()),7*t
   sheets.push({name:'Journal des punchs',widths:[24,10,11,7,9,8,32,10,30,9],rows:j});
   saveBlob(xlsxBlob(sheets),'SoucyAquatik_Feuilles_de_temps_'+wk+'.xlsx');this.audit('EXPORT',wk,{action:'sortie_feuilles_temps',format:'xlsx',employes:emps.map(function(e){return e.id;})});
   this.flash('Fichier Excel téléchargé — '+emps.length+' employé(s)');};
-Comp.prototype.markSent=function(methode){var self=this,wk=iso(addDays(mondayOf(new Date()),7*this.state.tOff)),data=this.weekData(wk),sel=this.paieSel(wk,data),emps=data.filter(function(e){return sel[e.id]&&e.any;}),now=new Date().toISOString();
+Comp.prototype.markSent=function(methode,only){var self=this,wk=iso(addDays(mondayOf(new Date()),7*this.state.tOff)),data=this.weekData(wk),sel=this.paieSel(wk,data),emps=data.filter(function(e){return(only?e.id===only:sel[e.id])&&e.any;}),now=new Date().toISOString();
   if(!emps.length){this.flash('Sélectionnez au moins un employé');return;}
   rest('POST','feuilles_temps_envois',emps.map(function(e){return{id:e.id+'_'+wk,uid:e.id,emp:e.nom,semaine:wk,email:e.email,methode:methode||'sa-admin',punchs:e.nbPunchs,heures:dec(e.total),par:self.user.id,le:now,updated_at:now};}),'resolution=merge-duplicates,return=minimal')
     .then(function(){self.flash(emps.length+' feuille(s) marquée(s) envoyée(s) à la paie');return self.loadWeekFT(wk,true);}).catch(function(e){self.flash('Échec : '+netMsg(e));});};
@@ -318,12 +335,12 @@ Comp.prototype.markSent=function(methode){var self=this,wk=iso(addDays(mondayOf(
    (Outlook, Mail…) avec un message prêt ; le fichier Excel vient d'être téléchargé, il reste à le joindre. */
 function mailto(to,sujet,corps){var u='mailto:'+encodeURIComponent(to||'').replace(/%40/g,'@')+'?subject='+encodeURIComponent(sujet)+'&body='+encodeURIComponent(corps);if(window.__openMail)return window.__openMail(u);/* point d'observation pour les tests */try{window.location.href=u;}catch(e){window.open(u,'_blank');}}
 function emailPaie(){try{return localStorage.getItem('sa_admin_email_paie')||'';}catch(e){return '';}}
-Comp.prototype.mailPaie=function(){var wk=iso(addDays(mondayOf(new Date()),7*this.state.tOff)),data=this.weekData(wk),sel=this.paieSel(wk,data),emps=data.filter(function(e){return sel[e.id]&&e.any;});
+Comp.prototype.mailPaie=function(only){var wk=iso(addDays(mondayOf(new Date()),7*this.state.tOff)),data=this.weekData(wk),sel=this.paieSel(wk,data),emps=data.filter(function(e){return(only?e.id===only:sel[e.id])&&e.any;});
   if(!emps.length){this.flash('Sélectionnez au moins un employé');return;}var fin=iso(addDays(new Date(wk+'T12:00:00'),6)),tt=0;
   var b='Bonjour,\n\nVoici les feuilles de temps de la semaine du '+wk+' au '+fin+'.\n\n';
   emps.forEach(function(e){tt+=e.total;b+='• '+e.nom+' : '+decTxt(e.total)+' h (régulières '+decTxt(e.reg)+(e.supp>0?', supplémentaires '+decTxt(e.supp):'')+')'+(e.enCours?' — punch encore en cours':'')+(e.nbAV?' — '+e.nbAV+' punch(s) à valider':'')+'\n';});
   b+='\nTotal de l’équipe : '+decTxt(tt)+' h\n\nLe détail complet est dans le fichier Excel joint.\n\nMerci.';
-  this.exportPaie();mailto(this.state.emailPaie!=null?this.state.emailPaie:emailPaie(),'Feuilles de temps — semaine du '+wk,b);this.markSent('courriel');};
+  this.exportPaie(only);mailto(this.state.emailPaie!=null?this.state.emailPaie:emailPaie(),(only?'Feuille de temps — '+emps[0].nom+' — ':'Feuilles de temps — ')+'semaine du '+wk,b);this.markSent('courriel',only);};
 Comp.prototype.mailEmp=function(id){var wk=iso(addDays(mondayOf(new Date()),7*this.state.tOff)),e=this.weekData(wk).filter(function(x){return x.id===id;})[0];if(!e)return;
   if(!e.email)this.flash('Aucun courriel dans le compte de '+e.nom+' — ajoutez-le dans Comptes (le message s’ouvre quand même)');var mon=new Date(wk+'T12:00:00');
   var b='Bonjour '+e.nom.split(' ')[0]+',\n\nVoici ta feuille de temps pour la semaine du '+wk+' au '+iso(addDays(mon,6))+'.\n\nTotal : '+decTxt(e.total)+' h (régulières '+decTxt(e.reg)+(e.supp>0?', supplémentaires '+decTxt(e.supp):'')+')\n';
@@ -331,7 +348,7 @@ Comp.prototype.mailEmp=function(id){var wk=iso(addDays(mondayOf(new Date()),7*th
     grouperJour(ps).forEach(function(l){b+='   • '+l.lieu+(l.odt?' ['+l.odt+']':'')+' : '+l.debut+' → '+(l.act?'en cours':l.fin)+' = '+decTxt(l.h)+' h\n';});}
   b+='\nSi quelque chose ne correspond pas, dis-le-moi avant l’envoi à la paie.\n\nMerci.';
   mailto(e.email,'Ta feuille de temps — semaine du '+wk,b);auditT(this,'EXPORT','feuilles_temps',e.id+'_'+wk,{action:'courriel_employe'});};
-Comp.prototype.printPaie=function(){var wk=iso(addDays(mondayOf(new Date()),7*this.state.tOff)),data=this.weekData(wk),sel=this.paieSel(wk,data),emps=data.filter(function(e){return sel[e.id]&&e.any;}),mon=new Date(wk+'T12:00:00');
+Comp.prototype.printPaie=function(only){var wk=iso(addDays(mondayOf(new Date()),7*this.state.tOff)),data=this.weekData(wk),sel=this.paieSel(wk,data),emps=data.filter(function(e){return(only?e.id===only:sel[e.id])&&e.any;}),mon=new Date(wk+'T12:00:00');
   if(!emps.length){this.flash('Sélectionnez au moins un employé');return;}
   var E=function(s){return String(s==null?'':s).replace(/[&<>]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});};
   var h='<!doctype html><meta charset="utf-8"><title>Feuilles de temps '+wk+'</title><style>body{font:12px Arial,sans-serif;margin:18px}h2{margin:0 0 4px;font-size:17px}table{border-collapse:collapse;width:100%;margin:6px 0 4px}td,th{border:1px solid #bbb;padding:3px 6px;text-align:left}th{background:#e8f2fb}.n{text-align:right}section{page-break-after:always}.s{margin-top:26px;display:flex;gap:40px}.s div{border-top:1px solid #555;flex:1;padding-top:3px;font-size:10px}</style>';
@@ -339,10 +356,34 @@ Comp.prototype.printPaie=function(){var wk=iso(addDays(mondayOf(new Date()),7*th
     for(var i=0;i<7;i++)grouperJour(e.punchs.filter(function(p){return p.di===i;})).forEach(function(l){h+='<tr><td>'+DLF[i]+' '+addDays(mon,i).getDate()+'</td><td>'+E(l.lieu)+'</td><td>'+E(l.odt)+'</td><td>'+E(l.debut)+'</td><td>'+(l.act?'en cours':E(l.fin))+'</td><td class="n">'+decTxt(l.h)+'</td></tr>';});
     h+='</table><div class="s"><div>Signature de l’employé</div><div>Signature du superviseur</div></div></section>';});
   var w=window.open('','_blank');if(!w){this.flash('Fenêtre bloquée — autorisez les fenêtres pour imprimer');return;}w.document.write(h+'<script>setTimeout(function(){print();},300)<\/script>');w.document.close();};
-Comp.prototype.teamReport=function(wk){var data=this.weekData(wk).filter(function(e){return e.any;});if(!data.length)return null;var L=['DONNÉES BRUTES — FEUILLES DE TEMPS SOUCY AQUATIK','Semaine du '+fdate(wk)+' | '+data.length+' employé(s) actif(s)','','── PUNCHS (une ligne par tâche) ──','Employé | Jour | Début | Fin | Durée | Lieu | ODT | Détail'];
-  data.forEach(function(e){e.punchs.forEach(function(p){L.push([e.nom,DLF[p.di],p.start,p.act?'(en cours)':p.end,fmtH(p.hrs),p.lieu,p.odt,p.detail].join(' | '));});});
-  L.push('','── TOTAUX PAR EMPLOYÉ ──');var tt=0,tr=0,ts=0;data.forEach(function(e){tt+=e.total;tr+=e.reg;ts+=e.supp;L.push(e.nom+' | Total: '+fmtH(e.total)+' | Régulier: '+fmtH(e.reg)+' | Supp: '+fmtH(e.supp)+' | Punchs: '+e.nbPunchs);});
-  L.push('','── TOTAL ÉQUIPE ──','Total: '+fmtH(tt)+' | Régulier: '+fmtH(tr)+' | Supplémentaire: '+fmtH(ts));return L.join('\n');};
+/* Rapport d'équipe — même format que SA Platform (« Copier pour Claude ») : une ligne par punch, données brutes, totaux,
+   comparaison avec la semaine précédente ; plus le contexte bons de travail / stock. Avec prompt=true, une demande d'analyse en tête. */
+var CLAUDE_PROMPT='Tu es l’assistant de gestion de Soucy Aquatik (entretien de piscines et de salles mécaniques). Analyse les données brutes ci-dessous et réponds en français, de façon concise :\n'
+  +'1. Heures : total, heures supplémentaires par employé, écarts marqués avec la semaine précédente et causes probables.\n'
+  +'2. Anomalies : punchs très longs ou très courts, punchs en cours ou fermés automatiquement, lieux inhabituels, ODT manquants, trous dans les journées.\n'
+  +'3. Charge : sites qui prennent le plus de temps, répartition entre employés, déplacements (km).\n'
+  +'4. Bons de travail et stock : urgences ouvertes, retards, produits sous le seuil.\n'
+  +'5. Trois actions concrètes recommandées pour la semaine prochaine.\n'
+  +'N’invente aucune donnée : si une information manque, dis-le.\n\n';
+Comp.prototype.teamReport=function(wk,prompt){var self=this,D=this.D,data=this.weekData(wk).filter(function(e){return e.any;});if(!data.length)return null;
+  var prev=iso(addDays(new Date(wk+'T12:00:00'),-7)),prevRows=Array.isArray(this.ftw[prev])?this.ftw[prev]:null,raw=Array.isArray(this.ftw[wk])?this.ftw[wk]:[],by={};raw.forEach(function(r){by[r.uid]=r;});
+  var prevTot=function(uid){var r=prevRows&&prevRows.filter(function(x){return x.uid===uid;})[0],h=0;if(r)(r.days||[]).forEach(function(d){((d&&d.tasks)||[]).forEach(function(t){h+=Number(t.hrs)||0;});});return h;};
+  var L=[];if(prompt)L.push(CLAUDE_PROMPT);
+  L.push('DONNÉES BRUTES — FEUILLES DE TEMPS SOUCY AQUATIK','Semaine du '+fdate(wk)+' au '+fdate(iso(addDays(new Date(wk+'T12:00:00'),6)))+' | '+data.length+' employé(s) actif(s) | Généré le '+new Date().toLocaleString('fr-CA'),
+    'Note: aucune interprétation faite ici — lieu/adresse/durée/km bruts, tels que saisis par les employés. Notes et photos de chantier exclues.','','── PUNCHS (une ligne par tâche) ──','Employé | Jour | Début | Fin | Durée | Lieu | Adresse | ODT | Détail | Km');
+  data.forEach(function(e){var row=by[e.id];for(var i=0;i<7;i++){((row&&row.days&&row.days[i]&&row.days[i].tasks)||[]).forEach(function(t){var act=!!(t.active||!t.end);
+    var km=(t.kmDep&&t.kmArr)?Math.round(Math.abs(parseFloat(t.kmArr)-parseFloat(t.kmDep))):'';
+    L.push([e.nom,DLF[i],t.start||'',act?'(en cours)':(t.end||''),fmtH(act?0:(Number(t.hrs)||0)),t.lieu||'—',t.addr||'',t.odt||'',t.detail||'',km].join(' | '));});}});
+  L.push('','── TOTAUX PAR EMPLOYÉ ──');var tt=0,tr=0,ts=0,tp=0;
+  data.forEach(function(e){var ph=prevTot(e.id);tt+=e.total;tr+=e.reg;ts+=e.supp;tp+=ph;L.push(e.nom+' | Total: '+fmtH(e.total)+' | Régulier: '+fmtH(e.reg)+' | Supp: '+fmtH(e.supp)+' | Punchs: '+e.nbPunchs+(e.nbAV?' | À valider: '+e.nbAV:'')+' | Sem. préc. ('+fdate(prev)+'): '+(prevRows?fmtH(ph):'non chargée'));});
+  L.push('','── TOTAL ÉQUIPE ──','Total: '+fmtH(tt)+' | Régulier: '+fmtH(tr)+' | Supplémentaire: '+fmtH(ts)+' (ratio '+(tt>0?(ts/tt*100).toFixed(1):'0')+'%)');
+  if(prevRows)L.push('Semaine précédente ('+fdate(prev)+', mêmes employés): '+fmtH(tp)+' | Δ: '+(tt>=tp?'+':'-')+fmtH(Math.abs(tt-tp)));
+  var open=D.wo.filter(function(w){return!woDone(w.status);}),nm=this.names();
+  L.push('','── BONS DE TRAVAIL OUVERTS ('+open.length+') ──','Date | Client | Type | Priorité | Statut | Assigné');
+  open.slice(0,60).forEach(function(w){L.push([w.date||'',w.client||'',w.type||'',w.priorite||'',w.status||'',String(w.assigne||'').split(',').map(function(x){x=x.trim();return nm[x]||x;}).join(', ')].join(' | '));});
+  var low=(D.inv||[]).filter(function(i){return Number(i.seuil)>0&&Number(i.qte)<=Number(i.seuil);});
+  L.push('','── STOCK SOUS LE SEUIL ('+low.length+') ──');low.forEach(function(i){L.push(i.nom+' | Qté: '+i.qte+' | Seuil: '+i.seuil);});
+  L.push('','---','Soucy Aquatik · sa-admin');return L.join('\n');};
 
 /* ═════════════ Éditeur complet : bon de travail · créneau · tâche planning (mêmes champs que SA Platform) ═════════════ */
 var WO_TYPES=[['installation','Installation'],['entretien','Entretien'],['reparation','Réparation'],['inspection','Inspection'],['miseeneau','Mise en eau'],['autre','Autre']];
@@ -506,9 +547,9 @@ Comp.prototype.validerTache=function(planId,taskId){var who=this.user.id;this.ed
 Comp.prototype.pmmDay=function(){return this.state.pmmDate||iso(new Date());};
 Comp.prototype.dayJobs=function(uid,day){var D=this.D,mon=iso(mondayOf(new Date(day+'T12:00:00'))),PL=this.pl[mon];if(!PL){if(!this._pl[mon]){var self=this;this._pl[mon]=1;this.loadPlan(mondayOf(new Date(day+'T12:00:00'))).then(function(){self.update();});}return[];}
   var has=function(s){return splitIds(s).indexOf(uid)>=0;},out=[];
-  PL.wo.forEach(function(w){if(w.date===day&&has(w.assigne))out.push({k:'Bon de travail',t:w.client+(w.descr?' — '+String(w.descr).split('\n')[0].slice(0,60):''),h:'',done:woDone(w.status)});});
-  PL.plan.forEach(function(p){if(p.date===day&&has(p.emp))out.push({k:'Créneau',t:(p.client||'')+(p.descr?' — '+p.descr:''),h:p.heure||'',done:p.status==='termine'});});
-  PL.pt.forEach(function(t){if(t.date_debut<=day&&t.date_fin>=day&&has(t.emp))out.push({k:'Tâche',t:(t.titre||'')+(t.site_nom&&t.site_nom!==t.titre?' — '+t.site_nom:''),h:t.heure_debut||'',done:t.statut==='termine'});});
+  PL.wo.forEach(function(w){if(w.date===day&&has(w.assigne))out.push({kind:'wo',id:w.id,k:'Bon de travail',t:w.client+(w.descr?' — '+String(w.descr).split('\n')[0].slice(0,60):''),h:'',done:woDone(w.status),cur:w.status==='en_cours',st:w.status});});
+  PL.plan.forEach(function(p){if(p.date===day&&has(p.emp))out.push({kind:'plan',id:p.id,k:'Créneau',t:(p.client||'')+(p.descr?' — '+p.descr:''),h:p.heure||'',done:p.status==='termine'||p.status==='done',cur:p.status==='en_cours',st:p.status});});
+  PL.pt.forEach(function(t){if(t.date_debut<=day&&t.date_fin>=day&&has(t.emp))out.push({kind:'pt',id:t.id,k:'Tâche',t:(t.titre||'')+(t.site_nom&&t.site_nom!==t.titre?' — '+t.site_nom:''),h:t.heure_debut||'',done:t.statut==='termine',cur:false,st:t.statut});});
   return out.sort(function(a,b){return(a.h||'99').localeCompare(b.h||'99');});};
 Comp.prototype.printPMMDay=function(){var self=this,day=this.pmmDay(),plans=Array.isArray(this.pmm[day])?this.pmm[day]:[],names=this.names(),D=this.D,E=function(s){return String(s==null?'':s).replace(/[&<>]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});};
   var emps=D.comptes.filter(function(c){return c.role!=='admin'&&D.statut[c.id]!=='inactif';}),col={};PMM_COLORS.forEach(function(c){col[c[0]]=c[2];});
@@ -525,7 +566,19 @@ Comp.prototype.pmmVals=function(){var self=this,st=this.state,D=this.D,day=this.
   var plans=Array.isArray(this.pmm[day])?this.pmm[day]:[],col={};PMM_COLORS.forEach(function(c){col[c[0]]=c[2];});
   var shift=function(n){self.setState({pmmDate:iso(addDays(new Date(day+'T12:00:00'),n))});};
   var emps=st.mod==='planmatch'?D.comptes.filter(function(c){return c.role!=='admin'&&D.statut[c.id]!=='inactif';}):[];
+  /* Activité réelle de la journée : punchs de la feuille de temps + travaux (bons, créneaux, tâches), en cours / à faire / faits / en retard */
+  var dMon=iso(mondayOf(new Date(day+'T12:00:00'))),dIdx=(new Date(day+'T12:00:00').getDay()+6)%7,isToday=day===iso(new Date());
+  if(st.mod==='planmatch'&&!(D.ft||[]).some(function(f){return f.week===dMon;})&&this.ftw[dMon]===undefined)this.loadWeekFT(dMon);
+  var ftRow=function(uid){return(D.ft||[]).filter(function(f){return f.uid===uid&&f.week===dMon;})[0]||(Array.isArray(self.ftw[dMon])?self.ftw[dMon].filter(function(f){return f.uid===uid;})[0]:null);};
+  var jobItem=function(j,cls){return{txt:(j.h?j.h+' · ':'')+j.k+' — '+j.t,etat:cls,open:function(){self.openFE(j.kind,j.id);},bd:cls==='En cours'?'var(--color-accent-700)':cls==='En retard'?'var(--color-accent-900)':'var(--color-divider)',op:cls==='Fait'?0.6:1};};
+  var tot={faits:0,total:0,cours:0,retard:0,punch:0};
   var cards=emps.map(function(c){var p=plans.filter(function(x){return splitIds(x.emp).indexOf(c.id)>=0;})[0],all=[],jobs=self.dayJobs(c.id,day);
+    var fr0=ftRow(c.id),dd=fr0&&fr0.days&&fr0.days[dIdx],ts=(dd&&dd.tasks)||[],run=ts.filter(function(t){return t.active;})[0],hrs=ts.reduce(function(s,t){return s+(t.active||!t.end?0:(Number(t.hrs)||0));},0);
+    jobs.forEach(function(j){if(run&&run.sourceId&&String(run.sourceId)===String(j.id))j.cur=true;});
+    var late=D.wo.filter(function(w){return w.date&&w.date<day&&!woDone(w.status)&&splitIds(w.assigne).indexOf(c.id)>=0;}).map(function(w){return{kind:'wo',id:w.id,k:'Bon de travail du '+fdate(w.date),t:w.client+(w.descr?' — '+String(w.descr).split('\n')[0].slice(0,50):''),h:''};});
+    var enc=jobs.filter(function(j){return j.cur&&!j.done;}),todo=jobs.filter(function(j){return!j.cur&&!j.done;}),done=jobs.filter(function(j){return j.done;});
+    tot.total+=jobs.length;tot.faits+=done.length;tot.cours+=enc.length;tot.retard+=late.length;if(run)tot.punch++;
+    var live=run?'En punch : '+(run.lieu||'—')+' depuis '+run.start+(run.sourceLabel?' — '+run.sourceLabel:''):(ts.length?(isToday?'Hors punch':'Journée')+' · '+ts.length+' punch(s), '+fmtH(hrs)+(ts.length&&ts[ts.length-1].end?' · dernier : '+ts[ts.length-1].lieu+' jusqu’à '+ts[ts.length-1].end:''):(isToday?'Pas encore punché aujourd’hui':'Aucun punch ce jour'));
     if(p)(p.sections||[]).forEach(function(s){(s.tasks||[]).forEach(function(t){all.push(t);});});var dn=all.filter(function(t){return t.done;}).length;
     return{nom:(c.prenom+' '+c.nom).trim(),hasPlan:!!p,noPlan:!p,meta:p?[p.vehicule?'Véhicule : '+p.vehicule:'',p.superviseur?'Superviseur : '+p.superviseur:''].filter(Boolean).join(' · '):'',resume:p?p.resume||'':'',
       prog:all.length?dn+' / '+all.length+' tâches':'',pct:all.length?Math.round(dn/all.length*100):0,
@@ -533,7 +586,9 @@ Comp.prototype.pmmVals=function(){var self=this,st=this.state,D=this.D,day=this.
         tasks:(s.tasks||[]).map(function(t){return{label:t.label+(t.est?' ('+t.est+' min)':''),etat:t.valide?'Validé':(t.done?'Fait — à valider':(t.status&&t.status!=='À faire'?t.status:'')),box:t.done?'var(--color-text)':'transparent',on:!!t.done,
           canVal:!!t.done&&!t.valide,valider:function(){self.validerTache(p.id,t.id);},notes:t.notes||''};})};}):[],
       obstacles:p?p.obstacles||'':'',bonscoups:p?p.bonscoups||'':'',hasFF:!!(p&&(p.obstacles||p.bonscoups)),
-      jobs:jobs.map(function(j){return{txt:(j.h?j.h+' · ':'')+j.k+' — '+j.t,done:j.done?'✓':''};}),hasJobs:jobs.length>0,
+      live:live,liveBd:run?'var(--color-accent-700)':'var(--color-divider)',liveFw:run?700:400,_run:!!run,hrs:ts.length?fmtH(hrs):'',
+      jobsCur:enc.map(function(j){return jobItem(j,'En cours');}),jobsTodo:todo.map(function(j){return jobItem(j,'À faire');}),jobsDone:done.map(function(j){return jobItem(j,'Fait');}),jobsLate:late.map(function(j){return jobItem(j,'En retard');}),
+      hasJobs:jobs.length+late.length>0,jobsSum:jobs.length?done.length+' / '+jobs.length+' fait(s)':'',noJobs:!jobs.length&&!late.length,
       edit:function(){if(p)self.openPMM(p.id);else self.openPMM(null,{emp:c.id});},editLbl:p?'Modifier le plan':'Créer le plan'};});
   var pb=st.pb,pbV={pbOpen:!!pb};
   if(pb){pbV=Object.assign(pbV,{pbTitle:pb.id?'Modifier le Plan de Match':'Créer un Plan de Match',pbDate:pb.date,onPbDate:function(e){self.pbSet(function(x){x.date=e.target.value;});},
@@ -548,7 +603,14 @@ Comp.prototype.pmmVals=function(){var self=this,st=this.state,D=this.D,day=this.
     pbAddSec:function(){self.pbSet(function(x){x.sections.push({id:pmmId(),title:'',color:'bleu',note:'',tasks:[{id:pmmId(),label:'',est:'',notes:'',status:'À faire',done:false,photos:[]}]});});},
     pbSave:function(){self.savePMM();},pbSaveLbl:pb.busy?'Enregistrement…':'Enregistrer',pbCanDel:!!pb.id,pbDelLbl:pb.confirm?'Confirmer la suppression':'Supprimer',pbDel:function(){self.deletePMM();},
     pbClose:function(){self.setState({pb:null});},pbCloseBg:function(e){if(e.target===e.currentTarget)self.setState({pb:null});}});}
-  return Object.assign(pbV,{isPlanMatch:st.mod==='planmatch',pmmLabel:DLF[(new Date(day+'T12:00:00').getDay()+6)%7]+' '+fdate(day),pmmPrev:function(){shift(-1);},pmmNext:function(){shift(1);},pmmToday:function(){self.setState({pmmDate:null});},
+  cards.sort(function(a,b){return(b._run?1:0)-(a._run?1:0);});
+  var PL=this.pl[dMon],una=[];if(PL){PL.wo.forEach(function(w){if(w.date===day&&!splitIds(w.assigne).length&&!woDone(w.status))una.push({kind:'wo',id:w.id,k:'Bon de travail',t:w.client||'',h:''});});
+    PL.plan.forEach(function(p){if(p.date===day&&!splitIds(p.emp).length)una.push({kind:'plan',id:p.id,k:'Créneau',t:p.client||'',h:p.heure||''});});
+    PL.pt.forEach(function(t){if(t.date_debut<=day&&t.date_fin>=day&&!splitIds(t.emp).length&&t.statut!=='termine')una.push({kind:'pt',id:t.id,k:'Tâche',t:t.titre||'',h:t.heure_debut||''});});}
+  var sumK=[{l:isToday?'En punch maintenant':'Employés ayant punché',v:isToday?tot.punch+' / '+cards.length:String(cards.filter(function(c){return c.hrs;}).length)},{l:'Travaux du jour faits',v:tot.faits+' / '+tot.total},{l:'En cours',v:String(tot.cours)},
+    {l:'En retard (bons de travail)',v:String(tot.retard),hot:tot.retard>0},{l:'Non assignés',v:String(una.length),hot:una.length>0}];
+  return Object.assign(pbV,{pmmSum:sumK.map(function(k){return Object.assign(k,{bg:k.hot?'var(--color-accent-900)':'transparent',fg:k.hot?'#ffffff':'var(--color-text)'});}),
+    pmmUna:una.map(function(j){return jobItem(j,'Non assigné');}),pmmHasUna:una.length>0,isPlanMatch:st.mod==='planmatch',pmmLabel:DLF[(new Date(day+'T12:00:00').getDay()+6)%7]+' '+fdate(day),pmmPrev:function(){shift(-1);},pmmNext:function(){shift(1);},pmmToday:function(){self.setState({pmmDate:null});},
     pmmDateVal:day,onPmmDate:function(e){if(e.target.value)self.setState({pmmDate:e.target.value});},pmmCards:cards,pmmLoading:this.pmm[day]===undefined||this.pmm[day]===null,pmmErrTxt:this.pmm[day]==='err'?'Plans illisibles : '+(this.pmmErr||''):'',
     pmmPrint:function(){self.printPMMDay();},pmmNew:function(){self.openPMM(null);},pmmCount:plans.length+' plan'+(plans.length>1?'s':'')+' ce jour'});};
 
@@ -922,13 +984,256 @@ Comp.prototype.portalVals=function(){var self=this,st=this.state,D=this.D,now=ne
     openPortail:function(){self.setState({portail:true});try{history.replaceState(null,'','#');}catch(e){}},
     closePortail:go(st.mod||'monitoring')};};
 
+/* Temps · « Par employé » : la feuille d'UN employé, avec tout le détail des punchs (notes, mesures, pièces, GPS, lien au travail)
+   et toutes les actions de publication pour lui seul (imprimer, Excel, courriel, envoyée à la paie, approuver). */
+var BP=[['cl','Chlore libre','ppm'],['ph','pH',''],['alc','Alcalinité','ppm'],['temp','Temp.','°C']];
+Comp.prototype.empVals=function(){var self=this,st=this.state,D=this.D;if(!D)return{};var tMon=addDays(mondayOf(new Date()),7*st.tOff),wk=iso(tMon),today=iso(new Date()),yest=iso(addDays(new Date(),-1));
+  var emps=D.comptes.filter(function(c){return c.role!=='admin'&&D.statut[c.id]!=='inactif';}).sort(function(a,b){return(a.prenom+a.nom).localeCompare(b.prenom+b.nom,'fr');});
+  var uid=st.eUid&&emps.some(function(c){return c.id===st.eUid;})?st.eUid:(emps[0]&&emps[0].id);
+  var rows=Array.isArray(this.ftw[wk])?this.ftw[wk]:null,row=rows&&rows.filter(function(r){return r.uid===uid;})[0],e=rows?this.weekData(wk).filter(function(x){return x.id===uid;})[0]:null;
+  var nm=this.names(),eDay=st.eDay==null?null:st.eDay,siteBy=function(l){return D.sites.filter(function(s){return norm(s.nom)===norm(l);})[0];};
+  var days=[];for(var i=0;i<7;i++){(function(i){if(eDay!=null&&eDay!==i)return;var d=row&&row.days&&row.days[i],ts=(d&&d.tasks)||[],dd=addDays(tMon,i),date=iso(dd);
+    var tot=ts.reduce(function(s,t){return s+(t.active||!t.end?0:(Number(t.hrs)||0));},0);
+    days.push({jour:DLF[i]+' '+dd.getDate()+' '+MOIS[dd.getMonth()]+(date===today?' — aujourd’hui':(date===yest?' — hier':'')),tot:ts.length?fmtH(tot):'',none:!ts.length,
+      add:function(){self.openDay(uid,wk,i);self.newPunch();},canApprove:ts.some(function(t){return!t.approuve&&!(t.active||!t.end);}),approve:function(){self.approve(uid,wk,i);},
+      punchs:ts.map(function(t,ti){var act=!!(t.active||!t.end),b=(t.bassins||[]).filter(function(x){return x;}),s=siteBy(t.lieu);
+        var mes=b.map(function(x){var v=BP.filter(function(p){return x[p[0]]!=null&&x[p[0]]!=='';}).map(function(p){return p[1]+' '+x[p[0]]+(p[2]?' '+p[2]:'');});return v.length?(x.bassin||'Bassin')+' : '+v.join(' · '):'';}).filter(Boolean);
+        var files=(t.files||[]).map(function(f){return f&&(f.name||'pièce jointe');}).filter(Boolean);
+        return{h:(t.start||'?')+' → '+(act?'en cours':(t.end||'?')),dur:act?'en cours':fmtH(Number(t.hrs)||0),lieu:t.lieu||'—',odt:t.odt?'ODT '+t.odt:'',detail:t.detail||'',
+          notes:t.notes||'',hasNotes:!!t.notes,mes:mes.join('   |   '),hasMes:mes.length>0,
+          files:files.length?files.length+' pièce(s) : '+files.join(', ')+((t.files||[]).some(function(f){return f&&f._local;})?' — les photos restent sur le téléphone et dans le journal du site':''):'',hasFiles:files.length>0,
+          lien:t.sourceLabel?'Lié à : '+t.sourceLabel:'',hasLien:!!t.sourceLabel,km:(t.kmDep||t.kmArr)?'Km : '+(t.kmDep||'?')+' → '+(t.kmArr||'?'):'',hasKm:!!(t.kmDep||t.kmArr),
+          gps:t.gps&&t.gps.lat?'https://maps.google.com/?q='+t.gps.lat+','+t.gps.lng:'',hasGps:!!(t.gps&&t.gps.lat),gpsLbl:t.gps&&t.gps.acc?'Position GPS (±'+Math.round(t.gps.acc)+' m)':'Position GPS',
+          tags:[t.pendingValidation?'À valider':'',t.approuve?'Approuvé'+(t.approuvePar?' par '+(nm[t.approuvePar]||t.approuvePar):''):'',t.correctedBy?'Corrigé par '+(nm[t.correctedBy]||t.correctedBy):'',t.ajoutePar?'Ajouté au bureau':'',t.autoClosed?'Fermé automatiquement':''].filter(Boolean).join(' · '),
+          bd:act?'var(--color-accent-700)':(t.pendingValidation?'var(--color-accent-900)':'var(--color-text)'),
+          edit:function(){self.openDay(uid,wk,i);self.editPunch(ti);},
+          odtNew:function(){self.openFE('wo',null,{site:s?s.id:null,client:s?null:t.lieu,tech:uid,debut:today});}};})});})(i);}
+  var chips=[{l:'Toute la semaine',on:eDay==null,go:function(){self.setState({eDay:null});}}];
+  for(var j=0;j<7;j++)(function(j){chips.push({l:DJ[j]+' '+addDays(tMon,j).getDate(),on:eDay===j,go:function(){self.setState({eDay:j});}});})(j);
+  var jump=function(dt){var off=Math.round((mondayOf(dt)-mondayOf(new Date()))/(7*864e5));self.setState({tOff:off,eDay:(dt.getDay()+6)%7});};
+  var env=e&&e.envoi;
+  return{isEmpTab:st.tempsTab==='employe',eEmps:emps.map(function(c){return{v:c.id,l:(c.prenom+' '+c.nom).trim(),sel:c.id===uid};}),onEUid:function(ev){self.setState({eUid:ev.target.value});},
+    eChips:chips.map(function(c){return Object.assign({label:c.l,go:c.go},segS(c.on));}),eToday:function(){jump(new Date());},eYest:function(){jump(addDays(new Date(),-1));},
+    eDays:days,eLoading:!rows,eNoRow:!!rows&&!row,
+    eSum:e?[{l:'Total',v:fmtH(e.total)},{l:'Régulières',v:fmtH(e.reg)},{l:'Supplémentaires',v:e.supp>0?fmtH(e.supp):'—'},{l:'Punchs',v:String(e.nbPunchs)},{l:'À valider',v:e.nbAV?String(e.nbAV):'—'}]:[],
+    eEtat:e?(e.enCours?'Punch en cours — semaine pas terminée':(env?'Envoyée à la paie le '+fdate(env.le)+(env.methode?' ('+env.methode+')':''):(e.approuvee?'Semaine approuvée':(e.any?'Pas encore approuvée':'Aucun punch cette semaine')))):'',
+    ePrint:function(){self.printPaie(uid);},eXlsx:function(){self.exportPaie(uid);},eMailEmp:function(){self.mailEmp(uid);},eMailPaie:function(){self.mailPaie(uid);},eSent:function(){self.markSent('sa-admin',uid);},
+    eCanApprove:!!(e&&e.any&&!e.approuvee&&!e.enCours),eApprove:function(){self.approve(uid,wk,null);},eAdd:function(){self.openDay(uid,wk,eDay!=null?eDay:(new Date().getDay()+6)%7);self.newPunch();},
+    eOdt:function(){self.openFE('wo',null,{tech:uid,debut:today});},eHas:!!(e&&e.any)};};
+
+/* ═════════════ MONITORING : période (aujourd'hui / hier / 7 jours), salles mécaniques, mur de contrôle grand écran ═════════════ */
+var MON_PER=[['jour','Aujourd’hui'],['hier','Hier'],['7j','7 derniers jours']];
+function ageTxt(d){var n=Math.round((new Date(iso(new Date())+'T12:00:00')-new Date(d+'T12:00:00'))/864e5);return n<=0?'aujourd’hui':n===1?'hier':'il y a '+n+' j';}
+Comp.prototype.monVals=function(){var self=this,st=this.state,D=this.D;if(!D)return{};var now=new Date(),today=D.today,yest=iso(addDays(now,-1)),per=st.monPer||'jour';
+  var inPer=function(d){return per==='jour'?d===today:per==='hier'?d===yest:d>=iso(addDays(now,-6));},perLbl=per==='jour'?'aujourd’hui':per==='hier'?'hier':'sur 7 jours';
+  var relP=D.rel.filter(function(r){return inPer(r.date);}).slice().sort(function(a,b){return(b.date+(b.heure||'')).localeCompare(a.date+(a.heure||''));});
+  var nVals=function(r){var n=0;Object.keys(r.vals||{}).forEach(function(k){if(r.vals[k]!=null&&(!r.touched||r.touched[k]))n++;});return n;};
+  var relRows=relP.map(function(r){var no=self.outOf(r).length,nv=nVals(r);return{d:(r.date===today?'':fdate(r.date)+' ')+(r.heure||''),site:r.site_nom||(D.byId[r.site_id]||{}).nom||'—',tech:r.tech_nom||r.tech||'—',
+    n:nv?nv+' valeur(s)':'aucune valeur saisie',hz:no?no+' hors zone':'',fw:no?700:400,note:r.note||'',go:function(){self.setState({monWall:false});self.go('inspections',{inspSite:String(r.site_id),inspKey:null});}};});
+  // Salles mécaniques : une tuile par site ayant au moins un relevé (dernier relevé, valeurs colorées, qui est sur place)
+  var last={};D.rel.forEach(function(r){var k=String(r.site_id),p=last[k];if(!p||(r.date+(r.heure||''))>(p.date+(p.heure||'')))last[k]=r;});
+  var onSite={};var wk=iso(mondayOf(now)),di=(now.getDay()+6)%7,nm=this.names();
+  D.ft.forEach(function(f){if(f.week!==wk)return;var d=f.days&&f.days[di];((d&&d.tasks)||[]).forEach(function(t){if(!t.active)return;var s=D.sites.filter(function(x){return String(x.id)===String(t.siteId)||norm(x.nom)===norm(t.lieu);})[0];if(s)(onSite[s.id]=onSite[s.id]||[]).push({nom:nm[f.uid]||f.emp||f.uid,depuis:t.start});});});
+  var salles=Object.keys(last).map(function(sid){var r=last[sid],s=D.byId[sid],T=self.T(s?s.type:r.type_code),out=self.outOf(r),nv=nVals(r),age=Math.round((new Date(today+'T12:00:00')-new Date(r.date+'T12:00:00'))/864e5);
+    var lvl=out.length?3:(age>7?2:(nv?0:1)),who=onSite[sid]||[];
+    return{_lvl:lvl,_age:age,id:sid,nom:s?s.nom:(r.site_nom||'—'),ville:s?s.ville:'',debit:T.court||'',
+      headBg:lvl===3?'var(--color-accent-900)':'var(--color-text)',headFg:'#ffffff',
+      etat:lvl===3?out.length+' valeur(s) hors zone':lvl===2?'Aucun relevé depuis '+age+' j':lvl===1?'Relevé sans valeur':'Dans les normes',
+      rows:(T.fields||[]).map(function(f){var v=r.vals&&r.vals[f.key],has=v!=null&&(!r.touched||r.touched[f.key]),o=has&&(v<f.lo||v>f.hi);return{l:f.label,txt:has?fr(v,f.step)+(f.unit?' '+f.unit:''):'—',bg:!has?'transparent':(o?'var(--color-accent-900)':'var(--color-accent-100)'),o:o,has:has};}),
+      note:'Dernier relevé '+ageTxt(r.date)+(r.heure?' à '+r.heure:'')+' par '+(r.tech_nom||r.tech||'—')+(r.note?' — « '+r.note+' »':''),
+      live:who.length?'Sur place : '+who.map(function(w){return w.nom+' depuis '+w.depuis;}).join(', '):'',hasLive:who.length>0,
+      go:function(){self.setState({monWall:false});self.go('inspections',{inspSite:sid,inspKey:null});}};})
+    .sort(function(a,b){return b._lvl-a._lvl||(b.hasLive?1:0)-(a.hasLive?1:0)||a.nom.localeCompare(b.nom,'fr');});
+  var nOut=salles.filter(function(s){return s._lvl===3;}).length,nOld=salles.filter(function(s){return s._lvl===2;}).length;
+  // Mur de contrôle (grand écran)
+  var team=[];D.ft.forEach(function(f){if(f.week!==wk)return;var d=f.days&&f.days[di],ts=(d&&d.tasks)||[],run=ts.filter(function(t){return t.active;})[0],h=ts.reduce(function(s,t){return s+(t.active||!t.end?0:(Number(t.hrs)||0));},0);
+    if(ts.length)team.push({nom:nm[f.uid]||f.emp||f.uid,on:!!run,lieu:run?run.lieu:(ts[ts.length-1].lieu||'—'),depuis:run?'depuis '+run.start:'fini à '+(ts[ts.length-1].end||'—'),h:fmtH(h),dot:run?'#3ddc84':'#6b7c93'});});
+  team.sort(function(a,b){return(b.on?1:0)-(a.on?1:0)||a.nom.localeCompare(b.nom,'fr');});
+  var openDem=D.dem.filter(function(d){return d.statut!=='Traitée';}),urg=openDem.filter(function(d){return d.type==='Urgence';});
+  var woToday=D.wo.filter(function(w){return w.date===today;}),woDoneT=woToday.filter(function(w){return woDone(w.status);}).length;
+  var wallK=[{l:'En punch',v:String(team.filter(function(t){return t.on;}).length),s:'sur '+team.length+' au travail aujourd’hui'},{l:'Relevés aujourd’hui',v:String(D.rel.filter(function(r){return r.date===today;}).length),s:'hier : '+D.rel.filter(function(r){return r.date===yest;}).length},
+    {l:'Salles hors zone',v:String(nOut),s:nOld+' sans relevé depuis 7 j',hot:nOut>0},{l:'Bons de travail du jour',v:woDoneT+' / '+woToday.length,s:'terminés'},{l:'Demandes ouvertes',v:String(openDem.length),s:urg.length+' urgence(s)',hot:urg.length>0}];
+  var fl=[];relP.slice(0,12).forEach(function(r){var no=self.outOf(r).length;fl.push({t:r.date+' '+(r.heure||''),h:(r.date===today?'':fdate(r.date)+' ')+(r.heure||''),txt:no?'Relevé — '+no+' hors zone':'Relevé',who:r.tech_nom||r.tech,site:r.site_nom,hot:no>0});});
+  D.dem.slice(0,8).forEach(function(d){var t=new Date(d.created_at),ds=iso(t);if(!inPer(ds)&&!(d.type==='Urgence'&&d.statut!=='Traitée'))return;fl.push({t:ds+' '+pad(t.getHours())+':'+pad(t.getMinutes()),h:(ds===today?'':fdate(ds)+' ')+pad(t.getHours())+':'+pad(t.getMinutes()),txt:d.type+' — '+(d.texte||d.motif||''),who:d.tech_nom||d.tech,site:d.site_nom||'hors site',hot:d.type==='Urgence'&&d.statut!=='Traitée'});});
+  fl.sort(function(a,b){return String(b.t).localeCompare(String(a.t));});
+  return{monPers:MON_PER.map(function(p){return Object.assign({label:p[1],go:function(){self.setState({monPer:p[0]});}},segS(per===p[0]));}),monPerLbl:perLbl,
+    relRows:relRows,relNone:!relRows.length,relTitle:'Relevés '+perLbl+' ('+relRows.length+')',
+    salles:salles,sallesSummary:salles.length?salles.length+' salle(s) suivie(s) · '+nOut+' hors zone · '+nOld+' sans relevé depuis 7 j':'Aucun relevé enregistré pour l’instant — les salles apparaissent dès le premier relevé saisi dans sa-terrain.',
+    monWall:!!st.monWall,openWall:function(){self.setState({monWall:true});var el=document.documentElement;try{if(el.requestFullscreen&&!document.fullscreenElement)el.requestFullscreen().catch(function(){});}catch(e){}self.startWallTimer();},
+    closeWall:function(){self.setState({monWall:false});try{if(document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen();}catch(e){}},
+    wallClock:pad(now.getHours())+':'+pad(now.getMinutes()),wallDate:JS[now.getDay()]+' '+now.getDate()+' '+MOIS[now.getMonth()]+' '+now.getFullYear(),
+    wallSync:this.err?'Hors ligne — dernière lecture '+(this.loadedAt?pad(this.loadedAt.getHours())+':'+pad(this.loadedAt.getMinutes()):'—'):'En direct · mis à jour à '+(this.loadedAt?pad(this.loadedAt.getHours())+':'+pad(this.loadedAt.getMinutes())+':'+pad(this.loadedAt.getSeconds()):'—'),
+    wallKpis:wallK.map(function(k){return Object.assign(k,{bg:k.hot?'#c0392b':'rgba(255,255,255,.06)'});}),wallTeam:team,wallNoTeam:!team.length,wallFlux:fl.slice(0,10).map(function(f){return Object.assign(f,{bg:f.hot?'#c0392b':'transparent'});}),
+    wallSalles:salles.map(function(s){return Object.assign({},s,{bd:s._lvl===3?'#e74c3c':s._lvl===2?'#f39c12':s._lvl===1?'#6b7c93':'#3ddc84',tag:s._lvl===3?'#e74c3c':s._lvl===2?'#f39c12':'transparent',
+      rows:s.rows.map(function(r){return Object.assign({},r,{bg:!r.has?'transparent':(r.o?'#e74c3c':'#3ddc84'),fg:r.o?'#ff8a80':'#ffffff'});})});}),wallNoSalles:!salles.length};};
+/* Mur de contrôle : relecture toutes les 30 s et horloge à la minute, tant qu'il est affiché */
+Comp.prototype.startWallTimer=function(){var self=this;if(this._wallT)return;this._wallT=setInterval(function(){if(!self.state.monWall){clearInterval(self._wallT);self._wallT=null;return;}self._wn=(self._wn||0)+1;if(self._wn%2===0)self.load().then(function(){self.update();});else self.update();},15000);};
+
+/* ═════════════ FICHE SITE COMPLÈTE (mêmes champs que SA Platform + bassins avec leurs paramètres de relevé) ═════════════
+   sites : nom, addr, tel, email, siteweb, type, annee, equips[], files[], bassins[], gps, notes — contrats : type_code (relevé par défaut), code */
+var SITE_TYPES=[['','—'],['commercial','Commercial'],['creusee','Piscine creusée'],['spa','Spa'],['autre','Autre']];
+var BASSIN_TYPES=[['piscine','Piscine'],['spa','Spa'],['pataugeoire','Pataugeoire'],['jeuxdeau','Jeux d’eau'],['autre','Autre']];
+Comp.prototype.openSiteFiche=function(id){var self=this;
+  if(!id){this.setState({sf:{id:null,isNew:true,f:{nom:'',addr:'',tel:'',email:'',siteweb:'',type:'',annee:'',equips:[],files:[],bassins:[],gps:null,notes:''},type_code:'GEN',code:'',journal:[],equipIn:'',confirm:false,busy:false,loading:false}});return;}
+  var s=this.D.byId[id];this.setState({sf:{id:id,loading:true}});
+  Promise.all([get('sites?id=eq.'+encodeURIComponent(id)+'&select=*'),soft('site_journal?site_id=eq.'+encodeURIComponent(id)+'&select=*&order=date.desc,heure.desc&limit=40',[])]).then(function(r){var x=r[0][0];if(!x)throw new Error('site introuvable');
+    var f={nom:x.nom||'',addr:x.addr||'',tel:x.tel||'',email:x.email||'',siteweb:x.siteweb||'',type:x.type||'',annee:x.annee||'',equips:Array.isArray(x.equips)?x.equips.slice():[],files:Array.isArray(x.files)?x.files.slice():[],
+      bassins:Array.isArray(x.bassins)?x.bassins.map(function(b){return Object.assign({id:b.id||pmmId(),nom:'',type:'piscine',type_code:'',volume:'',notes:''},b);}):[],gps:x.gps||null,notes:x.notes||''};
+    self.setState({sf:{id:id,isNew:false,f:f,upd:x.updated_at||null,type_code:s?s.type:'GEN',code:s?s.contrat:'',journal:r[1],equipIn:'',confirm:false,busy:false,loading:false}});})
+    .catch(function(e){self.setState({sf:null});self.flash('Fiche illisible : '+netMsg(e));});};
+Comp.prototype.sfMut=function(fn){var sf=JSON.parse(JSON.stringify(this.state.sf));fn(sf.f,sf);sf.confirm=false;this.setState({sf:sf});};
+Comp.prototype.saveSiteFiche=function(){var self=this,sf=this.state.sf;if(!sf||sf.busy)return;var f=sf.f,nom=String(f.nom).trim();if(!nom){this.flash('Le nom du site est requis');return;}
+  if(sf.isNew&&this.D.sitesAll.some(function(s){return norm(s.nom)===norm(nom);})){this.flash('Un site porte déjà ce nom');return;}
+  var gps=null;if(f.gps&&f.gps.lat!==''&&f.gps.lat!=null&&f.gps.lng!==''&&f.gps.lng!=null){var la=parseFloat(String(f.gps.lat).replace(',','.')),ln=parseFloat(String(f.gps.lng).replace(',','.'));if(!(Math.abs(la)<=90&&Math.abs(ln)<=180)){this.flash('Coordonnées GPS invalides');return;}gps={lat:la,lng:ln};}
+  var now=nowIso(),id=sf.id||pmmId();
+  var body={nom:nom,addr:String(f.addr).trim(),tel:String(f.tel).trim(),email:String(f.email).trim(),siteweb:String(f.siteweb).trim(),type:f.type||'',annee:String(f.annee||'').trim(),equips:f.equips,files:f.files,
+    bassins:f.bassins.filter(function(b){return String(b.nom).trim();}).map(function(b){return{id:b.id,nom:String(b.nom).trim(),type:b.type||'piscine',type_code:b.type_code||'',volume:String(b.volume||'').trim(),notes:String(b.notes||'').trim()};}),gps:gps,notes:String(f.notes||'').trim(),updated_at:now};
+  this.setState({sf:Object.assign({},sf,{busy:true})});
+  var w=sf.isNew?postRows('sites',[Object.assign({id:id},body)]).then(function(r){if(!r.length)throw new Error('identifiant déjà utilisé');})
+    :rest('PATCH','sites?id=eq.'+encodeURIComponent(id)+'&updated_at='+(sf.upd?'eq.'+encodeURIComponent(sf.upd):'is.null'),body).then(function(r){if(Array.isArray(r)&&!r.length)throw new Error('la fiche a été modifiée ailleurs entre-temps — rouvrez-la');});
+  w.then(function(){return rest('POST','contrats',{site_id:id,type_code:sf.type_code||'GEN',code:sf.code||null,actif:true,updated_at:now},'resolution=merge-duplicates,return=minimal');})
+   .then(function(){auditT(self,sf.isNew?'CREATION':'MODIFICATION','sites',id);self.setState({sf:null});self.flash(sf.isNew?'Site créé':'Fiche du site enregistrée');return self.reloadAll();})
+   .catch(function(e){self.setState({sf:Object.assign({},self.state.sf,{busy:false})});self.flash('Échec — rien n’a été modifié : '+netMsg(e));});};
+Comp.prototype.deleteSiteFiche=function(){var self=this,sf=this.state.sf;if(!sf||sf.isNew)return;if(!sf.confirm){this.setState({sf:Object.assign({},sf,{confirm:true})});return;}
+  rest('DELETE','sites?id=eq.'+encodeURIComponent(sf.id)).then(function(){auditT(self,'SUPPRESSION','sites',sf.id);self.setState({sf:null});self.flash('Site supprimé — une copie est conservée dans l’historique');return self.reloadAll();}).catch(function(e){self.flash('Échec : '+netMsg(e));});};
+Comp.prototype.sfAddFile=function(){var self=this,inp=document.createElement('input');inp.type='file';inp.accept='image/*,application/pdf';inp.onchange=function(){var file=inp.files&&inp.files[0];if(!file)return;
+  var add=function(data){self.sfMut(function(f){f.files.push({name:file.name,size:file.size,type:file.type,data:data,addedBy:self.user.id,addedAt:nowIso()});});};
+  if(/^image\//.test(file.type)){var img=new Image(),u=URL.createObjectURL(file);img.onload=function(){var k=Math.min(1,1400/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);add(c.toDataURL('image/jpeg',0.7));};img.src=u;}
+  else{if(file.size>2e6){self.flash('PDF trop volumineux (max 2 Mo)');return;}var rd=new FileReader();rd.onload=function(){add(rd.result);};rd.readAsDataURL(file);}};inp.click();};
+Comp.prototype.siteFicheVals=function(){var self=this,st=this.state,D=this.D,sf=st.sf;var sb={siteQ:st.siteQ||'',onSiteQ:function(e){self.setState({siteQ:e.target.value});},siteNew:function(){self.openSiteFiche(null);}};
+  if(!D||!sf)return Object.assign(sb,{sfOpen:false});if(sf.loading)return Object.assign(sb,{sfOpen:true,sfLoading:true,sfReady:false,sfTitle:'Chargement…',sfClose:function(){self.setState({sf:null});},sfCloseBg:function(e){if(e.target===e.currentTarget)self.setState({sf:null});}});
+  var f=sf.f,F=function(k){return{v:f[k]==null?'':f[k],on:function(e){var v=e.target.value;self.sfMut(function(x){x[k]=v;});}};},types=Object.keys(D.types);
+  var tOpts=function(cur,withNone){return(withNone?[{v:'',l:'Même que le site',sel:!cur}]:[]).concat(types.map(function(k){return{v:k,l:D.types[k].label,sel:cur===k};}));};
+  var nm=this.names(),sid=sf.id,wo=sid?D.wo.filter(function(w){return norm(w.client)===norm(f.nom);}).sort(function(a,b){return String(b.date).localeCompare(String(a.date));}):[];
+  var rel=sid?D.rel.filter(function(r){return String(r.site_id)===String(sid);}):[],lastR=rel[rel.length-1];
+  return Object.assign(sb,{sfOpen:true,sfLoading:false,sfReady:true,sfTitle:sf.isNew?'Nouveau site':f.nom||'Site',sfNom:F('nom'),sfAddr:F('addr'),sfTel:F('tel'),sfEmail:F('email'),sfWeb:F('siteweb'),sfAnnee:F('annee'),sfNotes:F('notes'),
+    sfTypes:SITE_TYPES.map(function(t){return{v:t[0],l:t[1],sel:(f.type||'')===t[0]};}),onSfType:function(e){var v=e.target.value;self.sfMut(function(x){x.type=v;});},
+    sfRelTypes:tOpts(sf.type_code,false),onSfRelType:function(e){var v=e.target.value;self.sfMut(function(x,s){s.type_code=v;});},sfCode:sf.code||'',onSfCode:function(e){var v=e.target.value;self.sfMut(function(x,s){s.code=v;});},
+    sfLat:f.gps&&f.gps.lat!=null?f.gps.lat:'',sfLng:f.gps&&f.gps.lng!=null?f.gps.lng:'',onSfLat:function(e){var v=e.target.value;self.sfMut(function(x){x.gps=Object.assign({},x.gps||{},{lat:v});});},onSfLng:function(e){var v=e.target.value;self.sfMut(function(x){x.gps=Object.assign({},x.gps||{},{lng:v});});},
+    sfGeoMaps:f.addr?'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(f.addr):'',sfHasAddr:!!f.addr,
+    sfBassins:f.bassins.map(function(b,i){var up=function(k){return function(e){var v=e.target.value;self.sfMut(function(x){x.bassins[i][k]=v;});};};
+      return{nom:b.nom,onNom:up('nom'),vol:b.volume||'',onVol:up('volume'),notes:b.notes||'',onNotes:up('notes'),types:BASSIN_TYPES.map(function(t){return{v:t[0],l:t[1],sel:(b.type||'piscine')===t[0]};}),onType:up('type'),
+        rel:tOpts(b.type_code,true),onRel:up('type_code'),del:function(){self.sfMut(function(x){x.bassins.splice(i,1);});}};}),
+    sfNoBassin:!f.bassins.length,sfAddBassin:function(){self.sfMut(function(x){x.bassins.push({id:pmmId(),nom:x.bassins.length?'':'Bassin principal',type:'piscine',type_code:'',volume:'',notes:''});});},
+    sfEquips:f.equips.map(function(e,i){return{l:e,del:function(){self.sfMut(function(x){x.equips.splice(i,1);});}};}),sfEquipIn:sf.equipIn||'',onSfEquipIn:function(e){var v=e.target.value;var s2=Object.assign({},self.state.sf,{equipIn:v});self.setState({sf:s2});},
+    sfEquipAdd:function(){var v=String(self.state.sf.equipIn||'').trim();if(!v)return;self.sfMut(function(x,s){x.equips.push(v);s.equipIn='';});},
+    sfFiles:f.files.map(function(p,i){return{name:(p.name||'fichier')+(p.size?' ('+Math.round(p.size/1024)+' Ko)':''),has:!!p.data,noData:!p.data,open:function(){if(!p.data)return;var w=window.open('','_blank');if(w){w.document.write(/^data:image/.test(p.data)?'<img src="'+p.data+'" style="max-width:100%">':'<iframe src="'+p.data+'" style="border:0;width:100%;height:100vh"></iframe>');w.document.close();}},del:function(){self.sfMut(function(x){x.files.splice(i,1);});}};}),
+    sfAddFile:function(){self.sfAddFile();},
+    sfJournal:(sf.journal||[]).map(function(j){var ph=(j.photos||[]).filter(function(p){return p&&(p.data||p.url);});return{h:fdate(j.date)+(j.heure?' '+j.heure:'')+' — '+(j.emp||nm[j.uid]||j.uid||'—'),notes:j.notes||'',
+      mes:(j.bassins||[]).map(function(b){return(b.bassin||'Bassin')+' : '+BP.filter(function(p){return b[p[0]]!=null;}).map(function(p){return p[1]+' '+b[p[0]];}).join(' · ');}).join(' | '),
+      photos:ph.map(function(p,i){var src=p.data||p.url;return{src:src,open:function(){var w=window.open('','_blank');if(w){w.document.write('<img src="'+src+'" style="max-width:100%">');w.document.close();}}};}),hasPh:ph.length>0};}),sfNoJournal:!(sf.journal||[]).length,
+    sfWo:wo.slice(0,12).map(function(w){return{txt:(w.date||'')+' · '+(w.type||'')+' · '+(WO_STAT.filter(function(s){return s[0]===w.status;})[0]||[0,w.status])[1]+(w.descr?' — '+String(w.descr).split('\n')[0].slice(0,60):''),open:function(){self.setState({sf:null});self.openFE('wo',w.id);}};}),sfHasWo:wo.length>0,sfWoN:wo.length+' bon(s) de travail',
+    sfRelTxt:rel.length?rel.length+' relevé(s) — dernier le '+fdate(lastR.date)+' par '+(lastR.tech_nom||lastR.tech):'Aucun relevé',sfIsOld:!sf.isNew,
+    sfNewWo:function(){var i=sf.id;self.setState({sf:null});self.openFE('wo',null,{site:i});},sfInsp:function(){var i=sf.id;self.setState({sf:null});self.go('inspections',{inspSite:i,inspKey:null});},
+    sfSave:function(){self.saveSiteFiche();},sfSaveLbl:sf.busy?'Enregistrement…':(sf.isNew?'Créer le site':'Enregistrer'),sfCanDel:!sf.isNew,sfDelLbl:sf.confirm?'Confirmer la suppression':'Supprimer le site',sfDel:function(){self.deleteSiteFiche();},
+    sfClose:function(){self.setState({sf:null});},sfCloseBg:function(e){if(e.target===e.currentTarget)self.setState({sf:null});}});};
+
+/* ═════════════ INSPECTIONS : rapport imprimable, export Excel, paramètres de relevé (types_bassin) ═════════════ */
+Comp.prototype.inspData=function(sid,days){var self=this,D=this.D,s=D.byId[sid];if(!s)return null;var since=iso(addDays(new Date(),-(days||90))),bl=s.bassins&&s.bassins.length?s.bassins:[null];
+  return{site:s,bassins:bl.map(function(b,i){var T=self.T(b&&b.type_code?b.type_code:s.type),rel=D.rel.filter(function(r){return String(r.site_id)===String(sid)&&r.date>=since&&(bl.length<2||(r.bassin?r.bassin===b.nom:i===0));});
+    return{nom:b?b.nom:'Bassin',T:T,rel:rel,stats:(T.fields||[]).map(function(f){var vs=rel.map(function(r){return r.vals&&r.vals[f.key];}).filter(function(v){return v!=null;}),n=vs.length,out=vs.filter(function(v){return v<f.lo||v>f.hi;}).length;
+      return{f:f,n:n,last:n?vs[n-1]:null,avg:n?vs.reduce(function(a,b){return a+b;},0)/n:null,min:n?Math.min.apply(null,vs):null,max:n?Math.max.apply(null,vs):null,out:out,pct:n?Math.round((n-out)/n*100):null};})};})};};
+Comp.prototype.printInsp=function(sid){var d=this.inspData(sid,90);if(!d)return;var E=escH,s=d.site,v=function(x,f){return x==null?'—':fr(x,f.step)+(f.unit?' '+f.unit:'');};
+  var h='<!doctype html><meta charset="utf-8"><title>Rapport d’inspection — '+E(s.nom)+'</title><style>body{font:12px Arial,sans-serif;margin:22px}h1{font-size:20px;margin:0}h2{font-size:15px;background:#e8f2fb;padding:5px 8px;margin:18px 0 6px}table{border-collapse:collapse;width:100%;margin-bottom:8px}td,th{border:1px solid #bbb;padding:3px 6px;text-align:left}th{background:#f4f6fa}.o{background:#fde2e2;font-weight:700}.m{color:#555;margin:4px 0 10px}</style>'
+    +'<h1>Rapport d’inspection — '+E(s.nom)+'</h1><div class="m">'+E(s.addr||'')+(s.contrat?' · contrat '+E(s.contrat):'')+' · 90 derniers jours · généré le '+new Date().toLocaleString('fr-CA')+'</div>';
+  d.bassins.forEach(function(b){var F=b.T.fields||[];h+='<h2>'+E(b.nom)+' — '+E(b.T.label)+(b.T.norme?' · '+E(b.T.norme):'')+' · '+b.rel.length+' relevé(s)</h2>';
+    h+='<table><tr><th>Paramètre</th><th>Zone visée</th><th>Dernier</th><th>Moyenne</th><th>Min / max</th><th>Dans la zone</th><th>Hors zone</th></tr>'+b.stats.map(function(x){var f=x.f;return'<tr><td>'+E(f.label)+'</td><td>'+fr(f.lo,f.step)+' – '+fr(f.hi,f.step)+(f.unit?' '+E(f.unit):'')+'</td><td'+(x.last!=null&&(x.last<f.lo||x.last>f.hi)?' class="o"':'')+'>'+v(x.last,f)+'</td><td>'+v(x.avg,f)+'</td><td>'+(x.n?fr(x.min,f.step)+' / '+fr(x.max,f.step):'—')+'</td><td>'+(x.pct==null?'—':x.pct+' %')+'</td><td>'+x.out+'</td></tr>';}).join('')+'</table>';
+    h+='<table><tr><th>Date</th><th>Technicien</th>'+F.map(function(f){return'<th>'+E(f.label)+'</th>';}).join('')+'<th>Note</th></tr>'+b.rel.slice(-25).reverse().map(function(r){return'<tr><td>'+E(fdate(r.date))+' '+E(r.heure||'')+'</td><td>'+E(r.tech_nom||r.tech||'')+'</td>'+F.map(function(f){var x=r.vals&&r.vals[f.key],o=x!=null&&(x<f.lo||x>f.hi);return'<td'+(o?' class="o"':'')+'>'+(x==null?'—':fr(x,f.step))+'</td>';}).join('')+'<td>'+E(r.note||'')+'</td></tr>';}).join('')+'</table>';});
+  h+='<div style="margin-top:30px;display:flex;gap:60px"><div style="border-top:1px solid #333;width:240px;padding-top:3px">Soucy Aquatik</div><div style="border-top:1px solid #333;width:240px;padding-top:3px">Client</div></div>';
+  var w=window.open('','_blank');if(!w){this.flash('Fenêtre bloquée — autorisez les fenêtres pour imprimer');return;}w.document.write(h+'<script>setTimeout(function(){print();},300)<\/script>');w.document.close();auditT(this,'EXPORT','releves',sid,{format:'impression'});};
+Comp.prototype.xlsxInsp=function(sid){var d=this.inspData(sid,365);if(!d)return;var sheets=d.bassins.map(function(b){var F=b.T.fields||[],rows=[[{v:d.site.nom+' — '+b.nom+' ('+b.T.label+')',s:5}],[],[{v:'Date',s:1},{v:'Heure',s:1},{v:'Technicien',s:1}].concat(F.map(function(f){return{v:f.label+(f.unit?' ('+f.unit+')':''),s:1};}),[{v:'Hors zone',s:1},{v:'Note',s:1}])];
+    b.rel.forEach(function(r){rows.push([r.date,r.heure||'',r.tech_nom||r.tech||''].concat(F.map(function(f){var x=r.vals&&r.vals[f.key];return x==null?'':{v:x,s:3};}),[self_out(r,F)||'',r.note||'']));});
+    return{name:b.nom,widths:[12,8,18].concat(F.map(function(){return 12;}),[10,40]),rows:rows};});
+  function self_out(r,F){return F.filter(function(f){var x=r.vals&&r.vals[f.key];return x!=null&&(x<f.lo||x>f.hi);}).length;}
+  saveBlob(xlsxBlob(sheets),'SoucyAquatik_Releves_'+d.site.nom.replace(/[^A-Za-zÀ-ÿ0-9]+/g,'_')+'_'+iso(new Date())+'.xlsx');auditT(this,'EXPORT','releves',sid,{format:'xlsx'});this.flash('Fichier Excel téléchargé (12 derniers mois)');};
+/* Paramètres de relevé : ce que le technicien saisit dans sa-terrain (plages, points de contrôle, produits) */
+Comp.prototype.openTypes=function(code){var T=this.D.types,c=T[code]?code:Object.keys(T)[0];this.setState({ty:this.tyLoad(c)});};
+Comp.prototype.tyLoad=function(code){var t=this.D.types[code]||{};return{code:code,isNew:!this.D.types[code],label:t.label||'',court:t.court||'',norme:t.norme||'',photo:t.photo||'',
+  fields:(t.fields||[]).map(function(f){return{key:f.key,label:f.label||'',unit:f.unit||'',kind:f.kind||'range',icon:f.icon||'flask',min:String(f.min),max:String(f.max),lo:String(f.lo),hi:String(f.hi),step:String(f.step)};}),
+  checks:(t.checks||[]).join('\n'),produits:(t.produits||[]).map(function(p){return{nom:p[0]||'',unite:p[1]||'',pas:String(p[2]==null?'':p[2])};}),busy:false};};
+Comp.prototype.tyMut=function(fn){var t=JSON.parse(JSON.stringify(this.state.ty));fn(t);this.setState({ty:t});};
+Comp.prototype.saveTypes=function(){var self=this,t=this.state.ty;if(!t||t.busy)return;var code=String(t.code||'').trim().toUpperCase();
+  if(!/^[A-Z0-9_]{2,12}$/.test(code)){this.flash('Code : 2 à 12 lettres majuscules ou chiffres');return;}if(t.isNew&&this.D.types[code]){this.flash('Ce code existe déjà');return;}
+  if(!String(t.label).trim()){this.flash('Le nom du type est requis');return;}var keys={},err='';
+  var fields=t.fields.map(function(f,i){var n=function(x){return parseFloat(String(x).replace(',','.'));},o={key:String(f.key||'').trim()||('p'+(i+1)),label:String(f.label).trim(),unit:String(f.unit).trim(),kind:f.kind==='count'?'count':'range',icon:f.icon||'flask',min:n(f.min),max:n(f.max),lo:n(f.lo),hi:n(f.hi),step:n(f.step)};
+    if(!o.label)err=err||'Paramètre '+(i+1)+' : nom requis';else if([o.min,o.max,o.lo,o.hi,o.step].some(function(x){return!isFinite(x);}))err=err||o.label+' : valeurs numériques requises';
+    else if(!(o.min<=o.lo&&o.lo<=o.hi&&o.hi<=o.max))err=err||o.label+' : il faut min ≤ zone basse ≤ zone haute ≤ max';else if(!(o.step>0))err=err||o.label+' : le pas doit être positif';
+    if(keys[o.key])err=err||'Clé en double : '+o.key;keys[o.key]=1;return o;});
+  if(err){this.flash(err);return;}
+  var body={label:String(t.label).trim(),court:String(t.court).trim()||String(t.label).trim(),norme:String(t.norme).trim(),photo:String(t.photo).trim()||null,fields:fields,checks:String(t.checks).split('\n').map(function(x){return x.trim();}).filter(Boolean),
+    produits:t.produits.filter(function(p){return String(p.nom).trim();}).map(function(p){return[String(p.nom).trim(),String(p.unite).trim(),parseFloat(String(p.pas).replace(',','.'))||1];}),updated_at:nowIso()};
+  this.setState({ty:Object.assign({},t,{busy:true})});
+  (t.isNew?postRows('types_bassin',[Object.assign({code:code,a_valider:false},body)]):rest('PATCH','types_bassin?code=eq.'+encodeURIComponent(code),body)).then(function(){auditT(self,t.isNew?'CREATION':'MODIFICATION','types_bassin',code);self.setState({ty:null});self.flash('Paramètres enregistrés — sa-terrain les utilise dès sa prochaine synchronisation');return self.reloadAll();})
+    .catch(function(e){self.setState({ty:Object.assign({},self.state.ty,{busy:false})});self.flash('Échec — rien n’a été modifié : '+netMsg(e));});};
+Comp.prototype.typesVals=function(){var self=this,t=this.state.ty,D=this.D;if(!D||!t)return{tyOpen:false};
+  var up=function(k){return function(e){var v=e.target.value;self.tyMut(function(x){x[k]=v;});};};
+  var nSites=D.sites.filter(function(s){return s.type===t.code||(s.bassins||[]).some(function(b){return b.type_code===t.code;});}).length;
+  return{tyOpen:true,tyTitle:t.isNew?'Nouveau type de bassin':'Paramètres de relevé — '+t.label,tyTypes:Object.keys(D.types).map(function(k){return{v:k,l:D.types[k].label+' ('+k+')',sel:k===t.code};}).concat([{v:'__new',l:'+ Nouveau type…',sel:!!t.isNew}]),
+    onTyType:function(e){var v=e.target.value;if(v==='__new')self.setState({ty:{code:'',isNew:true,label:'',court:'',norme:'',photo:'',fields:[],checks:'',produits:[],busy:false}});else self.setState({ty:self.tyLoad(v)});},
+    tyNew:!!t.isNew,tyCode:t.code,onTyCode:up('code'),tyLabel:t.label,onTyLabel:up('label'),tyCourt:t.court,onTyCourt:up('court'),tyNorme:t.norme,onTyNorme:up('norme'),tyPhoto:t.photo,onTyPhoto:up('photo'),tyChecks:t.checks,onTyChecks:up('checks'),
+    tyUse:t.isNew?'':'Utilisé par '+nSites+' site(s) ou bassin(s). Les changements s’appliquent aux prochains relevés ; les anciens gardent leurs valeurs.',
+    tyFields:t.fields.map(function(f,i){var c=function(k,ph,w){return{v:f[k],ph:ph,w:w,on:function(e){var v=e.target.value;self.tyMut(function(x){x.fields[i][k]=v;});}};};
+      return{cells:[c('label','Nom',2.2),c('key','Clé',1),c('unit','Unité',0.9),c('min','Min',0.8),c('lo','Zone basse',0.9),c('hi','Zone haute',0.9),c('max','Max',0.8),c('step','Pas',0.7)],del:function(){self.tyMut(function(x){x.fields.splice(i,1);});}};}),
+    tyAddField:function(){self.tyMut(function(x){x.fields.push({key:'',label:'',unit:'',kind:'range',icon:'flask',min:'0',max:'10',lo:'1',hi:'3',step:'0.1'});});},
+    tyProds:t.produits.map(function(p,i){var c=function(k,ph,w){return{v:p[k],ph:ph,w:w,on:function(e){var v=e.target.value;self.tyMut(function(x){x.produits[i][k]=v;});}};};return{cells:[c('nom','Produit',3),c('unite','Unité',1),c('pas','Pas',0.8)],del:function(){self.tyMut(function(x){x.produits.splice(i,1);});}};}),
+    tyAddProd:function(){self.tyMut(function(x){x.produits.push({nom:'',unite:'L',pas:'0.5'});});},
+    tySave:function(){self.saveTypes();},tySaveLbl:t.busy?'Enregistrement…':(t.isNew?'Créer le type':'Enregistrer'),tyClose:function(){self.setState({ty:null});},tyCloseBg:function(e){if(e.target===e.currentTarget)self.setState({ty:null});}};};
+
+/* ═════════════ CARTE : position des sites (fiche ou punchs précis), filtres, tournée d'un technicien, géolocalisation des adresses ═════════════ */
+function medianOf(a){var b=a.slice().sort(function(x,y){return x-y;}),m=b.length>>1;return b.length%2?b[m]:(b[m-1]+b[m])/2;}
+function distM(a,b,c,d){var R=6371000,r=Math.PI/180,x=(d-b)*r*Math.cos((a+c)/2*r),y=(c-a)*r;return Math.sqrt(x*x+y*y)*R;}
+Comp.prototype.carteGeo=function(){var D=this.D,st=this.state,acc=Number(st.carteAcc||100),g={},techs={},today=D.today,q=norm(st.carteQ||''),ty=st.carteType||'all';
+  D.geo.forEach(function(x){if(x.lat==null||x.lng==null)return;var a=x.acc==null?null:Number(x.acc);if(a!=null&&a>acc)return;if(x.site_id)(g[x.site_id]=g[x.site_id]||[]).push(x);if(x.date===today&&!techs[x.emp])techs[x.emp]=x;});
+  var sites=[],sans=[];D.sites.forEach(function(s){if((ty!=='all'&&s.type!==ty)||(q&&norm(s.nom+' '+s.addr).indexOf(q)<0))return;
+    if(s.gps){sites.push({id:s.id,nom:s.nom,type:s.type,addr:s.addr,lat:Number(s.gps.lat),lng:Number(s.gps.lng),src:'fiche',prec:null,n:(g[s.id]||[]).length});return;}
+    var rows=(g[s.id]||[]).slice(0,20);if(!rows.length){sans.push(s);return;}
+    /* médiane (robuste : un punch fait du camion ou avec un mauvais signal ne déplace plus le site) */
+    var la=medianOf(rows.map(function(r){return Number(r.lat);})),ln=medianOf(rows.map(function(r){return Number(r.lng);})),prec=Math.round(medianOf(rows.map(function(r){return distM(la,ln,Number(r.lat),Number(r.lng));}))+medianOf(rows.map(function(r){return r.acc==null?30:Number(r.acc);}))/Math.sqrt(rows.length));
+    sites.push({id:s.id,nom:s.nom,type:s.type,addr:s.addr,lat:la,lng:ln,src:'punchs',prec:prec,n:(g[s.id]||[]).length,last:g[s.id][0].date});});
+  return{sites:sites,sans:sans,techs:techs};};
+Comp.prototype.setSiteGps=function(id,lat,lng,why){var self=this,s=this.D.byId[id];if(!s)return;
+  return rest('PATCH','sites?id=eq.'+encodeURIComponent(id),{gps:{lat:Math.round(lat*1e6)/1e6,lng:Math.round(lng*1e6)/1e6},updated_at:nowIso()}).then(function(){auditT(self,'MODIFICATION','sites',id,{gps:why||'carte'});s.gps={lat:lat,lng:lng};self.setState({carteFix:null});self.flash('Position de « '+s.nom+' » enregistrée');self._mapDirty=true;self.update();})
+    .catch(function(e){self.flash('Échec : '+netMsg(e));});};
+/* Géolocalise les adresses des sites sans position (OpenStreetMap / Nominatim, 1 requête par seconde comme l'exige le service) */
+Comp.prototype.geocodeAll=function(){var self=this,list=this.carteGeo().sans.filter(function(s){return s.addr;});if(!list.length){this.flash('Aucun site sans position n’a d’adresse');return;}if(this._geocoding)return;this._geocoding=true;var ok=0,ko=0,i=0;
+  var next=function(){if(i>=list.length){self._geocoding=false;self.flash('Géolocalisation terminée : '+ok+' site(s) placé(s)'+(ko?', '+ko+' adresse(s) introuvable(s)':''));return self.reloadAll();}var s=list[i++];self.flash('Géolocalisation '+i+' / '+list.length+' : '+s.nom);
+    fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ca&q='+encodeURIComponent(s.addr)).then(function(r){return r.json();}).then(function(r){if(!r.length){ko++;return;}ok++;
+      return rest('PATCH','sites?id=eq.'+encodeURIComponent(s.id),{gps:{lat:Number(r[0].lat),lng:Number(r[0].lon),src:'adresse'},updated_at:nowIso()});}).catch(function(){ko++;}).then(function(){setTimeout(next,1100);});};
+  auditT(this,'MODIFICATION','sites','geocodage',{n:list.length});next();};
+Comp.prototype.loadTour=function(){var self=this,st=this.state,t=st.carteTour;if(!t||!t.emp){this._tour=null;return;}var k=t.emp+'|'+t.date;if(this._tourK===k)return;this._tourK=k;this._tour='loading';
+  get('punch_gps_log?emp=eq.'+encodeURIComponent(t.emp)+'&date=eq.'+t.date+'&lat=not.is.null&select=emp,heure,lieu,lat,lng,acc,site_id&order=heure.asc').then(function(r){if(self._tourK!==k)return;self._tour=r;self._mapDirty=true;self.update();})
+    .catch(function(e){self._tour=[];self.flash('Tournée illisible : '+netMsg(e));});};
+Comp.prototype.carteCtlVals=function(){var self=this,st=this.state,D=this.D;if(!D)return{};var G=st.mod==='carte'?this.carteGeo():{sites:[],sans:[],techs:{}},t=st.carteTour||{emp:'',date:D.today};
+  if(st.mod==='carte')this.loadTour();var tour=Array.isArray(this._tour)?this._tour:[];
+  var emps=D.comptes.filter(function(c){return c.role!=='admin';}).map(function(c){return(c.prenom+' '+c.nom).trim();});
+  var chk=function(k,l){var on=st[k]!==false;return{l:l,on:on,box:on?'var(--color-text)':'transparent',go:function(){var o={};o[k]=!on;self._mapDirty=true;self.setState(o);}};};
+  /* Schéma des tournées : pour chaque employé, ses travaux du jour dans l'ordre (fait / en cours / à venir) et ses punchs */
+  var lines=[];if(st.mod==='carte'&&st.carteView==='schema'){var wk=iso(mondayOf(new Date())),di=(new Date().getDay()+6)%7;
+    D.comptes.filter(function(c){return c.role!=='admin'&&D.statut[c.id]!=='inactif';}).forEach(function(c){var jobs=self.dayJobs(c.id,D.today),f=(D.ft||[]).filter(function(x){return x.uid===c.id&&x.week===wk;})[0],ts=(f&&f.days&&f.days[di]&&f.days[di].tasks)||[],run=ts.filter(function(t){return t.active;})[0];
+      jobs.forEach(function(j){if(run&&run.sourceId&&String(run.sourceId)===String(j.id))j.cur=true;});
+      var stops=jobs.length?jobs.map(function(j){return{h:j.h||'—',nom:j.t,done:j.done,cur:j.cur,go:function(){self.openFE(j.kind,j.id);}};}):ts.map(function(t){return{h:t.start||'—',nom:t.lieu||'—',done:!t.active&&!!t.end,cur:!!t.active,go:function(){self.setState({mod:'temps',tempsTab:'employe',eUid:c.id,eDay:di,tOff:0});}};});
+      if(!stops.length)return;var dn=stops.filter(function(s){return s.done;}).length;
+      lines.push({nom:(c.prenom+' '+c.nom).trim(),statut:run?'En punch · '+(run.lieu||''):(ts.length?'Hors punch':'Pas encore punché'),done:dn,total:stops.length,progress:Math.round(dn/Math.max(1,stops.length-1)*100),
+        stops:stops.map(function(s){return{h:s.h,nom:s.nom,go:s.go,size:s.cur?18:14,mt:s.cur?-2:0,bg:s.done?'var(--color-text)':(s.cur?'var(--color-accent-700)':'var(--color-bg)'),ring:s.cur?'0 0 0 3px var(--color-bg),0 0 0 5px var(--color-text)':'none',fw:s.cur?700:400};})});});}
+  return{lines:lines,linesNone:st.carteView==='schema'&&!lines.length,cShows:[chk('carteSites','Sites'),chk('carteTechs','Techniciens aujourd’hui'),chk('cartePrec','Zone de précision')],
+    cAccs:[[30,'± 30 m'],[100,'± 100 m'],[500,'± 500 m']].map(function(a){return{v:String(a[0]),l:'Punchs précis à '+a[1],sel:Number(st.carteAcc||100)===a[0]};}),onCAcc:function(e){self._mapDirty=true;self.setState({carteAcc:Number(e.target.value)});},
+    cTypes:[{v:'all',l:'Tous les types',sel:(st.carteType||'all')==='all'}].concat(Object.keys(D.types).map(function(k){return{v:k,l:D.types[k].label,sel:st.carteType===k};})),onCType:function(e){self._mapDirty=true;self._fitted=false;self.setState({carteType:e.target.value});},
+    cQ:st.carteQ||'',onCQ:function(e){self._mapDirty=true;self._fitted=false;self.setState({carteQ:e.target.value});},
+    cEmps:[{v:'',l:'— Tournée d’un technicien —',sel:!t.emp}].concat(emps.map(function(n){return{v:n,l:n,sel:t.emp===n};})),onCEmp:function(e){self._fitted=false;self.setState({carteTour:{emp:e.target.value,date:t.date}});},
+    cDate:t.date,onCDate:function(e){self._fitted=false;self.setState({carteTour:{emp:t.emp,date:e.target.value||D.today}});},
+    cTour:tour.map(function(p,i){return{n:String(i+1),txt:(p.heure||'')+' · '+(p.lieu||'—'),acc:p.acc!=null?'± '+Math.round(p.acc)+' m':'',bad:p.acc!=null&&Number(p.acc)>Number(st.carteAcc||100)};}),cHasTour:!!t.emp,cTourNone:!!t.emp&&Array.isArray(this._tour)&&!tour.length,
+    cTourKm:tour.length>1?'Distance à vol d’oiseau : '+(tour.reduce(function(s,p,i){return i?s+distM(Number(tour[i-1].lat),Number(tour[i-1].lng),Number(p.lat),Number(p.lng)):0;},0)/1000).toFixed(1).replace('.',',')+' km':'',
+    cSans:G.sans.length?G.sans.length+' site(s) sans position'+(G.sans.filter(function(s){return s.addr;}).length?' — '+G.sans.filter(function(s){return s.addr;}).length+' avec adresse':''):'',cCanGeo:G.sans.some(function(s){return s.addr;}),cGeo:function(){self.geocodeAll();},
+    cFixing:!!st.carteFix,cFixTxt:st.carteFix?'Cliquez sur la carte à l’endroit exact de « '+((D.byId[st.carteFix]||{}).nom||'')+' »':'',cFixCancel:function(){self.setState({carteFix:null});},
+    carteInfo:st.mod==='carte'?G.sites.filter(function(s){return s.src==='fiche';}).length+' site(s) placé(s) par leur fiche · '+G.sites.filter(function(s){return s.src==='punchs';}).length+' d’après les punchs précis · '+G.sans.length+' sans position':''};};
+
 /* Valeurs d'écran : Temps (Semaine · À valider · Paie · Cumul) et Stats */
 Comp.prototype.tempsVals=function(punchRows){var self=this,st=this.state,D=this.D,mod=st.mod,tMon=addDays(mondayOf(new Date()),7*st.tOff),wk=iso(tMon),today=iso(new Date());
   if((mod==='temps'||mod==='stats'||st.hj)&&this.ftw[wk]===undefined)this.loadWeekFT(wk);
   var loaded=Array.isArray(this.ftw[wk]),data=loaded?this.weekData(wk):[],tt=st.tempsTab;
   var days=[];for(var i=0;i<7;i++){var d=addDays(tMon,i);days.push({label:DJ[i]+' '+d.getDate(),bg:iso(d)===today?'var(--color-accent-100)':'transparent'});}
   var rows=data.map(function(e){return{nom:e.nom,total:e.any?fmtH(e.total):'—',reg:e.any?fmtH(e.reg):'—',supp:e.supp>0?'+'+fmtH(e.supp):'—',suppFg:e.supp>0?'var(--color-accent-900)':'var(--color-text)',
-    etat:e.enCours?'● en cours':(e.approuvee?'Approuvée':(e.nbAV?e.nbAV+' à valider':'')),canApprove:e.any&&!e.approuvee&&!e.enCours,approve:function(){self.approve(e.id,wk,null);},
+    etat:e.enCours?'● en cours':(e.approuvee?'Approuvée':(e.nbAV?e.nbAV+' à valider':'')),canApprove:e.any&&!e.approuvee&&!e.enCours,approve:function(){self.approve(e.id,wk,null);},fiche:function(){self.setState({tempsTab:'employe',eUid:e.id,eDay:null});},
     jours:e.jours.map(function(j,i){return{txt:j.nb?(j.h>0?fmtH(j.h):'')+(j.live?' ●':''):'—',ok:j.ap?'✓':'',bg:j.ap?'var(--color-accent-100)':'transparent',open:function(){self.openDay(e.id,wk,i);}};})};});
   var teamT=data.reduce(function(s,e){return s+e.total;},0),teamS=data.reduce(function(s,e){return s+e.supp;},0);
   // Paie
@@ -956,7 +1261,7 @@ Comp.prototype.tempsVals=function(punchRows){var self=this,st=this.state,D=this.
     hpOpen:!!hp,hpNew:!!hp&&hp.i<0,hpTitle:hp?(hp.i<0?'Ajouter un punch':'Corriger le punch'):'',hpLieu:hp?hp.lieu:'',hpStart:hp?hp.start:'',hpEnd:hp?hp.end:'',hpDetail:hp?hp.detail:'',hpOdt:hp?hp.odt:'',hpActive:!!(hp&&hp.active),
     onHpLieu:setP('lieu'),onHpStart:setP('start'),onHpEnd:setP('end'),onHpDetail:setP('detail'),onHpOdt:setP('odt'),hpSave:function(){self.savePunch();},hpDel:function(){self.delPunch();},hpCancel:function(){self.setState({hp:null});},
     hpClosed:!hp,hpCanDel:!!hp&&hp.i>=0,hpDelLbl:hp&&hp.confirm?'Confirmer la suppression':'Supprimer ce punch'};
-  var TT=[['semaine','Semaine',''],['valider','À valider',punchRows.length||''],['paie','Paie',''],['cumul','Cumul','']];
+  var TT=[['semaine','Semaine',''],['employe','Par employé',''],['valider','À valider',punchRows.length||''],['paie','Paie',''],['cumul','Cumul','']];
   return Object.assign(hjV,{tempsTabs:TT.map(function(x){var on=tt===x[0];return{label:x[1],n:x[2],bg:on?'var(--color-text)':'transparent',fg:on?'var(--color-bg)':'var(--color-text)',go:function(){self.setState({tempsTab:x[0]});}};}),
     isTempsTab:tt==='semaine',isSuiviTab:tt==='valider',isPaieTab:tt==='paie',isCumulTab:tt==='cumul',tWeekLoading:!loaded&&this.ftw[wk]!=='err',tWeekErr:this.ftw[wk]==='err'?'Feuilles de temps illisibles : '+(this.ftwErr||''):'',
     tLabel:wkLabel(tMon),tPrev:function(){self.setState({tOff:st.tOff-1});},tNext:function(){self.setState({tOff:Math.min(0,st.tOff+1)});},tToday:function(){self.setState({tOff:0});},
@@ -973,14 +1278,19 @@ Comp.prototype.statsVals=function(){var self=this,st=this.state,D=this.D,sMon=ad
   var bas=(D.inv||[]).filter(function(i){return Number(i.seuil)>0&&Number(i.qte)<=Number(i.seuil);});
   var av=data.reduce(function(s,e){return s+e.nbAV;},0);
   var WS=[['ouvert','Ouverts'],['en_cours','En cours'],['complete','Complétés'],['facture','Facturés']];
-  var copy=function(){var t=self.teamReport(wk);if(!t){self.flash('Aucune heure cette semaine');return;}(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){self.flash('Rapport copié');}).catch(function(){self.flash('Copie impossible — utilisez Télécharger');});};
+  var prevWk=iso(addDays(sMon,-7));if(st.mod==='stats'&&loaded&&this.ftw[prevWk]===undefined)this.loadWeekFT(prevWk);
+  var copyT=function(prompt,thenOpen){var t=self.teamReport(wk,prompt);if(!t){self.flash('Aucune heure cette semaine');return;}self.audit('CONSULTATION',wk,{action:'rapport_equipe',format:prompt?'claude':'copie'});
+    var w=thenOpen?window.open('https://claude.ai/new','_blank'):null;
+    (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){self.flash(thenOpen?(w?'Copié — collez-le dans Claude (Ctrl+V / ⌘V) dans l’onglet qui vient de s’ouvrir':'Copié — ouvrez claude.ai et collez-le'):(prompt?'Copié avec la demande d’analyse — collez-le dans Claude':'Rapport copié — collez-le directement dans Claude'));})
+      .catch(function(){self.flash('Copie impossible — utilisez Télécharger');});};
+  var copy=function(){copyT(false,false);};
   return{isStats:st.mod==='stats',sLabel:wkLabel(sMon),sPrev:function(){self.setState({sOff:st.sOff-1});},sNext:function(){self.setState({sOff:Math.min(0,st.sOff+1)});},sToday:function(){self.setState({sOff:0});},sLoading:!loaded,
     sKpis:[{l:'Heures de l’équipe',v:fmtH(tot),s:supp>0?'dont '+fmtH(supp)+' supplémentaires':'aucune heure supplémentaire'},{l:'Punchs à valider',v:String(av),s:'cette semaine'},
       {l:'Bons de travail ouverts',v:String(woOuv),s:woUrg?woUrg+' urgent(s)':'aucun urgent'},{l:'Stock sous le seuil',v:String(bas.length),s:bas.slice(0,3).map(function(i){return i.nom;}).join(', ')||'—'}],
     sBars:data.filter(function(e){return e.any||e.total>0;}).sort(function(a,b){return b.total-a.total;}).map(function(e){return{nom:e.nom,h:fmtH(e.total),w:Math.round(e.total/max*100),bg:e.total>40?'var(--color-accent-900)':'var(--color-accent-700)',
-      sub:e.supp>0?'+'+fmtH(e.supp)+' supp.':'',open:function(){self.setState({mod:'temps',tempsTab:'semaine',tOff:st.sOff});}};}),sNoBars:loaded&&!data.some(function(e){return e.any;}),
+      sub:e.supp>0?'+'+fmtH(e.supp)+' supp.':'',open:function(){self.setState({mod:'temps',tempsTab:'employe',eUid:e.id,eDay:null,tOff:st.sOff});}};}),sNoBars:loaded&&!data.some(function(e){return e.any;}),
     sWo:WS.map(function(x){return{l:x[1],n:D.wo.filter(function(w){return w.status===x[0]||(x[0]==='complete'&&w.status==='termine');}).length};}),
-    sCopy:copy,sDownload:function(){var t=self.teamReport(wk);if(!t){self.flash('Aucune heure cette semaine');return;}saveBlob(new Blob([t],{type:'text/plain;charset=utf-8'}),'SoucyAquatik_Equipe_Semaine_'+wk+'.txt');},
+    sCopy:copy,sClaude:function(){copyT(true,true);},sCopyPrompt:function(){copyT(true,false);},sDownload:function(){var t=self.teamReport(wk);if(!t){self.flash('Aucune heure cette semaine');return;}saveBlob(new Blob([t],{type:'text/plain;charset=utf-8'}),'SoucyAquatik_Equipe_Semaine_'+wk+'.txt');},
     sXlsx:function(){self.setState({mod:'temps',tempsTab:'paie',tOff:st.sOff});self.flash('Choisissez les employés puis « Télécharger Excel »');}};};
 
 Comp.prototype.vals=function(){
@@ -1023,9 +1333,11 @@ Comp.prototype.vals=function(){
   var typeOptions=[{v:'all',l:'Tous les types de bassin'}].concat(typesArr.map(function(k){return{v:k,l:D.types[k].label};})).map(function(o){return Object.assign({},o,{sel:o.v===fil});});
   var inspSites=D.sites.filter(function(s){return fil==='all'||s.type===fil;}).map(function(s){var on=s.id===st.inspSite,r=lastRel[s.id],n=r?self.outOf(r).length:0;
     return{nom:s.nom,ville:s.ville,court:self.T(s.type).court,nOut:n||null,bg:on?'var(--color-text)':'transparent',fg:on?'var(--color-bg)':'var(--color-text)',go:function(){self.setState({inspSite:s.id,inspKey:null});}};});
-  var is=D.byId[st.inspSite]||D.sites[0]||{id:'',nom:'—',type:'GEN',ville:'',contrat:''},IT=this.T(is.type),fields=IT.fields||[];
+  var is=D.byId[st.inspSite]||D.sites[0]||{id:'',nom:'—',type:'GEN',ville:'',contrat:'',bassins:[]},ibl=is.bassins||[],ib=ibl.filter(function(b){return(b.id||b.nom)===st.inspBassin;})[0]||ibl[0]||null;
+  /* Plusieurs bassins : chaque bassin a ses relevés et ses paramètres ; le 1er bassin reprend les anciens relevés sans bassin */
+  var inB=function(r){if(!ib||ibl.length<2)return true;return r.bassin?r.bassin===ib.nom:ib===ibl[0];},IT=this.T(ib&&ib.type_code?ib.type_code:is.type),fields=IT.fields||[];
   var f=fields.filter(function(x){return x.key===st.inspKey;})[0]||fields[0]||{key:'',label:'—',unit:'',min:0,max:1,lo:0,hi:1,step:0.1};
-  var hist=D.rel.filter(function(r){return r.site_id===is.id&&r.vals&&r.vals[f.key]!=null;}).slice(-30),n=hist.length;
+  var hist=D.rel.filter(function(r){return r.site_id===is.id&&inB(r)&&r.vals&&r.vals[f.key]!=null;}).slice(-30),n=hist.length;
   var yp=function(v){return(1-(v-f.min)/(f.max-f.min))*100;},outV=function(v){return v<f.lo||v>f.hi;};
   var vs=hist.map(function(h){return h.vals[f.key];}),avg=n?vs.reduce(function(a,b){return a+b;},0)/n:0,nOutH=vs.filter(outV).length,xpos=function(i){return n>1?i/(n-1)*100:50;};
   var chart={path:n>1?hist.map(function(h,i){return(i?'L':'M')+(xpos(i)*10).toFixed(1)+' '+(yp(h.vals[f.key])*2.6).toFixed(1);}).join(' '):'',
@@ -1033,7 +1345,7 @@ Comp.prototype.vals=function(){
     xl:hist.map(function(h,i){return{x:xpos(i),d:fdate(h.date)};}).filter(function(_,i){return i%5===0||i===n-1;}),
     hiTop:yp(f.hi),loTop:yp(f.lo),bandH:yp(f.lo)-yp(f.hi),minTxt:fr(f.min,f.step),maxTxt:fr(f.max,f.step),loTxt:fr(f.lo,f.step),hiTxt:fr(f.hi,f.step),
     stats:[{l:'Dernier relevé',v:n?fr(vs[n-1],f.step)+' '+f.unit:'—'},{l:'Moyenne 30 j',v:n?fr(avg,f.step):'—'},{l:'Min / max',v:n?fr(Math.min.apply(null,vs),f.step)+' / '+fr(Math.max.apply(null,vs),f.step):'—'},{l:'Dans la zone',v:n?Math.round((n-nOutH)/n*100)+' %':'—'},{l:'Jours hors zone',v:String(nOutH)}]};
-  var siteRel=D.rel.filter(function(r){return r.site_id===is.id;}).slice(-10).reverse();
+  var siteRel=D.rel.filter(function(r){return r.site_id===is.id&&inB(r);}).slice(-10).reverse();
   var inspTable={cols:fields.map(function(x){return x.label+(x.unit?' ('+x.unit+')':'');}),rows:siteRel.map(function(r){return{d:fdate(r.date)+' '+(r.heure||''),cells:fields.map(function(x){var v=r.vals&&r.vals[x.key],has=v!=null&&r.touched&&r.touched[x.key],o=has&&(v<x.lo||v>x.hi);return{v:has?fr(v,x.step):'—',bg:o?'var(--color-accent-900)':'transparent',fg:o?'#ffffff':'var(--color-text)'};})};})};
   var lastR=lastRel[is.id];
   // ---- opérations (WO groupés par dossier)
@@ -1059,7 +1371,9 @@ Comp.prototype.vals=function(){
       primaryLabel:dup?'Fusionner dans « '+dup.nom+' »':'Valider ce site',primary:function(){self.siteAction(s.id,dup?'merge':'validate',dup?dup.id:null);},altLabel:'Garder séparé',alt:function(){self.siteAction(s.id,'validate',null);},ignore:function(){self.flash('Aucune modification effectuée');}};});
   var stype=st.siteType;
   var siteTypeOptions=[{v:'all',l:'Tous les types de bassin'}].concat(typesArr.map(function(k){return{v:k,l:D.types[k].label};})).map(function(o){return Object.assign({},o,{sel:o.v===stype});});
-  var siteRows=D.sites.filter(function(s){return stype==='all'||s.type===stype;}).map(function(s){return{nom:s.nom,client:'—',ville:s.ville||'—',court:self.T(s.type).court,freq:'—',tech:'—',gps:'Non défini',bassin:'—',contrat:s.contrat||'—',go:function(){self.openSiteEdit(s.id);}};});
+  var sq=norm(st.siteQ||''),lastBy=this.latest();
+  var siteRows=D.sites.filter(function(s){return(stype==='all'||s.type===stype)&&(!sq||norm(s.nom+' '+s.addr+' '+s.contrat).indexOf(sq)>=0);}).map(function(s){var r=lastBy[s.id],nb=s.bassins.length,wo=D.wo.filter(function(w){return norm(w.client)===norm(s.nom)&&!woDone(w.status);}).length;
+    return{nom:s.nom,client:nb?nb+' bassin'+(nb>1?'s':''):'1 (par défaut)',ville:s.ville||'—',court:self.T(s.type).court,freq:r?fdate(r.date):'—',tech:wo?wo+' ouvert(s)':'—',gps:s.gps?'Défini':(s.addr?'Adresse':'—'),bassin:s.addr||'sans adresse',contrat:s.contrat||'—',go:function(){self.openSiteEdit(s.id);}};});
 
   // ---- TEMPS · SUIVI · CUMUL (lecture seule des feuilles de temps existantes)
   var tMon=addDays(mondayOf(now),7*st.tOff),tWk=iso(tMon),allTeam=D.comptes.filter(function(c){return c.role!=='admin';}),actif=function(id){return D.statut[id]!=='inactif';},team=allTeam.filter(function(c){return actif(c.id);}),cn={};D.comptes.forEach(function(c){cn[c.id]=(c.prenom+' '+c.nom).trim();});
@@ -1179,12 +1493,14 @@ Comp.prototype.vals=function(){
     isMonitoring:mod==='monitoring',isInspections:mod==='inspections',isOperations:mod==='operations',isSites:mod==='sites',isSoon:LIVE.indexOf(mod)<0,soonTitle:soonName[mod]||'',
     kpis:kpis,techRows:techRows,flux:flux,salles:[],sallesSummary:'Aucune salle mécanique suivie pour l’instant — les fiches de salle arrivent avec la prochaine version de sa-terrain.',horsZone:horsZone,horsZoneCount:horsZone.length,
     typeOptions:typeOptions,inspFilter:fil,onInspFilter:function(e){self.setState({inspFilter:e.target.value});},inspSites:inspSites,
-    insp:{nom:is.nom,client:is.ville||'—',bassin:'—',contrat:is.contrat||'—',typeLabel:IT.label+(is.type==='GEN'?' · valeurs par défaut':''),norme:IT.norme||'',tech:lastR?(lastR.tech_nom||lastR.tech):'—'},
+    insp:{nom:is.nom,client:is.ville||'—',bassin:ib?ib.nom+(ibl.length>1?' ('+ibl.length+' bassins)':''):'1 bassin',contrat:is.contrat||'—',typeLabel:IT.label+(is.type==='GEN'?' · valeurs par défaut':''),norme:IT.norme||'',tech:lastR?(lastR.tech_nom||lastR.tech):'—'},
     inspParams:fields.map(function(x){return Object.assign({label:x.label,go:function(){self.setState({inspKey:x.key});}},segS(x.key===f.key));}),chart:chart,inspTable:inspTable,noHist:n===0,histMsg:n===0?'Aucun relevé enregistré pour ce site et ce paramètre. Les relevés apparaissent ici dès que les techniciens valident une fiche dans sa-terrain.':'',
-    exportMsg:function(){self.flash('Export PDF : bientôt');},
+    inspBassins:ibl.length>1?ibl.map(function(b){return Object.assign({label:b.nom,go:function(){self.setState({inspBassin:b.id||b.nom,inspKey:null});}},segS(b===ib));}):[],inspHasB:ibl.length>1,
+    inspPrint:function(){self.printInsp(is.id);},inspXlsx:function(){self.xlsxInsp(is.id);},inspParamsEdit:function(){self.openTypes(ib&&ib.type_code?ib.type_code:is.type);},
+    exportMsg:function(){self.printInsp(is.id);},
     opsFilters:opsFilters,dossiers:dossiers,newDossier:function(){self.openDlg({type:'Bon de travail'});},noDossier:dossiers.length===0,
     nouveaux:nouveaux,siteTypeOptions:siteTypeOptions,siteType:stype,onSiteType:function(e){self.setState({siteType:e.target.value});},siteRows:siteRows,siteCount:siteRows.length,noNouveaux:nouveaux.length===0},
-    this.tempsVals(punchRows),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals(),this.stockVals(),this.outilsVals());
+    this.tempsVals(punchRows),this.empVals(),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals(),this.stockVals(),this.outilsVals(),this.monVals(),this.siteFicheVals(),this.typesVals(),this.carteCtlVals());
 };
 Comp.prototype.update=function(){if(!this._host)return;SARender(document.getElementById('tpl'),this._host,this.vals());this.syncMap();var el=this.rootRef.current;if(el)el.style.setProperty('--sa-row','10px');};
 Comp.prototype.mount=function(host){var self=this;this._host=host;var hm=hashMod();if(hm&&TITLES_OK(hm))this.state.mod=hm;this.update();

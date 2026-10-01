@@ -93,3 +93,26 @@ test('imprimer la journée de l’équipe, puis supprimer un plan (confirmation)
   assert.equal(db.rows('plan_match').length, 0);
   await page.close();
 });
+
+test('Plan de Match : activité réelle — punch en cours, travaux en cours / à faire / en retard, non assignés', async () => {
+  const { dayIdx, iso, addDays, today } = require('./harness');
+  const t = base();
+  t.feuilles_temps[0].days[dayIdx()].tasks.push({ id: 2, lieu: 'Piscine Alpha', start: '08:30', end: '', hrs: 0, active: true, sourceId: 'wo-mine', sourceLabel: 'WO — Piscine Alpha' });
+  t.workorders.push({ id: 'wo-late', client: 'Piscine Gamma', site: '', type: 'reparation', priorite: 'normal', status: 'ouvert', date: iso(addDays(new Date(), -3)), assigne: 'kael', descr: 'Valve', groupe_id: null });
+  t.workorders.push({ id: 'wo-una', client: 'Piscine Delta', site: '', type: 'entretien', priorite: 'normal', status: 'ouvert', date: today(), assigne: '', descr: '', groupe_id: null });
+  const { page, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: t });
+  await page.waitForFunction(() => window.__admin && window.__admin.D);
+  await page.evaluate(() => window.__admin.go('planmatch'));
+  await page.getByText('Travaux sans personne assignée').waitFor();
+  await page.getByText('En punch : Piscine Alpha depuis 08:30 — WO — Piscine Alpha').waitFor();
+  const c = await page.evaluate(() => { const k = window.__admin.vals().pmmCards[0]; return { nom: k.nom, cur: k.jobsCur.map((j) => j.txt), late: k.jobsLate.map((j) => j.txt) }; });
+  assert.equal(c.nom, 'Kaël Test', 'l’employé en punch passe en premier');
+  assert.deepEqual(c.cur, ['Bon de travail — Piscine Alpha — Entretien hebdo']);
+  assert.match(c.late[0], /Piscine Gamma/);
+  assert.deepEqual(await page.evaluate(() => window.__admin.vals().pmmSum.map((k) => k.v)), ['1 / 2', '0 / 2', '1', '1', '1']);
+  await page.getByRole('button', { name: /Piscine Delta/ }).click();
+  await page.locator('.dialog').getByText('Liste de tâches').waitFor();
+  assert.equal(await page.evaluate(() => window.__admin.state.fe.id), 'wo-una');
+  assert.deepEqual(errors, []);
+  await page.close();
+});

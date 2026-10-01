@@ -144,7 +144,7 @@ TABS=('<div style="display:flex;border:1px solid var(--color-divider)"><sc-for l
 SEMAINE=CARD('<div style="padding:12px 18px;border-bottom:1px solid var(--color-divider);display:flex;gap:10px;align-items:baseline;flex-wrap:wrap"><span style="font:600 22px var(--font-heading)">Équipe : {{ tTeam }}</span><span style="font-size:14px">{{ tTeamSupp }}</span></div>'
   '<table class="table" style="font-size:14px"><thead><tr>'+TH%('padding-left:18px','Technicien')+'<sc-for list="{{ tDays }}" as="w">'+TH%('text-align:center;background:{{ w.bg }}','{{ w.label }}')+'</sc-for>'
   +TH%('text-align:right','Total')+TH%('text-align:right','Régulières')+TH%('text-align:right','Supp.')+TH%('','État')+TH%('','')+'</tr></thead><tbody>'
-  '<sc-for list="{{ tRows }}" as="r"><tr><td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px;font-weight:500;white-space:nowrap">{{ r.nom }}</td>'
+  '<sc-for list="{{ tRows }}" as="r"><tr><td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px;font-weight:500;white-space:nowrap"><button onClick="{{ r.fiche }}" title="Ouvrir la feuille de cet employé" style="all:unset;cursor:pointer;text-decoration:underline;text-underline-offset:3px">{{ r.nom }}</button></td>'
   '<sc-for list="{{ r.jours }}" as="j"><td style="padding:2px;text-align:center"><button onClick="{{ j.open }}" style="all:unset;cursor:pointer;display:block;min-width:58px;padding:7px 4px;background:{{ j.bg }};font-variant-numeric:tabular-nums">{{ j.txt }} <b>{{ j.ok }}</b></button></td></sc-for>'
   +TD%('text-align:right;font:600 16px var(--font-heading);white-space:nowrap','{{ r.total }}')+TD%('text-align:right;white-space:nowrap','{{ r.reg }}')+TD%('text-align:right;white-space:nowrap;color:{{ r.suppFg }}','{{ r.supp }}')
   +TD%('font-size:13px;white-space:nowrap','{{ r.etat }}')+'<td style="padding:4px 18px 4px 8px"><sc-if value="{{ r.canApprove }}"><button class="btn btn-secondary" onClick="{{ r.approve }}" style="white-space:nowrap">Approuver la semaine</button></sc-if></td></tr></sc-for></tbody></table>'
@@ -165,13 +165,36 @@ PAIE=('<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><spa
   '<sc-if value="{{ paieNone }}"><div style="padding:14px 18px">Aucune heure cette semaine.</div></sc-if>','overflow-x:auto'))
 CUMUL=CARD('<table class="table" style="font-size:14px"><thead><tr>'+TH%('padding-left:18px','Technicien')+TH%('text-align:right','{{ tLabel }}')+TH%('text-align:right','Cumul saison')+'</tr></thead><tbody><sc-for list="{{ tempsRows }}" as="r"><tr style="opacity:{{ r.op }}">'
   '<td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px;font-weight:500">{{ r.nom }}</td>'+TD%('text-align:right','{{ r.semaine }}')+TD%('text-align:right;font:600 16px var(--font-heading);padding-right:18px','{{ r.cumul }}')+'</tr></sc-for></tbody></table>','overflow-x:auto')
+EMP=('<div style="display:flex;flex-direction:column;gap:14px">'
+  '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><label for="eUid" style="font-weight:600">Employé</label><select id="eUid" class="input" onChange="{{ onEUid }}" style="max-width:280px;font-weight:600"><template data-sc="for" list="{{ eEmps }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select>'
+  '<button class="btn btn-secondary" onClick="{{ eYest }}">Hier</button><button class="btn btn-secondary" onClick="{{ eToday }}">Aujourd’hui</button><span style="flex:1"></span><span style="font-weight:600">{{ eEtat }}</span></div>'
+  +SEG('eChips')
+  +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px"><sc-for list="{{ eSum }}" as="k">'+CARD('<div style="padding:10px 14px;display:flex;flex-direction:column"><span style="font-size:13px">{{ k.l }}</span><span style="font:600 26px/1.1 var(--font-heading)">{{ k.v }}</span></div>')+'</sc-for></div>'
+  +'<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary" onClick="{{ ePrint }}">Imprimer la feuille</button><button class="btn btn-secondary" onClick="{{ eXlsx }}" style="gap:6px"><sa-i n="download" s="16"></sa-i>Excel</button>'
+  '<button class="btn btn-secondary" onClick="{{ eMailEmp }}" style="gap:6px"><sa-i n="send" s="16"></sa-i>Courriel à l’employé</button><button class="btn btn-secondary" onClick="{{ eMailPaie }}" style="gap:6px"><sa-i n="send" s="16"></sa-i>Courriel à la paie</button>'
+  '<button class="btn btn-secondary" onClick="{{ eSent }}">Marquer envoyée à la paie</button><sc-if value="{{ eCanApprove }}"><button class="btn btn-secondary" onClick="{{ eApprove }}">Approuver la semaine</button></sc-if>'
+  '<span style="flex:1"></span><button class="btn btn-secondary" onClick="{{ eAdd }}">+ Ajouter un punch</button><button class="btn btn-secondary" onClick="{{ eOdt }}">+ Bon de travail assigné</button></div>'
+  '<sc-if value="{{ eLoading }}"><div>Chargement de la feuille…</div></sc-if><sc-if value="{{ eNoRow }}"><div style="border:1px dashed var(--color-text);padding:12px">Aucune feuille cette semaine pour cet employé. « Ajouter un punch » la crée.</div></sc-if>'
+  '<sc-for list="{{ eDays }}" as="d">'+CARD('<div style="padding:10px 18px;border-bottom:1px solid var(--color-divider);display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span style="font:600 20px var(--font-heading)">{{ d.jour }}</span><span style="font:600 18px var(--font-heading)">{{ d.tot }}</span><span style="flex:1"></span>'
+    '<sc-if value="{{ d.canApprove }}"><button class="btn btn-ghost" onClick="{{ d.approve }}">Approuver la journée</button></sc-if><button class="btn btn-ghost" onClick="{{ d.add }}">+ Punch</button></div>'
+    '<sc-if value="{{ d.none }}"><div style="padding:10px 18px;font-size:14px">Aucun punch.</div></sc-if>'
+    '<sc-for list="{{ d.punchs }}" as="p"><div style="padding:10px 18px 10px 14px;border-bottom:1px solid var(--color-divider);border-left:4px solid {{ p.bd }};display:flex;flex-direction:column;gap:4px">'
+    '<div style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap"><span style="font:600 16px var(--font-heading);min-width:120px">{{ p.h }}</span><b style="font-size:15px">{{ p.lieu }}</b><span>{{ p.odt }}</span><span style="flex:1"></span><span style="font:600 16px var(--font-heading)">{{ p.dur }}</span></div>'
+    '<sc-if value="{{ p.detail }}"><div style="font-size:14px">{{ p.detail }}</div></sc-if>'
+    '<sc-if value="{{ p.hasNotes }}"><div style="font-size:14px"><b>Commentaire :</b> {{ p.notes }}</div></sc-if>'
+    '<sc-if value="{{ p.hasMes }}"><div style="font-size:14px"><b>Mesures :</b> {{ p.mes }}</div></sc-if>'
+    '<sc-if value="{{ p.hasFiles }}"><div style="font-size:13px"><b>Pièces :</b> {{ p.files }}</div></sc-if>'
+    '<sc-if value="{{ p.hasLien }}"><div style="font-size:13px">{{ p.lien }}</div></sc-if><sc-if value="{{ p.hasKm }}"><div style="font-size:13px">{{ p.km }}</div></sc-if>'
+    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="font-size:12px;flex:1">{{ p.tags }}</span><sc-if value="{{ p.hasGps }}"><a href="{{ p.gps }}" target="_blank" rel="noopener" style="font-size:13px">{{ p.gpsLbl }}</a></sc-if>'
+    '<button class="btn btn-ghost" onClick="{{ p.odtNew }}">Créer un ODT / bon de travail</button><button class="btn btn-secondary" onClick="{{ p.edit }}">Corriger</button></div></div></sc-for>')+'</sc-for>'
+  '</div>')
 bt=block(M,'isTemps')
 if bt:
     SUIVI=block(bt,'isSuiviTab')
     TEMPS=('<sc-if value="{{ isTemps }}"><div style="display:flex;flex-direction:column;gap:18px"><div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">'
       +NAV('tPrev','tLabel','tNext','tToday')+TABS+'</div>'
       '<sc-if value="{{ tWeekLoading }}"><div>Chargement de la semaine…</div></sc-if><sc-if value="{{ tWeekErr }}"><div role="alert" style="padding:10px 14px;border:2px solid var(--color-accent-900)">{{ tWeekErr }}</div></sc-if>'
-      '<sc-if value="{{ isTempsTab }}">'+SEMAINE+'</sc-if>'+(SUIVI or '')+'<sc-if value="{{ isPaieTab }}">'+PAIE+'</sc-if><sc-if value="{{ isCumulTab }}">'+CUMUL+'</sc-if></div></sc-if>')
+      '<sc-if value="{{ isTempsTab }}">'+SEMAINE+'</sc-if><sc-if value="{{ isEmpTab }}">'+EMP+'</sc-if>'+(SUIVI or '')+'<sc-if value="{{ isPaieTab }}">'+PAIE+'</sc-if><sc-if value="{{ isCumulTab }}">'+CUMUL+'</sc-if></div></sc-if>')
     if not SUIVI: print('!! bloc isSuiviTab')
     STATS=('<sc-if value="{{ isStats }}"><div style="display:flex;flex-direction:column;gap:18px">'+NAV('sPrev','sLabel','sNext','sToday')
       +'<sc-if value="{{ sLoading }}"><div>Chargement…</div></sc-if>'
@@ -180,8 +203,8 @@ if bt:
       '<span style="font-weight:500">{{ b.nom }}</span><span style="height:18px;background:var(--color-accent-100);position:relative"><span style="position:absolute;left:0;top:0;bottom:0;width:{{ b.w }}%;background:{{ b.bg }}"></span></span><span style="text-align:right;font-variant-numeric:tabular-nums">{{ b.h }} <span style="font-size:12px">{{ b.sub }}</span></span></button></sc-for>'
       '<sc-if value="{{ sNoBars }}"><div style="padding:6px 18px 14px">Aucune heure cette semaine.</div></sc-if><div style="height:10px"></div>')
       +CARD('<h3 style="margin:0;padding:14px 18px 6px;font-size:20px">Bons de travail par statut</h3><div style="display:flex;gap:28px;padding:4px 18px 16px;flex-wrap:wrap"><sc-for list="{{ sWo }}" as="w"><div style="display:flex;flex-direction:column"><span style="font-size:13px">{{ w.l }}</span><span style="font:600 28px var(--font-heading)">{{ w.n }}</span></div></sc-for></div>')
-      +CARD('<h3 style="margin:0;padding:14px 18px 6px;font-size:20px">Rapport de l’équipe</h3><div style="padding:0 18px 16px;display:flex;flex-direction:column;gap:10px"><span style="font-size:14px">Toutes les heures de la semaine, une ligne par punch, avec les totaux par employé — à transmettre ou à analyser.</span>'
-      '<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-primary" onClick="{{ sCopy }}">Copier</button><button class="btn btn-secondary" onClick="{{ sDownload }}">Télécharger (.txt)</button><button class="btn btn-secondary" onClick="{{ sXlsx }}">Feuilles de temps Excel</button></div></div>')
+      +CARD('<h3 style="margin:0;padding:14px 18px 6px;font-size:20px">Analyse par Claude · rapport de l’équipe</h3><div style="padding:0 18px 16px;display:flex;flex-direction:column;gap:10px"><span style="font-size:14px">Toutes les heures de la semaine (une ligne par punch, totaux, comparaison avec la semaine précédente), les bons de travail ouverts et le stock bas — au même format que SA Platform. « Analyser avec Claude » copie le rapport avec une demande d’analyse (heures supplémentaires, anomalies, charge, actions) et ouvre Claude : il reste à coller.</span>'
+      '<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-primary" onClick="{{ sClaude }}" style="gap:8px"><sa-i n="send" s="16"></sa-i>Analyser avec Claude</button><button class="btn btn-secondary" onClick="{{ sCopyPrompt }}">Copier avec la demande d’analyse</button><button class="btn btn-secondary" onClick="{{ sCopy }}">Copier les données seules</button><button class="btn btn-secondary" onClick="{{ sDownload }}">Télécharger (.txt)</button><button class="btn btn-secondary" onClick="{{ sXlsx }}">Feuilles de temps Excel</button></div></div>')
       +'</div></sc-if>\n')
     M=M.replace(bt,TEMPS+STATS,1)
 else: print('!! bloc isTemps')
@@ -251,9 +274,12 @@ PMMSCR=('<sc-if value="{{ isPlanMatch }}"><div style="display:flex;flex-directio
   '<button class="btn btn-ghost" onClick="{{ pmmToday }}">Aujourd’hui</button><input class="input" type="date" value="{{ pmmDateVal }}" onChange="{{ onPmmDate }}" style="width:auto">'
   '<span style="flex:1"></span><span style="font-size:14px">{{ pmmCount }}</span><button class="btn btn-secondary" onClick="{{ pmmPrint }}">Imprimer la journée de l’équipe</button><button class="btn btn-primary" onClick="{{ pmmNew }}">Nouveau Plan de Match</button></div>'
   '<sc-if value="{{ pmmLoading }}"><div>Chargement…</div></sc-if><sc-if value="{{ pmmErrTxt }}"><div role="alert" style="padding:10px 14px;border:2px solid var(--color-accent-900)">{{ pmmErrTxt }}</div></sc-if>'
+  '<div class="blueprint" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><sc-for list="{{ pmmSum }}" as="k"><div style="padding:12px 16px;border-right:1px solid var(--color-divider);background:{{ k.bg }};color:{{ k.fg }};display:flex;flex-direction:column"><span style="font-size:13px">{{ k.l }}</span><span style="font:600 32px/1.1 var(--font-heading)">{{ k.v }}</span></div></sc-for></div>'
+  '<sc-if value="{{ pmmHasUna }}">'+CARD('<div style="padding:10px 18px;display:flex;flex-direction:column;gap:6px"><b style="font:600 18px var(--font-heading)">Travaux sans personne assignée</b><sc-for list="{{ pmmUna }}" as="j"><button onClick="{{ j.open }}" style="all:unset;cursor:pointer;padding:6px 10px;border-left:4px solid var(--color-accent-900);font-size:14px">{{ j.txt }}</button></sc-for></div>')+'</sc-if>'
   '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:14px"><sc-for list="{{ pmmCards }}" as="c">'
   +CARD('<div style="padding:14px 18px;display:flex;flex-direction:column;gap:8px">'
     '<div style="display:flex;align-items:center;gap:10px"><b style="font:600 20px var(--font-heading);flex:1">{{ c.nom }}</b><button class="btn btn-secondary" onClick="{{ c.edit }}" style="white-space:nowrap">{{ c.editLbl }}</button></div>'
+    '<div style="padding:6px 10px;border-left:4px solid {{ c.liveBd }};font-size:14px;font-weight:{{ c.liveFw }}">{{ c.live }}</div>'
     '<sc-if value="{{ c.noPlan }}"><div style="font-size:14px">Aucun plan pour cette journée.</div></sc-if>'
     '<sc-if value="{{ c.hasPlan }}"><div style="font-size:13px">{{ c.meta }}</div><sc-if value="{{ c.resume }}"><div style="font-size:14px">{{ c.resume }}</div></sc-if>'
     '<div style="display:flex;align-items:center;gap:10px"><span style="flex:1;height:8px;background:var(--color-accent-100);position:relative"><span style="position:absolute;left:0;top:0;bottom:0;width:{{ c.pct }}%;background:var(--color-accent-700)"></span></span><span style="font-size:13px">{{ c.prog }}</span></div>'
@@ -263,7 +289,10 @@ PMMSCR=('<sc-if value="{{ isPlanMatch }}"><div style="display:flex;flex-directio
     '<span style="width:16px;height:16px;flex:none;border:1.5px solid var(--color-text);background:{{ t.box }};color:var(--color-bg);display:flex;align-items:center;justify-content:center"><sc-if value="{{ t.on }}"><sa-i n="check" s="12" w="3"></sa-i></sc-if></span>'
     '<span style="flex:1;font-size:14px">{{ t.label }}</span><span style="font-size:12px">{{ t.etat }}</span><sc-if value="{{ t.canVal }}"><button class="btn btn-secondary" onClick="{{ t.valider }}" style="min-height:28px;padding:2px 10px">Valider</button></sc-if></div></sc-for></div></sc-for>'
     '<sc-if value="{{ c.hasFF }}"><div style="font-size:13px"><b>Obstacles :</b> {{ c.obstacles }}<br><b>Bons coups :</b> {{ c.bonscoups }}</div></sc-if></sc-if>'
-    '<sc-if value="{{ c.hasJobs }}"><div style="font-size:13px;border-top:1px solid var(--color-divider);padding-top:6px"><b>Travaux du jour</b><sc-for list="{{ c.jobs }}" as="j"><div>{{ j.txt }} <b>{{ j.done }}</b></div></sc-for></div></sc-if>'
+    '<div style="border-top:1px solid var(--color-divider);padding-top:6px;display:flex;flex-direction:column;gap:3px"><div style="display:flex;justify-content:space-between"><b style="font-size:14px">Travaux du jour</b><span style="font-size:13px">{{ c.jobsSum }}</span></div>'
+    '<sc-if value="{{ c.noJobs }}"><div style="font-size:13px">Aucun bon de travail, créneau ou tâche.</div></sc-if>'
+    +''.join('<sc-for list="{{ c.%s }}" as="j"><button onClick="{{ j.open }}" style="all:unset;cursor:pointer;display:flex;gap:8px;align-items:baseline;padding:4px 8px;border-left:4px solid {{ j.bd }};opacity:{{ j.op }};font-size:13px"><b style="white-space:nowrap;font-size:12px">{{ j.etat }}</b><span>{{ j.txt }}</span></button></sc-for>'%k for k in ('jobsCur','jobsLate','jobsTodo','jobsDone'))
+    +'</div>'
     '</div>')
   +'</sc-for></div></div></sc-if>\n')
 bs=block(M,'isStats')
@@ -463,6 +492,125 @@ PORTAIL=('<sc-if value="{{ isPortail }}"><div role="dialog" aria-label="Portail 
   '<span style="flex:1"></span><span style="font-size:13px">Astuce : admin.html#temps ouvre directement Temps · Paie</span></div>'
   '</div></div></sc-if>\n')
 M=M.rstrip()+'\n'+PORTAIL
+
+# ---------- MONITORING : période, relevés de la période, salles réelles, mur de contrôle ----------
+_mon='<sc-if value="{{ isMonitoring }}">\n        <div style="display:flex;flex-direction:column;gap:26px">'
+MONBAR=('<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">'+SEG('monPers')+'<span style="font-size:14px">Relevés et flux {{ monPerLbl }}</span><span style="flex:1"></span>'
+  '<button class="btn btn-primary" onClick="{{ openWall }}" style="gap:8px"><sa-i n="grid" s="17"></sa-i>Mur de contrôle (grand écran)</button></div>')
+if M.count(_mon)==1: M=M.replace(_mon,_mon+MONBAR,1)
+else: print('!! ancre monitoring',M.count(_mon))
+RELP=CARD('<div style="padding:14px 18px;border-bottom:1px solid var(--color-divider);display:flex;align-items:baseline;justify-content:space-between"><h3 style="margin:0;font-size:22px">{{ relTitle }}</h3></div>'
+  '<sc-if value="{{ relNone }}"><div style="padding:12px 18px">Aucun relevé {{ monPerLbl }}.</div></sc-if><table class="table" style="font-size:14px"><tbody><sc-for list="{{ relRows }}" as="r"><tr onClick="{{ r.go }}" style="cursor:pointer">'
+  '<td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px;font:600 15px var(--font-heading);white-space:nowrap">{{ r.d }}</td>'+TD%('font-weight:600','{{ r.site }}')+TD%('','{{ r.tech }}')+TD%('','{{ r.n }}')+TD%('font-weight:{{ r.fw }}','{{ r.hz }}')+TD%('font-size:13px','{{ r.note }}')+'</tr></sc-for></tbody></table>')
+_sal='<section style="display:flex;flex-direction:column;gap:12px">\n            <div style="display:flex;align-items:baseline;justify-content:space-between"><h3 style="margin:0;font-size:22px">Salles mécaniques</h3>'
+if M.count(_sal)==1: M=M.replace(_sal,RELP+_sal,1)
+else: print('!! ancre salles',M.count(_sal))
+rep('<span style="font-size:12px">{{ s.ville }} · {{ s.debit }}</span>','<span style="font-size:12px">{{ s.ville }} · {{ s.debit }}</span><span style="font-size:12px;font-weight:600">{{ s.etat }}</span>')
+rep('<sc-if value="{{ s.note }}">','<sc-if value="{{ s.hasLive }}"><div style="font-size:12px;font-weight:600;margin-top:4px">{{ s.live }}</div></sc-if><sc-if value="{{ s.note }}">')
+WALL=('<sc-if value="{{ monWall }}"><div role="dialog" aria-label="Mur de contrôle" style="position:fixed;inset:0;z-index:45;background:#0a1a2b;color:#ffffff;overflow:auto;font-size:16px">'
+  '<div style="padding:22px 28px;display:flex;flex-direction:column;gap:20px;min-height:100%;box-sizing:border-box">'
+  '<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap"><div style="width:52px;height:52px;background:#004987;display:flex;align-items:flex-end;padding:6px;box-sizing:border-box;font:600 12px/0.95 var(--font-heading)">Soucy<br>Aquatik</div>'
+  '<div style="display:flex;flex-direction:column"><span style="font:600 34px/1 var(--font-heading)">Mur de contrôle</span><span style="font-size:15px;opacity:.8">{{ wallDate }} · {{ wallSync }}</span></div><span style="flex:1"></span>'
+  '<span style="font:600 64px/1 var(--font-heading);font-variant-numeric:tabular-nums">{{ wallClock }}</span><button onClick="{{ closeWall }}" style="all:unset;cursor:pointer;border:1px solid rgba(255,255,255,.5);padding:8px 14px;font-weight:600">Quitter</button></div>'
+  '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px"><sc-for list="{{ wallKpis }}" as="k"><div style="background:{{ k.bg }};padding:14px 18px;display:flex;flex-direction:column;gap:4px;border:1px solid rgba(255,255,255,.12)">'
+  '<span style="font-size:15px;opacity:.85">{{ k.l }}</span><span style="font:600 52px/1 var(--font-heading)">{{ k.v }}</span><span style="font-size:14px;opacity:.8">{{ k.s }}</span></div></sc-for></div>'
+  '<div style="display:grid;grid-template-columns:minmax(0,3fr) minmax(300px,1fr);gap:20px;align-items:start">'
+  '<div style="display:flex;flex-direction:column;gap:10px"><span style="font:600 24px var(--font-heading)">Salles mécaniques</span><sc-if value="{{ wallNoSalles }}"><div style="opacity:.8">Aucune salle suivie pour l’instant.</div></sc-if>'
+  '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px"><sc-for list="{{ wallSalles }}" as="s"><div style="border:2px solid {{ s.bd }};background:rgba(255,255,255,.04);display:flex;flex-direction:column">'
+  '<div style="padding:10px 14px;display:flex;flex-direction:column;gap:2px;border-bottom:1px solid rgba(255,255,255,.12)"><span style="font:600 20px/1.15 var(--font-heading)">{{ s.nom }}</span><span style="font-size:14px;font-weight:600;color:{{ s.bd }}">{{ s.etat }}</span></div>'
+  '<div style="padding:6px 14px 10px;display:flex;flex-direction:column"><sc-for list="{{ s.rows }}" as="r"><div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:15px"><span style="opacity:.85">{{ r.l }}</span>'
+  '<span style="display:flex;align-items:center;gap:8px;font:600 18px var(--font-heading);color:{{ r.fg }}">{{ r.txt }}<span style="width:12px;height:12px;border-radius:50%;background:{{ r.bg }};border:1px solid rgba(255,255,255,.4)"></span></span></div></sc-for>'
+  '<sc-if value="{{ s.hasLive }}"><div style="font-size:14px;font-weight:600;color:#3ddc84;margin-top:4px">{{ s.live }}</div></sc-if><div style="font-size:12px;opacity:.7;margin-top:4px">{{ s.note }}</div></div></div></sc-for></div></div>'
+  '<div style="display:flex;flex-direction:column;gap:20px"><div style="display:flex;flex-direction:column;gap:8px"><span style="font:600 24px var(--font-heading)">Équipe</span><sc-if value="{{ wallNoTeam }}"><div style="opacity:.8">Personne n’a encore punché aujourd’hui.</div></sc-if>'
+  '<sc-for list="{{ wallTeam }}" as="t"><div style="display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 10px;background:rgba(255,255,255,.05)"><span style="width:12px;height:12px;border-radius:50%;background:{{ t.dot }}"></span>'
+  '<div style="display:flex;flex-direction:column;min-width:0"><b style="font-size:16px">{{ t.nom }}</b><span style="font-size:14px;opacity:.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ t.lieu }} · {{ t.depuis }}</span></div><span style="font:600 18px var(--font-heading)">{{ t.h }}</span></div></sc-for></div>'
+  '<div style="display:flex;flex-direction:column;gap:6px"><span style="font:600 24px var(--font-heading)">Flux terrain</span><sc-for list="{{ wallFlux }}" as="f"><div style="padding:7px 10px;background:{{ f.bg }};border-bottom:1px solid rgba(255,255,255,.1)">'
+  '<div style="display:flex;gap:8px"><b style="font-variant-numeric:tabular-nums">{{ f.h }}</b><span>{{ f.txt }}</span></div><div style="font-size:13px;opacity:.8">{{ f.who }} · {{ f.site }}</div></div></sc-for></div></div></div>'
+  '</div></div></sc-if>\n')
+M=M.rstrip()+'\n'+WALL
+
+# ---------- SITES : répertoire utile + fiche complète ----------
+rep('<th style="text-transform:none;letter-spacing:0;font-size:12px">Client</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Contrat</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Fréquence</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Technicien</th><th style="text-transform:none;letter-spacing:0;font-size:12px">GPS</th>',
+    '<th style="text-transform:none;letter-spacing:0;font-size:12px">Bassins</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Contrat</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Dernier relevé</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Bons de travail</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Position</th>')
+rep('<select class="input" value="{{ siteType }}" onChange="{{ onSiteType }}" style="width:260px">','<span style="flex:1"></span><input class="input" type="search" placeholder="Rechercher un site…" value="{{ siteQ }}" onInput="{{ onSiteQ }}" style="max-width:240px"><button class="btn btn-primary" onClick="{{ siteNew }}" style="white-space:nowrap">Nouveau site</button><select class="input" value="{{ siteType }}" onChange="{{ onSiteType }}" style="width:260px">')
+SFIN=lambda o,t='text',x='':'<input class="input" type="%s" value="{{ %s.v }}" onInput="{{ %s.on }}"%s>'%(t,o,o,x)
+SF=('<template data-sc="if" value="{{ sfOpen }}"><div class="dialog-backdrop" onClick="{{ sfCloseBg }}" style="z-index:60"><div class="dialog" onClick="{{ stop }}" style="width:min(900px,100%);background:var(--color-bg);max-height:calc(100vh - 40px);overflow-y:auto;gap:14px;padding:22px 24px;border:1px solid var(--color-text)">'
+  +DLGHEAD('sfTitle','sfClose')+IF('sfLoading','<div>Chargement de la fiche…</div>')
+  +IF('sfReady',G2(FL('Nom du site',SFIN('sfNom')),FL('Type',SEL('sfTypes','onSfType')))
+    +FL('Adresse','<div style="display:flex;gap:8px">'+SFIN('sfAddr').replace('>',' style="flex:1">',1)+'<sc-if value="{{ sfHasAddr }}"><a class="btn btn-ghost" href="{{ sfGeoMaps }}" target="_blank" rel="noopener">Voir sur la carte</a></sc-if></div>')
+    +G2(G2(FL('Téléphone',SFIN('sfTel','tel')),FL('Courriel',SFIN('sfEmail','email'))),G2(FL('Site web',SFIN('sfWeb','url')),FL('Année',SFIN('sfAnnee'))))
+    +G2(G2(FL('Relevé par défaut',SEL('sfRelTypes','onSfRelType')),FL('N° de contrat',INP('sfCode','onSfCode'))),G2(FL('Latitude',INP('sfLat','onSfLat','text',' placeholder="46.81"')),FL('Longitude',INP('sfLng','onSfLng','text',' placeholder="-71.21"'))))
+    +'<div style="display:flex;flex-direction:column;gap:6px"><b>Bassins</b><sc-if value="{{ sfNoBassin }}"><div style="font-size:13px">Aucun bassin déclaré — le site compte pour un seul bassin, avec le relevé par défaut.</div></sc-if>'
+    '<sc-for list="{{ sfBassins }}" as="b"><div style="display:grid;grid-template-columns:2fr 1.2fr 1.6fr 0.9fr 2fr auto;gap:6px;align-items:center">'
+    '<input class="input" value="{{ b.nom }}" onInput="{{ b.onNom }}" placeholder="Nom (ex. Bassin principal)" aria-label="Nom du bassin">'
+    +SEL('b.types','b.onType').replace('<select class="input"','<select class="input" aria-label="Type de bassin"')+SEL('b.rel','b.onRel').replace('<select class="input"','<select class="input" aria-label="Paramètres de relevé"')
+    +'<input class="input" value="{{ b.vol }}" onInput="{{ b.onVol }}" placeholder="Volume" aria-label="Volume"><input class="input" value="{{ b.notes }}" onInput="{{ b.onNotes }}" placeholder="Notes" aria-label="Notes du bassin">'
+    '<button class="btn btn-ghost btn-icon" onClick="{{ b.del }}" aria-label="Retirer le bassin"><sa-i n="x" s="16"></sa-i></button></div></sc-for>'
+    '<button class="btn btn-ghost" onClick="{{ sfAddBassin }}" style="align-self:flex-start">+ Ajouter un bassin</button></div>'
+    +FL('Équipements','<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><sc-for list="{{ sfEquips }}" as="e"><span style="display:flex;align-items:center;gap:4px;border:1px solid var(--color-divider);padding:2px 4px 2px 8px;font-size:13px">{{ e.l }}<button class="btn btn-ghost btn-icon" onClick="{{ e.del }}" aria-label="Retirer"><sa-i n="x" s="14"></sa-i></button></span></sc-for>'
+      '<input class="input" value="{{ sfEquipIn }}" onInput="{{ onSfEquipIn }}" placeholder="ex. Pompe 2 HP" aria-label="Nouvel équipement" style="max-width:220px"><button class="btn btn-ghost" onClick="{{ sfEquipAdd }}">Ajouter</button></div>')
+    +FL('Pièces jointes','<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><sc-for list="{{ sfFiles }}" as="p"><span style="display:flex;align-items:center;gap:4px;border:1px solid var(--color-divider);padding:2px 4px 2px 8px;font-size:13px"><sc-if value="{{ p.has }}"><button onClick="{{ p.open }}" style="all:unset;cursor:pointer;text-decoration:underline">{{ p.name }}</button></sc-if><sc-if value="{{ p.noData }}"><span title="Fichier resté sur l’appareil qui l’a ajouté dans SA Platform">{{ p.name }} (contenu absent)</span></sc-if><button class="btn btn-ghost btn-icon" onClick="{{ p.del }}" aria-label="Retirer"><sa-i n="x" s="14"></sa-i></button></span></sc-for>'
+      '<button class="btn btn-ghost" onClick="{{ sfAddFile }}" style="gap:6px"><sa-i n="plus" s="15"></sa-i>Ajouter (photo ou PDF)</button></div>')
+    +FL('Notes',TXT('sfNotes.v','sfNotes.on',''))
+    +IF('sfIsOld','<div style="border-top:1px solid var(--color-divider);padding-top:10px;display:flex;flex-direction:column;gap:8px">'
+      '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><b>{{ sfRelTxt }}</b><button class="btn btn-ghost" onClick="{{ sfInsp }}">Voir les relevés</button><span style="flex:1"></span><b>{{ sfWoN }}</b><button class="btn btn-ghost" onClick="{{ sfNewWo }}">+ Bon de travail</button></div>'
+      '<sc-if value="{{ sfHasWo }}"><div style="display:flex;flex-direction:column;gap:2px"><sc-for list="{{ sfWo }}" as="w"><button onClick="{{ w.open }}" style="all:unset;cursor:pointer;font-size:13px;padding:3px 8px;border-left:3px solid var(--color-divider)">{{ w.txt }}</button></sc-for></div></sc-if>'
+      '<b>Journal de chantier</b><sc-if value="{{ sfNoJournal }}"><div style="font-size:13px">Aucune entrée (photos et notes laissées au punch dans SA Platform).</div></sc-if>'
+      '<sc-for list="{{ sfJournal }}" as="j"><div style="border:1px solid var(--color-divider);padding:8px 10px;display:flex;flex-direction:column;gap:4px"><b style="font-size:13px">{{ j.h }}</b><sc-if value="{{ j.mes }}"><div style="font-size:13px">{{ j.mes }}</div></sc-if><sc-if value="{{ j.notes }}"><div style="font-size:14px">{{ j.notes }}</div></sc-if>'
+      '<sc-if value="{{ j.hasPh }}"><div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ j.photos }}" as="p"><button onClick="{{ p.open }}" style="all:unset;cursor:pointer"><img src="{{ p.src }}" alt="Photo" style="width:72px;height:72px;object-fit:cover;border:1px solid var(--color-divider)"></button></sc-for></div></sc-if></div></sc-for></div>')
+    +'<div class="dialog-actions" style="margin-top:0;flex-wrap:wrap">'+IF('sfCanDel',BTNX('btn-secondary','sfDel','{{ sfDelLbl }}'))+'<span style="flex:1"></span>'+BTNX('btn-secondary','sfClose','Fermer')+BTNX('btn-primary','sfSave','{{ sfSaveLbl }}')+'</div>')
+  +'</div></div></template>\n')
+M=M.rstrip()+'\n'+SF
+
+# ---------- INSPECTIONS : bassins, rapport, Excel, paramètres de relevé ----------
+rep('<div style="display:flex;gap:8px"><button class="btn btn-secondary" onClick="{{ exportMsg }}" style="white-space:nowrap"><sa-i n="download" s="16"></sa-i><span>Exporter le rapport</span></button></div>',
+    '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary" onClick="{{ inspPrint }}" style="white-space:nowrap;gap:6px"><sa-i n="file" s="16"></sa-i>Rapport imprimable / PDF</button><button class="btn btn-secondary" onClick="{{ inspXlsx }}" style="white-space:nowrap;gap:6px"><sa-i n="download" s="16"></sa-i>Excel</button><button class="btn btn-secondary" onClick="{{ inspParamsEdit }}" style="white-space:nowrap">Paramètres de relevé</button></div>')
+_ip='<div style="display:flex;flex-wrap:wrap;border:1px solid var(--color-divider);align-self:flex-start">\n              <sc-for list="{{ inspParams }}" as="p">'
+if M.count(_ip)==1: M=M.replace(_ip,'<sc-if value="{{ inspHasB }}"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><b>Bassin</b>'+SEG('inspBassins')+'</div></sc-if>'+_ip,1)
+else: print('!! ancre paramètres inspection',M.count(_ip))
+TYC='<input class="input" value="{{ c.v }}" onInput="{{ c.on }}" placeholder="{{ c.ph }}" aria-label="{{ c.ph }}" style="flex:{{ c.w }};min-width:50px;padding:6px 8px">'
+TYROWS=lambda lst,add,lbl:('<sc-for list="{{ %s }}" as="r"><div style="display:flex;gap:6px;align-items:center"><sc-for list="{{ r.cells }}" as="c">'%lst+TYC+'</sc-for><button class="btn btn-ghost btn-icon" onClick="{{ r.del }}" aria-label="Retirer"><sa-i n="x" s="16"></sa-i></button></div></sc-for>'
+  '<button class="btn btn-ghost" onClick="{{ %s }}" style="align-self:flex-start">+ %s</button>'%(add,lbl))
+TY=('<template data-sc="if" value="{{ tyOpen }}"><div class="dialog-backdrop" onClick="{{ tyCloseBg }}" style="z-index:60"><div class="dialog" onClick="{{ stop }}" style="width:min(940px,100%);background:var(--color-bg);max-height:calc(100vh - 40px);overflow-y:auto;gap:14px;padding:22px 24px;border:1px solid var(--color-text)">'
+  +DLGHEAD('tyTitle','tyClose')
+  +G2(FL('Type de bassin',SEL('tyTypes','onTyType')),IF('tyNew',FL('Code (ex. PI, SPA2)',INP('tyCode','onTyCode','text',' autocapitalize="characters"'))))
+  +'<sc-if value="{{ tyUse }}"><div style="font-size:13px">{{ tyUse }}</div></sc-if>'
+  +G2(G2(FL('Nom',INP('tyLabel','onTyLabel')),FL('Nom court',INP('tyCourt','onTyCourt'))),G2(FL('Norme',INP('tyNorme','onTyNorme')),FL('Photo demandée',INP('tyPhoto','onTyPhoto'))))
+  +'<div style="display:flex;flex-direction:column;gap:6px"><b>Paramètres mesurés</b><div style="font-size:13px">Min / max : bornes de la règle dans sa-terrain · zone basse / haute : plage visée (hors de cette plage, la valeur est signalée « hors zone »).</div>'+'<div style="display:flex;gap:6px;font-size:12px;font-weight:600;padding-right:40px">'+''.join('<span style="flex:%s;min-width:50px">%s</span>'%(w,l) for l,w in (('Nom',2.2),('Clé',1),('Unité',0.9),('Min',0.8),('Zone basse',0.9),('Zone haute',0.9),('Max',0.8),('Pas',0.7)))+'</div>'+TYROWS('tyFields','tyAddField','Ajouter un paramètre')+'</div>'
+  +FL('Points de contrôle (un par ligne)',TXT('tyChecks','onTyChecks','ex. Skimmers nettoyés'))
+  +'<div style="display:flex;flex-direction:column;gap:6px"><b>Produits ajoutés</b>'+TYROWS('tyProds','tyAddProd','Ajouter un produit')+'</div>'
+  +'<div class="dialog-actions" style="margin-top:0;flex-wrap:wrap"><span style="flex:1"></span>'+BTNX('btn-secondary','tyClose','Fermer')+BTNX('btn-primary','tySave','{{ tySaveLbl }}')+'</div>'
+  +'</div></div></template>\n')
+M=M.rstrip()+'\n'+TY
+
+# ---------- CARTE : contrôles réels (la légende de la maquette ne correspondait à rien) ----------
+_lg=re.search(r'<div style="display:flex;gap:18px;font-size:13px;flex-wrap:wrap">.*?Alerte salle mécanique</span>\s*</div>',M,flags=re.S)
+CCHK='<div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ cShows }}" as="c"><button onClick="{{ c.go }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--color-divider);font-size:14px"><span style="width:16px;height:16px;border:1.5px solid var(--color-text);background:{{ c.box }};color:var(--color-bg);display:flex;align-items:center;justify-content:center"><sc-if value="{{ c.on }}"><sa-i n="check" s="12" w="3"></sa-i></sc-if></span>{{ c.l }}</button></sc-for></div>'
+CCTL=('<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+CCHK
+  +'<select class="input" onChange="{{ onCAcc }}" aria-label="Précision des punchs" style="width:auto"><sc-for list="{{ cAccs }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></sc-for></select>'
+  +'<select class="input" onChange="{{ onCType }}" aria-label="Type de site" style="width:auto"><sc-for list="{{ cTypes }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></sc-for></select>'
+  +'<input class="input" type="search" placeholder="Site ou client…" value="{{ cQ }}" onInput="{{ onCQ }}" style="max-width:200px"></div>')
+if _lg: M=M.replace(_lg.group(0),CCTL,1)
+else: print('!! légende de la carte introuvable')
+_sl='<sc-for list="{{ lines }}" as="l">'
+if M.count(_sl)==1: M=M.replace(_sl,'<sc-if value="{{ linesNone }}"><div style="padding:16px 18px">Aucun travail ni punch aujourd’hui.</div></sc-if>'+_sl,1)
+else: print('!! schéma',M.count(_sl))
+_tp='<div style="padding:12px 16px;border-bottom:1px solid var(--color-divider);font:600 18px var(--font-heading)">En tournée</div>'
+CSIDE=('<div style="padding:12px 16px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:8px"><b style="font:600 18px var(--font-heading)">Tournée d’un technicien</b>'
+  '<select class="input" onChange="{{ onCEmp }}" aria-label="Technicien"><sc-for list="{{ cEmps }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></sc-for></select>'
+  '<input class="input" type="date" value="{{ cDate }}" onChange="{{ onCDate }}" aria-label="Date de la tournée">'
+  '<sc-if value="{{ cTourNone }}"><div style="font-size:13px">Aucun punch géolocalisé ce jour-là.</div></sc-if>'
+  '<sc-for list="{{ cTour }}" as="p"><div style="display:flex;gap:8px;font-size:13px;align-items:baseline"><b style="min-width:18px">{{ p.n }}</b><span style="flex:1">{{ p.txt }}</span><span style="font-size:12px">{{ p.acc }}</span></div></sc-for>'
+  '<sc-if value="{{ cTourKm }}"><div style="font-size:13px;font-weight:600">{{ cTourKm }}</div></sc-if></div>'
+  '<sc-if value="{{ cSans }}"><div style="padding:10px 16px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:6px;font-size:13px"><span>{{ cSans }}</span><sc-if value="{{ cCanGeo }}"><button class="btn btn-secondary" onClick="{{ cGeo }}">Placer ces sites d’après leur adresse</button></sc-if></div></sc-if>')
+if M.count(_tp)==1: M=M.replace(_tp,CSIDE+_tp,1)
+else: print('!! panneau En tournée',M.count(_tp))
+_cv='<div style="display:flex;flex-direction:column;gap:16px;height:100%">'
+FIXB='<sc-if value="{{ cFixing }}"><div role="status" style="padding:10px 14px;border:2px solid var(--color-accent-900);display:flex;gap:10px;align-items:center"><b style="flex:1">{{ cFixTxt }}</b><button class="btn btn-secondary" onClick="{{ cFixCancel }}">Annuler</button></div></sc-if>'
+i=M.find('<sc-if value="{{ isCarte }}">')
+j=M.find(_cv,i)
+if i>=0 and j>=0: M=M[:j+len(_cv)]+FIXB+M[j+len(_cv):]
+else: print('!! ancre carte')
 _logo='<div style="display:flex;flex-direction:column;line-height:1.15"><span style="font:600 20px var(--font-heading)">sa-admin</span><span style="font-size:12px;color:var(--color-accent-700)">Centre des opérations</span></div>\n    </div>'
 if M.count(_logo)==1: M=M.replace(_logo,_logo+'<button onClick="{{ openPortail }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;height:38px;padding:0 14px 0 16px;border-bottom:1px solid var(--color-divider);font-weight:600" data-hv="1"><sa-i n="home" s="18"></sa-i>Accueil · toutes les applications</button>',1)
 else: print('!! logo sa-admin introuvable',M.count(_logo))
