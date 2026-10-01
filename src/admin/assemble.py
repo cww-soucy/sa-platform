@@ -582,6 +582,35 @@ TY=('<template data-sc="if" value="{{ tyOpen }}"><div class="dialog-backdrop" on
   +'<div class="dialog-actions" style="margin-top:0;flex-wrap:wrap"><span style="flex:1"></span>'+BTNX('btn-secondary','tyClose','Fermer')+BTNX('btn-primary','tySave','{{ tySaveLbl }}')+'</div>'
   +'</div></div></template>\n')
 M=M.rstrip()+'\n'+TY
+
+# ---------- CARTE : contrôles réels (la légende de la maquette ne correspondait à rien) ----------
+_lg=re.search(r'<div style="display:flex;gap:18px;font-size:13px;flex-wrap:wrap">.*?Alerte salle mécanique</span>\s*</div>',M,flags=re.S)
+CCHK='<div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ cShows }}" as="c"><button onClick="{{ c.go }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--color-divider);font-size:14px"><span style="width:16px;height:16px;border:1.5px solid var(--color-text);background:{{ c.box }};color:var(--color-bg);display:flex;align-items:center;justify-content:center"><sc-if value="{{ c.on }}"><sa-i n="check" s="12" w="3"></sa-i></sc-if></span>{{ c.l }}</button></sc-for></div>'
+CCTL=('<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+CCHK
+  +'<select class="input" onChange="{{ onCAcc }}" aria-label="Précision des punchs" style="width:auto"><sc-for list="{{ cAccs }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></sc-for></select>'
+  +'<select class="input" onChange="{{ onCType }}" aria-label="Type de site" style="width:auto"><sc-for list="{{ cTypes }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></sc-for></select>'
+  +'<input class="input" type="search" placeholder="Site ou client…" value="{{ cQ }}" onInput="{{ onCQ }}" style="max-width:200px"></div>')
+if _lg: M=M.replace(_lg.group(0),CCTL,1)
+else: print('!! légende de la carte introuvable')
+_sl='<sc-for list="{{ lines }}" as="l">'
+if M.count(_sl)==1: M=M.replace(_sl,'<sc-if value="{{ linesNone }}"><div style="padding:16px 18px">Aucun travail ni punch aujourd’hui.</div></sc-if>'+_sl,1)
+else: print('!! schéma',M.count(_sl))
+_tp='<div style="padding:12px 16px;border-bottom:1px solid var(--color-divider);font:600 18px var(--font-heading)">En tournée</div>'
+CSIDE=('<div style="padding:12px 16px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:8px"><b style="font:600 18px var(--font-heading)">Tournée d’un technicien</b>'
+  '<select class="input" onChange="{{ onCEmp }}" aria-label="Technicien"><sc-for list="{{ cEmps }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></sc-for></select>'
+  '<input class="input" type="date" value="{{ cDate }}" onChange="{{ onCDate }}" aria-label="Date de la tournée">'
+  '<sc-if value="{{ cTourNone }}"><div style="font-size:13px">Aucun punch géolocalisé ce jour-là.</div></sc-if>'
+  '<sc-for list="{{ cTour }}" as="p"><div style="display:flex;gap:8px;font-size:13px;align-items:baseline"><b style="min-width:18px">{{ p.n }}</b><span style="flex:1">{{ p.txt }}</span><span style="font-size:12px">{{ p.acc }}</span></div></sc-for>'
+  '<sc-if value="{{ cTourKm }}"><div style="font-size:13px;font-weight:600">{{ cTourKm }}</div></sc-if></div>'
+  '<sc-if value="{{ cSans }}"><div style="padding:10px 16px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:6px;font-size:13px"><span>{{ cSans }}</span><sc-if value="{{ cCanGeo }}"><button class="btn btn-secondary" onClick="{{ cGeo }}">Placer ces sites d’après leur adresse</button></sc-if></div></sc-if>')
+if M.count(_tp)==1: M=M.replace(_tp,CSIDE+_tp,1)
+else: print('!! panneau En tournée',M.count(_tp))
+_cv='<div style="display:flex;flex-direction:column;gap:16px;height:100%">'
+FIXB='<sc-if value="{{ cFixing }}"><div role="status" style="padding:10px 14px;border:2px solid var(--color-accent-900);display:flex;gap:10px;align-items:center"><b style="flex:1">{{ cFixTxt }}</b><button class="btn btn-secondary" onClick="{{ cFixCancel }}">Annuler</button></div></sc-if>'
+i=M.find('<sc-if value="{{ isCarte }}">')
+j=M.find(_cv,i)
+if i>=0 and j>=0: M=M[:j+len(_cv)]+FIXB+M[j+len(_cv):]
+else: print('!! ancre carte')
 _logo='<div style="display:flex;flex-direction:column;line-height:1.15"><span style="font:600 20px var(--font-heading)">sa-admin</span><span style="font-size:12px;color:var(--color-accent-700)">Centre des opérations</span></div>\n    </div>'
 if M.count(_logo)==1: M=M.replace(_logo,_logo+'<button onClick="{{ openPortail }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;height:38px;padding:0 14px 0 16px;border-bottom:1px solid var(--color-divider);font-weight:600" data-hv="1"><sa-i n="home" s="18"></sa-i>Accueil · toutes les applications</button>',1)
 else: print('!! logo sa-admin introuvable',M.count(_logo))
