@@ -24,6 +24,10 @@ M=re.sub(r'\s+style-(hover|active)="([^"]*)"',sty,M)
 rep('<div style="height:54px;flex:none"></div>','<div style="height:max(env(safe-area-inset-top),8px);flex:none"></div>',1)
 # 4) libellés de démonstration -> données réelles
 rep('Hors-ligne prêt · synchro 09:42','{{ syncLbl }}',1)
+# Logo Soucy Aquatik (le même que SA Platform), intégré au fichier
+import base64
+LOGO='data:image/png;base64,'+base64.b64encode(open(os.path.join(SRC,'design','logo-soucy-aquatik.png'),'rb').read()).decode()
+rep('<div style="width:46px;height:46px;background:#004987;color:#ffffff;display:flex;align-items:flex-end;padding:5px;box-sizing:border-box;font:600 11px/0.95 var(--font-heading);letter-spacing:0.01em">Soucy<br>Aquatik</div>','<img src="'+LOGO+'" alt="Soucy Aquatik" style="width:46px;height:46px;flex:none;display:block">',1)
 # Fiche : choix du bassin quand le site en a plusieurs (bassins déclarés dans la fiche du site)
 rep('{{ cur.typeLabel }} · {{ cur.bassin }}</div>','{{ cur.typeLabel }} · {{ cur.bassin }}</div><sc-if value="{{ cur.hasBassins }}"><div role="group" aria-label="Bassin" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"><sc-for list="{{ cur.bassinChips }}" as="b"><button onClick="{{ b.go }}" style="all:unset;cursor:pointer;padding:8px 14px;border:1.5px solid var(--color-text);font:600 16px var(--font-heading);background:{{ b.bg }};color:{{ b.fg }}">{{ b.label }}</button></sc-for></div></sc-if>',1)
 rep('Punché depuis {{ punchAt }}','{{ punchLbl }}',1)
@@ -187,21 +191,27 @@ html,body{margin:0;height:100%;background:var(--color-bg);-webkit-text-size-adju
 #app{position:fixed;inset:0}
 #app>div{height:100%}
 button{font-family:inherit}
-#login{position:fixed;inset:0;background:var(--color-bg);display:none;align-items:center;justify-content:center;padding:24px;z-index:50}
-#login form{width:100%;max-width:360px;display:flex;flex-direction:column;gap:16px}
+#login{position:fixed;inset:0;background:var(--color-bg);display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px;z-index:50;overflow:auto}
+#login::before{content:"";position:absolute;left:0;right:0;top:0;height:38%;background:#004987;z-index:-1}
+#login form{width:100%;max-width:380px;display:flex;flex-direction:column;gap:16px;background:var(--color-bg);padding:26px 24px 22px;box-shadow:0 8px 30px rgba(0,30,60,.18);box-sizing:border-box}
+#login .logo{width:132px;height:132px;display:block;margin:0 auto 18px;border:4px solid #fff;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+#welcome{position:fixed;inset:0;z-index:60;background:#004987;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;transition:opacity .5s}
+#welcome img{width:120px;height:120px;border:4px solid #fff}
+#welcome h1{margin:0;font:600 38px/1.1 var(--font-heading)}
 #login h1{margin:0;font-size:44px;line-height:1}
 #login .input{font-size:18px;min-height:52px}
 '''+'\n'.join(css)+'''
 </style></head><body>
 <div id="app"></div>
-<div id="login"><form id="loginForm" autocomplete="on">
-<div style="font:400 14px var(--font-body);color:var(--color-accent-700)">Soucy Aquatik · sa-terrain</div>
+<div id="login"><img class="logo" src="'''+LOGO+'''" alt="Soucy Aquatik"><form id="loginForm" autocomplete="on">
+<div style="font:400 14px var(--font-body);color:var(--color-accent-700)">Soucy Aquatik · application terrain</div>
 <h1>La Tournée</h1>
+<div style="font-size:15px;line-height:1.4">Bienvenue ! Connectez-vous avec votre identifiant SA Platform pour voir votre tournée, puncher et saisir vos relevés.</div>
 <div class="field"><label style="font-size:15px">Identifiant</label><input id="lu" class="input" autocomplete="username" autocapitalize="off" autocorrect="off"></div>
 <div class="field"><label style="font-size:15px">Mot de passe</label><input id="lp" class="input" type="password" autocomplete="current-password"></div>
 <div id="le" style="min-height:22px;font-size:15px"></div>
 <button class="btn btn-primary" type="submit" style="min-height:58px;font-size:20px">Se connecter</button>
-</form></div>
+</form><div style="margin-top:18px;font-size:13px;color:var(--color-accent-700);text-align:center">Mot de passe oublié ? Demandez à votre superviseur.</div></div>
 <input id="photoInput" type="file" accept="image/*" capture="environment" style="display:none">
 <template id="tpl">'''+M+'''</template>
 <script>'''+icons+'''</script>

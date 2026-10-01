@@ -126,3 +126,16 @@ test('site à plusieurs bassins : choix du bassin, paramètres propres au bassin
   assert.ok(!db.log.some((l) => l.rejected), 'aucune colonne inconnue envoyée (_sk retiré)');
   await page.close();
 });
+
+test('connexion : logo, puis écran de bienvenue au nom de l’employé, puis « Bonjour » en tête de la tournée', async () => {
+  const { page, db } = await openApp(browser, srv.url, { app: 'terrain', user: null, tables: base() });
+  db.rpc.verifier_connexion = () => [{ id: 'kael', prenom: 'Kaël', nom: 'Test', role: 'technicien', dept: 'Terrain', tel: '' }];
+  assert.match(await page.locator('#login img.logo').getAttribute('src'), /^data:image\/png;base64,/);
+  await page.fill('#lu', 'kael'); await page.fill('#lp', 'x'); await page.click('#loginForm button');
+  await page.getByRole('status').getByText('Bienvenue, Kaël !').waitFor();
+  await page.waitForFunction(() => /^(Bonjour|Bon après-midi|Bonsoir) Kaël$/.test(window.__terrain.vals().headerTitle));
+  await page.reload();
+  await page.waitForFunction(() => window.__terrain);
+  assert.equal(await page.locator('#welcome').count(), 0, 'l’écran de bienvenue ne s’affiche qu’après la connexion');
+  await page.close();
+});

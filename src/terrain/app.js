@@ -419,7 +419,7 @@ Comp.prototype.vals=function(){
     sunLabel:sun?'activé':'désactivé',sunBtnBg:sun?'var(--color-text)':'transparent',sunBtnFg:sun?'var(--color-bg)':'var(--color-text)',
     sunJustify:sun?'flex-end':'flex-start',sunTrack:sun?'var(--color-text)':'transparent',sunKnob:sun?'var(--color-bg)':'var(--color-text)',
     bigJustify:big?'flex-end':'flex-start',bigTrack:big?'var(--color-text)':'transparent',bigKnob:big?'var(--color-bg)':'var(--color-text)',
-    hasToast:!!st.toast,toast:st.toast,headerTitle:titles[scr]||'La Tournée',
+    hasToast:!!st.toast,toast:st.toast,headerTitle:scr==='today'?bonjour(this.user.prenom):(titles[scr]||'La Tournée'),
     syncLbl:(this.online&&this.sendErr)?'⚠ '+cap(this.sendErr):(this.online&&Object.keys(this.loadErr).length)?'⚠ Données incomplètes : '+Object.keys(this.loadErr).map(function(k){return self.loadErr[k];}).join(', '):this.online?((this.queueN+opsN)?(this.queueN+opsN)+' envoi(s) en attente':'Connecté · synchro '+(this.syncAt?hhmm(this.syncAt):'—')):'Hors-ligne · '+this.queueN+' fiche(s) en attente',
     isToday:scr==='today',isTemps:scr==='temps',isPunchForm:scr==='punchform',isStopForm:scr==='stopform',pn:pn,pf:pf,sf:sf,isFiche:scr==='fiche'&&!!cj,isFicheEmpty:scr==='fiche'&&!cj,isDem:scr==='demandes',isPlan:scr==='planning',isProfil:scr==='profil',isSoon:scr==='soon',soonTitle:st.soon,
     goToday:function(){self.closeFiche();},goFiche:function(){self.go('fiche');},goLog:function(){self.go('logistique');},goHiv:function(){self.go('hivernage');},goDemandes:function(){self.go('demandes');},demTypes:demTypes,hasComposer:!!cd,composer:composer,composerSite:cj?(cur.nom||'—'):'Aucun (hors site)',closeComposer:function(){self.setState({demande:null});},demandeTxt:st.demandeTxt,onDemTxt:function(e){self.setState({demandeTxt:e.target.value});},demHist:demHist,
@@ -452,7 +452,14 @@ Comp.prototype.vals=function(){
     tabs:TABS.map(function(t){return{label:t[1],icon:t[2],go:function(){self.go(t[0]);},fg:tabOf===t[0]?'var(--color-text)':'var(--color-neutral-600)',fw:tabOf===t[0]?600:400,bar:tabOf===t[0]?'inset 0 3px 0 var(--color-text)':'none',dot:t[0]==='fiche'&&!!cj};})
   });};
 Comp.prototype.update=function(){if(!this._host)return;SARender(document.getElementById('tpl'),this._host,this.vals());this.applyTheme();this.bindSig();};
-Comp.prototype.mount=function(host){var self=this;this._host=host;this.update();
+/* Mot de bienvenue : « Bonjour Kaël » en tête de la tournée ; écran d'accueil au logo juste après la connexion */
+function bonjour(p){var h=new Date().getHours();return(h<12?'Bonjour':h<18?'Bon après-midi':'Bonsoir')+(p?' '+p:'');}
+function bienvenue(u){var f=false;try{f=localStorage.getItem('sa_terrain_bienvenue')==='1';localStorage.removeItem('sa_terrain_bienvenue');}catch(e){}if(!f)return;
+  var lg=document.querySelector('#login .logo'),d=new Date(),el=document.createElement('div');el.id='welcome';el.setAttribute('role','status');
+  el.innerHTML=(lg?'<img alt="Soucy Aquatik" src="'+lg.getAttribute('src')+'">':'')+'<h1></h1><div style="font-size:18px"></div><div style="font-size:15px;opacity:.85">Bonne journée sur la tournée !</div>';
+  el.querySelector('h1').textContent='Bienvenue'+(u.prenom?', '+u.prenom:'')+'\u00a0!';el.querySelector('h1+div').textContent=JOURS[d.getDay()]+' '+d.getDate()+' '+MOIS[d.getMonth()];
+  var bye=function(){el.style.opacity='0';setTimeout(function(){if(el.parentNode)el.parentNode.removeChild(el);},500);};el.addEventListener('click',bye);document.body.appendChild(el);setTimeout(bye,2600);}
+Comp.prototype.mount=function(host){var self=this;this._host=host;this.update();bienvenue(this.user);
   window.addEventListener('online',function(){self.online=true;self.refresh();});window.addEventListener('offline',function(){self.online=false;self.update();});
   document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')self.refresh();});
   setInterval(function(){if(document.visibilityState==='visible'){self.flush();self.flushOps();self.loadPunch().then(function(){self.update();});}},60000);
@@ -464,7 +471,7 @@ function showLogin(){var el=document.getElementById('login');el.style.display='f
     fetch(SB+'/rest/v1/rpc/verifier_connexion',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},H),body:JSON.stringify({p_id:u,p_mdp:p})}).then(function(r){return r.json();}).then(function(rows){
       if(!Array.isArray(rows)||!rows.length){err.textContent='Identifiant ou mot de passe incorrect';return;}
       var c=rows[0];if(c.doit_changer_mdp){err.textContent='Changez d’abord votre mot de passe dans SA Platform.';return;}
-      localStorage.setItem('sa_terrain_user',JSON.stringify({id:c.id,prenom:c.prenom,nom:c.nom,role:c.role,dept:c.dept,tel:c.tel,email:c.email||''}));location.reload();
+      localStorage.setItem('sa_terrain_user',JSON.stringify({id:c.id,prenom:c.prenom,nom:c.nom,role:c.role,dept:c.dept,tel:c.tel,email:c.email||''}));try{localStorage.setItem('sa_terrain_bienvenue','1');}catch(x){}location.reload();
     }).catch(function(){err.textContent='Réseau indisponible — réessayez.';});};}
 window.addEventListener('DOMContentLoaded',function(){
   var user=jget('sa_terrain_user',null);
