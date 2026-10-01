@@ -561,6 +561,27 @@ SF=('<template data-sc="if" value="{{ sfOpen }}"><div class="dialog-backdrop" on
     +'<div class="dialog-actions" style="margin-top:0;flex-wrap:wrap">'+IF('sfCanDel',BTNX('btn-secondary','sfDel','{{ sfDelLbl }}'))+'<span style="flex:1"></span>'+BTNX('btn-secondary','sfClose','Fermer')+BTNX('btn-primary','sfSave','{{ sfSaveLbl }}')+'</div>')
   +'</div></div></template>\n')
 M=M.rstrip()+'\n'+SF
+
+# ---------- INSPECTIONS : bassins, rapport, Excel, paramètres de relevé ----------
+rep('<div style="display:flex;gap:8px"><button class="btn btn-secondary" onClick="{{ exportMsg }}" style="white-space:nowrap"><sa-i n="download" s="16"></sa-i><span>Exporter le rapport</span></button></div>',
+    '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary" onClick="{{ inspPrint }}" style="white-space:nowrap;gap:6px"><sa-i n="file" s="16"></sa-i>Rapport imprimable / PDF</button><button class="btn btn-secondary" onClick="{{ inspXlsx }}" style="white-space:nowrap;gap:6px"><sa-i n="download" s="16"></sa-i>Excel</button><button class="btn btn-secondary" onClick="{{ inspParamsEdit }}" style="white-space:nowrap">Paramètres de relevé</button></div>')
+_ip='<div style="display:flex;flex-wrap:wrap;border:1px solid var(--color-divider);align-self:flex-start">\n              <sc-for list="{{ inspParams }}" as="p">'
+if M.count(_ip)==1: M=M.replace(_ip,'<sc-if value="{{ inspHasB }}"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><b>Bassin</b>'+SEG('inspBassins')+'</div></sc-if>'+_ip,1)
+else: print('!! ancre paramètres inspection',M.count(_ip))
+TYC='<input class="input" value="{{ c.v }}" onInput="{{ c.on }}" placeholder="{{ c.ph }}" aria-label="{{ c.ph }}" style="flex:{{ c.w }};min-width:50px;padding:6px 8px">'
+TYROWS=lambda lst,add,lbl:('<sc-for list="{{ %s }}" as="r"><div style="display:flex;gap:6px;align-items:center"><sc-for list="{{ r.cells }}" as="c">'%lst+TYC+'</sc-for><button class="btn btn-ghost btn-icon" onClick="{{ r.del }}" aria-label="Retirer"><sa-i n="x" s="16"></sa-i></button></div></sc-for>'
+  '<button class="btn btn-ghost" onClick="{{ %s }}" style="align-self:flex-start">+ %s</button>'%(add,lbl))
+TY=('<template data-sc="if" value="{{ tyOpen }}"><div class="dialog-backdrop" onClick="{{ tyCloseBg }}" style="z-index:60"><div class="dialog" onClick="{{ stop }}" style="width:min(940px,100%);background:var(--color-bg);max-height:calc(100vh - 40px);overflow-y:auto;gap:14px;padding:22px 24px;border:1px solid var(--color-text)">'
+  +DLGHEAD('tyTitle','tyClose')
+  +G2(FL('Type de bassin',SEL('tyTypes','onTyType')),IF('tyNew',FL('Code (ex. PI, SPA2)',INP('tyCode','onTyCode','text',' autocapitalize="characters"'))))
+  +'<sc-if value="{{ tyUse }}"><div style="font-size:13px">{{ tyUse }}</div></sc-if>'
+  +G2(G2(FL('Nom',INP('tyLabel','onTyLabel')),FL('Nom court',INP('tyCourt','onTyCourt'))),G2(FL('Norme',INP('tyNorme','onTyNorme')),FL('Photo demandée',INP('tyPhoto','onTyPhoto'))))
+  +'<div style="display:flex;flex-direction:column;gap:6px"><b>Paramètres mesurés</b><div style="font-size:13px">Min / max : bornes de la règle dans sa-terrain · zone basse / haute : plage visée (hors de cette plage, la valeur est signalée « hors zone »).</div>'+'<div style="display:flex;gap:6px;font-size:12px;font-weight:600;padding-right:40px">'+''.join('<span style="flex:%s;min-width:50px">%s</span>'%(w,l) for l,w in (('Nom',2.2),('Clé',1),('Unité',0.9),('Min',0.8),('Zone basse',0.9),('Zone haute',0.9),('Max',0.8),('Pas',0.7)))+'</div>'+TYROWS('tyFields','tyAddField','Ajouter un paramètre')+'</div>'
+  +FL('Points de contrôle (un par ligne)',TXT('tyChecks','onTyChecks','ex. Skimmers nettoyés'))
+  +'<div style="display:flex;flex-direction:column;gap:6px"><b>Produits ajoutés</b>'+TYROWS('tyProds','tyAddProd','Ajouter un produit')+'</div>'
+  +'<div class="dialog-actions" style="margin-top:0;flex-wrap:wrap"><span style="flex:1"></span>'+BTNX('btn-secondary','tyClose','Fermer')+BTNX('btn-primary','tySave','{{ tySaveLbl }}')+'</div>'
+  +'</div></div></template>\n')
+M=M.rstrip()+'\n'+TY
 _logo='<div style="display:flex;flex-direction:column;line-height:1.15"><span style="font:600 20px var(--font-heading)">sa-admin</span><span style="font-size:12px;color:var(--color-accent-700)">Centre des opérations</span></div>\n    </div>'
 if M.count(_logo)==1: M=M.replace(_logo,_logo+'<button onClick="{{ openPortail }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;height:38px;padding:0 14px 0 16px;border-bottom:1px solid var(--color-divider);font-weight:600" data-hv="1"><sa-i n="home" s="18"></sa-i>Accueil · toutes les applications</button>',1)
 else: print('!! logo sa-admin introuvable',M.count(_logo))

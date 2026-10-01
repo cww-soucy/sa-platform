@@ -167,7 +167,8 @@
     "photo",
     "hors_zone",
     "created_at",
-    "updated_at"
+    "updated_at",
+    "bassin"
   ],
   "sites": [
     "id",
@@ -357,5 +358,17 @@
     "photos",
     "created_at",
     "updated_at"
+  ],
+  "types_bassin": [
+    "code",
+    "label",
+    "court",
+    "norme",
+    "fields",
+    "checks",
+    "produits",
+    "a_valider",
+    "updated_at",
+    "photo"
   ]
 }

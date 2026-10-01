@@ -24,6 +24,8 @@ M=re.sub(r'\s+style-(hover|active)="([^"]*)"',sty,M)
 rep('<div style="height:54px;flex:none"></div>','<div style="height:max(env(safe-area-inset-top),8px);flex:none"></div>',1)
 # 4) libellés de démonstration -> données réelles
 rep('Hors-ligne prêt · synchro 09:42','{{ syncLbl }}',1)
+# Fiche : choix du bassin quand le site en a plusieurs (bassins déclarés dans la fiche du site)
+rep('{{ cur.typeLabel }} · {{ cur.bassin }}</div>','{{ cur.typeLabel }} · {{ cur.bassin }}</div><sc-if value="{{ cur.hasBassins }}"><div role="group" aria-label="Bassin" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"><sc-for list="{{ cur.bassinChips }}" as="b"><button onClick="{{ b.go }}" style="all:unset;cursor:pointer;padding:8px 14px;border:1.5px solid var(--color-text);font:600 16px var(--font-heading);background:{{ b.bg }};color:{{ b.fg }}">{{ b.label }}</button></sc-for></div></sc-if>',1)
 rep('Punché depuis {{ punchAt }}','{{ punchLbl }}',1)
 rep('Punch sur ce site','Ouvrir la fiche')
 rep('>Punch<','>Fiche<')

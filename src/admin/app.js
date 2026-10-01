@@ -26,7 +26,7 @@ var SUN={},segS=function(on){return{bg:on?'var(--color-text)':'transparent',fg:o
 
 function Comp(user){
   this.user=user;this.rootRef={current:null};this.D=null;this.ftw={};this._ftwL={};this.envois={};this.pmm={};this.docs={};this.stk=null;this.flt=null;this.tools=null;this.tmoves=null;this.lcfg=null;this.loadedAt=null;this.err='';
-  this.state={portail:!hashMod()&&portailPref(),mod:'monitoring',q:'',toast:null,inspSite:null,inspKey:null,inspFilter:'all',opsFilter:'Tous',opsOpen:{},siteType:'all',carteView:'geo',sf:null,monPer:'jour',monWall:false,factFilter:'Tous',tempsTab:'semaine',eUid:null,eDay:null,tOff:0,sOff:0,fe:null,pmmDate:null,pb:null,ce:null,de:null,docQ:'',docF:'tous',logTab:'bl',se:null,stkQ:'',stkCat:'tous',te:null,ke:null,outTab:'outils',outF:'tous',outQ:'',qrIn:null,hj:null,hp:null,paieSel:{},paieOpen:{},paieMode:'synthese',pOff:0,ed:null,sed:null,survey:null,sondKey:(function(){try{return localStorage.getItem('sa_admin_sondkey')||'';}catch(e){return '';}})(),keyIn:'',dlg:false,busy:false,f:{type:'Bon de travail',site:'',tech:'',debut:'',heure:'07:00',rec:'aucune',jours:{},fin:''}};this.pl={};this._pl={};this.sd={};this._sd={};
+  this.state={portail:!hashMod()&&portailPref(),mod:'monitoring',q:'',toast:null,inspSite:null,inspKey:null,inspFilter:'all',opsFilter:'Tous',opsOpen:{},siteType:'all',carteView:'geo',sf:null,ty:null,inspBassin:null,monPer:'jour',monWall:false,factFilter:'Tous',tempsTab:'semaine',eUid:null,eDay:null,tOff:0,sOff:0,fe:null,pmmDate:null,pb:null,ce:null,de:null,docQ:'',docF:'tous',logTab:'bl',se:null,stkQ:'',stkCat:'tous',te:null,ke:null,outTab:'outils',outF:'tous',outQ:'',qrIn:null,hj:null,hp:null,paieSel:{},paieOpen:{},paieMode:'synthese',pOff:0,ed:null,sed:null,survey:null,sondKey:(function(){try{return localStorage.getItem('sa_admin_sondkey')||'';}catch(e){return '';}})(),keyIn:'',dlg:false,busy:false,f:{type:'Bon de travail',site:'',tech:'',debut:'',heure:'07:00',rec:'aucune',jours:{},fin:''}};this.pl={};this._pl={};this.sd={};this._sd={};
 }
 Comp.prototype.setState=function(p){this.state=Object.assign({},this.state,typeof p==='function'?p(this.state):p);this.update();};
 Comp.prototype.flash=function(t){var s=this;clearTimeout(this._tt);this.state.toast=t;this.update();this._tt=setTimeout(function(){s.state.toast=null;s.update();},2800);};
@@ -41,7 +41,7 @@ Comp.prototype.load=function(){
     comptes:soft('comptes_publics?select=id,prenom,nom,role,dept,tel',[]),
     ft:soft('feuilles_temps?select=uid,emp,week,days,total_h&week=gte.'+iso(addDays(now,-56)),[]),
     wo:soft('workorders?select=id,client,site,type,priorite,status,date,assigne,descr,groupe_id&order=date.asc',[]),
-    rel:soft('releves?select=id,site_id,site_nom,tech,tech_nom,date,heure,type_code,vals,touched,checks,prods,note,hors_zone&date=gte.'+since+'&order=date.asc,heure.asc',[]),
+    rel:soft('releves?select=id,site_id,site_nom,tech,tech_nom,date,heure,type_code,vals,touched,checks,prods,note,hors_zone,bassin&date=gte.'+since+'&order=date.asc,heure.asc',[]),
     gps:soft('punch_gps_log?select=emp,heure,lieu,date&date=eq.'+today+'&order=heure.desc&limit=30',[]),
     plan:soft('plan?select=id&date=eq.'+today,[]),pt:soft('planning_tasks?select=id&date_debut=lte.'+today+'&date_fin=gte.'+today,[]),
     dem:soft('demandes?select=id,tech,tech_nom,site_nom,type,motif,texte,statut,created_at,has_photo&order=created_at.desc&limit=40',[]),
@@ -1111,6 +1111,57 @@ Comp.prototype.siteFicheVals=function(){var self=this,st=this.state,D=this.D,sf=
     sfSave:function(){self.saveSiteFiche();},sfSaveLbl:sf.busy?'Enregistrement…':(sf.isNew?'Créer le site':'Enregistrer'),sfCanDel:!sf.isNew,sfDelLbl:sf.confirm?'Confirmer la suppression':'Supprimer le site',sfDel:function(){self.deleteSiteFiche();},
     sfClose:function(){self.setState({sf:null});},sfCloseBg:function(e){if(e.target===e.currentTarget)self.setState({sf:null});}});};
 
+/* ═════════════ INSPECTIONS : rapport imprimable, export Excel, paramètres de relevé (types_bassin) ═════════════ */
+Comp.prototype.inspData=function(sid,days){var self=this,D=this.D,s=D.byId[sid];if(!s)return null;var since=iso(addDays(new Date(),-(days||90))),bl=s.bassins&&s.bassins.length?s.bassins:[null];
+  return{site:s,bassins:bl.map(function(b,i){var T=self.T(b&&b.type_code?b.type_code:s.type),rel=D.rel.filter(function(r){return String(r.site_id)===String(sid)&&r.date>=since&&(bl.length<2||(r.bassin?r.bassin===b.nom:i===0));});
+    return{nom:b?b.nom:'Bassin',T:T,rel:rel,stats:(T.fields||[]).map(function(f){var vs=rel.map(function(r){return r.vals&&r.vals[f.key];}).filter(function(v){return v!=null;}),n=vs.length,out=vs.filter(function(v){return v<f.lo||v>f.hi;}).length;
+      return{f:f,n:n,last:n?vs[n-1]:null,avg:n?vs.reduce(function(a,b){return a+b;},0)/n:null,min:n?Math.min.apply(null,vs):null,max:n?Math.max.apply(null,vs):null,out:out,pct:n?Math.round((n-out)/n*100):null};})};})};};
+Comp.prototype.printInsp=function(sid){var d=this.inspData(sid,90);if(!d)return;var E=escH,s=d.site,v=function(x,f){return x==null?'—':fr(x,f.step)+(f.unit?' '+f.unit:'');};
+  var h='<!doctype html><meta charset="utf-8"><title>Rapport d’inspection — '+E(s.nom)+'</title><style>body{font:12px Arial,sans-serif;margin:22px}h1{font-size:20px;margin:0}h2{font-size:15px;background:#e8f2fb;padding:5px 8px;margin:18px 0 6px}table{border-collapse:collapse;width:100%;margin-bottom:8px}td,th{border:1px solid #bbb;padding:3px 6px;text-align:left}th{background:#f4f6fa}.o{background:#fde2e2;font-weight:700}.m{color:#555;margin:4px 0 10px}</style>'
+    +'<h1>Rapport d’inspection — '+E(s.nom)+'</h1><div class="m">'+E(s.addr||'')+(s.contrat?' · contrat '+E(s.contrat):'')+' · 90 derniers jours · généré le '+new Date().toLocaleString('fr-CA')+'</div>';
+  d.bassins.forEach(function(b){var F=b.T.fields||[];h+='<h2>'+E(b.nom)+' — '+E(b.T.label)+(b.T.norme?' · '+E(b.T.norme):'')+' · '+b.rel.length+' relevé(s)</h2>';
+    h+='<table><tr><th>Paramètre</th><th>Zone visée</th><th>Dernier</th><th>Moyenne</th><th>Min / max</th><th>Dans la zone</th><th>Hors zone</th></tr>'+b.stats.map(function(x){var f=x.f;return'<tr><td>'+E(f.label)+'</td><td>'+fr(f.lo,f.step)+' – '+fr(f.hi,f.step)+(f.unit?' '+E(f.unit):'')+'</td><td'+(x.last!=null&&(x.last<f.lo||x.last>f.hi)?' class="o"':'')+'>'+v(x.last,f)+'</td><td>'+v(x.avg,f)+'</td><td>'+(x.n?fr(x.min,f.step)+' / '+fr(x.max,f.step):'—')+'</td><td>'+(x.pct==null?'—':x.pct+' %')+'</td><td>'+x.out+'</td></tr>';}).join('')+'</table>';
+    h+='<table><tr><th>Date</th><th>Technicien</th>'+F.map(function(f){return'<th>'+E(f.label)+'</th>';}).join('')+'<th>Note</th></tr>'+b.rel.slice(-25).reverse().map(function(r){return'<tr><td>'+E(fdate(r.date))+' '+E(r.heure||'')+'</td><td>'+E(r.tech_nom||r.tech||'')+'</td>'+F.map(function(f){var x=r.vals&&r.vals[f.key],o=x!=null&&(x<f.lo||x>f.hi);return'<td'+(o?' class="o"':'')+'>'+(x==null?'—':fr(x,f.step))+'</td>';}).join('')+'<td>'+E(r.note||'')+'</td></tr>';}).join('')+'</table>';});
+  h+='<div style="margin-top:30px;display:flex;gap:60px"><div style="border-top:1px solid #333;width:240px;padding-top:3px">Soucy Aquatik</div><div style="border-top:1px solid #333;width:240px;padding-top:3px">Client</div></div>';
+  var w=window.open('','_blank');if(!w){this.flash('Fenêtre bloquée — autorisez les fenêtres pour imprimer');return;}w.document.write(h+'<script>setTimeout(function(){print();},300)<\/script>');w.document.close();auditT(this,'EXPORT','releves',sid,{format:'impression'});};
+Comp.prototype.xlsxInsp=function(sid){var d=this.inspData(sid,365);if(!d)return;var sheets=d.bassins.map(function(b){var F=b.T.fields||[],rows=[[{v:d.site.nom+' — '+b.nom+' ('+b.T.label+')',s:5}],[],[{v:'Date',s:1},{v:'Heure',s:1},{v:'Technicien',s:1}].concat(F.map(function(f){return{v:f.label+(f.unit?' ('+f.unit+')':''),s:1};}),[{v:'Hors zone',s:1},{v:'Note',s:1}])];
+    b.rel.forEach(function(r){rows.push([r.date,r.heure||'',r.tech_nom||r.tech||''].concat(F.map(function(f){var x=r.vals&&r.vals[f.key];return x==null?'':{v:x,s:3};}),[self_out(r,F)||'',r.note||'']));});
+    return{name:b.nom,widths:[12,8,18].concat(F.map(function(){return 12;}),[10,40]),rows:rows};});
+  function self_out(r,F){return F.filter(function(f){var x=r.vals&&r.vals[f.key];return x!=null&&(x<f.lo||x>f.hi);}).length;}
+  saveBlob(xlsxBlob(sheets),'SoucyAquatik_Releves_'+d.site.nom.replace(/[^A-Za-zÀ-ÿ0-9]+/g,'_')+'_'+iso(new Date())+'.xlsx');auditT(this,'EXPORT','releves',sid,{format:'xlsx'});this.flash('Fichier Excel téléchargé (12 derniers mois)');};
+/* Paramètres de relevé : ce que le technicien saisit dans sa-terrain (plages, points de contrôle, produits) */
+Comp.prototype.openTypes=function(code){var T=this.D.types,c=T[code]?code:Object.keys(T)[0];this.setState({ty:this.tyLoad(c)});};
+Comp.prototype.tyLoad=function(code){var t=this.D.types[code]||{};return{code:code,isNew:!this.D.types[code],label:t.label||'',court:t.court||'',norme:t.norme||'',photo:t.photo||'',
+  fields:(t.fields||[]).map(function(f){return{key:f.key,label:f.label||'',unit:f.unit||'',kind:f.kind||'range',icon:f.icon||'flask',min:String(f.min),max:String(f.max),lo:String(f.lo),hi:String(f.hi),step:String(f.step)};}),
+  checks:(t.checks||[]).join('\n'),produits:(t.produits||[]).map(function(p){return{nom:p[0]||'',unite:p[1]||'',pas:String(p[2]==null?'':p[2])};}),busy:false};};
+Comp.prototype.tyMut=function(fn){var t=JSON.parse(JSON.stringify(this.state.ty));fn(t);this.setState({ty:t});};
+Comp.prototype.saveTypes=function(){var self=this,t=this.state.ty;if(!t||t.busy)return;var code=String(t.code||'').trim().toUpperCase();
+  if(!/^[A-Z0-9_]{2,12}$/.test(code)){this.flash('Code : 2 à 12 lettres majuscules ou chiffres');return;}if(t.isNew&&this.D.types[code]){this.flash('Ce code existe déjà');return;}
+  if(!String(t.label).trim()){this.flash('Le nom du type est requis');return;}var keys={},err='';
+  var fields=t.fields.map(function(f,i){var n=function(x){return parseFloat(String(x).replace(',','.'));},o={key:String(f.key||'').trim()||('p'+(i+1)),label:String(f.label).trim(),unit:String(f.unit).trim(),kind:f.kind==='count'?'count':'range',icon:f.icon||'flask',min:n(f.min),max:n(f.max),lo:n(f.lo),hi:n(f.hi),step:n(f.step)};
+    if(!o.label)err=err||'Paramètre '+(i+1)+' : nom requis';else if([o.min,o.max,o.lo,o.hi,o.step].some(function(x){return!isFinite(x);}))err=err||o.label+' : valeurs numériques requises';
+    else if(!(o.min<=o.lo&&o.lo<=o.hi&&o.hi<=o.max))err=err||o.label+' : il faut min ≤ zone basse ≤ zone haute ≤ max';else if(!(o.step>0))err=err||o.label+' : le pas doit être positif';
+    if(keys[o.key])err=err||'Clé en double : '+o.key;keys[o.key]=1;return o;});
+  if(err){this.flash(err);return;}
+  var body={label:String(t.label).trim(),court:String(t.court).trim()||String(t.label).trim(),norme:String(t.norme).trim(),photo:String(t.photo).trim()||null,fields:fields,checks:String(t.checks).split('\n').map(function(x){return x.trim();}).filter(Boolean),
+    produits:t.produits.filter(function(p){return String(p.nom).trim();}).map(function(p){return[String(p.nom).trim(),String(p.unite).trim(),parseFloat(String(p.pas).replace(',','.'))||1];}),updated_at:nowIso()};
+  this.setState({ty:Object.assign({},t,{busy:true})});
+  (t.isNew?postRows('types_bassin',[Object.assign({code:code,a_valider:false},body)]):rest('PATCH','types_bassin?code=eq.'+encodeURIComponent(code),body)).then(function(){auditT(self,t.isNew?'CREATION':'MODIFICATION','types_bassin',code);self.setState({ty:null});self.flash('Paramètres enregistrés — sa-terrain les utilise dès sa prochaine synchronisation');return self.reloadAll();})
+    .catch(function(e){self.setState({ty:Object.assign({},self.state.ty,{busy:false})});self.flash('Échec — rien n’a été modifié : '+netMsg(e));});};
+Comp.prototype.typesVals=function(){var self=this,t=this.state.ty,D=this.D;if(!D||!t)return{tyOpen:false};
+  var up=function(k){return function(e){var v=e.target.value;self.tyMut(function(x){x[k]=v;});};};
+  var nSites=D.sites.filter(function(s){return s.type===t.code||(s.bassins||[]).some(function(b){return b.type_code===t.code;});}).length;
+  return{tyOpen:true,tyTitle:t.isNew?'Nouveau type de bassin':'Paramètres de relevé — '+t.label,tyTypes:Object.keys(D.types).map(function(k){return{v:k,l:D.types[k].label+' ('+k+')',sel:k===t.code};}).concat([{v:'__new',l:'+ Nouveau type…',sel:!!t.isNew}]),
+    onTyType:function(e){var v=e.target.value;if(v==='__new')self.setState({ty:{code:'',isNew:true,label:'',court:'',norme:'',photo:'',fields:[],checks:'',produits:[],busy:false}});else self.setState({ty:self.tyLoad(v)});},
+    tyNew:!!t.isNew,tyCode:t.code,onTyCode:up('code'),tyLabel:t.label,onTyLabel:up('label'),tyCourt:t.court,onTyCourt:up('court'),tyNorme:t.norme,onTyNorme:up('norme'),tyPhoto:t.photo,onTyPhoto:up('photo'),tyChecks:t.checks,onTyChecks:up('checks'),
+    tyUse:t.isNew?'':'Utilisé par '+nSites+' site(s) ou bassin(s). Les changements s’appliquent aux prochains relevés ; les anciens gardent leurs valeurs.',
+    tyFields:t.fields.map(function(f,i){var c=function(k,ph,w){return{v:f[k],ph:ph,w:w,on:function(e){var v=e.target.value;self.tyMut(function(x){x.fields[i][k]=v;});}};};
+      return{cells:[c('label','Nom',2.2),c('key','Clé',1),c('unit','Unité',0.9),c('min','Min',0.8),c('lo','Zone basse',0.9),c('hi','Zone haute',0.9),c('max','Max',0.8),c('step','Pas',0.7)],del:function(){self.tyMut(function(x){x.fields.splice(i,1);});}};}),
+    tyAddField:function(){self.tyMut(function(x){x.fields.push({key:'',label:'',unit:'',kind:'range',icon:'flask',min:'0',max:'10',lo:'1',hi:'3',step:'0.1'});});},
+    tyProds:t.produits.map(function(p,i){var c=function(k,ph,w){return{v:p[k],ph:ph,w:w,on:function(e){var v=e.target.value;self.tyMut(function(x){x.produits[i][k]=v;});}};};return{cells:[c('nom','Produit',3),c('unite','Unité',1),c('pas','Pas',0.8)],del:function(){self.tyMut(function(x){x.produits.splice(i,1);});}};}),
+    tyAddProd:function(){self.tyMut(function(x){x.produits.push({nom:'',unite:'L',pas:'0.5'});});},
+    tySave:function(){self.saveTypes();},tySaveLbl:t.busy?'Enregistrement…':(t.isNew?'Créer le type':'Enregistrer'),tyClose:function(){self.setState({ty:null});},tyCloseBg:function(e){if(e.target===e.currentTarget)self.setState({ty:null});}};};
+
 /* Valeurs d'écran : Temps (Semaine · À valider · Paie · Cumul) et Stats */
 Comp.prototype.tempsVals=function(punchRows){var self=this,st=this.state,D=this.D,mod=st.mod,tMon=addDays(mondayOf(new Date()),7*st.tOff),wk=iso(tMon),today=iso(new Date());
   if((mod==='temps'||mod==='stats'||st.hj)&&this.ftw[wk]===undefined)this.loadWeekFT(wk);
@@ -1217,9 +1268,11 @@ Comp.prototype.vals=function(){
   var typeOptions=[{v:'all',l:'Tous les types de bassin'}].concat(typesArr.map(function(k){return{v:k,l:D.types[k].label};})).map(function(o){return Object.assign({},o,{sel:o.v===fil});});
   var inspSites=D.sites.filter(function(s){return fil==='all'||s.type===fil;}).map(function(s){var on=s.id===st.inspSite,r=lastRel[s.id],n=r?self.outOf(r).length:0;
     return{nom:s.nom,ville:s.ville,court:self.T(s.type).court,nOut:n||null,bg:on?'var(--color-text)':'transparent',fg:on?'var(--color-bg)':'var(--color-text)',go:function(){self.setState({inspSite:s.id,inspKey:null});}};});
-  var is=D.byId[st.inspSite]||D.sites[0]||{id:'',nom:'—',type:'GEN',ville:'',contrat:''},IT=this.T(is.type),fields=IT.fields||[];
+  var is=D.byId[st.inspSite]||D.sites[0]||{id:'',nom:'—',type:'GEN',ville:'',contrat:'',bassins:[]},ibl=is.bassins||[],ib=ibl.filter(function(b){return(b.id||b.nom)===st.inspBassin;})[0]||ibl[0]||null;
+  /* Plusieurs bassins : chaque bassin a ses relevés et ses paramètres ; le 1er bassin reprend les anciens relevés sans bassin */
+  var inB=function(r){if(!ib||ibl.length<2)return true;return r.bassin?r.bassin===ib.nom:ib===ibl[0];},IT=this.T(ib&&ib.type_code?ib.type_code:is.type),fields=IT.fields||[];
   var f=fields.filter(function(x){return x.key===st.inspKey;})[0]||fields[0]||{key:'',label:'—',unit:'',min:0,max:1,lo:0,hi:1,step:0.1};
-  var hist=D.rel.filter(function(r){return r.site_id===is.id&&r.vals&&r.vals[f.key]!=null;}).slice(-30),n=hist.length;
+  var hist=D.rel.filter(function(r){return r.site_id===is.id&&inB(r)&&r.vals&&r.vals[f.key]!=null;}).slice(-30),n=hist.length;
   var yp=function(v){return(1-(v-f.min)/(f.max-f.min))*100;},outV=function(v){return v<f.lo||v>f.hi;};
   var vs=hist.map(function(h){return h.vals[f.key];}),avg=n?vs.reduce(function(a,b){return a+b;},0)/n:0,nOutH=vs.filter(outV).length,xpos=function(i){return n>1?i/(n-1)*100:50;};
   var chart={path:n>1?hist.map(function(h,i){return(i?'L':'M')+(xpos(i)*10).toFixed(1)+' '+(yp(h.vals[f.key])*2.6).toFixed(1);}).join(' '):'',
@@ -1227,7 +1280,7 @@ Comp.prototype.vals=function(){
     xl:hist.map(function(h,i){return{x:xpos(i),d:fdate(h.date)};}).filter(function(_,i){return i%5===0||i===n-1;}),
     hiTop:yp(f.hi),loTop:yp(f.lo),bandH:yp(f.lo)-yp(f.hi),minTxt:fr(f.min,f.step),maxTxt:fr(f.max,f.step),loTxt:fr(f.lo,f.step),hiTxt:fr(f.hi,f.step),
     stats:[{l:'Dernier relevé',v:n?fr(vs[n-1],f.step)+' '+f.unit:'—'},{l:'Moyenne 30 j',v:n?fr(avg,f.step):'—'},{l:'Min / max',v:n?fr(Math.min.apply(null,vs),f.step)+' / '+fr(Math.max.apply(null,vs),f.step):'—'},{l:'Dans la zone',v:n?Math.round((n-nOutH)/n*100)+' %':'—'},{l:'Jours hors zone',v:String(nOutH)}]};
-  var siteRel=D.rel.filter(function(r){return r.site_id===is.id;}).slice(-10).reverse();
+  var siteRel=D.rel.filter(function(r){return r.site_id===is.id&&inB(r);}).slice(-10).reverse();
   var inspTable={cols:fields.map(function(x){return x.label+(x.unit?' ('+x.unit+')':'');}),rows:siteRel.map(function(r){return{d:fdate(r.date)+' '+(r.heure||''),cells:fields.map(function(x){var v=r.vals&&r.vals[x.key],has=v!=null&&r.touched&&r.touched[x.key],o=has&&(v<x.lo||v>x.hi);return{v:has?fr(v,x.step):'—',bg:o?'var(--color-accent-900)':'transparent',fg:o?'#ffffff':'var(--color-text)'};})};})};
   var lastR=lastRel[is.id];
   // ---- opérations (WO groupés par dossier)
@@ -1375,12 +1428,14 @@ Comp.prototype.vals=function(){
     isMonitoring:mod==='monitoring',isInspections:mod==='inspections',isOperations:mod==='operations',isSites:mod==='sites',isSoon:LIVE.indexOf(mod)<0,soonTitle:soonName[mod]||'',
     kpis:kpis,techRows:techRows,flux:flux,salles:[],sallesSummary:'Aucune salle mécanique suivie pour l’instant — les fiches de salle arrivent avec la prochaine version de sa-terrain.',horsZone:horsZone,horsZoneCount:horsZone.length,
     typeOptions:typeOptions,inspFilter:fil,onInspFilter:function(e){self.setState({inspFilter:e.target.value});},inspSites:inspSites,
-    insp:{nom:is.nom,client:is.ville||'—',bassin:'—',contrat:is.contrat||'—',typeLabel:IT.label+(is.type==='GEN'?' · valeurs par défaut':''),norme:IT.norme||'',tech:lastR?(lastR.tech_nom||lastR.tech):'—'},
+    insp:{nom:is.nom,client:is.ville||'—',bassin:ib?ib.nom+(ibl.length>1?' ('+ibl.length+' bassins)':''):'1 bassin',contrat:is.contrat||'—',typeLabel:IT.label+(is.type==='GEN'?' · valeurs par défaut':''),norme:IT.norme||'',tech:lastR?(lastR.tech_nom||lastR.tech):'—'},
     inspParams:fields.map(function(x){return Object.assign({label:x.label,go:function(){self.setState({inspKey:x.key});}},segS(x.key===f.key));}),chart:chart,inspTable:inspTable,noHist:n===0,histMsg:n===0?'Aucun relevé enregistré pour ce site et ce paramètre. Les relevés apparaissent ici dès que les techniciens valident une fiche dans sa-terrain.':'',
-    exportMsg:function(){self.flash('Export PDF : bientôt');},
+    inspBassins:ibl.length>1?ibl.map(function(b){return Object.assign({label:b.nom,go:function(){self.setState({inspBassin:b.id||b.nom,inspKey:null});}},segS(b===ib));}):[],inspHasB:ibl.length>1,
+    inspPrint:function(){self.printInsp(is.id);},inspXlsx:function(){self.xlsxInsp(is.id);},inspParamsEdit:function(){self.openTypes(ib&&ib.type_code?ib.type_code:is.type);},
+    exportMsg:function(){self.printInsp(is.id);},
     opsFilters:opsFilters,dossiers:dossiers,newDossier:function(){self.openDlg({type:'Bon de travail'});},noDossier:dossiers.length===0,
     nouveaux:nouveaux,siteTypeOptions:siteTypeOptions,siteType:stype,onSiteType:function(e){self.setState({siteType:e.target.value});},siteRows:siteRows,siteCount:siteRows.length,noNouveaux:nouveaux.length===0},
-    this.tempsVals(punchRows),this.empVals(),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals(),this.stockVals(),this.outilsVals(),this.monVals(),this.siteFicheVals());
+    this.tempsVals(punchRows),this.empVals(),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals(),this.stockVals(),this.outilsVals(),this.monVals(),this.siteFicheVals(),this.typesVals());
 };
 Comp.prototype.update=function(){if(!this._host)return;SARender(document.getElementById('tpl'),this._host,this.vals());this.syncMap();var el=this.rootRef.current;if(el)el.style.setProperty('--sa-row','10px');};
 Comp.prototype.mount=function(host){var self=this;this._host=host;var hm=hashMod();if(hm&&TITLES_OK(hm))this.state.mod=hm;this.update();

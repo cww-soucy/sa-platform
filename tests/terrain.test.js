@@ -104,3 +104,25 @@ test('fiche refusée par le serveur : erreur visible, fiche gardée sur le tél�
   assert.doesNotMatch(await header(page), /refusée/);
   await page.close();
 });
+
+test('site à plusieurs bassins : choix du bassin, paramètres propres au bassin, un relevé par bassin', async () => {
+  const t = base();
+  t.sites[0].bassins = [{ id: 'b1', nom: 'Bassin principal', type: 'piscine', type_code: 'MI' }, { id: 'b2', nom: 'Pataugeoire', type: 'pataugeoire', type_code: 'GEN' }];
+  const { page, db } = await openApp(browser, srv.url, { app: 'terrain', user: USER, tables: t });
+  await ready(page);
+  await page.evaluate(() => window.__terrain.open('wo:wo-mine'));
+  await page.getByRole('group', { name: 'Bassin' }).getByRole('button', { name: 'Pataugeoire' }).waitFor();
+  assert.equal(await page.evaluate(() => window.__terrain.vals().cur.bassin), 'Bassin principal');
+  await page.evaluate(() => window.__terrain.vals().validate());
+  await page.getByRole('group', { name: 'Bassin' }).getByRole('button', { name: 'Pataugeoire' }).click();
+  const v = await page.evaluate(() => { const c = window.__terrain.vals().cur; return { b: c.bassin, t: c.typeLabel, sid: c.sid }; });
+  assert.equal(v.b, 'Pataugeoire');
+  assert.match(v.t, /Bassin générique/);
+  assert.equal(v.sid, '1#b2');
+  await page.evaluate(() => window.__terrain.vals().validate());
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem('sa_terrain_queue') || '[]').length === 0);
+  const rows = db.rows('releves').filter((r) => r.id !== 'r1').map((r) => [r.bassin, r.type_code, r.id.endsWith('-b2')]);
+  assert.deepEqual(rows.sort(), [['Bassin principal', 'MI', false], ['Pataugeoire', 'GEN', true]]);
+  assert.ok(!db.log.some((l) => l.rejected), 'aucune colonne inconnue envoyée (_sk retiré)');
+  await page.close();
+});
