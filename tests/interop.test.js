@@ -98,3 +98,24 @@ test('SA Platform relit une sortie envoyée par sa-terrain', () => {
   assert.equal(r.noEmploye, 'kael');
   assert.equal(r.client, 'Piscine Beta');
 });
+
+test('SA Platform : un bon de travail, un créneau ou une tâche « terminé / validé » s’envoie sans colonne inconnue (il était refusé)', () => {
+  const t = { termine: true, termineBy: 'kael', termineAt: '2026-10-02T12:00:00Z', valide: true, valideBy: 'cwweil', valideAt: '2026-10-02T13:00:00Z', updatedAt: 't' };
+  const wo = Object.assign({ id: 'w', client: 'C', site: 'S', type: 'entretien', priorite: 'normal', status: 'ouvert', date: '2026-10-02', assignes: ['kael'], desc: 'd', notes: '', tasks: [], files: [], reqBassin: false, reqPhoto: false, reqNotes: false, createdAt: 't', createdBy: 'u' }, t);
+  assert.deepEqual(colonnesInconnues('workorders', 'workorders', wo), []);
+  assert.equal(IDX.mapRowToDb('workorders', Object.assign({}, wo)).termine_by, 'kael');
+  const pl = Object.assign({ id: 'p', woId: 'w', date: '2026-10-02', heure: '08:00', emps: ['kael'], vehicule: '', notes: '', status: 'assigned', client: 'C', addr: '', siteId: '1', type: 'entretien', desc: '' }, t);
+  assert.deepEqual(colonnesInconnues('plan', 'plan', pl), []);
+  const r = IDX.mapRowFromDb('workorders', { id: 'w', termine: true, termine_by: 'kael', termine_at: 'x', valide: null, valide_by: null, valide_at: null });
+  assert.equal(r.termineBy, 'kael');
+  assert.equal(r.valideBy, '');
+  assert.equal('valide' in r, false, 'valide absent plutôt que null');
+});
+
+test('SA Platform : un site créé automatiquement (à valider) s’envoie sans colonne inconnue et garde son statut', () => {
+  const s = { id: 's', nom: 'Club', addr: '', tel: '', email: '', type: '', annee: '', equips: [], notes: 'Ajouté automatiquement depuis un punch', files: [], updatedAt: 't', aValider: true, creePar: 'kael', creeLe: '2026-10-02T12:00:00Z' };
+  assert.deepEqual(colonnesInconnues('sites', 'sites', s), []);
+  const back = IDX.mapRowFromDb('sites', IDX.mapRowToDb('sites', Object.assign({}, s)));
+  assert.equal(back.aValider, true);
+  assert.equal(back.creePar, 'kael');
+});

@@ -99,12 +99,26 @@ Une longue session de débogage a eu lieu ce matin : des doublons de WO/tâches 
 - [x] sa-terrain : logo sur la connexion, bienvenue au prénom
 - [ ] Communication : l'utilisateur a écrit « passe toujours par SA » — sens à confirmer (aucun module Communication dans SA Platform)
 
+### Parité SA Platform → sa-admin terminée (02/10)
+- [x] Planning : semaine, 4 semaines, diagramme des travaux sur 8 semaines (imprimable), séries récurrentes (liste, modifier les éléments à venir, arrêter)
+- [x] Lien calendrier Outlook / Gmail par employé (Comptes) ; fonction Supabase `planning-ics` **v2 déployée** (heures au bon format, tâches partagées, bons de travail et créneaux inclus, fenêtre −30 / +180 jours). Testée par tests unitaires (`tests/ics.test.js`) ; **le point d'accès en ligne n'a pas pu être appelé depuis l'environnement de développement** — à vérifier une fois en ouvrant un lien d'abonnement
+- [x] Carte : tournées prévues de l'équipe pour un jour (arrêts numérotés, trajet par technicien)
+- [x] **Vue globale** (nouvel écran, groupe Gestion) : chiffres clés, charge de chaque technicien sur 4 semaines (absences déduites), alertes, 7 prochains jours, file « terminé par l'équipe → à valider » avec « Valider » (écriture conditionnelle `updated_at`)
+- [x] **Bugs de synchronisation de SA Platform corrigés (v79)** : les champs terminé / validé des bons de travail, créneaux et tâches, le `siteId` des créneaux et les champs « à valider » des sites n'avaient pas de colonne → le serveur refusait l'enregistrement (« non synchronisé », donnée bloquée sur l'appareil). Colonnes ajoutées (`MIGRATION_2026-10-02_termine_valide.sql`, appliquée) et conversions dans `mapRowToDb` / `mapRowFromDb`. `APP_BUILD` remis en phase avec `sw.js` (v79). **Fermer complètement SA Platform sur chaque appareil puis la rouvrir** pour charger la v79 ; les éléments restés « non synchronisés » partent alors d'eux-mêmes
+- [x] Audit statique des envois de SA Platform (clés envoyées vs colonnes réelles) : plus de colonne inconnue détectée sur les tables partagées
+
+### Points ouverts pour l'audit
+- **Sécurité (inchangé, connu)** : les trois apps utilisent la clé publique ; les droits reposent sur les politiques RLS et les fonctions `verifier_connexion` / `changer_mdp` / `admin_definir_mdp`. Conseiller Supabase au 02/10 : vue `comptes_publics` en SECURITY DEFINER (voulu : elle masque les colonnes sensibles), fonctions de déclencheur (`histo_fn`, `ft_hist_fn`…) exécutables par `anon` (sans effet : une fonction de déclencheur ne peut pas être appelée directement, mais on peut révoquer `EXECUTE` par hygiène), tables sans politique (`comptes_secrets`, `feuilles_temps_hist`, `histo_modifs` — donc inaccessibles par l'API, voulu)
+- `pushAllLocalToServer` / `sbPushAll` de SA Platform ré-envoient toute la liste locale : un poste resté ouvert longtemps peut ré-écrire d'anciennes valeurs (voir §7)
+- Communication : sens de « passe toujours par SA » à confirmer
+- Analyse Claude DANS l'app : demanderait une clé d'API côté serveur — à décider
+
 ## 8. Backlog priorisé
 
 ### Priorité 1 — fiabilité de ce qui existe déjà (ce que l'utilisateur a demandé explicitement)
 - [ ] Revue ligne par ligne de `terrain.app.js` et `admin.app.js` — trois bugs réels ont été trouvés et corrigés dans la seule session d'aujourd'hui (regex non gourmande cassant tout un écran, bouton écrasé par du code mort, index de tableau décalés) : il y en a probablement d'autres non détectés faute de temps de test exhaustif.
-- [ ] Écrire de vrais tests automatisés (aucun test n'existe — tout a été vérifié manuellement avec Playwright, à la main, à chaque étape)
-- [ ] Gestion d'erreur réseau : `soft()` avale silencieusement les échecs de lecture (retourne `[]`) — un site injoignable donne une app qui a l'air vide plutôt qu'un message d'erreur clair
+- [x] Tests automatisés : `npm test` (vérification du build + 115 tests Playwright avec une fausse base PostgREST qui refuse les colonnes inconnues d'après `tests/schema.json`, + tests d'interopérabilité qui exécutent les fonctions de conversion de `index.html`). Lancés par la CI à chaque PR
+- [x] Gestion d'erreur réseau : `soft()` consigne chaque échec de lecture et sa-admin l'affiche dans un bandeau (plus d'écran vide silencieux)
 
 ### Priorité 2 — modules absents dans sa-terrain
 - [x] **Logistique** (sortie d'inventaire, bon de livraison depuis le terrain) — 29/09 : sortie au format de SA Platform, bons en attente + nouveau bon depuis la sortie, signature au doigt (stockée comme photo du bon, validation en PATCH partiel)
@@ -130,9 +144,9 @@ Une longue session de débogage a eu lieu ce matin : des doublons de WO/tâches 
 
 ### Priorité 3bis — absents des DEUX apps, signalés par l'utilisateur après une vraie utilisation
 - [ ] **Export PDF** — aucun écran (inspections, facturation, rapports) ne peut être exporté en PDF
-- [ ] **Impression** — aucune vue imprimable nulle part, contrairement à `index.html` qui a plusieurs formulaires imprimables dédiés
-- [ ] **Envoi par courriel** — aucune fonction d'envoi (rapport, demande, résultat de sondage) dans les deux apps
-- [ ] **Intégrations API externes** — aucune (comptabilité, calendrier, etc.)
+- [x] **Impression** — sa-admin : bon de travail, semaine de planning, diagramme des travaux, feuilles de temps, paie, inspections, hivernage, bons de livraison, sorties, étiquettes QR, Plan de Match. L'export PDF passe par « Imprimer → Enregistrer en PDF » du navigateur
+- [x] **Envoi par courriel** — feuilles de temps (paie et employé) par `mailto:` comme SA Platform. Pas d'envoi automatique côté serveur
+- [x] **Calendrier** — lien d'abonnement Outlook / Gmail par employé (fonction `planning-ics` v2). Comptabilité : aucune intégration
 - [ ] **Carte (sa-admin)** — rapportée non fonctionnelle en production réelle (zone blanche, rien ne s'affiche) alors qu'elle fonctionnait dans tous les tests locaux (`file://`) effectués aujourd'hui. Un correctif a été ajouté (gestion d'erreur visible au lieu d'un écran vide, voir `Comp.prototype.syncMap` dans `admin.app.js`) mais **la cause réelle du blocage en production n'est pas confirmée** — pistes à vérifier en premier : un fichier `_headers` dans le dépôt qui poserait une Content-Security-Policy bloquant `unpkg.com`/`tile.openstreetmap.org`, ou un bloqueur de publicité/traceurs côté client bloquant ces domaines. Le message d'erreur ajouté devrait maintenant révéler laquelle.
 
 ### Priorité 4 — dette technique du process de build lui-même

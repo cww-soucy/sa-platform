@@ -2796,8 +2796,21 @@ function mapRowToDb(localKey,row){
   if(row.createdAt!==undefined){ if(row.created_at===undefined)row.created_at=row.createdAt; delete row.createdAt; }
   if(row.createdBy!==undefined){ if(row.created_by===undefined)row.created_by=row.createdBy; delete row.createdBy; }
   if(row.updatedAt!==undefined){ delete row.updatedAt; } // updated_at est posé explicitement
+  // ➕ CORRIGÉ (v79) : « Marquer terminé » / « Valider » — ces champs camelCase n'avaient pas de colonne serveur, la fiche
+  // entière (WO, créneau, tâche) était refusée et restait bloquée sur l'appareil. Colonnes ajoutées (termine_by, …).
+  if(localKey==='workorders'||localKey==='plan'||localKey==='planning'){
+    [['termineBy','termine_by'],['termineAt','termine_at'],['valideBy','valide_by'],['valideAt','valide_at']].forEach(function(p){
+      if(row[p[0]]!==undefined){ row[p[1]]=row[p[0]]===''?null:row[p[0]]; delete row[p[0]]; } });
+  }
+  // ➕ CORRIGÉ (v79) : sites créés automatiquement — aValider / creePar / creeLe sans colonne → site refusé
+  if(localKey==='sites'){
+    [['aValider','a_valider'],['creePar','cree_par'],['creeLe','cree_le']].forEach(function(p){
+      if(row[p[0]]!==undefined){ row[p[1]]=row[p[0]]===''?null:row[p[0]]; delete row[p[0]]; } });
+  }
   if(localKey==='plan'){
     if(row.woId!==undefined){row.wo_id=row.woId;delete row.woId;}
+    // ➕ CORRIGÉ (v79) : siteId n'était pas converti → chaque créneau était refusé par le serveur (colonne site_id)
+    if(row.siteId!==undefined){row.site_id=row.siteId===''?null:row.siteId;delete row.siteId;}
   }
   if(localKey==='plan'||localKey==='planmatch'){
     if(row.emps!==undefined){ if(row.emp===undefined||row.emp===null||row.emp==='') row.emp=Array.isArray(row.emps)?row.emps.join(', '):String(row.emps); delete row.emps; }
@@ -2868,9 +2881,20 @@ function mapRowToDb(localKey,row){
 }
 function mapRowFromDb(localKey,r){
   if(r.descr!==undefined){r.desc=r.descr;delete r.descr;}
+  if(localKey==='workorders'||localKey==='plan'||localKey==='planning'){
+    [['termineBy','termine_by'],['termineAt','termine_at'],['valideBy','valide_by'],['valideAt','valide_at']].forEach(function(p){
+      if(r[p[1]]!==undefined){ r[p[0]]=r[p[1]]==null?'':r[p[1]]; delete r[p[1]]; } });
+    if(r.termine==null)delete r.termine; if(r.valide==null)delete r.valide;
+  }
+  if(localKey==='sites'){
+    if(r.a_valider!==undefined){ if(r.a_valider)r.aValider=true; delete r.a_valider; }
+    if(r.cree_par!==undefined){ if(r.cree_par)r.creePar=r.cree_par; delete r.cree_par; }
+    if(r.cree_le!==undefined){ if(r.cree_le)r.creeLe=r.cree_le; delete r.cree_le; }
+  }
   if(r.created_by!==undefined){ if(r.createdBy===undefined)r.createdBy=r.created_by; }
   if(localKey==='plan'){
     if(r.wo_id!==undefined){r.woId=r.wo_id;delete r.wo_id;}
+    if(r.site_id!==undefined){r.siteId=r.site_id;delete r.site_id;}
   }
   if(localKey==='plan'||localKey==='planmatch'){
     r.emps = r.emp ? String(r.emp).split(/,\s*/).filter(Boolean) : (Array.isArray(r.emps)?r.emps:[]);
@@ -3758,7 +3782,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // a bien pris effet. Il reflète maintenant APP_BUILD ci-dessous, à mettre à jour à CHAQUE fois que
   // CACHE_NAME change dans sw.js (même valeur, ex: 'v48').
   try{
-    var APP_BUILD='v76';
+    var APP_BUILD='v79';
     var vb=document.createElement('div');
     vb.id='__buildBadge';
     vb.textContent='build '+APP_BUILD+' ⟲';

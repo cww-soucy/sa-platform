@@ -111,3 +111,24 @@ test('sauvegarde complète : fichier JSON sans aucun mot de passe', async () => 
   assert.ok(!/mdp/.test(JSON.stringify(j.comptes)));
   await page.close();
 });
+
+test('comptes : lien calendrier Outlook / Gmail — créer, copier, révoquer (même table que SA Platform)', async () => {
+  const { page, db, errors } = await openApp(browser, srv.url, { app: 'admin', user: ADMIN, tables: base() });
+  await page.waitForFunction(() => window.__admin && window.__admin.D);
+  await page.evaluate(() => { window.__admin.go('comptes'); });
+  await page.waitForFunction(() => Array.isArray(window.__admin.cptes));
+  await page.evaluate(() => window.__admin.openCompte('kael'));
+  await page.getByRole('button', { name: 'Créer le lien calendrier' }).click();
+  await page.waitForFunction(() => /^webcal:\/\/.*planning-ics\?token=[0-9a-f]{48}$/.test(window.__admin.vals().calWebcal));
+  const c = db.rows('tech_calendar_connections')[0];
+  assert.equal(c.emp, 'kael'); assert.equal(c.provider, 'ics'); assert.equal(c.statut, 'actif');
+  const tok1 = c.ics_token;
+  await page.getByRole('button', { name: 'Générer un nouveau lien' }).click();
+  await page.waitForFunction((t) => !window.__admin.vals().calHttps.endsWith(t), tok1);
+  assert.equal(db.rows('tech_calendar_connections').length, 1, 'même ligne, nouveau jeton');
+  await page.getByRole('button', { name: 'Révoquer' }).click();
+  await page.waitForFunction(() => window.__admin.vals().calOff);
+  assert.equal(db.rows('tech_calendar_connections')[0].statut, 'revoque');
+  assert.deepEqual(errors, []);
+  await page.close();
+});

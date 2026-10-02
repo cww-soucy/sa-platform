@@ -86,7 +86,13 @@
     "site_id",
     "type",
     "descr",
-    "emps"
+    "emps",
+    "termine",
+    "termine_by",
+    "termine_at",
+    "valide",
+    "valide_by",
+    "valide_at"
   ],
   "planning_tasks": [
     "id",
@@ -107,7 +113,13 @@
     "created_by",
     "created_at",
     "updated_at",
-    "plan_id"
+    "plan_id",
+    "termine",
+    "termine_by",
+    "termine_at",
+    "valide",
+    "valide_by",
+    "valide_at"
   ],
   "punch_gps_log": [
     "id",
@@ -184,7 +196,10 @@
     "updated_at",
     "siteweb",
     "bassins",
-    "gps"
+    "gps",
+    "a_valider",
+    "cree_par",
+    "cree_le"
   ],
   "sorties_inventaire": [
     "id",
@@ -221,7 +236,13 @@
     "req_bassin",
     "req_photo",
     "req_notes",
-    "groupe_id"
+    "groupe_id",
+    "termine",
+    "termine_by",
+    "termine_at",
+    "valide",
+    "valide_by",
+    "valide_at"
   ],
   "feuilles_temps_envois": [
     "id",
@@ -370,5 +391,18 @@
     "a_valider",
     "updated_at",
     "photo"
+  ],
+  "tech_calendar_connections": [
+    "id",
+    "emp",
+    "provider",
+    "ics_token",
+    "access_token_enc",
+    "refresh_token_enc",
+    "token_expires_at",
+    "external_calendar_id",
+    "statut",
+    "created_at",
+    "updated_at"
   ]
 }

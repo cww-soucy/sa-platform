@@ -30,15 +30,18 @@ function startServer() {
   });
 }
 
-/* Filtres PostgREST pris en charge : col=eq.x, col=is.null. Les autres (gte, lte, ilike, order, limit…) sont
+/* Filtres PostgREST pris en charge : col=eq.x, col=neq.x, col=is.null, col=not.is.null (aussi sur col->>clé JSON). Les autres (gte, lte, ilike, order, limit…) sont
    ignorés volontairement : la fausse base renvoie alors PLUS que le vrai serveur, ce qui teste le filtrage côté app. */
 function filters(qs) {
   const out = [];
   for (const [k, v] of new URLSearchParams(qs)) {
     if (['select', 'order', 'limit', 'offset'].includes(k)) continue;
-    if (v.startsWith('eq.')) out.push((r) => String(r[k]) === v.slice(3));
-    else if (v === 'is.null') out.push((r) => r[k] == null);
-    else if (v.startsWith('neq.')) out.push((r) => String(r[k]) !== v.slice(4));
+    // col->>clé : champ d'un objet JSON (ex. recurrence->>serie)
+    const get = k.includes('->>') ? ((a, b) => (r) => (r[a] == null ? undefined : r[a][b]))(...k.split('->>')) : (r) => r[k];
+    if (v.startsWith('eq.')) out.push((r) => String(get(r)) === v.slice(3));
+    else if (v === 'is.null') out.push((r) => get(r) == null);
+    else if (v === 'not.is.null') out.push((r) => get(r) != null);
+    else if (v.startsWith('neq.')) out.push((r) => String(get(r)) !== v.slice(4));
   }
   return (r) => out.every((f) => f(r));
 }

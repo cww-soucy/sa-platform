@@ -339,6 +339,14 @@ CE=WRAP('ceOpen','ceCloseBg',DLGHEAD('ceTitle','ceClose')
     +G2(FL('Mot de passe (8 caractères min.)',INP('cePw1','onCePw1','password',' autocomplete="new-password"')),FL('Confirmer',INP('cePw2','onCePw2','password',' autocomplete="new-password"')))
     +FL('Votre mot de passe administrateur (confirmation)',INP('ceAdminPw','onCeAdminPw','password',' autocomplete="current-password"'))
     +'<div style="font-size:13px">L’employé devra choisir son propre mot de passe à sa première connexion. Le mot de passe n’est jamais stocké en clair.</div></div>')
+  +IF('calShow','<div style="border:1px solid var(--color-divider);padding:12px;display:flex;flex-direction:column;gap:8px"><b>Planning dans Outlook / Gmail</b>'
+    '<div style="font-size:13px">Un lien personnel : l’employé s’y abonne une fois et voit ses tâches, bons de travail et créneaux dans son calendrier (mise à jour toutes les 30 min environ).</div>'
+    '<sc-if value="{{ calLoading }}"><div>Chargement…</div></sc-if>'
+    '<sc-if value="{{ calOn }}"><div class="field"><label>Outlook (webcal)</label><div style="display:flex;gap:6px"><input class="input" readonly value="{{ calWebcal }}" aria-label="Lien webcal" style="flex:1;font-size:12px"><button class="btn btn-secondary" onClick="{{ calCopyW }}">Copier</button></div></div>'
+    '<div class="field"><label>Gmail / lien direct (https)</label><div style="display:flex;gap:6px"><input class="input" readonly value="{{ calHttps }}" aria-label="Lien https" style="flex:1;font-size:12px"><button class="btn btn-secondary" onClick="{{ calCopyH }}">Copier</button></div></div>'
+    '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-secondary" onClick="{{ calMail }}">Envoyer le lien par courriel</button><button class="btn btn-ghost" onClick="{{ calRevoke }}">Révoquer</button></div></sc-if>'
+    '<sc-if value="{{ calOff }}"><div style="font-size:13px">Aucun lien actif.</div></sc-if>'
+    '<button class="btn btn-secondary" onClick="{{ calGen }}" style="align-self:flex-start">{{ calGenLbl }}</button></div>')
   +'<div class="dialog-actions" style="margin-top:0;flex-wrap:wrap">'+IF('ceCanDel',BTNX('btn-secondary','ceDel','{{ ceDelLbl }}'))+'<span style="flex:1"></span>'+BTNX('btn-secondary','ceClose','Fermer')+IF('ceCanEdit',BTNX('btn-primary','ceSave','{{ ceSaveLbl }}'))+'</div>')
 M=M.rstrip()+'\n'+CE
 
@@ -582,6 +590,86 @@ TY=('<template data-sc="if" value="{{ tyOpen }}"><div class="dialog-backdrop" on
   +'<div class="dialog-actions" style="margin-top:0;flex-wrap:wrap"><span style="flex:1"></span>'+BTNX('btn-secondary','tyClose','Fermer')+BTNX('btn-primary','tySave','{{ tySaveLbl }}')+'</div>'
   +'</div></div></template>\n')
 M=M.rstrip()+'\n'+TY
+SRD=WRAP('srOpen','srCloseBg',DLGHEAD('srTitle','srClose')+FL('À partir du',INP('srFrom','onSrFrom','date'))
+  +FL('Titre / client',INP('srT','onSrT'))+IF('srIsPt',FL('Heure',INP('srH','onSrH','time')))+FL('Employés',CHK('srEmps','l'))
+  +'<div class="dialog-actions" style="margin-top:0;flex-wrap:wrap">'+BTNX('btn-secondary','srStop','{{ srStopLbl }}')+'<span style="flex:1"></span>'+BTNX('btn-secondary','srClose','Fermer')+BTNX('btn-primary','srSave','{{ srSaveLbl }}')+'</div>')
+M=M.rstrip()+'\n'+SRD
+
+# ---------- PLANNING : vues 4 semaines et diagramme des travaux ----------
+def wrap_div(M,start,cond):
+    i=M.find(start)
+    if i<0: print('!! wrap_div introuvable',start[:50]); return M
+    j=i;depth=0
+    while True:
+        o=M.find('<div',j);c=M.find('</div>',j)
+        if c<0: print('!! wrap_div fin'); return M
+        if 0<=o<c: depth+=1;j=o+4
+        else:
+            depth-=1;j=c+6
+            if depth==0: break
+    return M[:i]+'<sc-if value="{{ %s }}">'%cond+M[i:j]+'</sc-if>'+M[j:]
+_pl='<sc-if value="{{ isPlanning }}">\n        <div style="display:flex;flex-direction:column;gap:18px">'
+if M.count(_pl)==1:
+    M=M.replace(_pl,_pl+'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+SEG('pViews')+'</div>',1)
+    k=M.find(_pl)
+    sub=M[k:]
+    sub=wrap_div(sub,'<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">','pIsWeek')
+    sub=wrap_div(sub,'<div style="overflow-x:auto"><div style="display:grid;grid-template-columns:180px repeat(5','pIsWeek')
+    M=M[:k]+sub
+else: print('!! ancre planning',M.count(_pl))
+P2NAV=('<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><button class="btn btn-secondary btn-icon" aria-label="Période précédente" onClick="{{ p2Prev }}"><sa-i n="left" s="18"></sa-i></button>'
+  '<span style="font:600 20px var(--font-heading);padding:0 8px">{{ p2Label }}</span><button class="btn btn-secondary btn-icon" aria-label="Période suivante" onClick="{{ p2Next }}"><sa-i n="right" s="18"></sa-i></button><button class="btn btn-ghost" onClick="{{ p2Today }}">Aujourd’hui</button>%s</div>'
+  '<sc-if value="{{ p2Loading }}"><div>Chargement…</div></sc-if>')
+MONTH=('<sc-if value="{{ pIsMonth }}"><div style="display:flex;flex-direction:column;gap:12px">'+P2NAV%'<span style="flex:1"></span><button class="btn btn-primary" onClick="{{ openDlg }}" style="gap:6px"><sa-i n="plus" s="16"></sa-i>Nouveau bon, créneau ou tâche</button>'
+  +'<div style="overflow-x:auto"><div style="min-width:900px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-top:1px solid var(--color-text);border-left:1px solid var(--color-divider)">'
+  '<sc-for list="{{ p2Dows }}" as="d"><div style="padding:6px 8px;font-size:12px;font-weight:600;border-right:1px solid var(--color-divider);border-bottom:1px solid var(--color-divider)">{{ d }}</div></sc-for>'
+  '<sc-for list="{{ p2Weeks }}" as="w"><sc-for list="{{ w.days }}" as="d"><div style="min-height:120px;padding:4px 6px;border-right:1px solid var(--color-divider);border-bottom:1px solid var(--color-divider);background:{{ d.bg }};display:flex;flex-direction:column;gap:3px">'
+  '<span style="font:{{ d.fw }} 13px var(--font-heading)">{{ d.n }}</span><sc-for list="{{ d.items }}" as="i"><button onClick="{{ i.open }}" title="{{ i.tip }}" style="all:unset;cursor:pointer;display:block;font-size:12px;line-height:1.25;padding:2px 4px;border-left:3px solid {{ i.bd }};opacity:{{ i.op }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ i.txt }} <b>{{ i.who }}</b></button></sc-for>'
+  '<sc-if value="{{ d.more }}"><span style="font-size:11px">{{ d.more }}</span></sc-if></div></sc-for></sc-for></div></div></div></sc-if>')
+GANTT=('<sc-if value="{{ pIsGantt }}"><div style="display:flex;flex-direction:column;gap:12px">'+P2NAV%'<label style="display:flex;align-items:center;gap:6px;font-size:14px;margin-left:8px"><input type="checkbox" checked="{{ gHide }}" onChange="{{ onGHide }}">Masquer les terminés</label><span style="flex:1"></span><button class="btn btn-primary" onClick="{{ gPrint }}">Imprimer (A3 paysage)</button>'
+  +'<sc-if value="{{ gNone }}"><div style="padding:14px;border:1px dashed var(--color-text)">Aucun travail sur ces 8 semaines.</div></sc-if>'
+  '<div style="overflow-x:auto"><div style="min-width:1100px;display:grid;grid-template-columns:240px minmax(0,1fr);border-top:2px solid var(--color-text)">'
+  '<div style="padding:6px 10px;font-size:12px;font-weight:600;border-bottom:1px solid var(--color-divider)">Chantier</div><div style="display:grid;grid-template-columns:repeat(8,1fr);border-bottom:1px solid var(--color-divider)"><sc-for list="{{ gWeeks }}" as="w"><div style="text-align:center;padding:4px 0;border-left:1px solid var(--color-divider);background:{{ w.bg }};font-size:12px"><b>{{ w.l }}</b><br>{{ w.r }}</div></sc-for></div>'
+  '<sc-for list="{{ gRows }}" as="r"><div style="padding:6px 10px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:3px"><b style="font-size:13px">{{ r.label }}</b><span style="align-self:flex-start;font-size:11px;font-weight:700;color:#fff;background:{{ r.etatBg }};padding:1px 6px">{{ r.etat }}</span></div>'
+  '<div style="position:relative;height:{{ r.h }}px;border-bottom:1px solid var(--color-divider);background:repeating-linear-gradient(90deg,transparent 0 calc(12.5% - 1px),var(--color-divider) calc(12.5% - 1px) 12.5%)"><sc-for list="{{ r.bars }}" as="b"><button onClick="{{ b.open }}" title="{{ b.tip }}" style="all:unset;cursor:pointer;position:relative;display:block;margin:4px 0 0 {{ b.left }}%;width:{{ b.width }}%;height:22px;line-height:22px;padding:0 4px;box-sizing:border-box;background:{{ b.bg }};color:#fff;font-size:11px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">{{ b.lbl }} {{ b.who }}</button></sc-for></div></sc-for>'
+  '</div></div></div></sc-if>')
+k2=M.find(_pl)
+if k2>=0:
+    k3=M.find('<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">',k2)
+    k3=M.find('</div>',M.find('</div>',k3)+6)+6  # après la barre de vues (SEG imbriqué)
+    SERIES=('<sc-if value="{{ pIsSeries }}"><div style="display:flex;flex-direction:column;gap:12px"><div style="font-size:14px">Toutes les séries partagées par l’équipe : tâches planning répétées et dossiers de bons de travail sur plusieurs jours. Modifier ou arrêter n’agit que sur les éléments à venir non terminés.</div>'
+      '<sc-if value="{{ srLoading }}"><div>Chargement…</div></sc-if><sc-if value="{{ srNone }}"><div style="padding:14px;border:1px dashed var(--color-text)">Aucune série récurrente.</div></sc-if>'
+      +CARD('<table class="table" style="font-size:14px"><thead><tr>'+TH%('padding-left:18px','Série')+TH%('','Type')+TH%('','Règle')+TH%('','Heure')+TH%('','Qui')+TH%('','État')+TH%('','')+'</tr></thead><tbody><sc-for list="{{ srRows }}" as="r"><tr style="opacity:{{ r.op }}">'
+      '<td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px;font-weight:600">{{ r.titre }}</td>'+TD%('','{{ r.type }}')+TD%('','{{ r.regle }}')+TD%('','{{ r.h }}')+TD%('','{{ r.qui }}')+TD%('','{{ r.etat }}')
+      +'<td style="padding:4px 18px 4px 8px;text-align:right"><sc-if value="{{ r.canEdit }}"><button class="btn btn-secondary" onClick="{{ r.edit }}">Gérer</button></sc-if></td></tr></sc-for></tbody></table>','overflow-x:auto')+'</div></sc-if>')
+    M=M[:k3]+MONTH+GANTT+SERIES+M[k3:]
+
+# ---------- VUE GLOBALE ----------
+_h=lambda t,extra='':'<div style="padding:10px 18px;border-bottom:1px solid var(--color-divider);display:flex;align-items:center;gap:10px"><span style="font:600 20px var(--font-heading);flex:1">%s</span>%s</div>'%(t,extra)
+GLOB=('<sc-if value="{{ isGlobale }}"><div style="display:flex;flex-direction:column;gap:18px">'
+  '<sc-if value="{{ gLoading }}"><div>Chargement…</div></sc-if>'
+  '<sc-if value="{{ gReady }}"><div style="display:flex;flex-direction:column;gap:18px">'
+  '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px"><sc-for list="{{ gKpis }}" as="k">'
+  +CARD('<div style="padding:14px 16px"><div style="font:600 34px var(--font-heading)">{{ k.v }}</div><div style="font-size:14px">{{ k.l }}</div></div>')+'</sc-for></div>'
+  +CARD(_h('Charge par technicien','<span style="font-size:13px">jours occupés / jours disponibles (lun.–ven.)</span>')
+    +'<div style="overflow-x:auto"><table class="table" style="font-size:14px"><thead><tr>'+TH%('padding-left:18px','Technicien')+'<sc-for list="{{ gWeeks }}" as="w"><th style="text-transform:none;letter-spacing:0;font-size:12px;min-width:140px">{{ w.lbl }}</th></sc-for></tr></thead><tbody>'
+    '<sc-for list="{{ gCharge }}" as="c"><tr><td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px;font-weight:600;white-space:nowrap">{{ c.nom }}</td><sc-for list="{{ c.cells }}" as="x"><td style="padding:var(--sa-row,10px) 8px">'
+    '<div style="font-size:13px;margin-bottom:4px">{{ x.txt }}</div><div style="height:6px;background:var(--color-divider)"><div style="height:6px;width:{{ x.w }};background:{{ x.bg }}"></div></div></td></sc-for></tr></sc-for></tbody></table></div>'
+    '<sc-if value="{{ gNoTech }}"><div style="padding:14px 18px">Aucun technicien actif.</div></sc-if>')
+  +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:18px;align-items:start">'
+  +CARD(_h('Alertes')+'<div style="display:flex;flex-direction:column"><sc-for list="{{ gAlerts }}" as="a"><div style="display:flex;gap:12px;align-items:center;padding:10px 18px;border-bottom:1px solid var(--color-divider)">'
+    '<span style="font:600 12px var(--font-heading);text-transform:uppercase;border:1px solid var(--color-text);padding:2px 6px;white-space:nowrap">{{ a.lvl }}</span><div style="flex:1;min-width:0"><div style="font-weight:600">{{ a.t }}</div><div style="font-size:13px">{{ a.s }}</div></div>'
+    +IF('a.hasGo','<button class="btn btn-ghost" onClick="{{ a.go }}">Voir</button>')+'</div></sc-for></div>')
+  +CARD(_h('Les 7 prochains jours')+'<sc-if value="{{ gNoNext }}"><div style="padding:14px 18px">Rien de prévu.</div></sc-if><div style="display:flex;flex-direction:column"><sc-for list="{{ gNext }}" as="n"><div style="display:flex;gap:12px;padding:10px 18px;border-bottom:1px solid var(--color-divider)">'
+    '<span style="font-weight:600;white-space:nowrap;min-width:92px">{{ n.d }}</span><div style="flex:1;min-width:0"><div style="font-weight:600">{{ n.nom }}</div><div style="font-size:13px">{{ n.quoi }} · {{ n.qui }}</div><div style="font-size:13px">{{ n.sub }}</div></div></div></sc-for></div>')
+  +'</div>'
+  +CARD(_h('Terminé par l’équipe — à valider',BTNX('btn-ghost','gReload','Actualiser'))+'<sc-if value="{{ gNoQueue }}"><div style="padding:14px 18px">Rien à valider.</div></sc-if>'
+    '<table class="table" style="font-size:14px"><tbody><sc-for list="{{ gQueue }}" as="r"><tr><td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px"><div style="font-weight:600">{{ r.nom }}</div><div style="font-size:13px">{{ r.sub }}</div></td>'
+    +TD%('white-space:nowrap','{{ r.d }}')+TD%('font-size:13px','{{ r.qui }}')+'<td style="padding:4px 18px 4px 8px;text-align:right"><button class="btn btn-primary" onClick="{{ r.ok }}">Valider</button></td></tr></sc-for></tbody></table>')
+  +'</div></sc-if></div></sc-if>\n')
+bs=block(M,'isStats')
+if bs: M=M.replace(bs,bs+GLOB,1)
+else: print('!! ancre isStats (Vue globale)')
 
 # ---------- CARTE : contrôles réels (la légende de la maquette ne correspondait à rien) ----------
 _lg=re.search(r'<div style="display:flex;gap:18px;font-size:13px;flex-wrap:wrap">.*?Alerte salle mécanique</span>\s*</div>',M,flags=re.S)
@@ -596,7 +684,11 @@ _sl='<sc-for list="{{ lines }}" as="l">'
 if M.count(_sl)==1: M=M.replace(_sl,'<sc-if value="{{ linesNone }}"><div style="padding:16px 18px">Aucun travail ni punch aujourd’hui.</div></sc-if>'+_sl,1)
 else: print('!! schéma',M.count(_sl))
 _tp='<div style="padding:12px 16px;border-bottom:1px solid var(--color-divider);font:600 18px var(--font-heading)">En tournée</div>'
-CSIDE=('<div style="padding:12px 16px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:8px"><b style="font:600 18px var(--font-heading)">Tournée d’un technicien</b>'
+CSIDE=('<div style="padding:12px 16px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:8px"><b style="font:600 18px var(--font-heading)">Tournée prévue</b>'
+  '<label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" checked="{{ cPlanOn }}" onChange="{{ onCPlan }}">Afficher les tournées prévues de l’équipe</label>'
+  '<sc-if value="{{ cPlanOn }}"><input class="input" type="date" value="{{ cPlanDate }}" onChange="{{ onCPlanDate }}" aria-label="Jour de la tournée prévue"><sc-if value="{{ cPlanNone }}"><div style="font-size:13px">Aucun travail assigné ce jour-là.</div></sc-if>'
+  '<sc-for list="{{ cPlanRows }}" as="r"><div style="border-left:5px solid {{ r.col }};padding:2px 8px;font-size:13px"><b>{{ r.nom }}</b><div>{{ r.txt }}</div><sc-if value="{{ r.miss }}"><div style="font-size:12px;font-weight:600">{{ r.miss }}</div></sc-if></div></sc-for></sc-if></div>'
+  '<div style="padding:12px 16px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:8px"><b style="font:600 18px var(--font-heading)">Tournée réelle d’un technicien</b>'
   '<select class="input" onChange="{{ onCEmp }}" aria-label="Technicien"><sc-for list="{{ cEmps }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></sc-for></select>'
   '<input class="input" type="date" value="{{ cDate }}" onChange="{{ onCDate }}" aria-label="Date de la tournée">'
   '<sc-if value="{{ cTourNone }}"><div style="font-size:13px">Aucun punch géolocalisé ce jour-là.</div></sc-if>'
