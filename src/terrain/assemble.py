@@ -112,6 +112,38 @@ a2='<h3 style="margin:0;font-size:24px">Tournée</h3>'
 if M.count(a2)==1: M=M.replace(a2,a2+EMPTY,1)
 else: print('!! ancre Tournée',M.count(a2))
 
+# ---------- COMMUNICATIONS (infolettre, informations, procédures du bureau) ----------
+COMM=('<sc-if value="{{ isComm }}"><div style="padding:16px 20px 28px;display:flex;flex-direction:column;gap:6px">'
+  '<sc-if value="{{ commLoading }}"><div style="font-size:17px">Chargement…</div></sc-if><sc-if value="{{ commNone }}"><div style="font-size:17px">Aucune communication pour l’instant.</div></sc-if>'
+  '<sc-for list="{{ commList }}" as="c"><button onClick="{{ c.open }}" style="all:unset;cursor:pointer;display:flex;flex-direction:column;gap:3px;padding:14px 0;border-bottom:1px solid var(--color-divider)">'
+  '<span style="display:flex;gap:8px;align-items:baseline"><span style="font:{{ c.fw }} 20px/1.2 var(--font-heading);flex:1">{{ c.titre }}</span><sc-if value="{{ c.isNew }}"><span style="font:600 13px var(--font-heading);background:var(--color-text);color:var(--color-bg);padding:2px 8px;white-space:nowrap">{{ c.newLbl }}</span></sc-if></span>'
+  '<span style="font-size:14px">{{ c.sub }}</span><span style="font-size:15px">{{ c.resume }}</span></button></sc-for>'
+  '<button class="btn btn-secondary" onClick="{{ goToday }}" style="min-height:52px;font-size:18px;margin-top:12px">Retour à la tournée</button></div></sc-if>\n'
+  '<sc-if value="{{ isCommView }}"><div style="padding:12px 20px 28px;display:flex;flex-direction:column;gap:12px">'
+  '<button onClick="{{ commBack }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:4px;height:40px;font-size:16px;color:var(--color-accent-700)"><sa-i n="left" s="20"></sa-i>Communications</button>'
+  '<h1 style="margin:0;font-size:30px;line-height:1.1">{{ cv.titre }}</h1><div style="font-size:14px">{{ cv.meta }}</div>'
+  '<sc-if value="{{ cv.hasResume }}"><div style="font-size:17px;font-style:italic">{{ cv.resume }}</div></sc-if>'
+  '<sc-if value="{{ cv.notNews }}"><div style="font-size:17px;line-height:1.5;white-space:pre-wrap">{{ cv.contenu }}</div></sc-if>'
+  '<sc-if value="{{ cv.isNews }}"><sc-for list="{{ cv.secs }}" as="s"><div style="display:flex;flex-direction:column;gap:4px;border-top:1px solid var(--color-divider);padding-top:10px">'
+  '<h3 style="margin:0;font-size:20px">{{ s.titre }}</h3><div style="font-size:17px;line-height:1.5;white-space:pre-wrap">{{ s.texte }}</div></div></sc-for></sc-if>'
+  '<sc-if value="{{ cv.mustConfirm }}"><button class="btn btn-primary" onClick="{{ cv.confirm }}" style="min-height:60px;font-size:19px;margin-top:8px">{{ cv.confLbl }}</button></sc-if>'
+  '<sc-if value="{{ cv.confirmed }}"><div style="font:600 17px var(--font-heading);display:flex;gap:6px;align-items:center"><sa-i n="check" s="20"></sa-i>Lecture confirmée</div></sc-if>'
+  '</div></sc-if>\n')
+anchor='<sc-if value="{{ isLog }}">'
+if anchor in M: M=M.replace(anchor,COMM+anchor,1)
+else: print('!! ancre isLog (Communications)')
+# Accueil : bandeau « à lire » en tête de la tournée, et accès permanent sous les tuiles
+CB='<sc-if value="{{ hasCommUnread }}"><button onClick="{{ goComm }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;padding:14px 16px;background:var(--color-text);color:var(--color-bg);font:600 18px var(--font-heading)"><sa-i n="megaphone" s="22"></sa-i><span style="flex:1">{{ commBanner }}</span><sa-i n="right" s="20"></sa-i></button></sc-if>\n'
+a2=re.search(r'<div style="font-size:16px">Tournée · \{\{ jobCount \}\} arrêts · \{\{ doneTxt \}\}</div>\s*</div>',M)
+if a2: M=M[:a2.end()]+CB+M[a2.end():]
+else: print('!! ancre en-tête du jour (Communications)')
+tile='<a href="tel:{{ bureauTel }}"'
+k=M.find(tile)
+if k>=0:
+    e=M.find('</div>',M.find('</a>',k))
+    M=M[:e+6]+'<button onClick="{{ goComm }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;padding:14px 16px;border:1px solid var(--color-divider);font:600 18px var(--font-heading)"><sa-i n="megaphone" s="22"></sa-i><span style="flex:1">Communications</span><sa-i n="right" s="20"></sa-i></button>'+M[e+6:]
+else: print('!! tuile Appeler le bureau')
+
 # ---------- MODULES AJOUTÉS : Logistique, Hivernage, correction de punch, photo de demande ----------
 def sc_block(M,start):
     i=M.find(start)
