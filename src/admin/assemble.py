@@ -644,6 +644,33 @@ if k2>=0:
       +'<td style="padding:4px 18px 4px 8px;text-align:right"><sc-if value="{{ r.canEdit }}"><button class="btn btn-secondary" onClick="{{ r.edit }}">Gérer</button></sc-if></td></tr></sc-for></tbody></table>','overflow-x:auto')+'</div></sc-if>')
     M=M[:k3]+MONTH+GANTT+SERIES+M[k3:]
 
+# ---------- VUE GLOBALE ----------
+_h=lambda t,extra='':'<div style="padding:10px 18px;border-bottom:1px solid var(--color-divider);display:flex;align-items:center;gap:10px"><span style="font:600 20px var(--font-heading);flex:1">%s</span>%s</div>'%(t,extra)
+GLOB=('<sc-if value="{{ isGlobale }}"><div style="display:flex;flex-direction:column;gap:18px">'
+  '<sc-if value="{{ gLoading }}"><div>Chargement…</div></sc-if>'
+  '<sc-if value="{{ gReady }}"><div style="display:flex;flex-direction:column;gap:18px">'
+  '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px"><sc-for list="{{ gKpis }}" as="k">'
+  +CARD('<div style="padding:14px 16px"><div style="font:600 34px var(--font-heading)">{{ k.v }}</div><div style="font-size:14px">{{ k.l }}</div></div>')+'</sc-for></div>'
+  +CARD(_h('Charge par technicien','<span style="font-size:13px">jours occupés / jours disponibles (lun.–ven.)</span>')
+    +'<div style="overflow-x:auto"><table class="table" style="font-size:14px"><thead><tr>'+TH%('padding-left:18px','Technicien')+'<sc-for list="{{ gWeeks }}" as="w"><th style="text-transform:none;letter-spacing:0;font-size:12px;min-width:140px">{{ w.lbl }}</th></sc-for></tr></thead><tbody>'
+    '<sc-for list="{{ gCharge }}" as="c"><tr><td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px;font-weight:600;white-space:nowrap">{{ c.nom }}</td><sc-for list="{{ c.cells }}" as="x"><td style="padding:var(--sa-row,10px) 8px">'
+    '<div style="font-size:13px;margin-bottom:4px">{{ x.txt }}</div><div style="height:6px;background:var(--color-divider)"><div style="height:6px;width:{{ x.w }};background:{{ x.bg }}"></div></div></td></sc-for></tr></sc-for></tbody></table></div>'
+    '<sc-if value="{{ gNoTech }}"><div style="padding:14px 18px">Aucun technicien actif.</div></sc-if>')
+  +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:18px;align-items:start">'
+  +CARD(_h('Alertes')+'<div style="display:flex;flex-direction:column"><sc-for list="{{ gAlerts }}" as="a"><div style="display:flex;gap:12px;align-items:center;padding:10px 18px;border-bottom:1px solid var(--color-divider)">'
+    '<span style="font:600 12px var(--font-heading);text-transform:uppercase;border:1px solid var(--color-text);padding:2px 6px;white-space:nowrap">{{ a.lvl }}</span><div style="flex:1;min-width:0"><div style="font-weight:600">{{ a.t }}</div><div style="font-size:13px">{{ a.s }}</div></div>'
+    +IF('a.hasGo','<button class="btn btn-ghost" onClick="{{ a.go }}">Voir</button>')+'</div></sc-for></div>')
+  +CARD(_h('Les 7 prochains jours')+'<sc-if value="{{ gNoNext }}"><div style="padding:14px 18px">Rien de prévu.</div></sc-if><div style="display:flex;flex-direction:column"><sc-for list="{{ gNext }}" as="n"><div style="display:flex;gap:12px;padding:10px 18px;border-bottom:1px solid var(--color-divider)">'
+    '<span style="font-weight:600;white-space:nowrap;min-width:92px">{{ n.d }}</span><div style="flex:1;min-width:0"><div style="font-weight:600">{{ n.nom }}</div><div style="font-size:13px">{{ n.quoi }} · {{ n.qui }}</div><div style="font-size:13px">{{ n.sub }}</div></div></div></sc-for></div>')
+  +'</div>'
+  +CARD(_h('Terminé par l’équipe — à valider',BTNX('btn-ghost','gReload','Actualiser'))+'<sc-if value="{{ gNoQueue }}"><div style="padding:14px 18px">Rien à valider.</div></sc-if>'
+    '<table class="table" style="font-size:14px"><tbody><sc-for list="{{ gQueue }}" as="r"><tr><td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px"><div style="font-weight:600">{{ r.nom }}</div><div style="font-size:13px">{{ r.sub }}</div></td>'
+    +TD%('white-space:nowrap','{{ r.d }}')+TD%('font-size:13px','{{ r.qui }}')+'<td style="padding:4px 18px 4px 8px;text-align:right"><button class="btn btn-primary" onClick="{{ r.ok }}">Valider</button></td></tr></sc-for></tbody></table>')
+  +'</div></sc-if></div></sc-if>\n')
+bs=block(M,'isStats')
+if bs: M=M.replace(bs,bs+GLOB,1)
+else: print('!! ancre isStats (Vue globale)')
+
 # ---------- CARTE : contrôles réels (la légende de la maquette ne correspondait à rien) ----------
 _lg=re.search(r'<div style="display:flex;gap:18px;font-size:13px;flex-wrap:wrap">.*?Alerte salle mécanique</span>\s*</div>',M,flags=re.S)
 CCHK='<div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ cShows }}" as="c"><button onClick="{{ c.go }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--color-divider);font-size:14px"><span style="width:16px;height:16px;border:1.5px solid var(--color-text);background:{{ c.box }};color:var(--color-bg);display:flex;align-items:center;justify-content:center"><sc-if value="{{ c.on }}"><sa-i n="check" s="12" w="3"></sa-i></sc-if></span>{{ c.l }}</button></sc-for></div>'
