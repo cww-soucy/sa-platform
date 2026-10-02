@@ -10,6 +10,13 @@ let browser, srv;
 before(async () => { browser = await launch(); srv = await startServer(); });
 after(async () => { await browser.close(); srv.close(); });
 
+// En-têtes de /qr-carnet/* lus dans _headers (comme Cloudflare Pages) : la page doit fonctionner sous sa CSP stricte.
+const HEADERS = (() => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, '..', '_headers'), 'utf8');
+  const block = src.split('\n/qr-carnet/*\n')[1].split(/\n\s*\n/)[0];
+  return Object.fromEntries(block.split('\n').map((l) => l.trim().match(/^([\w-]+):\s*(.+)$/)).filter(Boolean).map((m) => [m[1].toLowerCase(), m[2]]));
+})();
+
 async function open(query, { tables, fail, tech } = {}) {
   const db = new FakeDB(tables || base());
   Object.assign(db.fail, fail || {});
@@ -17,7 +24,10 @@ async function open(query, { tables, fail, tech } = {}) {
   const errors = [];
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push('console: ' + m.text()); });
+  await page.exposeFunction('__csp', (v) => errors.push('csp: ' + v));
+  await page.addInitScript(() => document.addEventListener('securitypolicyviolation', (e) => window.__csp(e.violatedDirective + ' ' + e.blockedURI)));
   await page.route(SB + '/**', (r) => db.handle(r));
+  await page.route(/\/qr-carnet\//, async (r) => { const res = await r.fetch(); r.fulfill({ response: res, headers: { ...res.headers(), ...HEADERS } }); });
   await page.route(/cdn\.jsdelivr\.net/, (r) => r.abort()); // la page QR ne charge jamais supabase-js
   await page.addInitScript((t) => { if (!sessionStorage.getItem('__init')) { localStorage.clear(); if (t) localStorage.setItem('sa_qr_carnet_tech', JSON.stringify(t)); sessionStorage.setItem('__init', '1'); } }, tech || null);
   await page.goto(srv.url + '/qr-carnet/' + query);
@@ -88,6 +98,18 @@ test('hors ligne : relevé conservé sur l’appareil puis envoyé au retour du 
   assert.equal(rows[0].ph_level, 7.5);
   assert.match(rows[0].created_at, /^\d{4}-\d\d-\d\dT/);
   assert.equal(await page.locator('#pending').isHidden(), true);
+  await page.close();
+});
+
+test('section cloisonnée : CSP stricte appliquée, aucun lien vers le reste de la plateforme', async () => {
+  assert.match(HEADERS['content-security-policy'], /script-src 'self';/);
+  assert.match(HEADERS['content-security-policy'], /frame-ancestors 'none'/);
+  const { page, errors } = await open('?site=1');
+  await page.getByText('Piscine Alpha').waitFor();
+  assert.equal(await page.locator('a[href]').count(), 0, 'aucun lien sortant');
+  const blocked = await page.evaluate(() => fetch('https://exemple.invalid/').then(() => 'ok', () => 'bloqué'));
+  assert.equal(blocked, 'bloqué');
+  assert.deepEqual(errors.filter((e) => !/exemple\.invalid/.test(e)), []);
   await page.close();
 });
 

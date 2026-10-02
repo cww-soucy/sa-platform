@@ -26,9 +26,17 @@
 /sa-admin/*
   Cache-Control: no-cache, must-revalidate
 
-# Carnet de bord Salle Mécanique (QR) et son connecteur (module ES importé par la page et la plateforme)
+# Carnet de bord Salle Mécanique (QR) — section publique (QR collé en salle mécanique), cloisonnée du reste :
+# la page ne peut charger que ses propres fichiers et ne peut parler qu'à Supabase (REST + Realtime) ; aucun
+# script externe ni en ligne, pas d'intégration dans un autre site, pas d'indexation, pas de référent transmis.
 /qr-carnet/*
   Cache-Control: no-cache, must-revalidate
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src https://ldqvdiaewvhnukuaxdmc.supabase.co wss://ldqvdiaewvhnukuaxdmc.supabase.co; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  X-Robots-Tag: noindex, nofollow
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
 
 /src/services/*
   Cache-Control: no-cache, must-revalidate
