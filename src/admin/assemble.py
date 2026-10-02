@@ -671,6 +671,42 @@ bs=block(M,'isStats')
 if bs: M=M.replace(bs,bs+GLOB,1)
 else: print('!! ancre isStats (Vue globale)')
 
+# ---------- COMMUNICATION ----------
+COMSCR=('<sc-if value="{{ isCommunication }}"><div style="display:flex;flex-direction:column;gap:14px">'
+  +CARD('<div style="padding:14px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap"><sa-i n="megaphone" s="22"></sa-i><span style="font-weight:600;flex:1;min-width:220px">{{ comHebdo }}</span>'+BTNX('btn-primary','comHebdoGo','{{ comHebdoBtn }}')+'</div>')
+  +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+SEG('comTabs')+'<span style="flex:1"></span>'+SEG('comStats')+'</div>'
+  +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><input class="input" type="search" placeholder="Rechercher (titre, référence, destinataire)…" value="{{ comQ }}" onInput="{{ onComQ }}" style="max-width:320px"><span style="flex:1"></span>'
+  +BTNX('btn-secondary','comNewNews','+ Infolettre')+BTNX('btn-secondary','comNewInfo','+ Information')+BTNX('btn-secondary','comNewLettre','+ Lettre')+BTNX('btn-secondary','comNewProc','+ Procédure')+'</div>'
+  +'<sc-if value="{{ comLoading }}"><div>Chargement…</div></sc-if><sc-if value="{{ comNone }}"><div style="font-size:15px;border:1px dashed var(--color-text);padding:14px">Aucune communication pour ce filtre.</div></sc-if>'
+  +CARD('<table class="table" style="font-size:14px"><thead><tr>'+TH%('padding-left:18px','Communication')+TH%('','Type')+TH%('','Pour')+TH%('','Date')+TH%('','État')+TH%('','Lecture')+TH%('','')+'</tr></thead><tbody>'
+  '<sc-for list="{{ comRows }}" as="r"><tr><td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px"><div style="font-weight:600">{{ r.titre }}</div><div style="font-size:13px">{{ r.sub }}</div></td>'
+  +TD%('','{{ r.type }}')+TD%('','{{ r.portee }}')+TD%('white-space:nowrap','{{ r.date }}')+TD%('font-weight:600','{{ r.statut }}')+TD%('white-space:nowrap','{{ r.lu }}')+OPENTD+'</tr></sc-for></tbody></table>','overflow-x:auto')
+  +'</div></sc-if>\n')
+bs=block(M,'isStats')
+if bs: M=M.replace(bs,bs+COMSCR,1)
+else: print('!! ancre isStats (Communication)')
+CMSEC=('<div style="display:flex;flex-direction:column;gap:10px"><div style="display:flex;align-items:center;gap:10px"><b style="flex:1">Sections de l’infolettre</b>'+BTNX('btn-secondary','cmFill','Remplir avec les chiffres de la semaine')+'</div>'
+  '<sc-for list="{{ cmSecs }}" as="s"><div style="border:1px solid var(--color-divider);padding:10px;display:flex;flex-direction:column;gap:6px"><div style="display:flex;gap:6px;align-items:center">'
+  '<input class="input" value="{{ s.titre }}" onInput="{{ s.onT }}" aria-label="Titre de la section" style="font-weight:600">'+IF('s.notFirst','<button class="btn btn-ghost" onClick="{{ s.up }}" aria-label="Monter">↑</button>')+'<button class="btn btn-ghost" onClick="{{ s.del }}" aria-label="Retirer la section">✕</button></div>'
+  '<textarea class="input" value="{{ s.texte }}" onInput="{{ s.onX }}" aria-label="Texte de la section" placeholder="À rédiger…" style="min-height:90px"></textarea></div></sc-for>'
+  +BTNX('btn-ghost','cmAddSec','+ Ajouter une section')+'</div>')
+CMDLG=('<template data-sc="if" value="{{ cmOpen }}"><div class="dialog-backdrop" onClick="{{ cmCloseBg }}" style="z-index:60"><div class="dialog" onClick="{{ stop }}" style="width:min(820px,100%);background:var(--color-bg);max-height:calc(100vh - 40px);overflow-y:auto;gap:14px;padding:22px 24px;border:1px solid var(--color-text)">'
+  +DLGHEAD('cmTitle','cmClose')
+  +G2(FL('Type',SEL('cmTypes','onCmType')),FL('Date',INP('cmF.date','onCmDate','date')))
+  +SEG('cmPortees')
+  +FL('Titre',INP('cmF.titre','onCmTitre'))
+  +IF('cmHasRef',G2(FL('Référence',INP('cmF.ref','onCmRef','text',' placeholder="ex. PR-012 ou L-2026-014"')),IF('cmIsProc','<div class="field"><label>Version</label><div style="padding:10px 0;font-weight:600">{{ cmF.version }}</div></div>')))
+  +G2(FL('Destinataires','<textarea class="input" value="{{ cmF.dest }}" onInput="{{ onCmDest }}" placeholder="Toute l’équipe, un département, ou le nom et l’adresse du destinataire" style="min-height:44px"></textarea>'),FL('Courriels (séparés par des virgules)',INP('cmF.mails','onCmMails','text',' placeholder="vide = toute l’équipe pour une communication interne"')))
+  +FL('Résumé (affiché dans la liste et dans sa-terrain)',TXT('cmF.resume','onCmResume','Une ou deux phrases'))
+  +IF('cmIsNews',CMSEC)
+  +IF('cmNotNews','<div class="field"><label>Contenu</label><textarea class="input" value="{{ cmF.contenu }}" onInput="{{ onCmContenu }}" placeholder="{{ cmContenuPh }}" style="min-height:260px"></textarea></div>')
+  +'<div style="display:flex;gap:18px;flex-wrap:wrap">'+IF('cmInterne',CBX('cmConf','onCmConf','Chaque employé doit confirmer sa lecture dans sa-terrain'))+CBX('cmEpingle','onCmEpingle','Épingler en haut de la liste')+'</div>'
+  +IF('cmHasLus','<div style="border:1px solid var(--color-text);padding:10px 12px;display:flex;flex-direction:column;gap:4px"><b>{{ cmLusTxt }}</b><div style="font-size:13px">{{ cmLus }}</div><div style="font-size:13px;font-weight:600">{{ cmManque }}</div></div>')
+  +'<div class="dialog-actions" style="margin-top:0;flex-wrap:wrap">'+IF('cmCanDel',BTNX('btn-secondary','cmDel','{{ cmDelLbl }}'))+IF('cmCanArch',BTNX('btn-ghost','cmArch','{{ cmArchLbl }}'))+IF('cmCanDup',BTNX('btn-ghost','cmDup','Dupliquer'))
+  +BTNX('btn-secondary','cmPrint','Imprimer / PDF')+BTNX('btn-secondary','cmMail','Courriel')+'<span style="flex:1"></span>'
+  +BTNX('btn-secondary','cmSave','{{ cmSaveLbl }}')+IF('cmCanBump',BTNX('btn-primary','cmBump','Publier une nouvelle version'))+IF('cmCanPub',BTNX('btn-primary','cmPub','{{ cmPubLbl }}'))+'</div></div></div></template>\n')
+M=M.rstrip()+'\n'+CMDLG
+
 # ---------- CARTE : contrôles réels (la légende de la maquette ne correspondait à rien) ----------
 _lg=re.search(r'<div style="display:flex;gap:18px;font-size:13px;flex-wrap:wrap">.*?Alerte salle mécanique</span>\s*</div>',M,flags=re.S)
 CCHK='<div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ cShows }}" as="c"><button onClick="{{ c.go }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--color-divider);font-size:14px"><span style="width:16px;height:16px;border:1.5px solid var(--color-text);background:{{ c.box }};color:var(--color-bg);display:flex;align-items:center;justify-content:center"><sc-if value="{{ c.on }}"><sa-i n="check" s="12" w="3"></sa-i></sc-if></span>{{ c.l }}</button></sc-for></div>'
@@ -729,6 +765,8 @@ assert '</script' not in ljs.lower() and '</style' not in lcss.lower()
 # Générateur QR (qrcodejs, MIT — la même bibliothèque que SA Platform) pour les étiquettes d'outils et d'emplacements
 qjs=open(os.path.join(SRC,'vendor','qrcodejs','qrcode.min.js'),encoding='utf-8').read(); assert '</script' not in qjs.lower()
 rt=open(os.path.join(HERE,'runtime.js'),encoding='utf-8').read(); app=open(os.path.join(HERE,'app.js'),encoding='utf-8').read()
+import base64
+LOGO='data:image/png;base64,'+base64.b64encode(open(os.path.join(SRC,'design','logo-soucy-aquatik.png'),'rb').read()).decode()
 html='''<!DOCTYPE html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SA Admin — Centre des opérations</title>
@@ -754,7 +792,7 @@ button{font-family:inherit}a{color:var(--color-accent-700)}
 <style>'''+lcss+'''</style>
 <script>'''+ljs+'''</script>
 <script>'''+qjs+'''</script>
-<script>'''+icons+'''</script><script>'''+rt+'''</script><script>'''+app+'''</script>
+<script>'''+icons+'''</script><script>window.SA_LOGO='''+repr(LOGO)+''';</script><script>'''+rt+'''</script><script>'''+app+'''</script>
 </body></html>'''
 open(os.path.join(OUT,'admin.html'),'w',encoding='utf-8').write(html)
 print('taille',len(html),'| règles',len(css))

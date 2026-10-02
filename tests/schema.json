@@ -404,5 +404,36 @@
     "statut",
     "created_at",
     "updated_at"
+  ],
+  "communications": [
+    "id",
+    "type",
+    "portee",
+    "titre",
+    "resume",
+    "contenu",
+    "sections",
+    "semaine",
+    "destinataires",
+    "courriels",
+    "reference",
+    "version",
+    "confirmation",
+    "statut",
+    "date_pub",
+    "epingle",
+    "auteur",
+    "auteur_nom",
+    "created_at",
+    "updated_at"
+  ],
+  "communication_lectures": [
+    "id",
+    "comm_id",
+    "uid",
+    "emp_nom",
+    "version",
+    "lu_at",
+    "updated_at"
   ]
 }
