@@ -1401,6 +1401,122 @@ Comp.prototype.globVals=function(){var self=this,st=this.state,D=this.D;if(!D||s
     gQueue:g.q.map(function(it){return{sub:it.quoi+(it.txt?' · '+it.txt:''),nom:it.nom,d:fdate(it.d),qui:'Terminé par '+(nm[it.qui]||it.qui||'—')+(it.at?' le '+fdate(it.at):''),ok:function(){self.globValider(it);}};}),gNoQueue:!g.q.length,
     gReload:function(){self.loadGlob(true);self.update();}};};
 
+/* ═════════════ COMMUNICATION : infolettre du lundi, informations, lettres et procédures — internes ou externes ═════════════
+   Tables communications / communication_lectures. Les communications internes publiées se lisent dans sa-terrain
+   (« J'ai lu ») ; une procédure à confirmer doit être relue à chaque nouvelle version. */
+var COM_T=[['infolettre','Infolettre'],['information','Information'],['lettre','Lettre'],['procedure','Procédure']],COM_L={};COM_T.forEach(function(t){COM_L[t[0]]=t[1];});
+var COM_S={brouillon:'Brouillon',publie:'Publiée',archive:'Archivée'};
+Comp.prototype.loadComms=function(force){var self=this;if(!force&&this.comms!==undefined)return;this.comms=null;
+  Promise.all([soft('communications?select=*&order=created_at.desc',[]),soft('communication_lectures?select=id,comm_id,uid,emp_nom,version,lu_at',[])])
+    .then(function(r){self.comms=r[0];self.comLect=r[1];self.update();});};
+Comp.prototype.comEquipe=function(){var D=this.D;return D.comptes.filter(function(c){return D.statut[c.id]!=='inactif'&&c.role!=='admin';});};
+/* Qui a lu (la version en cours, pour une procédure) — et qui ne l'a pas encore fait */
+Comp.prototype.comLus=function(c){var v=c.version||1,L=(this.comLect||[]).filter(function(l){return l.comm_id===c.id&&(c.type!=='procedure'||(l.version||1)>=v);}),by={};L.forEach(function(l){by[l.uid]=l;});
+  var eq=this.comEquipe();return{lus:eq.filter(function(e){return by[e.id];}).map(function(e){return{nom:(e.prenom+' '+e.nom).trim(),at:by[e.id].lu_at};}),manque:eq.filter(function(e){return!by[e.id];}).map(function(e){return(e.prenom+' '+e.nom).trim();}),n:eq.length};};
+function comMonday(d){return iso(mondayOf(d||new Date()));}
+Comp.prototype.comBlank=function(type){var u=this.user,now=new Date(),mon=comMonday(now);
+  var f={id:'com-'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),type:type,portee:type==='lettre'?'externe':'interne',titre:'',resume:'',contenu:'',sections:[],semaine:null,destinataires:type==='lettre'?'':'Toute l’équipe',courriels:'',reference:'',version:1,
+    confirmation:type==='procedure',statut:'brouillon',date_pub:iso(now),epingle:false,auteur:u.id,auteur_nom:(u.prenom+' '+u.nom).trim(),created_at:null,updated_at:null};
+  if(type==='infolettre'){f.semaine=mon;f.date_pub=mon;f.titre='L’Hebdo terrain · semaine du '+fdate(mon);f.sections=[{titre:'Mot de la semaine',texte:''},{titre:'Retour sur la semaine dernière',texte:''},{titre:'Heures terrain par technicien',texte:''},{titre:'Cette semaine',texte:''},{titre:'Rappel sécurité',texte:''},{titre:'Bons coups',texte:''}];}
+  return f;};
+Comp.prototype.comNew=function(type){var f=this.comBlank(type);this.setState({cm:{f:f,isNew:true,busy:false,confirm:false}});if(type==='infolettre')this.comFill();};
+Comp.prototype.comOpen=function(c){var f=JSON.parse(JSON.stringify(c));f.sections=Array.isArray(f.sections)?f.sections:[];this.setState({cm:{f:f,isNew:false,busy:false,confirm:false,orig:c.contenu+'|'+JSON.stringify(c.sections||[])}});};
+Comp.prototype.comSet=function(k,v){var cm=this.state.cm;if(!cm)return;var f=Object.assign({},cm.f);f[k]=v;this.setState({cm:Object.assign({},cm,{f:f})});};
+Comp.prototype.comSec=function(i,k,v){var cm=this.state.cm,f=Object.assign({},cm.f),s=f.sections.slice();if(k==='del')s.splice(i,1);else if(k==='up'){if(i>0){var x=s[i-1];s[i-1]=s[i];s[i]=x;}}else if(k==='add')s.push({titre:'',texte:''});else{s[i]=Object.assign({},s[i]);s[i][k]=v;}f.sections=s;this.setState({cm:Object.assign({},cm,{f:f})});};
+/* Remplit l'infolettre avec les vrais chiffres : semaine dernière (heures, relevés, sites, bons) et travaux prévus cette semaine */
+Comp.prototype.comFill=function(){var self=this,cm=this.state.cm;if(!cm)return;var D=this.D,mon=new Date((cm.f.semaine||comMonday())+'T12:00:00'),p0=iso(addDays(mon,-7)),p1=iso(addDays(mon,-1)),a=iso(mon),b=iso(addDays(mon,6)),nm=this.names();
+  var hrs=(D.ftAll||[]).filter(function(r){return r.week===p0;}),tot=hrs.reduce(function(s,r){return s+(Number(r.total_h)||0);},0);
+  var rel=D.rel.filter(function(r){return r.date>=p0&&r.date<=p1;}),sites={};rel.forEach(function(r){sites[r.site_id]=1;});var hz=rel.filter(function(r){return r.hors_zone;}).length;
+  var wf=D.wo.filter(function(w){return w.date>=p0&&w.date<=p1&&woDone(w.status);}).length;
+  var retour='• '+decTxt(tot)+' h travaillées par l’équipe\n• '+rel.length+' relevé(s) sur '+Object.keys(sites).length+' site(s)'+(hz?' — '+hz+' hors des normes, à suivre':'')+'\n• '+wf+' bon(s) de travail terminé(s)';
+  var parTech=hrs.filter(function(r){return Number(r.total_h)>0;}).sort(function(x,y){return y.total_h-x.total_h;}).map(function(r){return'• '+(nm[r.uid]||r.uid)+' : '+decTxt(Number(r.total_h))+' h';}).join('\n')||'Aucune heure enregistrée.';
+  Promise.all([soft('workorders?select=client,date,assigne,status&date=gte.'+a+'&date=lte.'+b,[]),soft('planning_tasks?select=titre,site_nom,emp,date_debut,date_fin,statut&date_debut=lte.'+b+'&date_fin=gte.'+a,[]),soft('plan?select=client,date,heure,emp,emps&date=gte.'+a+'&date=lte.'+b,[])]).then(function(r){
+    var it=[];r[0].forEach(function(w){if(!woDone(w.status))it.push([w.date,w.client,self.globIds(null,w.assigne)]);});
+    r[1].forEach(function(t){if(t.statut!=='annule')it.push([t.date_debut<a?a:t.date_debut,(t.titre||t.site_nom)+(t.date_fin>t.date_debut?' (jusqu’au '+fdate(t.date_fin)+')':''),self.globIds(null,t.emp)]);});
+    r[2].forEach(function(p){it.push([p.date,p.client+(p.heure?' · '+p.heure:''),self.globIds(p.emps,p.emp)]);});
+    it.sort(function(x,y){return String(x[0]).localeCompare(String(y[0]));});
+    var cette=it.length?it.slice(0,25).map(function(x){var d=new Date(x[0]+'T12:00:00');return'• '+JS[d.getDay()]+' '+d.getDate()+' — '+x[1]+(x[2].length?' ('+x[2].map(function(e){return nm[e]||e;}).join(', ')+')':'');}).join('\n')+(it.length>25?'\n… et '+(it.length-25)+' autre(s)':''):'Rien de planifié pour l’instant.';
+    var cur=self.state.cm;if(!cur)return;var f=Object.assign({},cur.f),auto={'Retour sur la semaine dernière':retour,'Heures terrain par technicien':parTech,'Cette semaine':cette};
+    f.sections=f.sections.map(function(s){return auto[s.titre]!=null?{titre:s.titre,texte:auto[s.titre]}:s;});
+    Object.keys(auto).forEach(function(k){if(!f.sections.some(function(s){return s.titre===k;}))f.sections.push({titre:k,texte:auto[k]});});
+    self.setState({cm:Object.assign({},cur,{f:f})});self.flash('Chiffres de la semaine insérés');});};
+Comp.prototype.comText=function(f){var t=(f.resume?f.resume+'\n\n':'');if(f.type==='infolettre')t+=f.sections.filter(function(s){return String(s.texte||'').trim();}).map(function(s){return s.titre.toUpperCase()+'\n'+s.texte;}).join('\n\n');else t+=f.contenu||'';return t.trim();};
+/* Enregistrer : nouvelle → POST ; existante → PATCH conditionnel (updated_at) : jamais d'écrasement d'une modification faite ailleurs */
+Comp.prototype.comSave=function(statut,opts){var self=this,cm=this.state.cm;if(!cm||cm.busy)return;var f=cm.f,now=nowIso();opts=opts||{};
+  if(!String(f.titre).trim()){this.flash('Le titre est requis');return;}
+  if(f.type!=='infolettre'&&!String(f.contenu||'').trim()&&statut==='publie'){this.flash('Le contenu est vide');return;}
+  var row={type:f.type,portee:f.portee,titre:String(f.titre).trim(),resume:f.resume||null,contenu:f.contenu||null,sections:f.sections||[],semaine:f.semaine||null,destinataires:f.destinataires||null,courriels:f.courriels||null,reference:f.reference||null,
+    version:Number(f.version)||1,confirmation:!!f.confirmation,statut:statut||f.statut,date_pub:f.date_pub||null,epingle:!!f.epingle,updated_at:now};
+  if(opts.bump){row.version=(Number(f.version)||1)+1;}
+  this.setState({cm:Object.assign({},cm,{busy:true})});
+  var p=cm.isNew?rest('POST','communications',Object.assign({id:f.id,auteur:f.auteur,auteur_nom:f.auteur_nom,created_at:now},row)):rest('PATCH','communications?id=eq.'+encodeURIComponent(f.id)+'&updated_at='+(f.updated_at?'eq.'+encodeURIComponent(f.updated_at):'is.null'),row);
+  p.then(function(r){if(!cm.isNew&&!r.length){self.setState({cm:Object.assign({},self.state.cm,{busy:false})});self.flash('Cette communication vient d’être modifiée ailleurs — fermez et rouvrez-la avant d’enregistrer');return;}
+    auditT(self,cm.isNew?'CREATION':'MODIFICATION','communications',f.id,{type:f.type,statut:row.statut,version:row.version});
+    self.setState({cm:null});self.flash(row.statut==='publie'?(opts.bump?'Nouvelle version '+row.version+' publiée — chaque employé doit la relire':'Communication publiée'):row.statut==='archive'?'Communication archivée':'Brouillon enregistré');self.loadComms(true);})
+  .catch(function(x){self.setState({cm:Object.assign({},self.state.cm,{busy:false})});self.flash('Échec : '+netMsg(x));});};
+Comp.prototype.comDelete=function(){var self=this,cm=this.state.cm;if(!cm)return;if(!cm.confirm){this.setState({cm:Object.assign({},cm,{confirm:true})});return;}
+  rest('DELETE','communications?id=eq.'+encodeURIComponent(cm.f.id)).then(function(){auditT(self,'SUPPRESSION','communications',cm.f.id,{titre:cm.f.titre});self.setState({cm:null});self.flash('Supprimé');self.loadComms(true);}).catch(function(x){self.flash('Échec : '+netMsg(x));});};
+Comp.prototype.comDup=function(){var cm=this.state.cm;if(!cm)return;var f=JSON.parse(JSON.stringify(cm.f)),b=this.comBlank(f.type);
+  Object.assign(f,{id:b.id,statut:'brouillon',version:1,created_at:null,updated_at:null,auteur:b.auteur,auteur_nom:b.auteur_nom,date_pub:b.date_pub,titre:f.titre+' (copie)'});if(f.type==='infolettre'){f.semaine=b.semaine;f.titre=b.titre;}
+  this.setState({cm:{f:f,isNew:true,busy:false,confirm:false}});};
+Comp.prototype.comPrint=function(){var cm=this.state.cm;if(!cm)return;var f=cm.f,E=escH,nl=function(s){return E(s).replace(/\n/g,'<br>');};
+  var h='<!doctype html><meta charset="utf-8"><title>'+E(f.titre)+'</title><style>body{font:14px/1.5 Arial,sans-serif;margin:32px 40px;color:#111}header{display:flex;align-items:center;gap:16px;border-bottom:2px solid #0b4f8a;padding-bottom:10px;margin-bottom:18px}header img{height:56px}'
+    +'header div{font-size:12px;color:#444}h1{font-size:22px;margin:0 0 6px}h2{font-size:15px;margin:18px 0 4px;color:#0b4f8a;text-transform:uppercase;letter-spacing:.04em}.m{font-size:12px;color:#444;margin-bottom:14px}.sig{margin-top:40px}</style>'
+    +'<header>'+(window.SA_LOGO?'<img src="'+window.SA_LOGO+'" alt="Soucy Aquatik">':'<b>Soucy Aquatik</b>')+'<div>Soucy Aquatik · Département des opérations<br>'+E(COM_L[f.type])+' '+(f.portee==='externe'?'externe':'interne')+'</div></header>';
+  if(f.type==='lettre'){h+='<div class="m">'+E(fdateLong(f.date_pub))+'</div>'+(f.destinataires?'<div style="margin-bottom:14px">'+nl(f.destinataires)+'</div>':'')+(f.reference?'<div class="m">Référence : '+E(f.reference)+'</div>':'')+'<p><b>Objet : '+E(f.titre)+'</b></p>';}
+  else h+='<h1>'+E(f.titre)+'</h1><div class="m">'+(f.type==='procedure'?'Procédure '+E(f.reference||'')+' · version '+(f.version||1)+' · ':'')+'Publiée le '+E(fdateLong(f.date_pub))+(f.destinataires?' · Pour : '+E(f.destinataires):'')+'</div>';
+  if(f.resume)h+='<p><i>'+nl(f.resume)+'</i></p>';
+  if(f.type==='infolettre')f.sections.forEach(function(s){if(String(s.texte||'').trim())h+='<h2>'+E(s.titre)+'</h2><div>'+nl(s.texte)+'</div>';});else h+='<div>'+nl(f.contenu||'')+'</div>';
+  if(f.type==='lettre')h+='<div class="sig">'+E(f.auteur_nom||'')+'<br>Soucy Aquatik</div>';
+  if(f.type==='procedure'&&f.confirmation)h+='<div class="sig">Lu et compris — signature de l’employé : ____________________________ Date : ____________</div>';
+  var w=window.open('','_blank');if(!w){this.flash('Fenêtre bloquée — autorisez les fenêtres pour imprimer');return;}w.document.write(h+'<script>setTimeout(function(){print();},300)<\/script>');w.document.close();
+  auditT(this,'EXPORT','communications',f.id,{action:'impression'});};
+function fdateLong(s){if(!s)return'';var d=new Date(String(s).slice(0,10)+'T12:00:00');return d.getDate()+(d.getDate()===1?'er':'')+' '+MOIS[d.getMonth()]+' '+d.getFullYear();}
+Comp.prototype.comMail=function(){var cm=this.state.cm;if(!cm)return;var f=cm.f,D=this.D,to=String(f.courriels||'').trim();
+  if(!to&&f.portee==='interne')to=this.comEquipe().map(function(c){return c.email;}).filter(Boolean).join(',');
+  if(!to)this.flash('Aucune adresse — ajoutez des courriels (le message s’ouvre quand même)');
+  var corps=(f.type==='lettre'&&f.destinataires?f.destinataires.split('\n')[0]+',\n\n':'Bonjour,\n\n')+this.comText(f)+'\n\n'+(f.auteur_nom||'')+'\nSoucy Aquatik';
+  if(corps.length>1800){corps=corps.slice(0,1700)+'\n\n[… texte complet dans la version imprimée / PDF jointe]';this.flash('Texte long : joignez la version PDF (Imprimer → Enregistrer en PDF)');}
+  mailto(to,f.titre,corps);auditT(this,'EXPORT','communications',f.id,{action:'courriel'});};
+Comp.prototype.commVals=function(){var self=this,st=this.state,D=this.D;if(!D||st.mod!=='communication')return{isCommunication:false,cmOpen:false};this.loadComms();
+  var tab=st.comTab||'tous',stat=st.comStat||'actifs',q=norm(st.comQ||''),all=Array.isArray(this.comms)?this.comms:[],mon=comMonday();
+  var rows=all.filter(function(c){return(tab==='tous'||c.type===tab)&&(stat==='archive'?c.statut==='archive':c.statut!=='archive')&&(!q||norm(c.titre+' '+(c.resume||'')+' '+(c.reference||'')+' '+(c.destinataires||'')).indexOf(q)>=0);})
+    .sort(function(a,b){return(b.epingle?1:0)-(a.epingle?1:0)||String(b.date_pub||b.created_at||'').localeCompare(String(a.date_pub||a.created_at||''));});
+  var hebdo=all.filter(function(c){return c.type==='infolettre'&&c.semaine===mon&&c.statut!=='archive';})[0];
+  var out={isCommunication:true,comLoading:this.comms===null,comNone:this.comms!==null&&!rows.length,
+    comTabs:[['tous','Toutes']].concat(COM_T).map(function(t){var n=t[0]==='tous'?all.filter(function(c){return c.statut!=='archive';}).length:all.filter(function(c){return c.type===t[0]&&c.statut!=='archive';}).length;return Object.assign({label:t[1]+' ('+n+')',go:function(){self.setState({comTab:t[0]});}},segS(tab===t[0]));}),
+    comStats:[['actifs','En cours'],['archive','Archives']].map(function(t){return Object.assign({label:t[1],go:function(){self.setState({comStat:t[0]});}},segS(stat===t[0]));}),
+    comQ:st.comQ||'',onComQ:function(e){self.setState({comQ:e.target.value});},
+    comHebdo:hebdo?('Infolettre de la semaine du '+fdate(mon)+' : '+(hebdo.statut==='publie'?'publiée':'en brouillon')):'L’infolettre du lundi '+fdate(mon)+' n’est pas encore préparée.',comHebdoBtn:hebdo?'Ouvrir l’infolettre':'Préparer l’infolettre',
+    comHebdoGo:function(){if(hebdo)self.comOpen(hebdo);else self.comNew('infolettre');},
+    comNewInfo:function(){self.comNew('information');},comNewLettre:function(){self.comNew('lettre');},comNewProc:function(){self.comNew('procedure');},comNewNews:function(){self.comNew('infolettre');},
+    comRows:rows.map(function(c){var l=c.portee==='interne'&&c.statut==='publie'?self.comLus(c):null;
+      return{type:COM_L[c.type]||c.type,titre:(c.epingle?'📌 ':'')+c.titre,sub:[c.reference,c.type==='procedure'?'v'+(c.version||1):'',c.resume].filter(Boolean).join(' · '),portee:c.portee==='externe'?'Externe'+(c.destinataires?' · '+c.destinataires.split('\n')[0]:''):'Interne',
+        statut:COM_S[c.statut]||c.statut,date:fdate(c.date_pub||c.created_at),lu:l?(c.confirmation?'Confirmé ':'Lu ')+l.lus.length+' / '+l.n:'—',open:function(){self.comOpen(c);}};})};
+  var cm=st.cm;out.cmOpen=!!cm;
+  if(cm){var f=cm.f,set=function(k){return function(e){self.comSet(k,e.target.type==='checkbox'?e.target.checked:e.target.value);};},pub=f.statut==='publie',lus=!cm.isNew&&pub&&f.portee==='interne'?self.comLus(f):null;
+    var changed=!cm.isNew&&cm.orig!==(f.contenu+'|'+JSON.stringify(f.sections||[]));
+    Object.assign(out,{cmTitle:(cm.isNew?'Nouvelle ':'')+(COM_L[f.type]||'communication').toLowerCase()+(cm.isNew?'':' · '+(COM_S[f.statut]||'')),
+      cmTypes:COM_T.map(function(t){return{v:t[0],l:t[1],sel:f.type===t[0]};}),onCmType:set('type'),
+      cmPortees:[['interne','Interne (l’équipe)'],['externe','Externe (clients, partenaires)']].map(function(t){return Object.assign({label:t[1],go:function(){self.comSet('portee',t[0]);}},segS(f.portee===t[0]));}),
+      cmF:{titre:f.titre,resume:f.resume||'',contenu:f.contenu||'',dest:f.destinataires||'',mails:f.courriels||'',ref:f.reference||'',date:f.date_pub||'',version:'Version '+(f.version||1)},
+      onCmTitre:set('titre'),onCmResume:set('resume'),onCmContenu:set('contenu'),onCmDest:set('destinataires'),onCmMails:set('courriels'),onCmRef:set('reference'),onCmDate:set('date_pub'),
+      cmIsNews:f.type==='infolettre',cmNotNews:f.type!=='infolettre',cmHasRef:f.type==='procedure'||f.type==='lettre',cmIsProc:f.type==='procedure',cmInterne:f.portee==='interne',
+      cmContenuPh:f.type==='lettre'?'Madame, Monsieur,\n\n…':f.type==='procedure'?'1. Objet\n2. Équipement de protection\n3. Étapes\n4. En cas de problème':'Le message à communiquer…',
+      cmConf:!!f.confirmation,onCmConf:set('confirmation'),cmEpingle:!!f.epingle,onCmEpingle:set('epingle'),
+      cmSecs:f.sections.map(function(s,i){return{titre:s.titre,texte:s.texte,n:i+1,onT:function(e){self.comSec(i,'titre',e.target.value);},onX:function(e){self.comSec(i,'texte',e.target.value);},del:function(){self.comSec(i,'del');},up:function(){self.comSec(i,'up');},notFirst:i>0};}),
+      cmAddSec:function(){self.comSec(0,'add');},cmFill:function(){self.comFill();},
+      cmHasLus:!!lus,cmLusTxt:lus?(f.confirmation?'Lecture confirmée par ':'Lu par ')+lus.lus.length+' / '+lus.n+(f.type==='procedure'?' (version '+(f.version||1)+')':''):'',
+      cmLus:lus?lus.lus.map(function(l){return l.nom+' — '+fdate(l.at);}).join(' · ')||'Personne pour l’instant':'',cmManque:lus&&lus.manque.length?'Pas encore : '+lus.manque.join(', '):'',
+      cmSaveLbl:cm.busy?'Enregistrement…':pub?'Enregistrer les modifications':'Enregistrer le brouillon',cmSave:function(){self.comSave(pub?'publie':'brouillon');},
+      cmCanPub:!pub,cmPubLbl:f.portee==='interne'?'Publier à l’équipe':'Marquer envoyée',cmPub:function(){self.comSave('publie');},
+      cmCanBump:pub&&f.type==='procedure'&&changed,cmBump:function(){self.comSave('publie',{bump:true});},
+      cmArchLbl:f.statut==='archive'?'Désarchiver':'Archiver',cmArch:function(){self.comSave(f.statut==='archive'?'brouillon':'archive');},cmCanArch:!cm.isNew,
+      cmPrint:function(){self.comPrint();},cmMail:function(){self.comMail();},cmDup:function(){self.comDup();},cmCanDup:!cm.isNew,
+      cmCanDel:!cm.isNew,cmDelLbl:cm.confirm?'Confirmer la suppression':'Supprimer',cmDel:function(){self.comDelete();},
+      cmClose:function(){self.setState({cm:null});},cmCloseBg:function(e){if(e.target===e.currentTarget)self.setState({cm:null});}});}
+  return out;};
+
 /* Valeurs d'écran : Temps (Semaine · À valider · Paie · Cumul) et Stats */
 Comp.prototype.tempsVals=function(punchRows){var self=this,st=this.state,D=this.D,mod=st.mod,tMon=addDays(mondayOf(new Date()),7*st.tOff),wk=iso(tMon),today=iso(new Date());
   if((mod==='temps'||mod==='stats'||st.hj)&&this.ftw[wk]===undefined)this.loadWeekFT(wk);
@@ -1650,10 +1766,10 @@ Comp.prototype.vals=function(){
 
   // ---- navigation
   var G=[['Terrain',[['monitoring','Monitoring','activity',horsZone.length+urgDem.length,true],['carte','Carte des sites','map'],['inspections','Inspections','chart']]],['Gestion',[['globale','Vue globale','grid'],['planmatch','Plan de Match','clipboard'],['operations','Opérations','folder'],['planning','Planning équipe','calendar'],['sites','Sites','building',nouveaux.length],['facturation','Facturation','receipt'],['hivernage','Hivernage','snow']]],['Matériel',[['logistique','Logistique','send'],['stock','Stock','package'],['flotte','Flotte','truck'],['outils','Outils · QR','wrench']]],['Équipe',[['sondages','Sondages clients','star'],['communication','Communication','megaphone'],['temps','Temps · Paie','timer'],['stats','Stats','chart'],['comptes','Comptes','users']]]];
-  var LIVE=['globale','outils','stock','flotte','logistique','hivernage','comptes','planmatch','stats','monitoring','inspections','operations','sites','temps','planning','sondages','carte','facturation'];
+  var LIVE=['communication','globale','outils','stock','flotte','logistique','hivernage','comptes','planmatch','stats','monitoring','inspections','operations','sites','temps','planning','sondages','carte','facturation'];
   var navGroups=G.map(function(g){return{label:g[0],items:g[1].map(function(i){return{label:i[1],icon:i[2],badge:i[3]||null,badgeBg:i[4]?'var(--color-text)':'transparent',badgeFg:i[4]?'var(--color-bg)':'var(--color-text)',go:function(){self.go(i[0]);},bar:mod===i[0]?'var(--color-text)':'transparent',bg:mod===i[0]?'var(--color-accent-100)':'transparent',fw:mod===i[0]?600:400};})};});
   var TITLES={globale:['Vue globale','Charge de l’équipe sur 4 semaines, alertes, travaux à venir et tâches terminées à valider'],monitoring:['Monitoring en direct','Qui est où, activité terrain et relevés hors zone'],inspections:['Inspections et rapports','Relevés techniques saisis en tournée, par site et dans le temps'],operations:['Opérations','Dossiers clients — les visites d’un même contrat restent regroupées'],sites:['Sites','Répertoire et sites détectés automatiquement'],
-    carte:['Carte des sites','Sites et techniciens, d’après les punchs GPS'],sondages:['Sondages clients','Résultats de satisfaction — lecture seule'],planning:['Planning équipe','Qui fait quoi — la semaine, 4 semaines ou le diagramme des travaux sur 8 semaines'],temps:['Temps · Paie','Feuilles de temps de l’équipe — corriger, ajouter, approuver, sortir la paie'],comptes:['Comptes','Employés, rôles, droits, statut et mots de passe — partagés avec SA Platform et sa-terrain'],planmatch:['Plan de Match','Le plan de la journée de chaque employé — tâches, véhicule, travaux du jour'],stats:['Stats','Heures de l’équipe, bons de travail, stock — par semaine'],facturation:['Facturation','Depuis ton fichier Excel — ODT, prix, écarts. PO manquant sur '+poManquant+' dossier(s).'],communication:['Communication d’équipe','Bientôt'],logistique:['Logistique','Bons de livraison et sorties d’inventaire — les mêmes que SA Platform et sa-terrain'],outils:['Outils · QR','Outils étiquetés, qui les a en main, emplacements de l’entrepôt et du bureau, étiquettes QR'],stock:['Stock','Inventaire de l’entrepôt — quantités, seuils d’alerte, prix, entrées et sorties'],flotte:['Flotte','Véhicules de l’entreprise et à qui ils sont assignés'],hivernage:['Hivernage','Rapports de pré-hivernage par site — constats, travaux prévus, suivi']};
+    carte:['Carte des sites','Sites et techniciens, d’après les punchs GPS'],sondages:['Sondages clients','Résultats de satisfaction — lecture seule'],planning:['Planning équipe','Qui fait quoi — la semaine, 4 semaines ou le diagramme des travaux sur 8 semaines'],temps:['Temps · Paie','Feuilles de temps de l’équipe — corriger, ajouter, approuver, sortir la paie'],comptes:['Comptes','Employés, rôles, droits, statut et mots de passe — partagés avec SA Platform et sa-terrain'],planmatch:['Plan de Match','Le plan de la journée de chaque employé — tâches, véhicule, travaux du jour'],stats:['Stats','Heures de l’équipe, bons de travail, stock — par semaine'],facturation:['Facturation','Depuis ton fichier Excel — ODT, prix, écarts. PO manquant sur '+poManquant+' dossier(s).'],communication:['Communication','Infolettre du lundi, informations, lettres et procédures — internes et externes au département'],logistique:['Logistique','Bons de livraison et sorties d’inventaire — les mêmes que SA Platform et sa-terrain'],outils:['Outils · QR','Outils étiquetés, qui les a en main, emplacements de l’entrepôt et du bureau, étiquettes QR'],stock:['Stock','Inventaire de l’entrepôt — quantités, seuils d’alerte, prix, entrées et sorties'],flotte:['Flotte','Véhicules de l’entreprise et à qui ils sont assignés'],hivernage:['Hivernage','Rapports de pré-hivernage par site — constats, travaux prévus, suivi']};
   var soonName={communication:'Communication d’équipe'};
   var qq=st.q.trim().toLowerCase();
   var results=qq.length<2?[]:D.sites.filter(function(s){return(s.nom+s.ville+s.contrat).toLowerCase().indexOf(qq)>=0;}).slice(0,5).map(function(s){return{label:s.nom,sub:s.ville+' · '+self.T(s.type).court,go:function(){self.go('inspections',{inspSite:s.id,inspKey:null});}};})
@@ -1674,7 +1790,7 @@ Comp.prototype.vals=function(){
     exportMsg:function(){self.printInsp(is.id);},
     opsFilters:opsFilters,dossiers:dossiers,newDossier:function(){self.openDlg({type:'Bon de travail'});},noDossier:dossiers.length===0,
     nouveaux:nouveaux,siteTypeOptions:siteTypeOptions,siteType:stype,onSiteType:function(e){self.setState({siteType:e.target.value});},siteRows:siteRows,siteCount:siteRows.length,noNouveaux:nouveaux.length===0},
-    this.tempsVals(punchRows),this.empVals(),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals(),this.stockVals(),this.outilsVals(),this.monVals(),this.siteFicheVals(),this.typesVals(),this.carteCtlVals(),this.plan2Vals(),this.calVals(),this.seriesVals(),this.globVals());
+    this.tempsVals(punchRows),this.empVals(),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals(),this.stockVals(),this.outilsVals(),this.monVals(),this.siteFicheVals(),this.typesVals(),this.carteCtlVals(),this.plan2Vals(),this.calVals(),this.seriesVals(),this.globVals(),this.commVals());
 };
 Comp.prototype.update=function(){if(!this._host)return;SARender(document.getElementById('tpl'),this._host,this.vals());this.syncMap();var el=this.rootRef.current;if(el)el.style.setProperty('--sa-row','10px');};
 Comp.prototype.mount=function(host){var self=this;this._host=host;var hm=hashMod();if(hm&&TITLES_OK(hm))this.state.mod=hm;this.update();
