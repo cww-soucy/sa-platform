@@ -1265,6 +1265,23 @@ Comp.prototype.printGantt=function(a,b,wks,rows){var E=escH,h='<!doctype html><m
   rows.forEach(function(r){h+='<div class="l">'+E(r.label)+'<br><span style="font-weight:400">'+E(r.etat)+'</span></div><div class="t" style="height:'+r.h+'px">'+r.bars.map(function(x,i){return'<div class="b" style="left:'+x.left+'%;width:'+x.width+'%;top:'+(6+i*26)+'px;background:'+x.bg+'">'+E(x.lbl)+(x.who?' · '+E(x.who):'')+'</div>';}).join('')+'</div>';});
   var w=window.open('','_blank');if(!w){this.flash('Fenêtre bloquée — autorisez les fenêtres pour imprimer');return;}w.document.write(h+'</div><script>setTimeout(function(){print();},300)<\/script>');w.document.close();};
 
+/* ═════════════ LIEN CALENDRIER OUTLOOK / GMAIL (même table et même service que SA Platform : tech_calendar_connections + planning-ics) ═════════════ */
+var ICS_ENDPOINT=SB+'/functions/v1/planning-ics';
+function icsToken(){var a=new Uint8Array(24);(window.crypto||window.msCrypto).getRandomValues(a);return Array.prototype.map.call(a,function(x){return('0'+x.toString(16)).slice(-2);}).join('');}
+Comp.prototype.loadCal=function(emp){var self=this;this.cal=this.cal||{};if(this.cal[emp]!==undefined)return;this.cal[emp]=null;
+  get('tech_calendar_connections?emp=eq.'+encodeURIComponent(emp)+'&provider=eq.ics&select=id,emp,ics_token,statut,updated_at').then(function(r){self.cal[emp]=r[0]||false;self.update();}).catch(function(e){self.cal[emp]=false;self.flash('Calendrier : '+netMsg(e));});};
+Comp.prototype.calGenerate=function(emp){var self=this,c=this.cal&&this.cal[emp],now=nowIso(),row={id:c&&c.id||pmmId(),emp:emp,provider:'ics',ics_token:icsToken(),statut:'actif',updated_at:now};if(!c)row.created_at=now;
+  rest('POST','tech_calendar_connections?on_conflict=id',[row],'resolution=merge-duplicates,return=representation').then(function(r){self.cal[emp]=r[0]||row;auditT(self,c?'MODIFICATION':'CREATION','tech_calendar_connections',emp,{action:'lien_calendrier'});self.flash(c?'Nouveau lien créé — l’ancien ne fonctionne plus':'Lien calendrier créé');self.update();})
+    .catch(function(e){self.flash('Échec : '+netMsg(e));});};
+Comp.prototype.calRevoke=function(emp){var self=this,c=this.cal&&this.cal[emp];if(!c)return;
+  rest('PATCH','tech_calendar_connections?id=eq.'+encodeURIComponent(c.id),{statut:'revoque',updated_at:nowIso()}).then(function(){c.statut='revoque';auditT(self,'MODIFICATION','tech_calendar_connections',emp,{action:'revocation'});self.flash('Lien révoqué — le calendrier de l’employé cesse de se mettre à jour');self.update();})
+    .catch(function(e){self.flash('Échec : '+netMsg(e));});};
+Comp.prototype.calVals=function(){var self=this,e=this.state.ce;if(!e||e.isNew||!e.id)return{calShow:false};var emp=e.id;this.loadCal(emp);var c=this.cal&&this.cal[emp],on=!!(c&&c.statut==='actif');
+  var link=on?ICS_ENDPOINT+'?token='+encodeURIComponent(c.ics_token):'',copy=function(t){return function(){(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){self.flash('Lien copié');}).catch(function(){self.flash('Copie impossible — sélectionnez le lien');});};};
+  return{calShow:true,calLoading:c===null,calOn:on,calOff:c!==null&&!on,calWebcal:link.replace(/^https:/,'webcal:'),calHttps:link,calCopyW:copy(link.replace(/^https:/,'webcal:')),calCopyH:copy(link),
+    calGen:function(){self.calGenerate(emp);},calGenLbl:on?'Générer un nouveau lien':(c&&c.statut==='revoque'?'Réactiver avec un nouveau lien':'Créer le lien calendrier'),calRevoke:function(){self.calRevoke(emp);},
+    calMail:function(){var u=(self.D.comptes.filter(function(x){return x.id===emp;})[0]||{});mailto(u.email||'','Ton planning Soucy Aquatik dans ton calendrier','Bonjour '+(e.prenom||'')+',\n\nPour voir ton planning (tâches, bons de travail, créneaux) dans ton calendrier :\n\nOutlook : Calendrier → Ajouter un calendrier → S’abonner à partir du web → colle ce lien :\n'+link.replace(/^https:/,'webcal:')+'\n\nGmail : Autres agendas (+) → À partir de l’URL → colle ce lien :\n'+link+'\n\nMise à jour automatique environ toutes les 30 minutes.\n\nMerci.');}};};
+
 /* Valeurs d'écran : Temps (Semaine · À valider · Paie · Cumul) et Stats */
 Comp.prototype.tempsVals=function(punchRows){var self=this,st=this.state,D=this.D,mod=st.mod,tMon=addDays(mondayOf(new Date()),7*st.tOff),wk=iso(tMon),today=iso(new Date());
   if((mod==='temps'||mod==='stats'||st.hj)&&this.ftw[wk]===undefined)this.loadWeekFT(wk);
@@ -1538,7 +1555,7 @@ Comp.prototype.vals=function(){
     exportMsg:function(){self.printInsp(is.id);},
     opsFilters:opsFilters,dossiers:dossiers,newDossier:function(){self.openDlg({type:'Bon de travail'});},noDossier:dossiers.length===0,
     nouveaux:nouveaux,siteTypeOptions:siteTypeOptions,siteType:stype,onSiteType:function(e){self.setState({siteType:e.target.value});},siteRows:siteRows,siteCount:siteRows.length,noNouveaux:nouveaux.length===0},
-    this.tempsVals(punchRows),this.empVals(),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals(),this.stockVals(),this.outilsVals(),this.monVals(),this.siteFicheVals(),this.typesVals(),this.carteCtlVals(),this.plan2Vals());
+    this.tempsVals(punchRows),this.empVals(),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals(),this.stockVals(),this.outilsVals(),this.monVals(),this.siteFicheVals(),this.typesVals(),this.carteCtlVals(),this.plan2Vals(),this.calVals());
 };
 Comp.prototype.update=function(){if(!this._host)return;SARender(document.getElementById('tpl'),this._host,this.vals());this.syncMap();var el=this.rootRef.current;if(el)el.style.setProperty('--sa-row','10px');};
 Comp.prototype.mount=function(host){var self=this;this._host=host;var hm=hashMod();if(hm&&TITLES_OK(hm))this.state.mod=hm;this.update();

@@ -339,6 +339,14 @@ CE=WRAP('ceOpen','ceCloseBg',DLGHEAD('ceTitle','ceClose')
     +G2(FL('Mot de passe (8 caractères min.)',INP('cePw1','onCePw1','password',' autocomplete="new-password"')),FL('Confirmer',INP('cePw2','onCePw2','password',' autocomplete="new-password"')))
     +FL('Votre mot de passe administrateur (confirmation)',INP('ceAdminPw','onCeAdminPw','password',' autocomplete="current-password"'))
     +'<div style="font-size:13px">L’employé devra choisir son propre mot de passe à sa première connexion. Le mot de passe n’est jamais stocké en clair.</div></div>')
+  +IF('calShow','<div style="border:1px solid var(--color-divider);padding:12px;display:flex;flex-direction:column;gap:8px"><b>Planning dans Outlook / Gmail</b>'
+    '<div style="font-size:13px">Un lien personnel : l’employé s’y abonne une fois et voit ses tâches, bons de travail et créneaux dans son calendrier (mise à jour toutes les 30 min environ).</div>'
+    '<sc-if value="{{ calLoading }}"><div>Chargement…</div></sc-if>'
+    '<sc-if value="{{ calOn }}"><div class="field"><label>Outlook (webcal)</label><div style="display:flex;gap:6px"><input class="input" readonly value="{{ calWebcal }}" aria-label="Lien webcal" style="flex:1;font-size:12px"><button class="btn btn-secondary" onClick="{{ calCopyW }}">Copier</button></div></div>'
+    '<div class="field"><label>Gmail / lien direct (https)</label><div style="display:flex;gap:6px"><input class="input" readonly value="{{ calHttps }}" aria-label="Lien https" style="flex:1;font-size:12px"><button class="btn btn-secondary" onClick="{{ calCopyH }}">Copier</button></div></div>'
+    '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-secondary" onClick="{{ calMail }}">Envoyer le lien par courriel</button><button class="btn btn-ghost" onClick="{{ calRevoke }}">Révoquer</button></div></sc-if>'
+    '<sc-if value="{{ calOff }}"><div style="font-size:13px">Aucun lien actif.</div></sc-if>'
+    '<button class="btn btn-secondary" onClick="{{ calGen }}" style="align-self:flex-start">{{ calGenLbl }}</button></div>')
   +'<div class="dialog-actions" style="margin-top:0;flex-wrap:wrap">'+IF('ceCanDel',BTNX('btn-secondary','ceDel','{{ ceDelLbl }}'))+'<span style="flex:1"></span>'+BTNX('btn-secondary','ceClose','Fermer')+IF('ceCanEdit',BTNX('btn-primary','ceSave','{{ ceSaveLbl }}'))+'</div>')
 M=M.rstrip()+'\n'+CE
 

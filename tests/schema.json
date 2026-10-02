@@ -370,5 +370,18 @@
     "a_valider",
     "updated_at",
     "photo"
+  ],
+  "tech_calendar_connections": [
+    "id",
+    "emp",
+    "provider",
+    "ics_token",
+    "access_token_enc",
+    "refresh_token_enc",
+    "token_expires_at",
+    "external_calendar_id",
+    "statut",
+    "created_at",
+    "updated_at"
   ]
 }
