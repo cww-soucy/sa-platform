@@ -590,6 +590,10 @@ TY=('<template data-sc="if" value="{{ tyOpen }}"><div class="dialog-backdrop" on
   +'<div class="dialog-actions" style="margin-top:0;flex-wrap:wrap"><span style="flex:1"></span>'+BTNX('btn-secondary','tyClose','Fermer')+BTNX('btn-primary','tySave','{{ tySaveLbl }}')+'</div>'
   +'</div></div></template>\n')
 M=M.rstrip()+'\n'+TY
+SRD=WRAP('srOpen','srCloseBg',DLGHEAD('srTitle','srClose')+FL('À partir du',INP('srFrom','onSrFrom','date'))
+  +FL('Titre / client',INP('srT','onSrT'))+IF('srIsPt',FL('Heure',INP('srH','onSrH','time')))+FL('Employés',CHK('srEmps','l'))
+  +'<div class="dialog-actions" style="margin-top:0;flex-wrap:wrap">'+BTNX('btn-secondary','srStop','{{ srStopLbl }}')+'<span style="flex:1"></span>'+BTNX('btn-secondary','srClose','Fermer')+BTNX('btn-primary','srSave','{{ srSaveLbl }}')+'</div>')
+M=M.rstrip()+'\n'+SRD
 
 # ---------- PLANNING : vues 4 semaines et diagramme des travaux ----------
 def wrap_div(M,start,cond):
@@ -633,7 +637,12 @@ k2=M.find(_pl)
 if k2>=0:
     k3=M.find('<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">',k2)
     k3=M.find('</div>',M.find('</div>',k3)+6)+6  # après la barre de vues (SEG imbriqué)
-    M=M[:k3]+MONTH+GANTT+M[k3:]
+    SERIES=('<sc-if value="{{ pIsSeries }}"><div style="display:flex;flex-direction:column;gap:12px"><div style="font-size:14px">Toutes les séries partagées par l’équipe : tâches planning répétées et dossiers de bons de travail sur plusieurs jours. Modifier ou arrêter n’agit que sur les éléments à venir non terminés.</div>'
+      '<sc-if value="{{ srLoading }}"><div>Chargement…</div></sc-if><sc-if value="{{ srNone }}"><div style="padding:14px;border:1px dashed var(--color-text)">Aucune série récurrente.</div></sc-if>'
+      +CARD('<table class="table" style="font-size:14px"><thead><tr>'+TH%('padding-left:18px','Série')+TH%('','Type')+TH%('','Règle')+TH%('','Heure')+TH%('','Qui')+TH%('','État')+TH%('','')+'</tr></thead><tbody><sc-for list="{{ srRows }}" as="r"><tr style="opacity:{{ r.op }}">'
+      '<td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px;font-weight:600">{{ r.titre }}</td>'+TD%('','{{ r.type }}')+TD%('','{{ r.regle }}')+TD%('','{{ r.h }}')+TD%('','{{ r.qui }}')+TD%('','{{ r.etat }}')
+      +'<td style="padding:4px 18px 4px 8px;text-align:right"><sc-if value="{{ r.canEdit }}"><button class="btn btn-secondary" onClick="{{ r.edit }}">Gérer</button></sc-if></td></tr></sc-for></tbody></table>','overflow-x:auto')+'</div></sc-if>')
+    M=M[:k3]+MONTH+GANTT+SERIES+M[k3:]
 
 # ---------- CARTE : contrôles réels (la légende de la maquette ne correspondait à rien) ----------
 _lg=re.search(r'<div style="display:flex;gap:18px;font-size:13px;flex-wrap:wrap">.*?Alerte salle mécanique</span>\s*</div>',M,flags=re.S)
