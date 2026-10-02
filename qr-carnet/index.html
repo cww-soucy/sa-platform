@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="fr-CA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#005A9C">
+<meta name="robots" content="noindex">
+<title>Carnet de bord · Salle mécanique</title>
+<link rel="icon" href="../src/design/logo-soucy-aquatik.png">
+<style>
+:root{
+  --corp:#005A9C; --corp-900:#003F6E; --eau:#00A3E0; --eau-50:#E6F6FC;
+  --crit:#EF4444; --crit-50:#FEF2F2; --ok:#10B981; --ok-50:#ECFDF5; --warn:#F59E0B; --warn-50:#FFFBEB;
+  --ink:#0F2132; --ink-2:#4B5E72; --line:#D6DDE3; --bg:#F4F7FA; --paper:#FFFFFF;
+  --r:14px;
+  font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-size:16px;line-height:1.4;-webkit-text-size-adjust:100%;min-height:100vh}
+header{background:var(--paper);border-bottom:4px solid var(--eau);padding:calc(10px + env(safe-area-inset-top)) 16px 10px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:5}
+header img{width:44px;height:44px;border-radius:6px;flex:none}
+header .t{min-width:0}
+header h1{margin:0;font-size:17px;color:var(--corp);letter-spacing:.01em}
+header .site{margin:0;font-size:14px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#net{margin-left:auto;font-size:12px;font-weight:600;padding:4px 8px;border-radius:99px;background:var(--ok-50);color:#047857;flex:none}
+#net.off{background:var(--crit-50);color:#B91C1C}
+main{max-width:560px;margin:0 auto;padding:16px 16px calc(24px + env(safe-area-inset-bottom))}
+.banner{border-radius:var(--r);padding:12px 14px;margin-bottom:14px;font-size:15px}
+.banner.crit{background:var(--crit-50);color:#991B1B;border:1px solid #FECACA}
+.banner.info{background:var(--eau-50);color:var(--corp-900);border:1px solid #B3E3F6}
+.banner.warn{background:var(--warn-50);color:#92400E;border:1px solid #FDE68A}
+.banner button{margin-top:8px}
+form{display:grid;gap:12px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+label{display:block;font-weight:600;font-size:14px;color:var(--ink-2);margin-bottom:6px}
+label small{font-weight:400}
+input,textarea{width:100%;font:inherit;font-size:18px;color:var(--ink);background:var(--paper);border:2px solid var(--line);border-radius:10px;padding:12px;outline:none;transition:border-color .15s}
+input:focus,textarea:focus{border-color:var(--eau)}
+textarea{min-height:84px;resize:vertical;font-size:16px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.m{background:var(--paper);border:2px solid var(--line);border-radius:var(--r);padding:10px 12px 12px;transition:border-color .15s,background .15s}
+.m label{margin-bottom:2px;font-size:13px}
+.m input{border:0;padding:4px 0;font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;background:transparent}
+.m .norm{font-size:12px;color:var(--ink-2)}
+.m.ok{border-color:var(--ok);background:var(--ok-50)}
+.m.crit{border-color:var(--crit);background:var(--crit-50)}
+.m.warn{border-color:var(--warn);background:var(--warn-50)}
+.m.ok .norm{color:#047857}.m.crit .norm{color:#B91C1C}.m.warn .norm{color:#92400E}
+.err{color:#B91C1C;font-size:13px;margin-top:4px;min-height:0}
+button{font:inherit;font-weight:700;border:0;border-radius:12px;cursor:pointer}
+.primary{width:100%;background:var(--corp);color:#fff;font-size:18px;padding:16px;min-height:56px}
+.primary:active{background:var(--corp-900)}
+.primary[disabled]{opacity:.6}
+.ghost{background:var(--eau-50);color:var(--corp);padding:10px 14px;font-size:15px}
+h2{font-size:15px;color:var(--corp);margin:22px 0 8px;text-transform:uppercase;letter-spacing:.04em}
+.hist{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.hist li{background:var(--paper);border:1px solid var(--line);border-left:5px solid var(--ok);border-radius:10px;padding:10px 12px;font-size:14px}
+.hist li.crit{border-left-color:var(--crit)}
+.hist li.pending{border-left-color:var(--warn)}
+.hist .h{display:flex;justify-content:space-between;color:var(--ink-2);font-size:13px;margin-bottom:2px}
+.hist .v{font-variant-numeric:tabular-nums}
+.done{text-align:center;padding:24px 16px}
+.done .ico{width:64px;height:64px;border-radius:50%;margin:0 auto 12px;display:grid;place-items:center;font-size:34px;color:#fff;background:var(--ok)}
+.done.crit .ico{background:var(--crit)}
+.done h2{font-size:20px;text-transform:none;letter-spacing:0;margin:0 0 6px;color:var(--ink)}
+.done ul{text-align:left;padding-left:20px;color:#991B1B}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header>
+  <img src="../src/design/logo-soucy-aquatik.png" alt="Soucy Aquatik">
+  <div class="t">
+    <h1>Carnet de bord · Salle mécanique</h1>
+    <p class="site" id="siteName">Chargement du site…</p>
+  </div>
+  <span id="net">En ligne</span>
+</header>
+
+<main>
+  <div id="noSite" class="banner crit" hidden>
+    <strong>Aucun site détecté.</strong><br>Scannez le code QR affiché dans la salle mécanique (adresse se terminant par <code>?site=…</code>).
+  </div>
+  <div id="unknownSite" class="banner warn" hidden></div>
+  <div id="pending" class="banner info" hidden></div>
+
+  <form id="f" novalidate hidden>
+    <div class="card">
+      <label for="technician_name">Nom du technicien</label>
+      <input id="technician_name" name="technician_name" autocomplete="name" autocapitalize="words" enterkeyhint="next" required>
+      <div class="err" data-err="technician_name"></div>
+    </div>
+
+    <div class="grid">
+      <div class="m" data-field="ph_level">
+        <label for="ph_level">pH</label>
+        <input id="ph_level" name="ph_level" inputmode="decimal" enterkeyhint="next" placeholder="7,4" autocomplete="off" required>
+        <div class="norm"></div>
+        <div class="err" data-err="ph_level"></div>
+      </div>
+      <div class="m" data-field="free_chlorine">
+        <label for="free_chlorine">Chlore libre <small>mg/L</small></label>
+        <input id="free_chlorine" name="free_chlorine" inputmode="decimal" enterkeyhint="next" placeholder="1,2" autocomplete="off" required>
+        <div class="norm"></div>
+        <div class="err" data-err="free_chlorine"></div>
+      </div>
+      <div class="m" data-field="water_temp">
+        <label for="water_temp">Température <small>°C</small></label>
+        <input id="water_temp" name="water_temp" inputmode="decimal" enterkeyhint="next" placeholder="28" autocomplete="off">
+        <div class="norm"></div>
+        <div class="err" data-err="water_temp"></div>
+      </div>
+      <div class="m" data-field="alkalinity">
+        <label for="alkalinity">Alcalinité <small>mg/L</small></label>
+        <input id="alkalinity" name="alkalinity" inputmode="decimal" enterkeyhint="next" placeholder="100" autocomplete="off">
+        <div class="norm"></div>
+        <div class="err" data-err="alkalinity"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <label for="notes">Remarques <small>(facultatif)</small></label>
+      <textarea id="notes" name="notes" placeholder="Produits ajoutés, filtre lavé, anomalie…"></textarea>
+    </div>
+
+    <div class="err" id="formErr" role="alert"></div>
+    <button class="primary" id="submit" type="submit">Enregistrer le relevé</button>
+  </form>
+
+  <section id="done" class="card done" hidden aria-live="polite">
+    <div class="ico" id="doneIco">✓</div>
+    <h2 id="doneTitle">Relevé enregistré</h2>
+    <p id="doneText"></p>
+    <ul id="doneAlerts"></ul>
+    <button class="primary" id="again" type="button">Nouveau relevé</button>
+  </section>
+
+  <section id="histWrap" hidden>
+    <h2>Derniers relevés</h2>
+    <ul class="hist" id="hist"></ul>
+  </section>
+</main>
+
+<script type="module">
+import {
+  sendWaterLog, getLogs, getSiteInfo, validateWaterLog, evaluateWaterLog,
+  WaterLogValidationError, WATER_NORMS,
+} from '../src/services/waterLogConnector.js';
+
+const $ = (id) => document.getElementById(id);
+const FIELDS = ['ph_level', 'free_chlorine', 'water_temp', 'alkalinity'];
+const NAME_KEY = 'sa_qr_carnet_tech';
+const QUEUE_KEY = 'sa_qr_carnet_queue';
+const siteId = (new URLSearchParams(location.search).get('site') || '').trim();
+const store = {
+  get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* navigation privée */ } },
+};
+const fmt = (v) => (v == null || v === '' ? '—' : String(v).replace('.', ','));
+const when = (iso) => (!iso ? 'à l’instant' : new Date(iso).toLocaleString('fr-CA', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }));
+
+/* ── Réseau ── */
+function setNet() {
+  const on = navigator.onLine;
+  $('net').textContent = on ? 'En ligne' : 'Hors ligne';
+  $('net').classList.toggle('off', !on);
+}
+addEventListener('online', () => { setNet(); flush(); });
+addEventListener('offline', setNet);
+setNet();
+
+/* ── Normes affichées sous chaque champ + couleur en direct ── */
+for (const f of FIELDS) {
+  const n = WATER_NORMS[f], box = document.querySelector(`[data-field="${f}"]`);
+  const range = n.min != null ? `${fmt(n.min)} – ${fmt(n.max)}` : `≤ ${fmt(n.max)}`;
+  box.querySelector('.norm').textContent = `Norme ${range}${n.unit ? ' ' + n.unit : ''}`;
+  $(f).addEventListener('input', () => paint(f));
+}
+function paint(f) {
+  const box = document.querySelector(`[data-field="${f}"]`), raw = $(f).value.trim();
+  box.classList.remove('ok', 'crit', 'warn');
+  document.querySelector(`[data-err="${f}"]`).textContent = '';
+  if (!raw) return;
+  const v = Number(raw.replace(',', '.'));
+  if (!Number.isFinite(v)) { box.classList.add('crit'); return; }
+  const a = evaluateWaterLog({ [f]: v })[0];
+  box.classList.add(!a ? 'ok' : a.level === 'critical' ? 'crit' : 'warn');
+}
+
+/* ── File d'attente hors ligne : salle mécanique souvent sans réseau ── */
+function queue() { return store.get(QUEUE_KEY, []); }
+function showPending() {
+  const n = queue().length;
+  $('pending').hidden = !n;
+  $('pending').textContent = n ? `${n} relevé${n > 1 ? 's' : ''} en attente d'envoi — envoi automatique dès le retour du réseau.` : '';
+}
+let flushing = false;
+async function flush() {
+  if (flushing || !navigator.onLine) return;
+  flushing = true;
+  try {
+    let q = queue();
+    while (q.length) {
+      try { await sendWaterLog(q[0]); }
+      catch (e) { if (!(e instanceof WaterLogValidationError)) break; } // réseau ou serveur : on garde le relevé et on réessaiera
+      q = queue().slice(1);
+      store.set(QUEUE_KEY, q);
+    }
+  } finally {
+    flushing = false;
+    showPending();
+    loadHistory();
+  }
+}
+
+/* ── Historique du site ── */
+async function loadHistory() {
+  if (!siteId) return;
+  const pend = queue().filter((p) => p.site_id === siteId).map((p) => ({ ...p, _pending: true }));
+  let rows = [];
+  try { rows = await getLogs(siteId, { limit: 5 }); } catch (e) { /* hors ligne : seulement la file locale */ }
+  const all = [...pend.reverse(), ...rows].slice(0, 5);
+  $('histWrap').hidden = !all.length;
+  $('hist').replaceChildren(...all.map((r) => {
+    const li = document.createElement('li');
+    const crit = evaluateWaterLog(r).some((a) => a.level === 'critical');
+    li.className = r._pending ? 'pending' : crit ? 'crit' : '';
+    const h = document.createElement('div'); h.className = 'h';
+    const a = document.createElement('span'); a.textContent = r.technician_name;
+    const b = document.createElement('span'); b.textContent = r._pending ? 'En attente · ' + when(r.created_at) : when(r.created_at);
+    h.append(a, b);
+    const v = document.createElement('div'); v.className = 'v';
+    v.textContent = `pH ${fmt(r.ph_level)} · Cl ${fmt(r.free_chlorine)} · ${fmt(r.water_temp)} °C · Alc ${fmt(r.alkalinity)}`;
+    li.append(h, v);
+    if (r.notes) { const n = document.createElement('div'); n.textContent = r.notes; n.style.color = 'var(--ink-2)'; li.append(n); }
+    return li;
+  }));
+}
+
+/* ── Envoi ── */
+function showErrors(errors) {
+  for (const e of errors) {
+    const el = document.querySelector(`[data-err="${e.field}"]`);
+    if (el) el.textContent = e.message; else $('formErr').textContent = e.message;
+  }
+  const first = errors.find((e) => $(e.field));
+  if (first) $(first.field).focus();
+}
+function showDone(alerts, offline) {
+  const crit = alerts.some((a) => a.level === 'critical');
+  $('f').hidden = true;
+  $('done').hidden = false;
+  $('done').classList.toggle('crit', crit);
+  $('doneIco').textContent = crit ? '!' : '✓';
+  $('doneTitle').textContent = offline ? 'Relevé conservé sur l’appareil' : 'Relevé enregistré';
+  $('doneText').textContent = (offline ? 'Pas de réseau : il sera envoyé automatiquement. ' : '')
+    + (crit ? 'Valeurs hors norme — appliquez la procédure de correction et avisez le superviseur.' : alerts.length ? 'À surveiller :' : 'Toutes les valeurs sont dans les normes.');
+  $('doneAlerts').replaceChildren(...alerts.map((a) => Object.assign(document.createElement('li'), { textContent: a.message })));
+  scrollTo(0, 0);
+}
+
+$('f').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  document.querySelectorAll('.err').forEach((e) => { e.textContent = ''; });
+  const fd = new FormData($('f'));
+  const payload = { site_id: siteId, ...Object.fromEntries(fd) };
+  const check = validateWaterLog(payload);
+  if (!check.ok) return showErrors(check.errors);
+  store.set(NAME_KEY, check.record.technician_name);
+  $('submit').disabled = true;
+  try {
+    const { alerts } = await sendWaterLog(payload);
+    showDone(alerts, false);
+  } catch (e) {
+    if (e instanceof WaterLogValidationError) showErrors(e.errors);
+    else if (!e.status) { // réseau : on garde le relevé et l'heure réelle de la mesure
+      store.set(QUEUE_KEY, [...queue(), { ...payload, created_at: new Date().toISOString() }]);
+      showPending();
+      showDone(check.alerts, true);
+    } else $('formErr').textContent = `Enregistrement refusé par le serveur : ${e.message}`;
+  } finally {
+    $('submit').disabled = false;
+    loadHistory();
+  }
+});
+
+$('again').addEventListener('click', () => {
+  for (const f of FIELDS) { $(f).value = ''; paint(f); }
+  $('notes').value = '';
+  $('done').hidden = true;
+  $('f').hidden = false;
+  $('ph_level').focus();
+});
+
+/* ── Démarrage ── */
+if (!siteId) {
+  $('noSite').hidden = false;
+  $('siteName').textContent = 'Site non identifié';
+} else {
+  $('f').hidden = false;
+  $('technician_name').value = store.get(NAME_KEY, '');
+  $('siteName').textContent = `Site ${siteId}`;
+  getSiteInfo(siteId).then((s) => {
+    if (s) { $('siteName').textContent = s.nom || `Site ${siteId}`; document.title = `Carnet · ${s.nom || siteId}`; }
+    else { $('unknownSite').hidden = false; $('unknownSite').textContent = `Le site « ${siteId} » n'existe pas dans la plateforme. Vérifiez le code QR avant d'enregistrer.`; }
+  }).catch(() => { /* hors ligne : on garde l'identifiant */ });
+  (store.get(NAME_KEY, '') ? $('ph_level') : $('technician_name')).focus();
+  showPending();
+  loadHistory();
+  flush();
+}
+window.__qrCarnet = { siteId, flush, queue };
+</script>
+</body>
+</html>

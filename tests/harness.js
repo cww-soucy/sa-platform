@@ -22,9 +22,11 @@ const dayIdx = () => (new Date().getDay() + 6) % 7;
 function startServer() {
   return new Promise((resolve) => {
     const srv = http.createServer((req, res) => {
-      const p = path.join(ROOT, decodeURIComponent(req.url.split('?')[0]));
+      let p = path.join(ROOT, decodeURIComponent(req.url.split('?')[0]));
+      if (p.endsWith(path.sep)) p = path.join(p, 'index.html'); // dossier/ → dossier/index.html, comme Cloudflare Pages
       if (!p.startsWith(ROOT) || !fs.existsSync(p) || fs.statSync(p).isDirectory()) { res.writeHead(404); res.end('404'); return; }
-      res.writeHead(200, { 'content-type': p.endsWith('.html') ? 'text/html; charset=utf-8' : 'application/octet-stream' });
+      // .js en text/javascript : obligatoire pour les modules ES (<script type="module">, import)
+      res.writeHead(200, { 'content-type': p.endsWith('.html') ? 'text/html; charset=utf-8' : p.endsWith('.js') ? 'text/javascript; charset=utf-8' : 'application/octet-stream' });
       res.end(fs.readFileSync(p));
     }).listen(0, '127.0.0.1', () => resolve({ url: 'http://127.0.0.1:' + srv.address().port, close: () => srv.close() }));
   });
