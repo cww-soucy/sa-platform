@@ -1,6 +1,6 @@
 -- 2026-10-02 — Carnet de bord Salle Mécanique (QR) : relevés d'eau saisis en salle mécanique en scannant le QR du site
 -- (page qr-carnet/?site=ID_SITE), lus en temps réel par la plateforme de gestion (src/services/waterLogConnector.js).
--- À APPLIQUER dans l'éditeur SQL Supabase (projet ldqvdiaewvhnukuaxdmc) — idempotent, peut être relancé sans risque.
+-- APPLIQUÉE en production le 2026-10-02 (projet ldqvdiaewvhnukuaxdmc) — idempotente, peut être relancée sans risque.
 -- Même niveau d'accès que les autres tables partagées (clé publique) — voir la limite connue de sécurité (passation §5).
 -- Carnet en AJOUT SEULEMENT : la clé publique peut lire et insérer, jamais modifier ni supprimer (traçabilité sanitaire).
 create table if not exists public.water_logs (
@@ -32,7 +32,9 @@ do $$ begin
     create policy wl_insert on public.water_logs for insert to anon with check (true);
   end if;
 end $$;
-grant select, insert on public.water_logs to anon;
+-- Supabase accorde tous les droits par défaut sur une nouvelle table : on ne garde que lecture + ajout
+revoke update, delete, truncate, references, trigger on public.water_logs from anon, authenticated;
+grant select, insert on public.water_logs to anon, authenticated;
 
 -- Supabase Realtime : diffuse les nouvelles saisies (PORT OUT subscribeToWaterLogs)
 do $$ begin
