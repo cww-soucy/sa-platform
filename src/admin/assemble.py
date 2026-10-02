@@ -648,7 +648,11 @@ _sl='<sc-for list="{{ lines }}" as="l">'
 if M.count(_sl)==1: M=M.replace(_sl,'<sc-if value="{{ linesNone }}"><div style="padding:16px 18px">Aucun travail ni punch aujourd’hui.</div></sc-if>'+_sl,1)
 else: print('!! schéma',M.count(_sl))
 _tp='<div style="padding:12px 16px;border-bottom:1px solid var(--color-divider);font:600 18px var(--font-heading)">En tournée</div>'
-CSIDE=('<div style="padding:12px 16px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:8px"><b style="font:600 18px var(--font-heading)">Tournée d’un technicien</b>'
+CSIDE=('<div style="padding:12px 16px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:8px"><b style="font:600 18px var(--font-heading)">Tournée prévue</b>'
+  '<label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" checked="{{ cPlanOn }}" onChange="{{ onCPlan }}">Afficher les tournées prévues de l’équipe</label>'
+  '<sc-if value="{{ cPlanOn }}"><input class="input" type="date" value="{{ cPlanDate }}" onChange="{{ onCPlanDate }}" aria-label="Jour de la tournée prévue"><sc-if value="{{ cPlanNone }}"><div style="font-size:13px">Aucun travail assigné ce jour-là.</div></sc-if>'
+  '<sc-for list="{{ cPlanRows }}" as="r"><div style="border-left:5px solid {{ r.col }};padding:2px 8px;font-size:13px"><b>{{ r.nom }}</b><div>{{ r.txt }}</div><sc-if value="{{ r.miss }}"><div style="font-size:12px;font-weight:600">{{ r.miss }}</div></sc-if></div></sc-for></sc-if></div>'
+  '<div style="padding:12px 16px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:8px"><b style="font:600 18px var(--font-heading)">Tournée réelle d’un technicien</b>'
   '<select class="input" onChange="{{ onCEmp }}" aria-label="Technicien"><sc-for list="{{ cEmps }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></sc-for></select>'
   '<input class="input" type="date" value="{{ cDate }}" onChange="{{ onCDate }}" aria-label="Date de la tournée">'
   '<sc-if value="{{ cTourNone }}"><div style="font-size:13px">Aucun punch géolocalisé ce jour-là.</div></sc-if>'

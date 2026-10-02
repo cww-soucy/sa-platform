@@ -150,7 +150,8 @@ Comp.prototype.syncMap=function(){var self=this;
   var st=this.state,G=this.carteGeo(),names={};this.D.comptes.forEach(function(c){names[c.id]=(c.prenom+' '+c.nom).trim();});
   var tour=Array.isArray(this._tour)?this._tour:[];
   /* ne redessine que si quelque chose a changé (sinon une bulle ouverte se refermait à chaque relecture) */
-  var key=JSON.stringify([st.carteSites,st.carteTechs,st.cartePrec,st.carteAcc,st.carteType,st.carteQ,st.carteTour,G.sites.map(function(x){return x.id+x.lat+x.lng;}).join(),Object.keys(G.techs).join(),tour.length,this.loadedAt&&+this.loadedAt]);
+  var routes=st.cartePlan?this.plannedRoutes(st.cartePlanDate||this.D.today):null;
+  var key=JSON.stringify([st.cartePlan,st.cartePlanDate,routes&&routes.map(function(r){return r.stops.length;}).join(),st.carteSites,st.carteTechs,st.cartePrec,st.carteAcc,st.carteType,st.carteQ,st.carteTour,G.sites.map(function(x){return x.id+x.lat+x.lng;}).join(),Object.keys(G.techs).join(),tour.length,this.loadedAt&&+this.loadedAt]);
   if(!this._map._saClick){this._map._saClick=true;this._map.on('click',function(e){var fx=self.state.carteFix;if(fx)self.setSiteGps(fx,e.latlng.lat,e.latlng.lng,'corrigée sur la carte');});}
   this._mapHost.style.cursor=st.carteFix?'crosshair':'';
   if(key===this._mapKey&&!this._mapDirty){setTimeout(function(){self._map.invalidateSize();},60);return;}this._mapKey=key;this._mapDirty=false;
@@ -165,6 +166,9 @@ Comp.prototype.syncMap=function(){var self=this;
       :L.circleMarker([s.lat,s.lng],{radius:7,color:'#1d2d3d',weight:2,fillColor:'#94bce3',fillOpacity:.95});
     m.bindPopup(pop).addTo(self._layer);pts.push([s.lat,s.lng]);});
   if(st.carteTechs!==false)Object.keys(G.techs).forEach(function(e){var t=G.techs[e];var m=L.circleMarker([Number(t.lat),Number(t.lng)],{radius:11,color:'#000',weight:3,fillColor:'#1d2d3d',fillOpacity:1}).bindPopup('<b>'+E(names[e]||e)+'</b><br>Punch à '+E(t.heure)+'<br>'+E(t.lieu||'')+(t.acc!=null?'<br>Précision ± '+Math.round(t.acc)+' m':''));m.addTo(self._layer);pts.push([Number(t.lat),Number(t.lng)]);});
+  if(routes){var allR=[];routes.forEach(function(r){var lls=r.stops.filter(function(s){return s.lat!=null;}).map(function(s){return[s.lat,s.lng];});if(lls.length>1)L.polyline(lls,{color:r.col,weight:4,opacity:.75}).addTo(self._layer);
+      var k=0;r.stops.forEach(function(s){if(s.lat==null)return;k++;L.marker([s.lat,s.lng],{icon:L.divIcon({className:'',html:'<div style="width:24px;height:24px;border-radius:50%;background:'+r.col+';color:#fff;font:700 12px/24px Arial;text-align:center;border:2px solid #fff">'+k+'</div>',iconSize:[24,24],iconAnchor:[12,12]})})
+        .bindPopup('<b>'+k+'. '+E(s.nom)+'</b><br>'+E(r.nom)+' · '+(s.h||'sans heure')).addTo(self._layer);allR.push([s.lat,s.lng]);});});if(allR.length&&!this._fittedPlan){pts=allR;this._fitted=false;this._fittedPlan=true;}}
   if(tour.length){var lls=tour.map(function(p){return[Number(p.lat),Number(p.lng)];});L.polyline(lls,{color:'#c0392b',weight:3,dashArray:'6 6'}).addTo(this._layer);
     tour.forEach(function(p,i){var bad=p.acc!=null&&Number(p.acc)>Number(st.carteAcc||100);L.marker([Number(p.lat),Number(p.lng)],{icon:L.divIcon({className:'',html:'<div style="width:22px;height:22px;border-radius:50%;background:'+(bad?'#999':'#c0392b')+';color:#fff;font:700 12px/22px Arial;text-align:center;border:2px solid #fff">'+(i+1)+'</div>',iconSize:[22,22],iconAnchor:[11,11]})})
       .bindPopup('<b>'+(i+1)+'. '+E(p.heure)+'</b><br>'+E(p.lieu||'')+(p.acc!=null?'<br>Précision ± '+Math.round(p.acc)+' m'+(bad?' (imprécis)':''):'')).addTo(self._layer);});pts=lls.concat(tour.length?[]:pts);if(!this._fitted){this._fitted=false;}}
@@ -1215,7 +1219,10 @@ Comp.prototype.carteCtlVals=function(){var self=this,st=this.state,D=this.D;if(!
       if(!stops.length)return;var dn=stops.filter(function(s){return s.done;}).length;
       lines.push({nom:(c.prenom+' '+c.nom).trim(),statut:run?'En punch · '+(run.lieu||''):(ts.length?'Hors punch':'Pas encore punché'),done:dn,total:stops.length,progress:Math.round(dn/Math.max(1,stops.length-1)*100),
         stops:stops.map(function(s){return{h:s.h,nom:s.nom,go:s.go,size:s.cur?18:14,mt:s.cur?-2:0,bg:s.done?'var(--color-text)':(s.cur?'var(--color-accent-700)':'var(--color-bg)'),ring:s.cur?'0 0 0 3px var(--color-bg),0 0 0 5px var(--color-text)':'none',fw:s.cur?700:400};})});});}
-  return{lines:lines,linesNone:st.carteView==='schema'&&!lines.length,cShows:[chk('carteSites','Sites'),chk('carteTechs','Techniciens aujourd’hui'),chk('cartePrec','Zone de précision')],
+  var pr=st.mod==='carte'&&st.cartePlan?this.plannedRoutes(st.cartePlanDate||D.today):null;
+  var planV={cPlanOn:!!st.cartePlan,onCPlan:function(e){self._mapDirty=true;self._fittedPlan=false;self.setState({cartePlan:e.target.checked});},cPlanDate:st.cartePlanDate||D.today,onCPlanDate:function(e){self._mapDirty=true;self._fittedPlan=false;self.setState({cartePlanDate:e.target.value||D.today});},
+    cPlanRows:(pr||[]).map(function(r){var miss=r.stops.filter(function(s){return s.lat==null;});return{nom:r.nom,col:r.col,txt:r.stops.map(function(s,i){return(s.h||'—')+' '+s.nom;}).join(' → '),miss:miss.length?miss.length+' arrêt(s) sans position : '+miss.map(function(s){return s.nom;}).join(', '):''};}),cPlanNone:!!pr&&!pr.length};
+  return Object.assign(planV,{lines:lines,linesNone:st.carteView==='schema'&&!lines.length,cShows:[chk('carteSites','Sites'),chk('carteTechs','Techniciens aujourd’hui'),chk('cartePrec','Zone de précision')],
     cAccs:[[30,'± 30 m'],[100,'± 100 m'],[500,'± 500 m']].map(function(a){return{v:String(a[0]),l:'Punchs précis à '+a[1],sel:Number(st.carteAcc||100)===a[0]};}),onCAcc:function(e){self._mapDirty=true;self.setState({carteAcc:Number(e.target.value)});},
     cTypes:[{v:'all',l:'Tous les types',sel:(st.carteType||'all')==='all'}].concat(Object.keys(D.types).map(function(k){return{v:k,l:D.types[k].label,sel:st.carteType===k};})),onCType:function(e){self._mapDirty=true;self._fitted=false;self.setState({carteType:e.target.value});},
     cQ:st.carteQ||'',onCQ:function(e){self._mapDirty=true;self._fitted=false;self.setState({carteQ:e.target.value});},
@@ -1225,7 +1232,7 @@ Comp.prototype.carteCtlVals=function(){var self=this,st=this.state,D=this.D;if(!
     cTourKm:tour.length>1?'Distance à vol d’oiseau : '+(tour.reduce(function(s,p,i){return i?s+distM(Number(tour[i-1].lat),Number(tour[i-1].lng),Number(p.lat),Number(p.lng)):0;},0)/1000).toFixed(1).replace('.',',')+' km':'',
     cSans:G.sans.length?G.sans.length+' site(s) sans position'+(G.sans.filter(function(s){return s.addr;}).length?' — '+G.sans.filter(function(s){return s.addr;}).length+' avec adresse':''):'',cCanGeo:G.sans.some(function(s){return s.addr;}),cGeo:function(){self.geocodeAll();},
     cFixing:!!st.carteFix,cFixTxt:st.carteFix?'Cliquez sur la carte à l’endroit exact de « '+((D.byId[st.carteFix]||{}).nom||'')+' »':'',cFixCancel:function(){self.setState({carteFix:null});},
-    carteInfo:st.mod==='carte'?G.sites.filter(function(s){return s.src==='fiche';}).length+' site(s) placé(s) par leur fiche · '+G.sites.filter(function(s){return s.src==='punchs';}).length+' d’après les punchs précis · '+G.sans.length+' sans position':''};};
+    carteInfo:st.mod==='carte'?G.sites.filter(function(s){return s.src==='fiche';}).length+' site(s) placé(s) par leur fiche · '+G.sites.filter(function(s){return s.src==='punchs';}).length+' d’après les punchs précis · '+G.sans.length+' sans position':''});};
 
 /* ═════════════ PLANNING : calendrier 4 semaines et diagramme des travaux (Gantt 8 semaines, imprimable A3) ═════════════ */
 var TECH_COL=['#1f6fb2','#c0392b','#16a085','#8e44ad','#d35400','#2c3e50','#7f8c8d','#27ae60','#b7950b','#e84393'];
@@ -1281,6 +1288,20 @@ Comp.prototype.calVals=function(){var self=this,e=this.state.ce;if(!e||e.isNew||
   return{calShow:true,calLoading:c===null,calOn:on,calOff:c!==null&&!on,calWebcal:link.replace(/^https:/,'webcal:'),calHttps:link,calCopyW:copy(link.replace(/^https:/,'webcal:')),calCopyH:copy(link),
     calGen:function(){self.calGenerate(emp);},calGenLbl:on?'Générer un nouveau lien':(c&&c.statut==='revoque'?'Réactiver avec un nouveau lien':'Créer le lien calendrier'),calRevoke:function(){self.calRevoke(emp);},
     calMail:function(){var u=(self.D.comptes.filter(function(x){return x.id===emp;})[0]||{});mailto(u.email||'','Ton planning Soucy Aquatik dans ton calendrier','Bonjour '+(e.prenom||'')+',\n\nPour voir ton planning (tâches, bons de travail, créneaux) dans ton calendrier :\n\nOutlook : Calendrier → Ajouter un calendrier → S’abonner à partir du web → colle ce lien :\n'+link.replace(/^https:/,'webcal:')+'\n\nGmail : Autres agendas (+) → À partir de l’URL → colle ce lien :\n'+link+'\n\nMise à jour automatique environ toutes les 30 minutes.\n\nMerci.');}};};
+
+/* Tournée PRÉVUE d'une journée : arrêts (bons de travail, créneaux, tâches) de chaque technicien, dans l'ordre des heures,
+   placés sur la position du site (fiche ou punchs précis). Comme renderRouteMap de SA Platform. */
+Comp.prototype.plannedRoutes=function(day){var self=this,D=this.D,mon=iso(mondayOf(new Date(day+'T12:00:00'))),PL=this.pl[mon];
+  if(!PL){if(!this._pl[mon]){this._pl[mon]=1;this.loadPlan(mondayOf(new Date(day+'T12:00:00'))).then(function(){self._mapDirty=true;self.update();});}return null;}
+  var G=this.carteGeo(),pos={};G.sites.forEach(function(s){pos[norm(s.nom)]=s;});var byNom=function(n){return pos[norm(n)]||null;};
+  var techs=D.comptes.filter(function(c){return c.role!=='admin'&&D.statut[c.id]!=='inactif';});
+  return techs.map(function(c,i){var has=function(v){return splitIds(v).indexOf(c.id)>=0;},st=[];
+    PL.wo.forEach(function(w){if(w.date===day&&has(w.assigne))st.push({h:'',nom:w.client,kind:'wo',id:w.id});});
+    PL.plan.forEach(function(p){if(p.date===day&&has(p.emp))st.push({h:p.heure||'',nom:p.client,kind:'plan',id:p.id});});
+    PL.pt.forEach(function(t){if(t.date_debut<=day&&t.date_fin>=day&&has(t.emp))st.push({h:t.heure_debut||'',nom:t.site_nom||t.titre,kind:'pt',id:t.id});});
+    st.sort(function(a,b){return(a.h||'99').localeCompare(b.h||'99');});
+    st.forEach(function(s){var p=byNom(s.nom);s.lat=p?p.lat:null;s.lng=p?p.lng:null;});
+    return{id:c.id,nom:(c.prenom+' '+c.nom).trim(),col:TECH_COL[i%TECH_COL.length],stops:st};}).filter(function(r){return r.stops.length;});};
 
 /* Valeurs d'écran : Temps (Semaine · À valider · Paie · Cumul) et Stats */
 Comp.prototype.tempsVals=function(punchRows){var self=this,st=this.state,D=this.D,mod=st.mod,tMon=addDays(mondayOf(new Date()),7*st.tOff),wk=iso(tMon),today=iso(new Date());

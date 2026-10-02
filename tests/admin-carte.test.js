@@ -71,3 +71,20 @@ test('carte : tournée d’un technicien (ordre, distance) et géolocalisation d
   assert.deepEqual(db.rows('sites').find((s) => String(s.id) === '4').gps, { lat: 46.85, lng: -71.3, src: 'adresse' });
   await page.close();
 });
+
+test('carte : tournée prévue de l’équipe (arrêts dans l’ordre, positions des sites, arrêts sans position signalés)', async () => {
+  const t = tables();
+  t.plan = [{ id: 'p1', client: 'Piscine Beta', date: today(), heure: '13:00', emp: 'kael', descr: '', status: 'assigned' },
+    { id: 'p2', client: 'Club inconnu', date: today(), heure: '15:00', emp: 'kael', descr: '', status: 'assigned' }];
+  const { page, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: t });
+  await carte(page);
+  await page.getByLabel('Afficher les tournées prévues de l’équipe').check();
+  await page.waitForFunction(() => (window.__admin.vals().cPlanRows || []).length > 0);
+  const r = await page.evaluate(() => window.__admin.vals().cPlanRows[0]);
+  assert.equal(r.nom, 'Kaël Test');
+  assert.equal(r.txt, '13:00 Piscine Beta → 15:00 Club inconnu → — Piscine Alpha', 'dans l’ordre des heures, sans heure à la fin');
+  assert.equal(r.miss, '1 arrêt(s) sans position : Club inconnu');
+  await page.waitForFunction(() => document.querySelectorAll('#mapSlot .leaflet-marker-icon').length >= 2);
+  assert.deepEqual(errors, []);
+  await page.close();
+});
