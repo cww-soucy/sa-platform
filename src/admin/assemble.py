@@ -583,6 +583,50 @@ TY=('<template data-sc="if" value="{{ tyOpen }}"><div class="dialog-backdrop" on
   +'</div></div></template>\n')
 M=M.rstrip()+'\n'+TY
 
+# ---------- PLANNING : vues 4 semaines et diagramme des travaux ----------
+def wrap_div(M,start,cond):
+    i=M.find(start)
+    if i<0: print('!! wrap_div introuvable',start[:50]); return M
+    j=i;depth=0
+    while True:
+        o=M.find('<div',j);c=M.find('</div>',j)
+        if c<0: print('!! wrap_div fin'); return M
+        if 0<=o<c: depth+=1;j=o+4
+        else:
+            depth-=1;j=c+6
+            if depth==0: break
+    return M[:i]+'<sc-if value="{{ %s }}">'%cond+M[i:j]+'</sc-if>'+M[j:]
+_pl='<sc-if value="{{ isPlanning }}">\n        <div style="display:flex;flex-direction:column;gap:18px">'
+if M.count(_pl)==1:
+    M=M.replace(_pl,_pl+'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+SEG('pViews')+'</div>',1)
+    k=M.find(_pl)
+    sub=M[k:]
+    sub=wrap_div(sub,'<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">','pIsWeek')
+    sub=wrap_div(sub,'<div style="overflow-x:auto"><div style="display:grid;grid-template-columns:180px repeat(5','pIsWeek')
+    M=M[:k]+sub
+else: print('!! ancre planning',M.count(_pl))
+P2NAV=('<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><button class="btn btn-secondary btn-icon" aria-label="Période précédente" onClick="{{ p2Prev }}"><sa-i n="left" s="18"></sa-i></button>'
+  '<span style="font:600 20px var(--font-heading);padding:0 8px">{{ p2Label }}</span><button class="btn btn-secondary btn-icon" aria-label="Période suivante" onClick="{{ p2Next }}"><sa-i n="right" s="18"></sa-i></button><button class="btn btn-ghost" onClick="{{ p2Today }}">Aujourd’hui</button>%s</div>'
+  '<sc-if value="{{ p2Loading }}"><div>Chargement…</div></sc-if>')
+MONTH=('<sc-if value="{{ pIsMonth }}"><div style="display:flex;flex-direction:column;gap:12px">'+P2NAV%'<span style="flex:1"></span><button class="btn btn-primary" onClick="{{ openDlg }}" style="gap:6px"><sa-i n="plus" s="16"></sa-i>Nouveau bon, créneau ou tâche</button>'
+  +'<div style="overflow-x:auto"><div style="min-width:900px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-top:1px solid var(--color-text);border-left:1px solid var(--color-divider)">'
+  '<sc-for list="{{ p2Dows }}" as="d"><div style="padding:6px 8px;font-size:12px;font-weight:600;border-right:1px solid var(--color-divider);border-bottom:1px solid var(--color-divider)">{{ d }}</div></sc-for>'
+  '<sc-for list="{{ p2Weeks }}" as="w"><sc-for list="{{ w.days }}" as="d"><div style="min-height:120px;padding:4px 6px;border-right:1px solid var(--color-divider);border-bottom:1px solid var(--color-divider);background:{{ d.bg }};display:flex;flex-direction:column;gap:3px">'
+  '<span style="font:{{ d.fw }} 13px var(--font-heading)">{{ d.n }}</span><sc-for list="{{ d.items }}" as="i"><button onClick="{{ i.open }}" title="{{ i.tip }}" style="all:unset;cursor:pointer;display:block;font-size:12px;line-height:1.25;padding:2px 4px;border-left:3px solid {{ i.bd }};opacity:{{ i.op }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ i.txt }} <b>{{ i.who }}</b></button></sc-for>'
+  '<sc-if value="{{ d.more }}"><span style="font-size:11px">{{ d.more }}</span></sc-if></div></sc-for></sc-for></div></div></div></sc-if>')
+GANTT=('<sc-if value="{{ pIsGantt }}"><div style="display:flex;flex-direction:column;gap:12px">'+P2NAV%'<label style="display:flex;align-items:center;gap:6px;font-size:14px;margin-left:8px"><input type="checkbox" checked="{{ gHide }}" onChange="{{ onGHide }}">Masquer les terminés</label><span style="flex:1"></span><button class="btn btn-primary" onClick="{{ gPrint }}">Imprimer (A3 paysage)</button>'
+  +'<sc-if value="{{ gNone }}"><div style="padding:14px;border:1px dashed var(--color-text)">Aucun travail sur ces 8 semaines.</div></sc-if>'
+  '<div style="overflow-x:auto"><div style="min-width:1100px;display:grid;grid-template-columns:240px minmax(0,1fr);border-top:2px solid var(--color-text)">'
+  '<div style="padding:6px 10px;font-size:12px;font-weight:600;border-bottom:1px solid var(--color-divider)">Chantier</div><div style="display:grid;grid-template-columns:repeat(8,1fr);border-bottom:1px solid var(--color-divider)"><sc-for list="{{ gWeeks }}" as="w"><div style="text-align:center;padding:4px 0;border-left:1px solid var(--color-divider);background:{{ w.bg }};font-size:12px"><b>{{ w.l }}</b><br>{{ w.r }}</div></sc-for></div>'
+  '<sc-for list="{{ gRows }}" as="r"><div style="padding:6px 10px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:3px"><b style="font-size:13px">{{ r.label }}</b><span style="align-self:flex-start;font-size:11px;font-weight:700;color:#fff;background:{{ r.etatBg }};padding:1px 6px">{{ r.etat }}</span></div>'
+  '<div style="position:relative;height:{{ r.h }}px;border-bottom:1px solid var(--color-divider);background:repeating-linear-gradient(90deg,transparent 0 calc(12.5% - 1px),var(--color-divider) calc(12.5% - 1px) 12.5%)"><sc-for list="{{ r.bars }}" as="b"><button onClick="{{ b.open }}" title="{{ b.tip }}" style="all:unset;cursor:pointer;position:relative;display:block;margin:4px 0 0 {{ b.left }}%;width:{{ b.width }}%;height:22px;line-height:22px;padding:0 4px;box-sizing:border-box;background:{{ b.bg }};color:#fff;font-size:11px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">{{ b.lbl }} {{ b.who }}</button></sc-for></div></sc-for>'
+  '</div></div></div></sc-if>')
+k2=M.find(_pl)
+if k2>=0:
+    k3=M.find('<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">',k2)
+    k3=M.find('</div>',M.find('</div>',k3)+6)+6  # après la barre de vues (SEG imbriqué)
+    M=M[:k3]+MONTH+GANTT+M[k3:]
+
 # ---------- CARTE : contrôles réels (la légende de la maquette ne correspondait à rien) ----------
 _lg=re.search(r'<div style="display:flex;gap:18px;font-size:13px;flex-wrap:wrap">.*?Alerte salle mécanique</span>\s*</div>',M,flags=re.S)
 CCHK='<div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ cShows }}" as="c"><button onClick="{{ c.go }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--color-divider);font-size:14px"><span style="width:16px;height:16px;border:1.5px solid var(--color-text);background:{{ c.box }};color:var(--color-bg);display:flex;align-items:center;justify-content:center"><sc-if value="{{ c.on }}"><sa-i n="check" s="12" w="3"></sa-i></sc-if></span>{{ c.l }}</button></sc-for></div>'
