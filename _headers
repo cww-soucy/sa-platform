@@ -19,7 +19,14 @@
 /
   Cache-Control: no-cache, must-revalidate
 
-# Nouvelles apps (sa-terrain, sa-admin) : même règle que ci-dessus.
+# sa-admin et sa-terrain : même règle que ci-dessus.
+/admin.html
+  Cache-Control: no-cache, must-revalidate
+
+/terrain.html
+  Cache-Control: no-cache, must-revalidate
+
+# Anciennes adresses (prototypes retirés le 03/10) : redirection + désinstallation de l'ancien service worker.
 /sa-terrain/*
   Cache-Control: no-cache, must-revalidate
 
@@ -40,3 +47,13 @@
 
 /src/services/*
   Cache-Control: no-cache, must-revalidate
+
+# Documentation, sources et tests : publiés par Cloudflare (tout le dépôt l'est), mais jamais indexés.
+/docs/*
+  X-Robots-Tag: noindex, nofollow
+
+/src/*
+  X-Robots-Tag: noindex, nofollow
+
+/tests/*
+  X-Robots-Tag: noindex, nofollow
