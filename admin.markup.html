@@ -1,0 +1,643 @@
+
+<div ref="{{ rootRef }}" style="height:100vh;display:grid;grid-template-columns:236px minmax(0,1fr);background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);font-size:14px;line-height:1.45">
+
+  <nav style="border-right:1px solid var(--color-divider);display:flex;flex-direction:column;min-height:0;overflow-y:auto">
+    <div style="display:flex;align-items:center;gap:10px;padding:16px 16px 18px;border-bottom:1px solid var(--color-divider)">
+      <div style="width:44px;height:44px;flex:none;background:#004987;color:#ffffff;display:flex;align-items:flex-end;padding:5px;box-sizing:border-box;font:600 11px/0.95 var(--font-heading)">Soucy<br>Aquatik</div>
+      <div style="display:flex;flex-direction:column;line-height:1.15"><span style="font:600 20px var(--font-heading)">sa-admin</span><span style="font-size:12px;color:var(--color-accent-700)">Centre des opérations</span></div>
+    </div>
+    <template data-sc="for" list="{{ navGroups }}" as="g">
+      <div style="display:flex;flex-direction:column;padding:14px 0 4px">
+        <div style="padding:0 16px 6px;font-size:12px;color:var(--color-neutral-700)">{{ g.label }}</div>
+        <template data-sc="for" list="{{ g.items }}" as="n">
+          <button onClick="{{ n.go }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;height:38px;padding:0 14px 0 13px;border-left:3px solid {{ n.bar }};background:{{ n.bg }};font-weight:{{ n.fw }}" data-hv="1">
+            <sa-i n="{{ n.icon }}" s="18"></sa-i><span style="flex:1">{{ n.label }}</span>
+            <template data-sc="if" value="{{ n.badge }}"><span style="min-width:20px;height:20px;padding:0 5px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font:600 12px var(--font-heading);background:{{ n.badgeBg }};color:{{ n.badgeFg }};border:1px solid var(--color-text)">{{ n.badge }}</span></template>
+          </button>
+        </template>
+      </div>
+    </template>
+    <div style="margin-top:auto;padding:14px 16px;border-top:1px solid var(--color-divider);display:flex;align-items:center;gap:10px">
+      <div style="width:32px;height:32px;border:1px solid var(--color-text);display:flex;align-items:center;justify-content:center;font:600 14px var(--font-heading)">{{ meIni }}</div>
+      <div style="display:flex;flex-direction:column;line-height:1.2"><span style="font-weight:500">{{ meNom }}</span><span style="font-size:12px">{{ meRole }}</span><button onClick="{{ logout }}" style="all:unset;cursor:pointer;font-size:12px;text-decoration:underline;margin-top:2px">Se déconnecter</button></div>
+    </div>
+  </nav>
+
+  <div style="display:flex;flex-direction:column;min-width:0;min-height:0">
+    <header style="flex:none;display:flex;align-items:center;gap:20px;padding:12px 28px;border-bottom:1px solid var(--color-divider);min-height:68px;box-sizing:border-box">
+      <div style="display:flex;flex-direction:column;min-width:220px;flex:1">
+        <h1 style="margin:0;font-size:30px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ modTitle }}</h1>
+        <span style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ modSub }}</span>
+      </div>
+      <div style="position:relative;flex:0 1 320px;min-width:170px">
+        <div style="position:absolute;left:10px;top:9px;pointer-events:none"><sa-i n="search" s="18"></sa-i></div>
+        <input class="input" value="{{ q }}" onChange="{{ onQ }}" placeholder="Site, client, dossier, ODT…" style="padding-left:36px">
+        <template data-sc="if" value="{{ hasResults }}">
+          <div style="position:absolute;top:42px;left:0;right:0;z-index:40;background:var(--color-bg);border:1px solid var(--color-text);box-shadow:var(--shadow-lg);display:flex;flex-direction:column">
+            <template data-sc="for" list="{{ results }}" as="r">
+              <button onClick="{{ r.go }}" style="all:unset;cursor:pointer;padding:9px 12px;display:flex;flex-direction:column;border-bottom:1px solid var(--color-divider)" data-hv="2"><span style="font-weight:500">{{ r.label }}</span><span style="font-size:12px">{{ r.sub }}</span></button>
+            </template>
+          </div>
+        </template>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:13px;white-space:nowrap"><span style="width:8px;height:8px;background:var(--color-accent)"></span><span>{{ liveTxt }}</span></div>
+    </header>
+
+    <main style="flex:1;overflow:auto;padding:24px 28px 40px;min-height:0"><template data-sc="if" value="{{ isLoading }}"><div style="padding:32px 28px;font-size:16px">Chargement des données réelles…<br><span style="font-size:14px">{{ loadErr }}</span></div></template>
+<template data-sc="if" value="{{ isSoon }}"><div style="padding:28px;max-width:640px;display:flex;flex-direction:column;gap:14px">
+<h2 style="margin:0;font-size:34px">{{ soonTitle }}</h2>
+<p style="margin:0;font-size:16px;line-height:1.5">Ce module arrive dans une prochaine version de sa-admin. En attendant, il reste disponible dans SA Platform, qui continue de fonctionner normalement.</p>
+<a class="btn btn-primary" href="/" style="text-decoration:none;width:fit-content;padding:0 18px;min-height:44px;display:inline-flex;align-items:center">Ouvrir SA Platform</a></div></template>
+
+
+      <!-- ═════ MONITORING ═════ -->
+      <template data-sc="if" value="{{ isMonitoring }}">
+        <div style="display:flex;flex-direction:column;gap:26px">
+          <div class="blueprint" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <template data-sc="for" list="{{ kpis }}" as="k">
+              <div style="padding:16px 18px;border-right:1px solid var(--color-divider);display:flex;flex-direction:column;gap:2px;background:{{ k.bg }};color:{{ k.fg }}">
+                <span style="font-size:13px">{{ k.label }}</span>
+                <span style="font:600 40px/1 var(--font-heading)">{{ k.val }}<span style="font-size:22px;font-weight:400">{{ k.of }}</span></span>
+                <span style="font-size:12px">{{ k.sub }}</span>
+              </div>
+            </template>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,500px),1fr));gap:26px">
+            <section class="blueprint" style="display:flex;flex-direction:column;min-width:0">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <div style="padding:14px 18px;border-bottom:1px solid var(--color-divider);display:flex;align-items:baseline;justify-content:space-between"><h3 style="margin:0;font-size:22px">Équipe en ce moment</h3><span style="font-size:13px">Cliquez une ligne pour ouvrir les relevés du site</span></div>
+              <table class="table" style="font-size:14px">
+                <thead><tr><th style="text-transform:none;letter-spacing:0;font-size:12px;padding-left:18px">Technicien</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Statut</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Site</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Depuis</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Dernière activité</th></tr></thead>
+                <tbody>
+                  <template data-sc="for" list="{{ techRows }}" as="t">
+                    <tr onClick="{{ t.go }}" style="cursor:pointer;opacity:{{ t.op }}">
+                      <td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px"><div style="display:flex;align-items:center;gap:10px"><span style="width:28px;height:28px;flex:none;border:1px solid var(--color-text);display:flex;align-items:center;justify-content:center;font:600 12px var(--font-heading)">{{ t.ini }}</span><span style="font-weight:500">{{ t.nom }}</span></div></td>
+                      <td style="padding:var(--sa-row,10px) 8px"><span style="display:inline-block;white-space:nowrap;font-size:12px;padding:2px 8px;background:{{ t.stBg }};color:{{ t.stFg }};border:1px solid {{ t.stBd }}">{{ t.statut }}</span></td>
+                      <td style="padding:var(--sa-row,10px) 8px"><div style="display:flex;flex-direction:column;line-height:1.25"><span>{{ t.site }}</span><span style="font-size:12px">{{ t.ville }}</span></div></td>
+                      <td style="padding:var(--sa-row,10px) 8px;font:600 16px var(--font-heading)">{{ t.depuis }}</td>
+                      <td style="padding:var(--sa-row,10px) 8px;font-size:13px">{{ t.last }}</td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </section>
+
+            <section class="blueprint" style="display:flex;flex-direction:column;min-width:0">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <div style="padding:14px 18px;border-bottom:1px solid var(--color-divider);display:flex;align-items:baseline;justify-content:space-between"><h3 style="margin:0;font-size:22px">Flux terrain</h3><span style="font-size:13px">Aujourd’hui</span></div>
+              <div style="display:flex;flex-direction:column">
+                <template data-sc="for" list="{{ flux }}" as="f">
+                  <div style="display:grid;grid-template-columns:48px 26px minmax(0,1fr);gap:10px;align-items:start;padding:9px 18px;border-bottom:1px solid var(--color-divider);background:{{ f.bg }};color:{{ f.fg }}">
+                    <span style="font:600 15px var(--font-heading)">{{ f.h }}</span>
+                    <sa-i n="{{ f.icon }}" s="18"></sa-i>
+                    <div style="display:flex;flex-direction:column;line-height:1.3"><span>{{ f.txt }}</span><span style="font-size:12px">{{ f.who }} · {{ f.site }}</span></div>
+                  </div>
+                </template>
+              </div>
+            </section>
+          </div>
+
+          <section style="display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:baseline;justify-content:space-between"><h3 style="margin:0;font-size:22px">Salles mécaniques</h3><span style="font-size:13px">{{ sallesSummary }}</span></div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:1px;background:var(--color-divider);border:1px solid var(--color-divider)">
+              <template data-sc="for" list="{{ salles }}" as="s">
+                <button onClick="{{ s.go }}" style="all:unset;cursor:pointer;background:var(--color-bg);display:flex;flex-direction:column" data-hv="3">
+                  <div style="padding:10px 14px;display:flex;flex-direction:column;background:{{ s.headBg }};color:{{ s.headFg }}"><span style="font:600 17px/1.15 var(--font-heading)">{{ s.nom }}</span><span style="font-size:12px">{{ s.ville }} · {{ s.debit }}</span></div>
+                  <div style="display:flex;flex-direction:column;padding:4px 14px 10px">
+                    <template data-sc="for" list="{{ s.rows }}" as="r">
+                      <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;font-size:13px"><span>{{ r.l }}</span><span style="display:flex;align-items:center;gap:6px"><span>{{ r.txt }}</span><span style="width:12px;height:12px;box-sizing:border-box;border:1px solid var(--color-text);background:{{ r.bg }}"></span></span></div>
+                    </template>
+                    <template data-sc="if" value="{{ s.note }}"><div style="font-size:12px;margin-top:4px;padding-top:6px;border-top:1px solid var(--color-divider);line-height:1.35">{{ s.note }}</div></template>
+                  </div>
+                </button>
+              </template>
+            </div>
+          </section>
+
+          <section class="blueprint" style="display:flex;flex-direction:column">
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <div style="padding:14px 18px;border-bottom:1px solid var(--color-divider);display:flex;align-items:baseline;justify-content:space-between"><h3 style="margin:0;font-size:22px">Relevés hors zone — dernière visite</h3><span style="font-size:13px">{{ horsZoneCount }} valeurs</span></div>
+            <table class="table">
+              <thead><tr><th style="text-transform:none;letter-spacing:0;font-size:12px;padding-left:18px">Site</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Paramètre</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Valeur</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Zone du contrat</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Technicien</th><th></th></tr></thead>
+              <tbody>
+                <template data-sc="for" list="{{ horsZone }}" as="h">
+                  <tr>
+                    <td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px;font-weight:500">{{ h.site }}</td>
+                    <td style="padding:var(--sa-row,10px) 8px">{{ h.param }}</td>
+                    <td style="padding:var(--sa-row,10px) 8px"><span style="display:inline-block;white-space:nowrap;padding:2px 8px;background:var(--color-accent-900);color:var(--color-bg);font:600 15px var(--font-heading)">{{ h.val }} · {{ h.dir }}</span></td>
+                    <td style="padding:var(--sa-row,10px) 8px">{{ h.zone }}</td>
+                    <td style="padding:var(--sa-row,10px) 8px">{{ h.tech }}</td>
+                    <td style="padding:var(--sa-row,10px) 18px var(--sa-row,10px) 8px;text-align:right"><button class="btn btn-ghost" onClick="{{ h.go }}" style="white-space:nowrap">Voir la tendance</button></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </section>
+        </div>
+      </template>
+
+      <!-- ═════ CARTE ═════ -->
+      <template data-sc="if" value="{{ isCarte }}">
+        <div style="display:flex;flex-direction:column;gap:16px;height:100%">
+          <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+            <div style="display:flex;border:1px solid var(--color-divider)">
+              <button onClick="{{ viewGeo }}" style="all:unset;cursor:pointer;padding:8px 16px;display:flex;align-items:center;gap:8px;font:600 15px var(--font-heading);background:{{ geoBg }};color:{{ geoFg }}"><sa-i n="map" s="17"></sa-i>Géographique</button>
+              <button onClick="{{ viewSchema }}" style="all:unset;cursor:pointer;padding:8px 16px;display:flex;align-items:center;gap:8px;font:600 15px var(--font-heading);border-left:1px solid var(--color-divider);background:{{ schBg }};color:{{ schFg }}"><sa-i n="nav" s="17"></sa-i>Schéma des tournées</button>
+            </div>
+            <div style="display:flex;gap:18px;font-size:13px;flex-wrap:wrap">
+              <span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;background:var(--color-accent-700)"></span>Visité</span>
+              <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;background:var(--color-text);outline:2px solid var(--color-bg);box-shadow:0 0 0 3px var(--color-text)"></span>Technicien sur place</span>
+              <span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;box-sizing:border-box;border:1.5px solid var(--color-text)"></span>À venir</span>
+              <span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;background:repeating-linear-gradient(135deg,var(--color-text) 0 1.5px,transparent 1.5px 4px);border:1px solid var(--color-text);box-sizing:border-box"></span>Alerte salle mécanique</span>
+            </div>
+          </div>
+          <template data-sc="if" value="{{ isGeo }}"><div id="mapSlot" style="flex:1;min-height:420px;border:1px solid var(--color-text)"></div>
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:20px;min-height:620px;height:calc(100vh - 200px)">
+              <div class="blueprint" style="position:relative;min-height:0">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <iframe src="SA Carte.html" title="Carte des sites" style="position:absolute;inset:0;width:100%;height:100%;border:0"></iframe>
+              </div>
+              <div style="display:flex;flex-direction:column;border:1px solid var(--color-divider);min-height:0;overflow:auto">
+                <div style="padding:12px 16px;border-bottom:1px solid var(--color-divider);font:600 18px var(--font-heading)">En tournée</div>
+                <template data-sc="for" list="{{ techRows }}" as="t">
+                  <button onClick="{{ t.go }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--color-divider);opacity:{{ t.op }}" data-hv="4">
+                    <span style="width:28px;height:28px;flex:none;background:{{ t.stBg }};color:{{ t.stFg }};border:1px solid var(--color-text);display:flex;align-items:center;justify-content:center;font:600 12px var(--font-heading)">{{ t.ini }}</span>
+                    <div style="flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25"><span style="font-weight:500">{{ t.nom }}</span><span style="font-size:12px">{{ t.statut }} · {{ t.site }}</span></div>
+                  </button>
+                </template>
+              </div>
+            </div>
+          </template>
+          <template data-sc="if" value="{{ isSchema }}">
+            <div class="blueprint" style="display:flex;flex-direction:column">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <template data-sc="for" list="{{ lines }}" as="l">
+                <div style="display:grid;grid-template-columns:200px minmax(0,1fr);border-bottom:1px solid var(--color-divider);min-height:104px">
+                  <div style="padding:14px 18px;border-right:1px solid var(--color-divider);display:flex;flex-direction:column;gap:2px">
+                    <span style="font:600 19px/1.1 var(--font-heading)">{{ l.nom }}</span>
+                    <span style="font-size:12px">{{ l.statut }} · {{ l.done }}/{{ l.total }} arrêts</span>
+                  </div>
+                  <div style="position:relative;padding:18px 24px 12px">
+                    <div style="position:absolute;left:24px;right:24px;top:28px;height:2px;background:var(--color-divider)"></div>
+                    <div style="position:absolute;left:24px;top:28px;height:2px;width:{{ l.progress }}%;max-width:calc(100% - 48px);background:var(--color-text)"></div>
+                    <div style="position:relative;display:grid;grid-template-columns:repeat({{ l.total }},minmax(0,1fr))">
+                      <template data-sc="for" list="{{ l.stops }}" as="s">
+                        <button onClick="{{ s.go }}" style="all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0;padding-right:8px">
+                          <span style="width:{{ s.size }}px;height:{{ s.size }}px;margin-top:{{ s.mt }}px;box-sizing:border-box;border:1.5px solid var(--color-text);background:{{ s.bg }};box-shadow:{{ s.ring }}"></span>
+                          <span style="font:600 14px var(--font-heading)">{{ s.h }}</span>
+                          <span style="font-size:12px;line-height:1.25;font-weight:{{ s.fw }}">{{ s.nom }}</span>
+                        </button>
+                      </template>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
+      </template>
+
+      <!-- ═════ INSPECTIONS ═════ -->
+      <template data-sc="if" value="{{ isInspections }}"><template data-sc="if" value="{{ noHist }}"><div style="margin:12px 28px 0;padding:12px 14px;border:1px dashed var(--color-text);font-size:15px">{{ histMsg }}</div></template>
+        <div style="display:grid;grid-template-columns:280px minmax(0,1fr);gap:24px;align-items:start">
+          <div style="display:flex;flex-direction:column;border:1px solid var(--color-divider);position:sticky;top:0;max-height:calc(100vh - 140px);overflow:auto">
+            <div style="padding:10px;border-bottom:1px solid var(--color-divider)">
+              <select class="input" onChange="{{ onInspFilter }}" value="{{ inspFilter }}">
+                <template data-sc="for" list="{{ typeOptions }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template>
+              </select>
+            </div>
+            <template data-sc="for" list="{{ inspSites }}" as="s">
+              <button onClick="{{ s.go }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--color-divider);background:{{ s.bg }};color:{{ s.fg }}">
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25"><span style="font-weight:500">{{ s.nom }}</span><span style="font-size:12px">{{ s.ville }} · {{ s.court }}</span></div>
+                <template data-sc="if" value="{{ s.nOut }}"><span style="font:600 12px var(--font-heading);padding:1px 6px;border:1px solid currentColor">{{ s.nOut }}</span></template>
+              </button>
+            </template>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:20px;min-width:0">
+            <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap">
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <span style="font-size:13px">{{ insp.typeLabel }} · contrat {{ insp.contrat }} · {{ insp.norme }}</span>
+                <h2 style="margin:0;font-size:32px;line-height:1.05">{{ insp.nom }}</h2>
+                <span style="font-size:13px">{{ insp.client }} · {{ insp.bassin }} · technicien : {{ insp.tech }}</span>
+              </div>
+              <div style="display:flex;gap:8px"><button class="btn btn-secondary" onClick="{{ exportMsg }}" style="white-space:nowrap"><sa-i n="download" s="16"></sa-i><span>Exporter le rapport</span></button></div>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;border:1px solid var(--color-divider);align-self:flex-start">
+              <template data-sc="for" list="{{ inspParams }}" as="p">
+                <button onClick="{{ p.go }}" style="all:unset;cursor:pointer;white-space:nowrap;padding:8px 14px;font:600 15px var(--font-heading);border-right:1px solid var(--color-divider);background:{{ p.bg }};color:{{ p.fg }}">{{ p.label }}</button>
+              </template>
+            </div>
+
+            <section class="blueprint" style="display:flex;flex-direction:column">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border-bottom:1px solid var(--color-divider)">
+                <template data-sc="for" list="{{ chart.stats }}" as="k">
+                  <div style="padding:12px 18px;border-right:1px solid var(--color-divider);display:flex;flex-direction:column"><span style="font-size:12px">{{ k.l }}</span><span style="font:600 28px/1.1 var(--font-heading)">{{ k.v }}</span></div>
+                </template>
+              </div>
+              <div style="display:grid;grid-template-columns:56px minmax(0,1fr);padding:22px 24px 8px 8px">
+                <div style="position:relative;height:260px;font-size:12px">
+                  <span style="position:absolute;right:8px;top:-8px">{{ chart.maxTxt }}</span>
+                  <span style="position:absolute;right:8px;top:{{ chart.hiTop }}%;transform:translateY(-50%);font-weight:600;color:var(--color-accent-800)">{{ chart.hiTxt }}</span>
+                  <span style="position:absolute;right:8px;top:{{ chart.loTop }}%;transform:translateY(-50%);font-weight:600;color:var(--color-accent-800)">{{ chart.loTxt }}</span>
+                  <span style="position:absolute;right:8px;bottom:-8px">{{ chart.minTxt }}</span>
+                </div>
+                <div style="position:relative;height:260px;border-left:1px solid var(--color-text);border-bottom:1px solid var(--color-text);background-image:linear-gradient(90deg,var(--color-divider) 1px,transparent 1px);background-size:calc(100% / 29) 100%">
+                  <div style="position:absolute;left:0;right:0;top:{{ chart.hiTop }}%;height:{{ chart.bandH }}%;background:repeating-linear-gradient(135deg,var(--color-accent-300) 0 1px,transparent 1px 7px),color-mix(in srgb,var(--color-accent-100) 70%,transparent);border-top:1px solid var(--color-accent-700);border-bottom:1px solid var(--color-accent-700)"></div>
+                  <svg viewBox="0 0 1000 260" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible"><path d="{{ chart.path }}" fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke"></path></svg>
+                  <template data-sc="for" list="{{ chart.dots }}" as="d">
+                    <div title="{{ d.tip }}" style="position:absolute;left:{{ d.x }}%;top:{{ d.y }}%;width:{{ d.s }}px;height:{{ d.s }}px;transform:translate(-50%,-50%);box-sizing:border-box;border:1.5px solid var(--color-text);background:{{ d.bg }}"></div>
+                  </template>
+                </div>
+                <div></div>
+                <div style="position:relative;height:26px;font-size:12px">
+                  <template data-sc="for" list="{{ chart.xl }}" as="x"><span style="position:absolute;top:8px;left:{{ x.x }}%;transform:translateX(-50%);white-space:nowrap">{{ x.d }}</span></template>
+                </div>
+              </div>
+            </section>
+
+            <section class="blueprint" style="display:flex;flex-direction:column;overflow-x:auto">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <div style="padding:14px 18px;border-bottom:1px solid var(--color-divider);display:flex;align-items:baseline;justify-content:space-between"><h3 style="margin:0;font-size:22px">Relevés saisis en tournée</h3><span style="font-size:13px">10 dernières visites · valeurs hors zone en plein</span></div>
+              <table class="table" style="font-size:14px">
+                <thead><tr><th style="text-transform:none;letter-spacing:0;font-size:12px;padding-left:18px">Date</th><template data-sc="for" list="{{ inspTable.cols }}" as="c"><th style="text-transform:none;letter-spacing:0;font-size:12px;white-space:nowrap">{{ c }}</th></template></tr></thead>
+                <tbody>
+                  <template data-sc="for" list="{{ inspTable.rows }}" as="r">
+                    <tr><td style="padding:var(--sa-row,8px) 8px var(--sa-row,8px) 18px;font-weight:500;white-space:nowrap">{{ r.d }}</td>
+                      <template data-sc="for" list="{{ r.cells }}" as="c"><td style="padding:var(--sa-row,8px) 8px"><span style="display:inline-block;padding:1px 6px;font:600 15px var(--font-heading);background:{{ c.bg }};color:{{ c.fg }}">{{ c.v }}</span></td></template>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </section>
+          </div>
+        </div>
+      </template>
+
+      <!-- ═════ OPÉRATIONS ═════ -->
+      <template data-sc="if" value="{{ isOperations }}"><template data-sc="if" value="{{ noDossier }}"><div style="margin:12px 28px 0;padding:12px 14px;border:1px dashed var(--color-text);font-size:15px">Aucun dossier pour ce filtre.</div></template>
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+            <div style="display:flex;flex-wrap:wrap;gap:4px">
+              <template data-sc="for" list="{{ opsFilters }}" as="o">
+                <button onClick="{{ o.go }}" style="all:unset;cursor:pointer;white-space:nowrap;padding:8px 14px;font:600 15px var(--font-heading);border:1px solid var(--color-divider);background:{{ o.bg }};color:{{ o.fg }}">{{ o.label }} <span style="font-weight:400">{{ o.n }}</span></button>
+              </template>
+            </div>
+            <button class="btn btn-primary blueprint" onClick="{{ newDossier }}" style="white-space:nowrap;padding:9px 16px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><sa-i n="plus" s="16"></sa-i><span>Nouveau dossier</span></button>
+          </div>
+          <div style="display:flex;flex-direction:column;border-top:1px solid var(--color-text)">
+            <div style="display:grid;grid-template-columns:84px minmax(0,2.4fr) minmax(0,1fr) minmax(110px,1fr) 96px 22px;gap:14px;padding:8px 16px;font-size:12px;border-bottom:1px solid var(--color-divider)"><span>Dossier</span><span>Client · objet</span><span>Responsable</span><span>Avancement</span><span>Statut</span><span></span></div>
+            <template data-sc="for" list="{{ dossiers }}" as="d">
+              <div style="display:flex;flex-direction:column;border-bottom:1px solid var(--color-divider)">
+                <button onClick="{{ d.toggle }}" style="all:unset;cursor:pointer;display:grid;grid-template-columns:84px minmax(0,2.4fr) minmax(0,1fr) minmax(110px,1fr) 96px 22px;gap:14px;align-items:center;padding:12px 16px;background:{{ d.rowBg }}" data-hv="5">
+                  <span style="font:600 16px var(--font-heading)">{{ d.id }}</span>
+                  <span style="display:flex;flex-direction:column;min-width:0;line-height:1.3"><span style="font-weight:500">{{ d.client }}</span><span style="font-size:13px">{{ d.objet }} · {{ d.nVisites }} visites regroupées</span></span>
+                  <span>{{ d.resp }}</span>
+                  <span style="display:flex;align-items:center;gap:10px"><span style="flex:1;height:8px;border:1px solid var(--color-text);position:relative"><span style="position:absolute;left:0;top:0;bottom:0;width:{{ d.pct }}%;background:var(--color-accent-700)"></span></span><span style="font:600 14px var(--font-heading);white-space:nowrap;text-align:right">{{ d.faits }}/{{ d.total }}</span></span>
+                  <span><span style="display:inline-block;white-space:nowrap;font-size:12px;padding:2px 8px;background:{{ d.stBg }};color:{{ d.stFg }};border:1px solid {{ d.stBd }}">{{ d.statut }}</span></span>
+                  <sa-i n="{{ d.chev }}" s="20"></sa-i>
+                </button>
+                <template data-sc="if" value="{{ d.open }}">
+                  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:24px;padding:4px 16px 20px 114px">
+                    <table class="table" style="font-size:14px">
+                      <thead><tr><th style="text-transform:none;letter-spacing:0;font-size:12px">Date</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Tâche</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Technicien</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Statut</th></tr></thead>
+                      <tbody>
+                        <template data-sc="for" list="{{ d.visites }}" as="v">
+                          <tr onClick="{{ v.open }}" style="cursor:pointer"><td style="padding:var(--sa-row,8px) 8px;white-space:nowrap;font-weight:500">{{ v.date }}</td><td style="padding:var(--sa-row,8px) 8px">{{ v.tache }}</td><td style="padding:var(--sa-row,8px) 8px">{{ v.tech }}</td><td style="padding:var(--sa-row,8px) 8px"><span style="display:inline-block;white-space:nowrap;font-size:12px;padding:1px 7px;border:1px solid var(--color-divider);background:{{ v.bg }};color:{{ v.fg }}">{{ v.statut }}</span></td></tr>
+                        </template>
+                      </tbody>
+                    </table>
+                    <div style="display:flex;flex-direction:column;gap:10px">
+                      <div style="font-size:12px">Contrat {{ d.contrat }} · sites</div>
+                      <template data-sc="for" list="{{ d.sites }}" as="s">
+                        <button onClick="{{ s.go }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--color-divider)" data-hv="6"><sa-i n="pin" s="16"></sa-i><span style="flex:1;min-width:0">{{ s.nom }}</span><sa-i n="right" s="16"></sa-i></button>
+                      </template>
+                      <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
+                        <button class="btn btn-secondary" onClick="{{ d.addVisit }}" style="white-space:nowrap"><sa-i n="plus" s="15"></sa-i><span>Planifier une visite</span></button>
+                        <button class="btn btn-ghost" onClick="{{ d.goFact }}" style="white-space:nowrap">Facturation</button>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </template>
+          </div>
+        </div>
+      </template>
+
+      <!-- ═════ PLANNING ═════ -->
+      <template data-sc="if" value="{{ isPlanning }}">
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:8px">
+              <button class="btn btn-secondary btn-icon" onClick="{{ pPrev }}" aria-label="Semaine précédente" style="white-space:nowrap"><sa-i n="left" s="18"></sa-i></button>
+              <span style="font:600 20px var(--font-heading);padding:0 8px">{{ pLabel }}</span>
+              <button class="btn btn-secondary btn-icon" onClick="{{ pNext }}" aria-label="Semaine suivante" style="white-space:nowrap"><sa-i n="right" s="18"></sa-i></button>
+              <span style="font-size:13px;margin-left:12px;display:flex;align-items:center;gap:6px"><sa-i n="repeat" s="15"></sa-i><span>= créneau issu d’une série récurrente</span></span>
+            </div>
+            <button class="btn btn-primary blueprint" onClick="{{ openDlg }}" style="white-space:nowrap;padding:9px 16px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><sa-i n="plus" s="16"></sa-i><span>Nouveau créneau ou série</span></button>
+          </div>
+          <div style="overflow-x:auto"><div style="display:grid;grid-template-columns:180px repeat(5,minmax(150px,1fr));min-width:960px;border-top:1px solid var(--color-text);border-left:1px solid var(--color-divider)">
+            <div style="padding:8px 12px;border-right:1px solid var(--color-divider);border-bottom:1px solid var(--color-divider);font-size:12px">Technicien</div>
+            <template data-sc="for" list="{{ weekDays }}" as="w">
+              <div style="padding:8px 12px;border-right:1px solid var(--color-divider);border-bottom:1px solid var(--color-divider);font:600 16px var(--font-heading);background:{{ w.bg }};color:{{ w.fg }}">{{ w.label }}</div>
+            </template>
+            <template data-sc="for" list="{{ planRows }}" as="r">
+              <div style="padding:10px 12px;border-right:1px solid var(--color-divider);border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;line-height:1.25;opacity:{{ r.op }}"><span style="font-weight:500">{{ r.nom }}</span><span style="font-size:12px">{{ r.hours }}</span></div>
+              <template data-sc="for" list="{{ r.cells }}" as="c">
+                <div onClick="{{ c.add }}" style="padding:6px;border-right:1px solid var(--color-divider);border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:4px;min-height:74px;cursor:copy;background:{{ c.bg }}" data-hv="7">
+                  <template data-sc="for" list="{{ c.slots }}" as="s">
+                    <div onClick="{{ s.open }}" style="cursor:pointer;padding:5px 7px;border:1px solid var(--color-text);background:{{ s.bg }};color:{{ s.fg }};display:flex;flex-direction:column;line-height:1.2;font-size:12px">
+                      <span style="display:flex;align-items:center;gap:5px;font:600 13px var(--font-heading);min-width:0"><span>{{ s.h }}</span><span style="font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">{{ s.tache }}</span><template data-sc="if" value="{{ s.rec }}"><span style="margin-left:auto;display:flex"><sa-i n="repeat" s="13"></sa-i></span></template></span>
+                      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ s.nom }}</span>
+                    </div>
+                  </template>
+                </div>
+              </template>
+            </template>
+          </div></div>
+        </div>
+      </template>
+
+      <template data-sc="if" value="{{ dlgOpen }}">
+        <div class="dialog-backdrop" onClick="{{ closeDlgBg }}" style="z-index:50">
+          <div class="dialog" onClick="{{ stop }}" style="width:min(620px,100%);background:var(--color-bg);max-height:calc(100vh - 40px);overflow-y:auto;overflow-x:hidden;gap:16px;padding:22px 24px;border:1px solid var(--color-text)">
+            <div style="display:flex;align-items:center;justify-content:space-between"><span class="dialog-title" style="font-size:26px">Nouveau créneau</span><button class="btn btn-ghost btn-icon" onClick="{{ closeDlg }}" aria-label="Fermer" style="white-space:nowrap"><sa-i n="x" s="20"></sa-i></button></div>
+            <div style="display:flex;border:1px solid var(--color-divider);align-self:flex-start">
+              <template data-sc="for" list="{{ dlgTypes }}" as="t"><button onClick="{{ t.go }}" style="all:unset;cursor:pointer;white-space:nowrap;padding:7px 14px;font:600 15px var(--font-heading);border-right:1px solid var(--color-divider);background:{{ t.bg }};color:{{ t.fg }}">{{ t.label }}</button></template>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+              <div class="field"><label>Site</label><select class="input" value="{{ fv.site }}" onChange="{{ onF.site }}"><template data-sc="for" list="{{ siteOptions }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select></div>
+              <div class="field"><label>Technicien</label><select class="input" value="{{ fv.tech }}" onChange="{{ onF.tech }}"><template data-sc="for" list="{{ techOptions }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select></div>
+              <div class="field"><label>Première date</label><input class="input" type="date" value="{{ fv.debut }}" onChange="{{ onF.debut }}"></div>
+              <div class="field"><label>Heure</label><input class="input" type="time" value="{{ fv.heure }}" onChange="{{ onF.heure }}"></div>
+            </div>
+            <div class="field"><label>Répétition</label>
+              <div style="display:flex;border:1px solid var(--color-divider);align-self:flex-start;width:max-content">
+                <template data-sc="for" list="{{ recOpts }}" as="t"><button onClick="{{ t.go }}" style="all:unset;cursor:pointer;white-space:nowrap;padding:7px 14px;font-size:14px;border-right:1px solid var(--color-divider);background:{{ t.bg }};color:{{ t.fg }}">{{ t.label }}</button></template>
+              </div>
+            </div>
+            <template data-sc="if" value="{{ hasRec }}">
+              <div style="display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:end">
+                <div class="field"><label>Jours</label>
+                  <div style="display:flex;gap:4px">
+                    <template data-sc="for" list="{{ dayToggles }}" as="d"><button onClick="{{ d.go }}" style="all:unset;cursor:pointer;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:1px solid var(--color-text);font:600 14px var(--font-heading);background:{{ d.bg }};color:{{ d.fg }}">{{ d.l }}</button></template>
+                  </div>
+                </div>
+                <div class="field"><label>Jusqu’au</label><input class="input" type="date" value="{{ fv.fin }}" onChange="{{ onF.fin }}"></div>
+              </div>
+            </template>
+            <div style="border:1px solid var(--color-divider);padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:baseline;gap:8px"><span style="font:600 28px/1 var(--font-heading)">{{ occCount }}</span><span>{{ occLabel }}</span></div>
+              <div style="display:flex;flex-wrap:wrap;gap:4px">
+                <template data-sc="for" list="{{ occList }}" as="o"><span style="font-size:12px;padding:2px 7px;border:1px solid var(--color-divider);white-space:nowrap">{{ o }}</span></template>
+              </div>
+            </div>
+            <div class="dialog-actions" style="margin-top:0">
+              <button class="btn btn-secondary" onClick="{{ closeDlg }}" style="white-space:nowrap">Annuler</button>
+              <button class="btn btn-primary" onClick="{{ createSeries }}" style="white-space:nowrap;padding:8px 18px">{{ createLabel }}</button>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <!-- ═════ SITES ═════ -->
+      <template data-sc="if" value="{{ isSites }}"><template data-sc="if" value="{{ noNouveaux }}"><div style="margin:12px 28px 0;padding:12px 14px;border:1px dashed var(--color-text);font-size:15px">Aucun site détecté automatiquement en attente.</div></template>
+        <div style="display:flex;flex-direction:column;gap:26px">
+          <section style="display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:baseline;justify-content:space-between"><h3 style="margin:0;font-size:22px">Détectés automatiquement · à valider</h3><span style="font-size:13px">À partir des punchs GPS et des bons de livraison</span></div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:24px">
+              <template data-sc="for" list="{{ nouveaux }}" as="n">
+                <div class="blueprint" style="display:flex;flex-direction:column;opacity:{{ n.op }}">
+                  <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                  <div style="padding:14px 16px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:3px">
+                    <span style="font:600 19px/1.15 var(--font-heading)">{{ n.nom }}</span>
+                    <span style="font-size:12px">{{ n.source }}</span>
+                  </div>
+                  <template data-sc="if" value="{{ n.isDup }}">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--color-divider);font-size:13px">
+                      <div style="padding:10px 16px;display:flex;flex-direction:column;gap:2px"><span style="font-size:12px">Détecté</span><span style="font-weight:500">{{ n.nom }}</span><span>{{ n.gps }}</span></div>
+                      <div style="padding:10px 16px;border-left:1px solid var(--color-divider);display:flex;flex-direction:column;gap:2px"><span style="font-size:12px">Existant</span><span style="font-weight:500">{{ n.dupNom }}</span><span>{{ n.dupGps }}</span></div>
+                    </div>
+                  </template>
+                  <template data-sc="if" value="{{ n.isNew }}"><div style="padding:10px 16px;border-bottom:1px solid var(--color-divider);font-size:13px">GPS {{ n.gps }}</div></template>
+                  <div style="padding:10px 16px;font-size:13px;display:flex;gap:8px;align-items:flex-start"><sa-i n="{{ n.icon }}" s="16"></sa-i><span>{{ n.suggestion }}</span></div>
+                  <template data-sc="if" value="{{ n.pending }}">
+                    <div style="padding:4px 16px 16px;display:flex;gap:8px;flex-wrap:wrap">
+                      <button class="btn btn-primary" onClick="{{ n.primary }}" style="white-space:nowrap"><sa-i n="{{ n.icon }}" s="15"></sa-i><span>{{ n.primaryLabel }}</span></button>
+                      <button class="btn btn-secondary" onClick="{{ n.alt }}" style="white-space:nowrap">{{ n.altLabel }}</button>
+                      <button class="btn btn-ghost" onClick="{{ n.ignore }}" style="white-space:nowrap">Ignorer</button>
+                    </div>
+                  </template>
+                  <template data-sc="if" value="{{ n.done }}"><div style="padding:4px 16px 16px;display:flex;align-items:center;gap:6px;font-weight:500"><sa-i n="check" s="16" w="2"></sa-i><span>{{ n.doneTxt }}</span></div></template>
+                </div>
+              </template>
+            </div>
+          </section>
+          <section class="blueprint" style="display:flex;flex-direction:column">
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <div style="padding:12px 18px;border-bottom:1px solid var(--color-divider);display:flex;align-items:center;justify-content:space-between;gap:16px"><h3 style="margin:0;font-size:22px">Répertoire · {{ siteCount }} sites</h3>
+              <select class="input" value="{{ siteType }}" onChange="{{ onSiteType }}" style="width:260px"><template data-sc="for" list="{{ siteTypeOptions }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select>
+            </div>
+            <table class="table" style="font-size:14px">
+              <thead><tr><th style="text-transform:none;letter-spacing:0;font-size:12px;padding-left:18px">Site</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Type</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Client</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Contrat</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Fréquence</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Technicien</th><th style="text-transform:none;letter-spacing:0;font-size:12px">GPS</th></tr></thead>
+              <tbody>
+                <template data-sc="for" list="{{ siteRows }}" as="s">
+                  <tr onClick="{{ s.go }}" style="cursor:pointer"><td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px"><div style="display:flex;flex-direction:column;line-height:1.25"><span style="font-weight:500">{{ s.nom }}</span><span style="font-size:12px">{{ s.ville }} · {{ s.bassin }}</span></div></td><td style="padding:var(--sa-row,10px) 8px">{{ s.court }}</td><td style="padding:var(--sa-row,10px) 8px">{{ s.client }}</td><td style="padding:var(--sa-row,10px) 8px;font:600 15px var(--font-heading)">{{ s.contrat }}</td><td style="padding:var(--sa-row,10px) 8px">{{ s.freq }}</td><td style="padding:var(--sa-row,10px) 8px">{{ s.tech }}</td><td style="padding:var(--sa-row,10px) 8px;font-size:12px;white-space:nowrap">{{ s.gps }}</td></tr>
+                </template>
+              </tbody>
+            </table>
+          </section>
+        </div>
+      </template>
+
+      <!-- ═════ FACTURATION ═════ -->
+      <template data-sc="if" value="{{ isFacturation }}">
+        <div style="display:flex;flex-direction:column;gap:22px">
+          <div class="blueprint" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr))">
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <template data-sc="for" list="{{ factKpis }}" as="k">
+              <div style="padding:16px 18px;border-right:1px solid var(--color-divider);display:flex;flex-direction:column;gap:2px"><span style="font-size:13px">{{ k.l }}</span><span style="font:600 32px/1.05 var(--font-heading)">{{ k.v }}</span><span style="font-size:12px">{{ k.s }}</span></div>
+            </template>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+            <div style="display:flex;border:1px solid var(--color-divider)">
+              <template data-sc="for" list="{{ factFilters }}" as="o"><button onClick="{{ o.go }}" style="all:unset;cursor:pointer;white-space:nowrap;padding:8px 14px;font:600 15px var(--font-heading);border-right:1px solid var(--color-divider);background:{{ o.bg }};color:{{ o.fg }}">{{ o.label }} <span style="font-weight:400">{{ o.n }}</span></button></template>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center"><span style="font-size:13px">Cliquez un statut pour le faire avancer</span><button class="btn btn-secondary" onClick="{{ exportXls }}" style="white-space:nowrap"><sa-i n="download" s="16"></sa-i><span>Exporter (.xlsx)</span></button></div>
+          </div>
+          <section class="blueprint" style="display:flex;flex-direction:column;overflow-x:auto">
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <table class="table" style="font-size:14px">
+              <thead><tr><th style="text-transform:none;letter-spacing:0;font-size:12px;padding-left:18px">N° ODT</th><th style="text-transform:none;letter-spacing:0;font-size:12px">N° PO</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Client · site</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Date</th><th style="text-transform:none;letter-spacing:0;font-size:12px;text-align:right">Prix calculé</th><th style="text-transform:none;letter-spacing:0;font-size:12px;text-align:right">Prix facturé</th><th style="text-transform:none;letter-spacing:0;font-size:12px;text-align:right">Écart</th><th style="text-transform:none;letter-spacing:0;font-size:12px;padding-right:18px">Statut</th></tr></thead>
+              <tbody>
+                <template data-sc="for" list="{{ factRows }}" as="b">
+                  <tr>
+                    <td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px;font:600 15px var(--font-heading);white-space:nowrap">{{ b.odt }}</td>
+                    <td style="padding:var(--sa-row,10px) 8px;white-space:nowrap"><template data-sc="if" value="{{ b.hasPo }}"><span>{{ b.po }}</span></template><template data-sc="if" value="{{ b.noPo }}"><span style="font-size:12px;padding:1px 7px;border:1px dashed var(--color-text)">PO manquant</span></template></td>
+                    <td style="padding:var(--sa-row,10px) 8px"><div style="display:flex;flex-direction:column;line-height:1.25"><span style="font-weight:500">{{ b.client }}</span><span style="font-size:12px">{{ b.site }}</span></div></td>
+                    <td style="padding:var(--sa-row,10px) 8px;white-space:nowrap">{{ b.date }}</td>
+                    <td style="padding:var(--sa-row,10px) 8px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums">{{ b.calc }}</td>
+                    <td style="padding:var(--sa-row,10px) 8px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:500">{{ b.fact }}</td>
+                    <td style="padding:var(--sa-row,10px) 8px;text-align:right;white-space:nowrap"><span style="display:inline-block;padding:1px 7px;font:600 14px var(--font-heading);background:{{ b.ecBg }};color:{{ b.ecFg }}">{{ b.ecart }}</span></td>
+                    <td style="padding:var(--sa-row,10px) 18px var(--sa-row,10px) 8px"><button onClick="{{ b.cycle }}" style="all:unset;cursor:pointer;display:inline-block;white-space:nowrap;font-size:12px;padding:3px 9px;border:1px solid var(--color-text);background:{{ b.stBg }};color:{{ b.stFg }}">{{ b.statut }}</button></td>
+                  </tr>
+                </template>
+              </tbody>
+              <tfoot><tr><td colspan="4" style="padding:12px 8px 12px 18px;font:600 16px var(--font-heading);border-top:1px solid var(--color-text)">Total · {{ factCount }} ODT</td><td style="padding:12px 8px;text-align:right;font:600 16px var(--font-heading);border-top:1px solid var(--color-text);white-space:nowrap">{{ factTotCalc }}</td><td style="padding:12px 8px;text-align:right;font:600 16px var(--font-heading);border-top:1px solid var(--color-text);white-space:nowrap">{{ factTotFact }}</td><td style="padding:12px 8px;text-align:right;font:600 16px var(--font-heading);border-top:1px solid var(--color-text);white-space:nowrap">{{ factTotEcart }}</td><td style="border-top:1px solid var(--color-text)"></td></tr></tfoot>
+            </table>
+          </section>
+        </div>
+      </template>
+
+      <!-- ═════ SONDAGES ═════ -->
+      <template data-sc="if" value="{{ isSondages }}">
+        <div style="display:grid;grid-template-columns:300px minmax(0,1fr);gap:24px;align-items:start"><template data-sc="if" value="{{ needKey }}"><div style="display:flex;flex-direction:column;gap:14px;max-width:420px"><h3 style="margin:0;font-size:22px">Clé d’accès requise</h3><p style="margin:0;font-size:14px;line-height:1.4">Les réponses des sondages sont protégées par une clé, gardée uniquement dans ce navigateur — jamais dans le fichier de l’app.</p><div class="field"><label>Clé d’accès</label><input class="input" type="password" value="{{ keyVal }}" onChange="{{ onKey }}"></div><button class="btn btn-primary" onClick="{{ saveKey }}" style="align-self:flex-start">Valider</button></div></template><template data-sc="if" value="{{ noSurvey }}"><div style="padding:20px">Aucun sondage pour l’instant.</div></template>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <button class="btn btn-primary blueprint" onClick="{{ openBuilder }}" style="white-space:nowrap;padding:10px 16px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><sa-i n="plus" s="16"></sa-i><span>Créer un sondage</span></button>
+            <div style="display:flex;flex-direction:column;border:1px solid var(--color-divider)">
+              <template data-sc="for" list="{{ surveys }}" as="s">
+                <button onClick="{{ s.go }}" style="all:unset;cursor:pointer;padding:12px 14px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:3px;background:{{ s.bg }};color:{{ s.fg }}">
+                  <span style="font:600 17px/1.15 var(--font-heading)">{{ s.titre }}</span>
+                  <span style="font-size:12px">{{ s.statut }} · {{ s.reponses }}/{{ s.envoyes }} réponses · {{ s.scoreTxt }}</span>
+                </button>
+              </template>
+            </div>
+          </div>
+
+          <template data-sc="if" value="{{ showResults }}">
+            <div style="display:flex;flex-direction:column;gap:22px;min-width:0">
+              <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:13px">{{ sv.cible }} · fermeture {{ sv.ferme }}</span><h2 style="margin:0;font-size:32px;line-height:1.05">{{ sv.titre }}</h2></div>
+              <div class="blueprint" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr))">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <template data-sc="for" list="{{ sv.kpis }}" as="k"><div style="padding:14px 18px;border-right:1px solid var(--color-divider);display:flex;flex-direction:column"><span style="font-size:13px">{{ k.l }}</span><span style="font:600 34px/1.05 var(--font-heading)">{{ k.v }}</span></div></template>
+              </div>
+              <template data-sc="if" value="{{ sv.hasQ }}">
+                <section class="blueprint" style="display:flex;flex-direction:column">
+                  <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                  <div style="padding:14px 18px;border-bottom:1px solid var(--color-divider);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap"><h3 style="margin:0;font-size:22px">Résultats par question</h3>
+                    <div style="display:flex;gap:10px;font-size:12px;align-items:center"><span>1</span><template data-sc="for" list="{{ scaleLegend }}" as="c"><span style="width:16px;height:12px;background:{{ c }};border:1px solid var(--color-text)"></span></template><span>5</span></div>
+                  </div>
+                  <template data-sc="for" list="{{ sv.questions }}" as="q">
+                    <div style="display:grid;grid-template-columns:minmax(0,260px) minmax(0,1fr) 60px;gap:18px;align-items:center;padding:14px 18px;border-bottom:1px solid var(--color-divider)">
+                      <span style="font-weight:500;line-height:1.3">{{ q.q }}</span>
+                      <div style="display:flex;height:26px;border:1px solid var(--color-text)">
+                        <template data-sc="for" list="{{ q.segs }}" as="g"><div title="{{ g.tip }}" style="width:{{ g.w }}%;background:{{ g.bg }};color:{{ g.fg }};display:flex;align-items:center;justify-content:center;font:600 12px var(--font-heading);overflow:hidden">{{ g.label }}</div></template>
+                      </div>
+                      <span style="font:600 22px var(--font-heading);text-align:right">{{ q.avg }}</span>
+                    </div>
+                  </template>
+                </section>
+                <section style="display:flex;flex-direction:column;gap:10px">
+                  <h3 style="margin:0;font-size:22px">Commentaires</h3>
+                  <template data-sc="for" list="{{ sv.verbatims }}" as="v"><div style="padding:12px 16px;border-left:2px solid var(--color-text);font-size:15px;line-height:1.45">« {{ v }} »</div></template>
+                </section>
+              </template>
+              <template data-sc="if" value="{{ sv.noQ }}"><div style="padding:18px;border:1px dashed var(--color-divider)">Résultats détaillés archivés — score moyen {{ sv.scoreTxt }} sur {{ sv.reponses }} réponses.</div></template>
+            </div>
+          </template>
+
+          <template data-sc="if" value="{{ builder }}">
+            <div class="blueprint" style="display:flex;flex-direction:column;gap:16px;padding:20px 22px;min-width:0">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <div style="display:flex;align-items:center;justify-content:space-between"><h2 style="margin:0;font-size:28px">Nouveau sondage</h2><button class="btn btn-ghost btn-icon" onClick="{{ closeBuilder }}" aria-label="Fermer" style="white-space:nowrap"><sa-i n="x" s="20"></sa-i></button></div>
+              <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px">
+                <div class="field"><label>Titre</label><input class="input" value="{{ bTitle }}" onChange="{{ onBTitle }}"></div>
+                <div class="field"><label>Destinataires</label><select class="input" value="{{ bAud }}" onChange="{{ onBAud }}"><option>Clients municipaux</option><option>Clients commerciaux</option><option>Clients résidentiels</option><option>Tous les clients actifs</option></select></div>
+              </div>
+              <div style="display:flex;flex-direction:column;border-top:1px solid var(--color-text)">
+                <template data-sc="for" list="{{ bq }}" as="q">
+                  <div style="display:grid;grid-template-columns:32px minmax(0,1fr) 180px 36px;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--color-divider)">
+                    <span style="font:600 18px var(--font-heading)">{{ q.n }}</span>
+                    <input class="input" value="{{ q.q }}" onChange="{{ q.onQ }}">
+                    <select class="input" value="{{ q.t }}" onChange="{{ q.onT }}"><option>Échelle 1 à 5</option><option>Oui / Non</option><option>Choix multiple</option><option>Texte libre</option></select>
+                    <button class="btn btn-ghost btn-icon" onClick="{{ q.del }}" aria-label="Retirer" style="white-space:nowrap"><sa-i n="x" s="18"></sa-i></button>
+                  </div>
+                </template>
+              </div>
+              <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
+                <button class="btn btn-secondary" onClick="{{ addQ }}" style="white-space:nowrap"><sa-i n="plus" s="15"></sa-i><span>Ajouter une question</span></button>
+                <div style="display:flex;gap:8px"><button class="btn btn-secondary" onClick="{{ closeBuilder }}" style="white-space:nowrap">Brouillon</button><button class="btn btn-primary" onClick="{{ sendSurvey }}" style="white-space:nowrap;padding:8px 18px"><sa-i n="send" s="15"></sa-i><span>Envoyer</span></button></div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </template>
+
+      <!-- ═════ COMMUNICATION ═════ -->
+      
+
+      <!-- ═════ TEMPS / SUIVI / CUMUL ═════ -->
+      <template data-sc="if" value="{{ isTemps }}">
+        <div style="display:flex;flex-direction:column;gap:18px"><div style="display:flex;align-items:center;gap:8px"><button class="btn btn-secondary btn-icon" aria-label="Semaine précédente" onClick="{{ tPrev }}"><sa-i n="left" s="18"></sa-i></button><span style="font:600 20px var(--font-heading);padding:0 8px">{{ tLabel }}</span><button class="btn btn-secondary btn-icon" aria-label="Semaine suivante" onClick="{{ tNext }}"><sa-i n="right" s="18"></sa-i></button></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+            <div style="display:flex;border:1px solid var(--color-divider)">
+              <template data-sc="for" list="{{ tempsTabs }}" as="t"><button onClick="{{ t.go }}" style="all:unset;cursor:pointer;white-space:nowrap;padding:8px 18px;font:600 16px var(--font-heading);border-right:1px solid var(--color-divider);background:{{ t.bg }};color:{{ t.fg }}">{{ t.label }} <span style="font-weight:400">{{ t.n }}</span></button></template>
+              <button class="btn btn-secondary" onClick="{{ imprimerEquipe }}" style="margin-left:auto;white-space:nowrap;font-size:12px;padding:6px 12px">Imprimer equipe</button><button class="btn btn-primary" onClick="{{ exportEquipe }}" style="white-space:nowrap;font-size:12px;padding:6px 12px">Exporter equipe (.xlsx)</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:13px;padding:6px 12px;border:1px dashed var(--color-text);flex:0 1 auto;min-width:0"><sa-i n="file" s="15"></sa-i><span>Lecture seule · heures des punchs terminés (● = punch en cours) · banque et heures sup. : SA Platform › Cumul</span></div>
+          </div>
+
+          <template data-sc="if" value="{{ isTempsTab }}">
+            <section class="blueprint" style="display:flex;flex-direction:column;overflow-x:auto">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <table class="table" style="font-size:14px">
+                <thead><tr><th style="text-transform:none;letter-spacing:0;font-size:12px;padding-left:18px">Technicien</th><template data-sc="for" list="{{ weekDays }}" as="w"><th style="text-transform:none;letter-spacing:0;font-size:12px;text-align:right">{{ w.label }}</th></template><th style="text-transform:none;letter-spacing:0;font-size:12px;text-align:right;padding-right:18px">Semaine</th></tr></thead>
+                <tbody>
+                  <template data-sc="for" list="{{ tempsRows }}" as="r">
+                    <tr style="opacity:{{ r.op }}"><td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px;font-weight:500">{{ r.nom }}</td>
+                      <template data-sc="for" list="{{ r.jours }}" as="j"><td style="padding:var(--sa-row,10px) 8px;text-align:right;font-variant-numeric:tabular-nums">{{ j }}</td></template>
+                      <td style="padding:var(--sa-row,10px) 18px var(--sa-row,10px) 8px;text-align:right;font:600 16px var(--font-heading)">{{ r.semaine }}</td><td style="padding:var(--sa-row,10px) 12px var(--sa-row,10px) 0;text-align:right"><div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end"><button class="btn btn-secondary" onClick="{{ r.gerer }}" style="white-space:nowrap;font-size:11px;padding:4px 8px">Gerer</button><button class="btn btn-secondary" onClick="{{ r.exporter1 }}" style="white-space:nowrap;font-size:11px;padding:4px 8px">Excel</button><button class="btn btn-secondary" onClick="{{ r.imprimer1 }}" style="white-space:nowrap;font-size:11px;padding:4px 8px">Imprimer</button><button class="btn btn-secondary" onClick="{{ r.mailer1 }}" style="white-space:nowrap;font-size:11px;padding:4px 8px">Courriel</button></div><template data-sc="if" value="{{ r.envoyee }}"><div style="font-size:9px;color:var(--color-neutral-500);margin-top:2px;text-align:right">{{ r.envoiTxt }}</div></template></td></tr>
+                  </template>
+                </tbody>
+              </table>
+            </section>
+          </template>
+
+          <template data-sc="if" value="{{ isSuiviTab }}">
+            <section class="blueprint" style="display:flex;flex-direction:column">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <template data-sc="for" list="{{ punchRows }}" as="p">
+                <div style="display:grid;grid-template-columns:minmax(120px,1fr) minmax(90px,0.8fr) 110px minmax(0,2fr) auto;gap:16px;align-items:center;padding:12px 18px;border-bottom:1px solid var(--color-divider);background:{{ p.bg }}">
+                  <span style="font-weight:500">{{ p.nom }}</span>
+                  <span>{{ p.jour }}</span>
+                  <span style="font:600 16px var(--font-heading)">{{ p.entree }} → {{ p.sortie }}</span>
+                  <span style="display:flex;flex-direction:column;line-height:1.3"><span style="font-size:13px">{{ p.site }}</span><template data-sc="if" value="{{ p.flag }}"><span style="display:flex;align-items:center;gap:6px;font-weight:500"><sa-i n="alert" s="15"></sa-i><span>{{ p.flag }}</span></span></template></span>
+                  <span style="display:flex;gap:8px;justify-content:flex-end">
+                    <template data-sc="if" value="{{ p.pending }}"><button class="btn btn-secondary" onClick="{{ p.fix }}" style="white-space:nowrap">Corriger</button><button class="btn btn-primary" onClick="{{ p.ok }}" style="white-space:nowrap">Valider</button></template>
+                    <template data-sc="if" value="{{ p.done }}"><span style="display:flex;align-items:center;gap:6px;font-size:13px"><sa-i n="check" s="15" w="2"></sa-i><span>{{ p.etat }}</span></span></template>
+                  </span>
+                </div>
+              </template>
+            </section>
+          </template>
+
+          <template data-sc="if" value="{{ isCumulTab }}">
+            <section class="blueprint" style="display:flex;flex-direction:column;overflow-x:auto">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <table class="table" style="font-size:14px">
+                <thead><tr><th style="text-transform:none;letter-spacing:0;font-size:12px;padding-left:18px">Technicien</th><th style="text-transform:none;letter-spacing:0;font-size:12px;text-align:right">{{ tLabel }}</th><th style="text-transform:none;letter-spacing:0;font-size:12px;text-align:right">Cumul saison</th><th style="text-transform:none;letter-spacing:0;font-size:12px;text-align:right">Banque d’heures</th><th style="text-transform:none;letter-spacing:0;font-size:12px;text-align:right;padding-right:18px">Heures sup.</th></tr></thead>
+                <tbody>
+                  <template data-sc="for" list="{{ tempsRows }}" as="r">
+                    <tr style="opacity:{{ r.op }}"><td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px;font-weight:500">{{ r.nom }}</td><td style="padding:var(--sa-row,10px) 8px;text-align:right">{{ r.semaine }}</td><td style="padding:var(--sa-row,10px) 8px;text-align:right;font:600 16px var(--font-heading)">{{ r.cumul }}</td><td style="padding:var(--sa-row,10px) 8px;text-align:right">{{ r.banque }}</td><td style="padding:var(--sa-row,10px) 18px var(--sa-row,10px) 8px;text-align:right">{{ r.sup }}</td></tr>
+                  </template>
+                </tbody>
+              </table>
+            </section>
+          </template>
+        </div>
+      </template>
+    </main>
+  </div>
+
+  <template data-sc="if" value="{{ hasToast }}">
+    <div style="position:fixed;right:28px;bottom:28px;z-index:60;padding:12px 16px;background:var(--color-text);color:var(--color-bg);display:flex;gap:10px;align-items:center;box-shadow:var(--shadow-lg)"><sa-i n="check" s="18" w="2"></sa-i><span>{{ toast }}</span></div>
+  </template>
+</div>
+<template data-sc="if" value="{{ edOpen }}"><div class="dialog-backdrop" onClick="{{ edCloseBg }}" style="z-index:60"><div class="dialog" onClick="{{ stop }}" style="width:min(560px,100%);background:var(--color-bg);max-height:calc(100vh - 40px);overflow-y:auto;gap:16px;padding:22px 24px;border:1px solid var(--color-text)"><div style="display:flex;align-items:center;justify-content:space-between"><span class="dialog-title" style="font-size:24px">{{ edTitle }}</span><button class="btn btn-ghost btn-icon" onClick="{{ edClose }}" aria-label="Fermer"><sa-i n="x" s="20"></sa-i></button></div><template data-sc="if" value="{{ edLoading }}"><div>Chargement…</div></template><template data-sc="if" value="{{ edReady }}"><div style="display:grid;grid-template-columns:1fr 1fr;gap:14px"><template data-sc="if" value="{{ edCanDate }}"><div class="field"><label>Date</label><input class="input" type="date" value="{{ edDate }}" onChange="{{ onEdDate }}"></div></template><template data-sc="if" value="{{ edShowHeure }}"><div class="field"><label>Heure</label><input class="input" type="time" value="{{ edHeure }}" onChange="{{ onEdHeure }}"></div></template></div><template data-sc="if" value="{{ edMultiJour }}"><div style="font-size:13px">Tâche sur plusieurs jours : les dates se modifient dans SA Platform.</div></template><template data-sc="if" value="{{ edMulti }}"><div style="font-size:13px">Plusieurs techniciens assignés : la réassignation se fait dans SA Platform.</div></template><template data-sc="if" value="{{ edMultiFalse }}"></template><div class="field"><label>Technicien</label><select class="input" onChange="{{ onEdTech }}"><template data-sc="for" list="{{ edTechOpts }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select></div><div class="field"><label>Statut</label><div style="display:flex;border:1px solid var(--color-divider);align-self:flex-start"><template data-sc="for" list="{{ edStatuts }}" as="t"><button onClick="{{ t.go }}" style="all:unset;cursor:pointer;white-space:nowrap;padding:7px 14px;font:600 15px var(--font-heading);border-right:1px solid var(--color-divider);background:{{ t.bg }};color:{{ t.fg }}">{{ t.label }}</button></template></div></div><template data-sc="if" value="{{ edC0 }}"><div class="dialog-actions" style="margin-top:0;flex-wrap:wrap"><button class="btn btn-secondary" onClick="{{ edAsk1 }}" style="white-space:nowrap">Supprimer</button><template data-sc="if" value="{{ edSerie }}"><button class="btn btn-secondary" onClick="{{ edAsk2 }}" style="white-space:nowrap">Supprimer la série à venir</button></template><button class="btn btn-primary" onClick="{{ edSave }}" style="white-space:nowrap">Enregistrer</button></div></template><template data-sc="if" value="{{ edC1 }}"><div style="border:1px solid var(--color-text);padding:12px;font-size:15px">Supprimer cet élément ? Une copie de sécurité est conservée.</div><div class="dialog-actions" style="margin-top:0"><button class="btn btn-secondary" onClick="{{ edBack }}" style="white-space:nowrap">Annuler</button><button class="btn btn-primary" onClick="{{ edDo1 }}" style="white-space:nowrap">Oui, supprimer</button></div></template><template data-sc="if" value="{{ edC2 }}"><div style="border:1px solid var(--color-text);padding:12px;font-size:15px">Supprimer les <b>{{ edSerieN }}</b> occurrences à venir de cette série (seulement celles non commencées) ? Une copie de sécurité est conservée.</div><div class="dialog-actions" style="margin-top:0"><button class="btn btn-secondary" onClick="{{ edBack }}" style="white-space:nowrap">Annuler</button><button class="btn btn-primary" onClick="{{ edDo2 }}" style="white-space:nowrap">Oui, supprimer la série</button></div></template></template></div></div></template>
+<template data-sc="if" value="{{ sdOpen }}"><div class="dialog-backdrop" onClick="{{ sdCloseBg }}" style="z-index:60"><div class="dialog" onClick="{{ stop }}" style="width:min(560px,100%);background:var(--color-bg);max-height:calc(100vh - 40px);overflow-y:auto;gap:16px;padding:22px 24px;border:1px solid var(--color-text)"><div style="display:flex;align-items:center;justify-content:space-between"><span class="dialog-title" style="font-size:24px">{{ sdNom }}</span><button class="btn btn-ghost btn-icon" onClick="{{ sdClose }}" aria-label="Fermer"><sa-i n="x" s="20"></sa-i></button></div><div class="field"><label>Nom du site</label><input class="input" value="{{ sdNom }}" onChange="{{ onSdNom }}"></div><div class="field"><label>Adresse</label><input class="input" value="{{ sdAddr }}" onChange="{{ onSdAddr }}"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:14px"><div class="field"><label>Type de bassin</label><select class="input" onChange="{{ onSdType }}"><template data-sc="for" list="{{ sdTypes }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select></div><div class="field"><label>N° de contrat (optionnel)</label><input class="input" value="{{ sdCode }}" onChange="{{ onSdCode }}"></div></div><div style="font-size:13px">Le nom sert à relier les bons de travail : ne le changez que pour corriger une faute.</div><div class="dialog-actions" style="margin-top:0;flex-wrap:wrap"><button class="btn btn-secondary" onClick="{{ sdRelevés }}" style="white-space:nowrap">Voir les relevés</button><button class="btn btn-primary" onClick="{{ sdSave }}" style="white-space:nowrap">Enregistrer</button></div></div></div></template>
+<template data-sc="if" value="{{ fxOpen }}"><div class="dialog-backdrop" onClick="{{ fxCloseBg }}" style="z-index:60"><div class="dialog" onClick="{{ stop }}" style="width:min(460px,100%);background:var(--color-bg);padding:22px 24px;border:1px solid var(--color-text);display:flex;flex-direction:column;gap:14px"><div style="display:flex;align-items:center;justify-content:space-between"><span class="dialog-title" style="font-size:22px">Corriger un punch</span><button class="btn btn-ghost btn-icon" onClick="{{ fxClose }}" aria-label="Fermer"><sa-i n="x" s="20"></sa-i></button></div><div style="font-size:14px">{{ fxTitle }}</div><div class="field"><label>Lieu</label><input class="input" value="{{ fxLieu }}" onChange="{{ onFxLieu }}"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:14px"><div class="field"><label>Entrée</label><input class="input" type="time" value="{{ fxEntree }}" onChange="{{ onFxEntree }}"></div><div class="field"><label>Sortie</label><input class="input" type="time" value="{{ fxSortie }}" onChange="{{ onFxSortie }}"></div></div><div class="dialog-actions" style="margin-top:0"><button class="btn btn-secondary" onClick="{{ fxClose }}">Annuler</button><button class="btn btn-primary" onClick="{{ fxSave }}">Enregistrer</button></div></div></div></template>
+<template data-sc="if" value="{{ pmOpen }}"><div class="dialog-backdrop" onClick="{{ pmCloseBg }}" style="z-index:70"><div class="dialog" onClick="{{ stop }}" style="width:min(680px,100%);max-height:calc(100vh - 40px);overflow-y:auto;background:var(--color-bg);padding:22px 24px;border:1px solid var(--color-text);display:flex;flex-direction:column;gap:14px"><div style="display:flex;align-items:center;justify-content:space-between"><span class="dialog-title" style="font-size:22px">{{ pmTitle }}</span><button class="btn btn-ghost btn-icon" onClick="{{ pmClose }}" aria-label="Fermer"><sa-i n="x" s="20"></sa-i></button></div><template data-sc="if" value="{{ pmLoading }}"><div>Chargement...</div></template><template data-sc="if" value="{{ pmReady }}"><template data-sc="for" list="{{ pmDays }}" as="d"><div style="border-top:1px solid var(--color-divider);padding-top:10px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><b style="font-size:14px">{{ d.label }}</b><button class="btn btn-secondary" onClick="{{ d.startAdd }}" style="font-size:11px;padding:4px 10px">Ajouter un punch</button></div><template data-sc="if" value="{{ d.hasTasks }}"><template data-sc="for" list="{{ d.tasks }}" as="t"><template data-sc="if" value="{{ t.editing }}"><div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;padding:8px;background:var(--color-accent-100)"><div class="field" style="flex:1;min-width:110px"><label style="font-size:11px">Lieu</label><input class="input" value="{{ t.editLieu }}" onChange="{{ t.onEditLieu }}"></div><div class="field" style="flex:1;min-width:110px"><label style="font-size:11px">Debut</label><input class="input" type="time" value="{{ t.editStart }}" onChange="{{ t.onEditStart }}"></div><div class="field" style="flex:1;min-width:110px"><label style="font-size:11px">Fin</label><input class="input" type="time" value="{{ t.editEnd }}" onChange="{{ t.onEditEnd }}"></div><button class="btn btn-secondary" onClick="{{ t.cancelEdit }}">Annuler</button><button class="btn btn-primary" onClick="{{ t.saveEdit }}">Enregistrer</button></div></template><template data-sc="if" value="{{ t.notEditing }}"><div style="display:flex;align-items:center;gap:10px;padding:6px 0;font-size:13px"><span style="flex:1">{{ t.start }} - {{ t.end }} - {{ t.lieu }}</span><span style="width:60px;text-align:right">{{ t.dur }}</span><template data-sc="if" value="{{ t.manuel }}"><span style="font-size:10px;color:var(--color-neutral-500)">ajoute</span></template><button class="btn btn-secondary" onClick="{{ t.startEdit }}" style="font-size:11px;padding:3px 8px">Modifier</button><button class="btn btn-secondary" onClick="{{ t.del }}" style="font-size:11px;padding:3px 8px">Supprimer</button></div></template></template></template><template data-sc="if" value="{{ d.adding }}"><div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;padding:8px;background:var(--color-accent-100);margin-top:4px"><div class="field" style="flex:1;min-width:110px"><label style="font-size:11px">Lieu</label><input class="input" value="{{ d.addLieu }}" onChange="{{ d.onAddLieu }}" placeholder="Nom du site"></div><div class="field" style="flex:1;min-width:110px"><label style="font-size:11px">Debut</label><input class="input" type="time" value="{{ d.addStart }}" onChange="{{ d.onAddStart }}"></div><div class="field" style="flex:1;min-width:110px"><label style="font-size:11px">Fin (optionnel)</label><input class="input" type="time" value="{{ d.addEnd }}" onChange="{{ d.onAddEnd }}"></div><button class="btn btn-secondary" onClick="{{ d.cancelAdd }}">Annuler</button><button class="btn btn-primary" onClick="{{ d.saveAdd }}">Ajouter</button></div></template></div></template></template></div></div></template>

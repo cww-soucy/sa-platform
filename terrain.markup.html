@@ -1,0 +1,435 @@
+    <div ref="{{ rootRef }}" style="height:100%;display:flex;flex-direction:column;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);font-size:17px;line-height:1.4;position:relative">
+      <div style="height:max(env(safe-area-inset-top),8px);flex:none"></div>
+
+      <div style="flex:none;display:flex;align-items:center;gap:12px;padding:6px 20px 10px;border-bottom:1px solid var(--color-divider)">
+        <div style="width:46px;height:46px;background:#004987;color:#ffffff;display:flex;align-items:flex-end;padding:5px;box-sizing:border-box;font:600 11px/0.95 var(--font-heading);letter-spacing:0.01em">Soucy<br>Aquatik</div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+          <div style="font:600 18px/1.1 var(--font-heading)">{{ headerTitle }}</div>
+          <div style="font-size:13px;display:flex;align-items:center;gap:5px;color:var(--color-accent-700)"><sa-i n="cloudoff" s="14"></sa-i>{{ syncLbl }}</div>
+        </div>
+        <button onClick="{{ toggleSun }}" aria-label="Mode plein soleil" style="all:unset;cursor:pointer;width:48px;height:48px;display:flex;align-items:center;justify-content:center;border:1px solid var(--color-divider);background:{{ sunBtnBg }};color:{{ sunBtnFg }}"><sa-i n="sun" s="24"></sa-i></button>
+      </div>
+
+      <div ref="{{ contentRef }}" style="flex:1;overflow-y:auto;overflow-x:hidden;position:relative;scrollbar-width:none">
+
+        <!-- ═════ AUJOURD'HUI ═════ -->
+        <sc-if value="{{ isToday }}">
+          <div style="padding:20px;display:flex;flex-direction:column;gap:24px">
+            <div style="display:flex;flex-direction:column;gap:2px">
+              <h1 style="margin:0;font-size:38px;line-height:1">{{ todayTxt }}</h1>
+              <div style="font-size:16px">Tournée · {{ jobCount }} arrêts · {{ doneTxt }}</div>
+            </div>
+<div class="blueprint" style="padding:18px;display:flex;flex-direction:column;gap:12px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><div style="display:flex;align-items:center;gap:8px;font-size:15px"><span style="width:10px;height:10px;background:var(--color-accent);flex:none"></span><span>{{ pn.statusTxt }}</span></div><div style="font:600 26px/1.05 var(--font-heading)">{{ pn.title }}</div><div style="font-size:15px">Aujourd’hui {{ pn.dayTotal }} · Semaine {{ pn.weekTotal }}</div><sc-if value="{{ pn.active }}"><button class="btn btn-secondary" onClick="{{ pn.openStart }}" style="min-height:52px;font-size:18px;gap:10px"><sa-i n="login" s="22"></sa-i>Changer de site</button><button class="btn btn-primary" onClick="{{ pn.openStop }}" style="min-height:58px;font-size:20px;gap:10px"><sa-i n="logout" s="22"></sa-i>Terminer la journée</button></sc-if><sc-if value="{{ pn.idle }}"><button class="btn btn-primary" onClick="{{ pn.openStart }}" style="min-height:58px;font-size:20px;gap:10px"><sa-i n="login" s="22"></sa-i>Démarrer un punch</button></sc-if><sc-if value="{{ pn.hasPending }}"><div style="font-size:14px">{{ pn.pendingTxt }}</div></sc-if></div>
+
+            <sc-if value="{{ hasPunch }}">
+              <div class="blueprint" style="padding:18px;display:flex;flex-direction:column;gap:14px">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div style="display:flex;align-items:center;gap:8px;font-size:15px">
+                  <span style="width:10px;height:10px;background:var(--color-accent);flex:none"></span>
+                  <span>{{ punchLbl }}</span><span style="margin-left:auto;font:600 18px var(--font-heading)">{{ punchElapsed }}</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:4px">
+                  <div style="font:600 30px/1.02 var(--font-heading);text-wrap:balance">{{ cur.nom }}</div>
+                  <div style="font-size:15px">{{ cur.typeLabel }} · {{ cur.ville }}</div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--color-divider);border-bottom:1px solid var(--color-divider)">
+                  <div style="padding:10px 0;display:flex;flex-direction:column"><span style="font:600 26px/1 var(--font-heading)">{{ cur.nFields }}</span><span style="font-size:13px">relevés</span></div>
+                  <div style="padding:10px 12px;border-left:1px solid var(--color-divider);display:flex;flex-direction:column"><span style="font:600 26px/1 var(--font-heading)">{{ cur.nTouched }}</span><span style="font-size:13px">saisis</span></div>
+                  <div style="padding:10px 12px;border-left:1px solid var(--color-divider);display:flex;flex-direction:column"><span style="font:600 26px/1 var(--font-heading)">{{ cur.nOut }}</span><span style="font-size:13px">hors zone</span></div>
+                </div>
+                <button class="btn btn-primary" onClick="{{ goFiche }}" style="min-height:58px;font-size:20px;gap:10px"><sa-i n="clipboard" s="24"></sa-i>Ouvrir la fiche technique</button>
+                <button class="btn btn-secondary" onClick="{{ depunch }}" style="min-height:52px;font-size:18px;gap:10px"><sa-i n="logout" s="22"></sa-i>Retour à la tournée</button>
+              </div>
+            </sc-if>
+            <sc-if value="{{ noPunch }}">
+              <div class="blueprint" style="padding:18px;display:flex;flex-direction:column;gap:12px">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div style="font-size:15px">Prochain arrêt de la tournée</div>
+                <div style="font:600 28px/1.05 var(--font-heading)">{{ nextJob.nom }}</div>
+                <div style="font-size:15px;display:flex;align-items:center;gap:6px"><sa-i n="pin" s="16"></sa-i><span>Prochain arrêt · {{ nextJob.h }} · {{ nextJob.ville }}</span></div>
+                <button class="btn btn-primary" onClick="{{ nextJob.punch }}" style="min-height:58px;font-size:20px;gap:10px"><sa-i n="clipboard" s="24"></sa-i>Ouvrir la fiche</button><button class="btn btn-secondary" onClick="{{ nextJob.punchHere }}" style="min-height:52px;font-size:18px;gap:10px"><sa-i n="login" s="22"></sa-i>Puncher ici</button>
+              </div>
+            </sc-if>
+
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <h3 style="margin:0;font-size:24px">Tournée</h3><sc-if value="{{ emptyDay }}"><div style="padding:4px 0 12px;font-size:17px;line-height:1.4">Aucun arrêt planifié pour vous aujourd’hui. Consultez le Planning ou appelez le bureau.</div></sc-if>
+
+              <div style="position:relative;display:flex;flex-direction:column">
+                <div style="position:absolute;left:15px;top:22px;bottom:22px;width:1px;background:var(--color-text)"></div>
+                <sc-for list="{{ jobs }}" as="j">
+                  <div style="display:flex;align-items:center;gap:14px;padding:10px 0;position:relative;border-bottom:1px solid var(--color-divider)">
+                    <div style="width:31px;height:31px;flex:none;display:flex;align-items:center;justify-content:center;box-sizing:border-box;border:1.5px solid var(--color-text);background:{{ j.nodeBg }};color:var(--color-bg);position:relative;z-index:1">
+                      <sc-if value="{{ j.isDone }}"><sa-i n="check" s="18" w="2.5"></sa-i></sc-if>
+                      <sc-if value="{{ j.isCur }}"><span style="width:9px;height:9px;background:var(--color-bg)"></span></sc-if>
+                    </div>
+                    <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;opacity:{{ j.op }}">
+                      <div style="display:flex;gap:8px;align-items:baseline"><span style="font:600 18px var(--font-heading)">{{ j.h }}</span><span style="font-size:13px">{{ j.typeCourt }}</span></div>
+                      <div style="font-size:16px;font-weight:{{ j.fw }};line-height:1.25">{{ j.nom }}</div>
+                    </div>
+                    <sc-if value="{{ j.canPunch }}">
+                      <button onClick="{{ j.punch }}" style="all:unset;cursor:pointer;min-width:64px;height:48px;display:flex;align-items:center;justify-content:center;border:1px solid var(--color-divider);font:600 16px var(--font-heading)" data-hv="1">Fiche</button>
+                    </sc-if>
+                    <sc-if value="{{ j.isCur }}"><span style="font:600 15px var(--font-heading);color:var(--color-accent-700)">En cours</span></sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--color-divider);border:1px solid var(--color-divider)">
+              <button onClick="{{ goLog }}" style="all:unset;cursor:pointer;background:var(--color-bg);padding:16px;min-height:96px;display:flex;flex-direction:column;justify-content:space-between" data-hv="2"><sa-i n="truck" s="28"></sa-i><span style="font:600 20px/1.1 var(--font-heading)">Logistique</span></button>
+              <button onClick="{{ goHiv }}" style="all:unset;cursor:pointer;background:var(--color-bg);padding:16px;min-height:96px;display:flex;flex-direction:column;justify-content:space-between" data-hv="3"><sa-i n="snow" s="28"></sa-i><span style="font:600 20px/1.1 var(--font-heading)">Hivernage <span style="font-weight:400">Bientôt</span></span></button>
+              <button onClick="{{ goDemandes }}" style="all:unset;cursor:pointer;background:var(--color-bg);padding:16px;min-height:96px;display:flex;flex-direction:column;justify-content:space-between" data-hv="4"><sa-i n="message" s="28"></sa-i><span style="font:600 20px/1.1 var(--font-heading)">Demande</span></button>
+              <a href="tel:{{ bureauTel }}" style="text-decoration:none;color:inherit;background:var(--color-bg);padding:16px;min-height:96px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between" data-hv="5"><sa-i n="phone" s="28"></sa-i><span style="font:600 20px/1.1 var(--font-heading)">Appeler le bureau</span></a>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ═════ FICHE TECHNIQUE ═════ -->
+        <sc-if value="{{ isFicheEmpty }}">
+          <div style="padding:40px 24px;display:flex;flex-direction:column;gap:16px;align-items:flex-start">
+            <sa-i n="clipboard" s="40"></sa-i>
+            <h1 style="margin:0;font-size:34px;line-height:1.05">Aucun site punché</h1>
+            <p style="margin:0;font-size:17px">La fiche technique s’ouvre dès que vous punchez sur un site. Ses champs viennent du contrat de ce bassin.</p>
+            <button class="btn btn-primary" onClick="{{ goToday }}" style="min-height:56px;font-size:19px;padding:0 20px">Voir la tournée</button>
+          </div>
+        </sc-if>
+        <sc-if value="{{ isFiche }}">
+          <div style="display:flex;flex-direction:column">
+            <div style="padding:20px 20px 16px;display:flex;flex-direction:column;gap:6px;border-bottom:1px solid var(--color-divider)">
+              <div style="font-size:14px;display:flex;align-items:center;gap:6px;color:var(--color-accent-700)"><sa-i n="pin" s="15"></sa-i><span>{{ punchShort }} · {{ cur.ville }}</span></div>
+              <h1 style="margin:0;font-size:34px;line-height:1;text-wrap:balance">{{ cur.nom }}</h1>
+              <div style="font-size:15px">{{ cur.typeLabel }} · {{ cur.bassin }}</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">
+                <sc-if value="{{ cur.hasContrat }}"><span class="tag tag-outline" style="font-size:13px;padding:4px 10px;display:inline-block;white-space:nowrap">Contrat {{ cur.contrat }}</span></sc-if>
+                <span class="tag tag-neutral" style="font-size:13px;padding:4px 10px;display:inline-block;white-space:nowrap">{{ cur.norme }}</span>
+              </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-bottom:1px solid var(--color-divider)">
+              <div style="padding:12px 20px;display:flex;flex-direction:column"><span style="font:600 28px/1 var(--font-heading)">{{ cur.nTouched }}/{{ cur.nFields }}</span><span style="font-size:13px">saisis</span></div>
+              <div style="padding:12px 14px;border-left:1px solid var(--color-divider);display:flex;flex-direction:column;background:{{ cur.outBg }};color:{{ cur.outFg }}"><span style="font:600 28px/1 var(--font-heading)">{{ cur.nOut }}</span><span style="font-size:13px">hors zone</span></div>
+              <div style="padding:12px 14px;border-left:1px solid var(--color-divider);display:flex;flex-direction:column"><span style="font:600 28px/1 var(--font-heading)">{{ cur.nChecks }}/{{ cur.nChecksTotal }}</span><span style="font-size:13px">vérifs</span></div>
+            </div>
+
+            <div style="padding:22px 20px 6px;display:flex;align-items:baseline;justify-content:space-between"><h3 style="margin:0;font-size:24px">Relevés</h3><span style="font-size:13px">Zones du contrat {{ cur.contrat }}</span></div>
+            <sc-for list="{{ fields }}" as="f">
+              <div style="padding:14px 20px 16px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <sa-i n="{{ f.icon }}" s="20"></sa-i>
+                  <span style="font-size:17px;font-weight:500;flex:1;min-width:0">{{ f.label }}</span>
+                  <sc-if value="{{ f.pending }}"><span style="font-size:13px;padding:4px 8px;border:1px dashed var(--color-divider);white-space:nowrap">À saisir</span></sc-if>
+                  <sc-if value="{{ f.ok }}"><span style="font-size:13px;padding:4px 8px;border:1px solid var(--color-accent);color:var(--color-accent-700);display:flex;align-items:center;gap:4px;white-space:nowrap"><sa-i n="check" s="14" w="2"></sa-i>Dans la zone</span></sc-if>
+                  <sc-if value="{{ f.bad }}"><span style="font-size:13px;padding:4px 8px;background:var(--color-accent-900);color:var(--color-bg);display:flex;align-items:center;gap:4px;font-weight:500"><sa-i n="alert" s="14" w="2"></sa-i>{{ f.badTxt }}</span></sc-if>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div style="flex:1;min-width:0;display:flex;align-items:baseline;gap:6px;color:{{ f.valColor }}">
+                    <span style="font:600 52px/0.9 var(--font-heading);letter-spacing:-0.02em">{{ f.val }}</span><span style="font-size:16px">{{ f.unit }}</span>
+                  </div>
+                  <button onClick="{{ f.minus }}" aria-label="Diminuer" style="all:unset;cursor:pointer;width:58px;height:58px;display:flex;align-items:center;justify-content:center;border:1px solid var(--color-divider)" data-ac="6"><sa-i n="minus" s="28" w="2"></sa-i></button>
+                  <button onClick="{{ f.plus }}" aria-label="Augmenter" style="all:unset;cursor:pointer;width:58px;height:58px;display:flex;align-items:center;justify-content:center;border:1px solid var(--color-divider)" data-ac="7"><sa-i n="plus" s="28" w="2"></sa-i></button>
+                </div>
+                <sc-if value="{{ f.isRange }}">
+                  <div style="display:flex;flex-direction:column;gap:4px">
+                    <div onPointerDown="{{ f.onRuler }}" onPointerMove="{{ f.onRuler }}" style="position:relative;height:44px;touch-action:none;cursor:pointer;border-left:1px solid var(--color-text);border-right:1px solid var(--color-text)">
+                      <div style="position:absolute;left:0;right:0;bottom:0;height:10px;background-image:repeating-linear-gradient(90deg,var(--color-text) 0 1px,transparent 1px 10%);opacity:0.6"></div>
+                      <div style="position:absolute;left:0;right:0;bottom:0;height:1px;background:var(--color-text)"></div>
+                      <div style="position:absolute;top:6px;bottom:10px;left:{{ f.loPct }}%;width:{{ f.bandW }}%;background:repeating-linear-gradient(135deg,var(--color-accent-300) 0 1.5px,transparent 1.5px 6px),var(--color-accent-100);border-left:1.5px solid var(--color-accent-700);border-right:1.5px solid var(--color-accent-700);box-sizing:border-box"></div>
+                      <div style="position:absolute;top:0;bottom:0;left:{{ f.pct }}%;width:3px;margin-left:-1.5px;background:var(--color-text)"><div style="position:absolute;top:0;left:-5px;width:13px;height:9px;background:var(--color-text)"></div></div>
+                    </div>
+                    <div style="position:relative;height:18px;font-size:13px">
+                      <span style="position:absolute;left:0">{{ f.minTxt }}</span>
+                      <span style="position:absolute;left:{{ f.loPct }}%;transform:translateX(-50%);font-weight:600;color:var(--color-accent-800)">{{ f.loTxt }}</span>
+                      <span style="position:absolute;left:{{ f.hiPct }}%;transform:translateX(-50%);font-weight:600;color:var(--color-accent-800)">{{ f.hiTxt }}</span>
+                      <span style="position:absolute;right:0">{{ f.maxTxt }}</span>
+                    </div>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ f.isCount }}"><div style="font-size:14px">Zone du contrat : {{ f.zoneTxt }} {{ f.unit }}</div></sc-if>
+                <div style="font-size:13px;color:var(--color-neutral-700)">Dernier relevé : {{ f.lastTxt }}</div>
+              </div>
+            </sc-for>
+
+            <div style="padding:26px 20px 8px"><h3 style="margin:0;font-size:24px">Vérifications</h3></div>
+            <sc-for list="{{ checks }}" as="c">
+              <button onClick="{{ c.toggle }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:14px;padding:12px 20px;min-height:60px;box-sizing:border-box;border-bottom:1px solid var(--color-divider)" data-ac="8">
+                <span style="width:32px;height:32px;flex:none;box-sizing:border-box;border:1.5px solid var(--color-text);background:{{ c.box }};color:var(--color-bg);display:flex;align-items:center;justify-content:center"><sc-if value="{{ c.on }}"><sa-i n="check" s="22" w="2.5"></sa-i></sc-if></span>
+                <span style="font-size:17px;line-height:1.3">{{ c.label }}</span>
+              </button>
+            </sc-for>
+
+            <div style="padding:26px 20px 8px"><h3 style="margin:0;font-size:24px">Produits ajoutés</h3></div>
+            <sc-for list="{{ prods }}" as="p">
+              <div style="display:flex;align-items:center;gap:10px;padding:10px 20px;border-bottom:1px solid var(--color-divider)">
+                <div style="flex:1;min-width:0;font-size:16px;line-height:1.25">{{ p.nom }}</div>
+                <button onClick="{{ p.minus }}" aria-label="Moins" style="all:unset;cursor:pointer;width:52px;height:52px;display:flex;align-items:center;justify-content:center;border:1px solid var(--color-divider)" data-ac="9"><sa-i n="minus" s="24" w="2"></sa-i></button>
+                <div style="width:66px;text-align:center;display:flex;flex-direction:column;line-height:1"><span style="font:600 26px var(--font-heading)">{{ p.qty }}</span><span style="font-size:12px">{{ p.unite }}</span></div>
+                <button onClick="{{ p.plus }}" aria-label="Plus" style="all:unset;cursor:pointer;width:52px;height:52px;display:flex;align-items:center;justify-content:center;border:1px solid var(--color-divider)" data-ac="10"><sa-i n="plus" s="24" w="2"></sa-i></button>
+              </div>
+            </sc-for>
+
+            <div style="padding:26px 20px 20px;display:flex;flex-direction:column;gap:12px">
+              <h3 style="margin:0;font-size:24px">Photo et notes</h3>
+              <button onClick="{{ takePhoto }}" class="blueprint" style="all:unset;cursor:pointer;position:relative;border:1px solid var(--color-divider);height:150px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:{{ photoBg }}">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <sa-i n="camera" s="34"></sa-i>
+                <span style="font:600 19px var(--font-heading);background:var(--color-bg);padding:0 6px">{{ photoTitle }}</span>
+                <span style="font-size:14px;background:var(--color-bg);padding:0 6px">{{ photoSub }}</span>
+              </button>
+              <textarea class="input" value="{{ noteTxt }}" onChange="{{ onNote }}" placeholder="Note pour le bureau ou le prochain technicien" style="min-height:96px;font-size:17px"></textarea>
+            </div>
+
+            <div style="position:sticky;bottom:0;padding:14px 20px 16px;background:var(--color-bg);border-top:1px solid var(--color-divider);display:flex;flex-direction:column;gap:8px">
+              <sc-if value="{{ cur.notValidated }}">
+                <sc-if value="{{ cur.hasOut }}"><div style="font-size:14px;display:flex;align-items:center;gap:6px"><sa-i n="alert" s="16"></sa-i><span>{{ cur.nOut }} valeur(s) hors zone — signalez-le au bureau.</span></div></sc-if>
+                <button class="btn btn-primary" onClick="{{ validate }}" style="min-height:60px;font-size:21px;width:100%">Valider la fiche</button>
+              </sc-if>
+              <sc-if value="{{ cur.isValidated }}">
+                <div style="display:flex;align-items:center;gap:8px;font-size:15px"><sa-i n="check" s="20" w="2"></sa-i><span>Fiche validée à {{ cur.validAt }} · {{ cur.syncTxt }}</span></div>
+                <button class="btn btn-primary" onClick="{{ depunch }}" style="min-height:60px;font-size:21px;width:100%;gap:10px"><sa-i n="logout" s="24"></sa-i>Retour à la tournée</button>
+              </sc-if>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ═════ LOGISTIQUE ═════ -->
+        <sc-if value="{{ isTemps }}"><div style="padding:20px;display:flex;flex-direction:column;gap:20px"><h1 style="margin:0;font-size:38px;line-height:1">Temps</h1><div class="blueprint" style="padding:18px;display:flex;flex-direction:column;gap:12px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><div style="display:flex;align-items:center;gap:8px;font-size:15px"><span style="width:10px;height:10px;background:var(--color-accent);flex:none"></span><span>{{ pn.statusTxt }}</span></div><div style="font:600 26px/1.05 var(--font-heading)">{{ pn.title }}</div><div style="font-size:15px">Aujourd’hui {{ pn.dayTotal }} · Semaine {{ pn.weekTotal }}</div><sc-if value="{{ pn.active }}"><button class="btn btn-secondary" onClick="{{ pn.openStart }}" style="min-height:52px;font-size:18px;gap:10px"><sa-i n="login" s="22"></sa-i>Changer de site</button><button class="btn btn-primary" onClick="{{ pn.openStop }}" style="min-height:58px;font-size:20px;gap:10px"><sa-i n="logout" s="22"></sa-i>Terminer la journée</button></sc-if><sc-if value="{{ pn.idle }}"><button class="btn btn-primary" onClick="{{ pn.openStart }}" style="min-height:58px;font-size:20px;gap:10px"><sa-i n="login" s="22"></sa-i>Démarrer un punch</button></sc-if><sc-if value="{{ pn.hasPending }}"><div style="font-size:14px">{{ pn.pendingTxt }}</div></sc-if></div>
+<div style="display:flex;flex-direction:column"><h3 style="margin:0 0 6px;font-size:24px">Cette semaine</h3><sc-for list="{{ pn.days }}" as="d"><div style="border-top:1px solid var(--color-divider);padding:10px 8px;background:{{ d.bg }}"><div style="display:flex;justify-content:space-between;font:600 20px var(--font-heading)"><span>{{ d.label }}</span><span>{{ d.total }}</span></div><sc-for list="{{ d.tasks }}" as="t"><div style="display:flex;gap:10px;font-size:15px;padding:3px 0"><span style="flex:none;min-width:118px">{{ t.h }}</span><span style="flex:1;min-width:0">{{ t.lieu }} <b>{{ t.pend }}</b></span><span style="flex:none">{{ t.dur }}</span></div></sc-for></div></sc-for></div><div style="font-size:14px;line-height:1.4">Pour corriger ou supprimer un punch, ouvrez SA Platform.</div></div></sc-if>
+<sc-if value="{{ isPunchForm }}"><div style="padding:20px;display:flex;flex-direction:column;gap:16px"><h1 style="margin:0;font-size:34px;line-height:1.05">Démarrer un punch</h1><sc-if value="{{ pf.willClose }}"><div style="font-size:15px;border:1px solid var(--color-divider);padding:10px;line-height:1.35">{{ pf.closeTxt }}</div></sc-if><sc-if value="{{ pf.hasJobs }}"><div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:15px">Depuis la tournée</div><sc-for list="{{ pf.jobs }}" as="j"><button onClick="{{ j.go }}" style="all:unset;cursor:pointer;padding:12px;border:1px solid var(--color-divider);background:{{ j.bg }};color:{{ j.fg }};display:flex;justify-content:space-between;font-size:17px"><span>{{ j.nom }}</span><span>{{ j.h }}</span></button></sc-for></div></sc-if><div class="field"><label style="font-size:15px">Chercher un site</label><input class="input" value="{{ pf.q }}" onInput="{{ pf.onQ }}" placeholder="Nom du site…" style="min-height:52px;font-size:18px"></div><div style="display:flex;flex-direction:column;border:1px solid var(--color-divider);max-height:260px;overflow-y:auto"><sc-for list="{{ pf.sites }}" as="s"><button onClick="{{ s.go }}" style="all:unset;cursor:pointer;padding:12px;border-bottom:1px solid var(--color-divider);background:{{ s.bg }};color:{{ s.fg }};display:flex;flex-direction:column"><span style="font-size:17px">{{ s.nom }}</span><span style="font-size:13px">{{ s.ville }}</span></button></sc-for></div><div class="field"><label style="font-size:15px">Lieu (ou tapez un autre lieu)</label><input class="input" value="{{ pf.lieu }}" onInput="{{ pf.onLieu }}" placeholder="Site ou lieu" style="min-height:52px;font-size:18px"></div><div class="field"><label style="font-size:15px">N° ODT (optionnel)</label><input class="input" value="{{ pf.odt }}" onInput="{{ pf.onOdt }}" style="min-height:52px;font-size:18px"></div><div class="field"><label style="font-size:15px">Détail (optionnel)</label><textarea class="input" value="{{ pf.detail }}" onInput="{{ pf.onDetail }}" style="min-height:70px;font-size:17px"></textarea></div><div class="field"><label style="font-size:15px">Km départ (optionnel)</label><input class="input" inputmode="decimal" value="{{ pf.km }}" onInput="{{ pf.onKm }}" style="min-height:52px;font-size:18px"></div><sc-if value="{{ pf.hasSource }}"><div style="font-size:15px">Lié à : {{ pf.sourceLabel }}</div></sc-if><button class="btn btn-primary" onClick="{{ pf.submit }}" style="min-height:58px;font-size:20px;gap:10px"><sa-i n="login" s="22"></sa-i>Démarrer le punch</button><button class="btn btn-secondary" onClick="{{ pf.cancel }}" style="min-height:52px;font-size:18px;gap:10px"><sa-i n="left" s="22"></sa-i>Annuler</button></div></sc-if>
+<sc-if value="{{ isStopForm }}"><div style="padding:20px;display:flex;flex-direction:column;gap:16px"><h1 style="margin:0;font-size:34px;line-height:1.05">Terminer la journée</h1><div class="blueprint" style="padding:18px;display:flex;flex-direction:column;gap:6px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><div style="font:600 34px/1 var(--font-heading)">{{ sf.total }}</div><div style="font-size:16px">{{ sf.nPunchs }} punch(s) · {{ sf.lieux }}</div></div><div class="field"><label style="font-size:15px">Km arrivée (optionnel)</label><input class="input" inputmode="decimal" value="{{ sf.km }}" onInput="{{ sf.onKm }}" style="min-height:52px;font-size:18px"></div><div style="font-size:15px;line-height:1.4">Le punch actif sera terminé maintenant et la journée enregistrée.</div><button class="btn btn-primary" onClick="{{ sf.submit }}" style="min-height:58px;font-size:20px;gap:10px"><sa-i n="check" s="22"></sa-i>Valider la journée</button><button class="btn btn-secondary" onClick="{{ sf.cancel }}" style="min-height:52px;font-size:18px;gap:10px"><sa-i n="left" s="22"></sa-i>Annuler</button></div></sc-if>
+<sc-if value="{{ isSoon }}"><div style="padding:24px 20px;display:flex;flex-direction:column;gap:16px">
+<h1 style="margin:0;font-size:38px;line-height:1">{{ soonTitle }}</h1>
+<p style="margin:0;font-size:17px;line-height:1.45">Cette section arrive bientôt dans sa-terrain. En attendant, elle reste disponible dans SA Platform.</p>
+<a class="btn btn-primary" href="/" style="min-height:58px;font-size:20px;text-decoration:none;display:flex;align-items:center;justify-content:center">Ouvrir SA Platform</a>
+<a class="btn btn-secondary" href="tel:{{ bureauTel }}" style="min-height:58px;font-size:20px;text-decoration:none;display:flex;align-items:center;justify-content:center">Appeler le bureau</a>
+<button class="btn btn-secondary" onClick="{{ goToday }}" style="min-height:58px;font-size:20px">Retour à la tournée</button>
+</div></sc-if>
+<sc-if value="{{ isLog }}">
+          <div style="padding:12px 20px 24px;display:flex;flex-direction:column;gap:18px">
+            <button onClick="{{ goToday }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:4px;height:44px;font-size:16px;color:var(--color-accent-700)"><sa-i n="left" s="22"></sa-i>Aujourd’hui</button>
+            <h1 style="margin:0;font-size:38px;line-height:1">Logistique</h1>
+            <div style="display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--color-divider)">
+              <button onClick="{{ tabSortie }}" style="all:unset;cursor:pointer;text-align:center;height:52px;font:600 18px var(--font-heading);background:{{ sortieTabBg }};color:{{ sortieTabFg }}">Sortie d’inventaire</button>
+              <button onClick="{{ tabBon }}" style="all:unset;cursor:pointer;text-align:center;height:52px;font:600 18px var(--font-heading);border-left:1px solid var(--color-divider);background:{{ bonTabBg }};color:{{ bonTabFg }}">Bon de livraison</button>
+            </div>
+            <sc-if value="{{ isSortie }}">
+              <div style="display:flex;flex-direction:column;gap:0">
+                <div style="font-size:15px;padding-bottom:10px">Camion 07 → {{ logSite }}</div>
+                <sc-for list="{{ inventaire }}" as="p">
+                  <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--color-divider)">
+                    <div style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:16px;line-height:1.25">{{ p.nom }}</span><span style="font-size:13px">En camion : {{ p.reste }} {{ p.unite }}</span></div>
+                    <button onClick="{{ p.minus }}" aria-label="Moins" style="all:unset;cursor:pointer;width:50px;height:50px;display:flex;align-items:center;justify-content:center;border:1px solid var(--color-divider)"><sa-i n="minus" s="22" w="2"></sa-i></button>
+                    <span style="width:44px;text-align:center;font:600 24px var(--font-heading)">{{ p.qty }}</span>
+                    <button onClick="{{ p.plus }}" aria-label="Plus" style="all:unset;cursor:pointer;width:50px;height:50px;display:flex;align-items:center;justify-content:center;border:1px solid var(--color-divider)"><sa-i n="plus" s="22" w="2"></sa-i></button>
+                  </div>
+                </sc-for>
+                <button class="btn btn-primary" onClick="{{ saveSortie }}" style="min-height:58px;font-size:20px;margin-top:14px"><span>Enregistrer la sortie · {{ sortieCount }} article(s)</span></button>
+              </div>
+            </sc-if>
+            <sc-if value="{{ isBon }}">
+              <div style="display:flex;flex-direction:column;gap:14px">
+                <div style="display:flex;flex-direction:column;gap:2px;border-bottom:1px solid var(--color-divider);padding-bottom:12px">
+                  <span style="font:600 24px var(--font-heading)">BL-26-0932</span>
+                  <span style="font-size:15px">{{ logClient }} · {{ logSite }}</span>
+                </div>
+                <sc-for list="{{ bonItems }}" as="b">
+                  <div style="display:flex;justify-content:space-between;font-size:16px;padding:4px 0"><span>{{ b.nom }}</span><span style="font:600 18px var(--font-heading)">{{ b.qty }} {{ b.unite }}</span></div>
+                </sc-for>
+                <div class="field"><label style="font-size:14px">Nom du signataire</label><input class="input" value="{{ signer }}" onChange="{{ onSigner }}" placeholder="Ex. responsable de la piscine" style="min-height:52px;font-size:17px"></div>
+                <div class="blueprint" style="position:relative;border:1px solid var(--color-divider);height:170px">
+                  <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                  <canvas ref="{{ sigRef }}" style="position:absolute;inset:0;width:100%;height:100%;touch-action:none;color:var(--color-text)"></canvas>
+                  <div style="position:absolute;left:16px;right:16px;bottom:34px;border-bottom:1px solid var(--color-text);pointer-events:none"></div>
+                  <span style="position:absolute;left:16px;bottom:10px;font-size:13px;pointer-events:none">Signez ici avec le doigt</span>
+                </div>
+                <sc-if value="{{ notSigned }}">
+                  <div style="display:grid;grid-template-columns:1fr 2fr;gap:10px">
+                    <button class="btn btn-secondary" onClick="{{ clearSig }}" style="min-height:56px;font-size:18px">Effacer</button>
+                    <button class="btn btn-primary" onClick="{{ confirmSig }}" style="min-height:56px;font-size:18px">Confirmer la signature</button>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ isSigned }}">
+                  <div style="padding:14px;border:1px solid var(--color-accent);display:flex;gap:10px;align-items:center;font-size:16px"><sa-i n="check" s="22" w="2"></sa-i><span>Signé par {{ signedBy }} à {{ signedAt }} — copie envoyée au client</span></div>
+                </sc-if>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <!-- ═════ HIVERNAGE ═════ -->
+        <sc-if value="{{ isHiv }}">
+          <div style="padding:12px 20px 24px;display:flex;flex-direction:column;gap:18px">
+            <button onClick="{{ goToday }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:4px;height:44px;font-size:16px;color:var(--color-accent-700)"><sa-i n="left" s="22"></sa-i>Aujourd’hui</button>
+            <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px">
+              <h1 style="margin:0;font-size:38px;line-height:1">Hivernage</h1>
+              <div style="font:600 34px/1 var(--font-heading)">{{ hivDoneCount }}<span style="font-weight:400;font-size:22px"> / 33</span></div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(11,minmax(0,1fr));gap:3px">
+              <sc-for list="{{ hivCells }}" as="h">
+                <div style="aspect-ratio:1;box-sizing:border-box;border:1px solid var(--color-text);background:{{ h.bg }}"></div>
+              </sc-for>
+            </div>
+            <div style="display:flex;gap:16px;font-size:13px;flex-wrap:wrap">
+              <span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;background:var(--color-accent-700)"></span>Fait</span>
+              <span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;box-sizing:border-box;border:1px solid var(--color-text);background:repeating-linear-gradient(135deg,var(--color-text) 0 1px,transparent 1px 4px)"></span>Cette semaine</span>
+              <span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;box-sizing:border-box;border:1px solid var(--color-text)"></span>À planifier</span>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--color-divider)">
+              <sc-for list="{{ hivFilters }}" as="o">
+                <button onClick="{{ o.go }}" style="all:unset;cursor:pointer;text-align:center;height:50px;font:600 17px var(--font-heading);border-left:{{ o.bl }};background:{{ o.bg }};color:{{ o.fg }}">{{ o.label }}</button>
+              </sc-for>
+            </div>
+            <div style="display:flex;flex-direction:column">
+              <sc-for list="{{ hivList }}" as="h">
+                <button onClick="{{ h.open }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:12px;padding:12px 0;min-height:60px;box-sizing:border-box;border-bottom:1px solid var(--color-divider)">
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:17px;line-height:1.25">{{ h.nom }}</span><span style="font-size:14px">{{ h.ville }} · {{ h.statutTxt }}</span></div>
+                  <sa-i n="{{ h.icon }}" s="22"></sa-i>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isHivForm }}">
+          <div style="padding:12px 0 0;display:flex;flex-direction:column">
+            <button onClick="{{ goHiv }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:4px;height:44px;padding:0 20px;font-size:16px;color:var(--color-accent-700)"><sa-i n="left" s="22"></sa-i>Hivernage</button>
+            <div style="padding:6px 20px 16px;display:flex;flex-direction:column;gap:4px;border-bottom:1px solid var(--color-divider)">
+              <div style="font-size:14px">Rapport de pré-hivernage</div>
+              <h1 style="margin:0;font-size:32px;line-height:1.02">{{ hivSite.nom }}</h1>
+              <div style="font-size:15px">{{ hivSite.ville }} · {{ hivProgress }} étapes sur {{ hivTotal }}</div>
+            </div>
+            <sc-for list="{{ hivChecks }}" as="c">
+              <button onClick="{{ c.toggle }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:14px;padding:12px 20px;min-height:62px;box-sizing:border-box;border-bottom:1px solid var(--color-divider)" data-ac="11">
+                <span style="width:32px;height:32px;flex:none;box-sizing:border-box;border:1.5px solid var(--color-text);background:{{ c.box }};color:var(--color-bg);display:flex;align-items:center;justify-content:center"><sc-if value="{{ c.on }}"><sa-i n="check" s="22" w="2.5"></sa-i></sc-if></span>
+                <span style="font-size:17px;line-height:1.3">{{ c.label }}</span>
+              </button>
+            </sc-for>
+            <div style="display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--color-divider)">
+              <div style="flex:1;font-size:17px">Antigel ajouté</div>
+              <button onClick="{{ antigelMinus }}" aria-label="Moins" style="all:unset;cursor:pointer;width:52px;height:52px;display:flex;align-items:center;justify-content:center;border:1px solid var(--color-divider)"><sa-i n="minus" s="24" w="2"></sa-i></button>
+              <div style="width:60px;text-align:center;line-height:1;display:flex;flex-direction:column"><span style="font:600 26px var(--font-heading)">{{ hivAntigel }}</span><span style="font-size:12px">L</span></div>
+              <button onClick="{{ antigelPlus }}" aria-label="Plus" style="all:unset;cursor:pointer;width:52px;height:52px;display:flex;align-items:center;justify-content:center;border:1px solid var(--color-divider)"><sa-i n="plus" s="24" w="2"></sa-i></button>
+            </div>
+            <div style="padding:18px 20px;display:flex;flex-direction:column;gap:10px">
+              <div style="font-size:17px;font-weight:500">État général de l’installation</div>
+              <div style="display:flex;flex-direction:column;gap:1px;background:var(--color-divider);border:1px solid var(--color-divider)">
+                <sc-for list="{{ hivEtats }}" as="e">
+                  <button onClick="{{ e.go }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:12px;padding:0 16px;height:56px;font-size:17px;background:{{ e.bg }};color:{{ e.fg }}"><span style="width:18px;height:18px;border-radius:50%;box-sizing:border-box;border:1.5px solid currentColor;background:{{ e.dot }}"></span>{{ e.label }}</button>
+                </sc-for>
+              </div>
+              <textarea class="input" placeholder="Bris, pièces à commander, remarques" style="min-height:90px;font-size:17px;margin-top:6px"></textarea>
+              <button class="btn btn-primary" onClick="{{ sendHiv }}" style="min-height:60px;font-size:21px;margin-top:6px">Envoyer le rapport</button>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ═════ DEMANDES ═════ -->
+        <sc-if value="{{ isDem }}">
+          <div style="padding:20px;display:flex;flex-direction:column;gap:20px">
+            <h1 style="margin:0;font-size:38px;line-height:1">Demandes</h1>
+            <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--color-divider);border:1px solid var(--color-divider)">
+              <sc-for list="{{ demTypes }}" as="t">
+                <button onClick="{{ t.go }}" style="all:unset;cursor:pointer;min-height:112px;padding:16px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;background:{{ t.bg }};color:{{ t.fg }}"><sa-i n="{{ t.icon }}" s="30"></sa-i><span style="display:flex;flex-direction:column"><span style="font:600 22px/1.05 var(--font-heading)">{{ t.label }}</span><span style="font-size:13px">{{ t.sub }}</span></span></button>
+              </sc-for>
+              <a href="tel:{{ bureauTel }}" style="text-decoration:none;color:inherit;min-height:112px;padding:16px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;background:var(--color-bg)"><sa-i n="phone" s="30"></sa-i><span style="display:flex;flex-direction:column"><span style="font:600 22px/1.05 var(--font-heading)">Appeler le bureau</span><span style="font-size:13px">819 562-0000</span></span></a>
+            </div>
+            <sc-if value="{{ hasComposer }}">
+              <div class="blueprint" style="padding:16px;display:flex;flex-direction:column;gap:12px">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div style="display:flex;align-items:center;justify-content:space-between"><span style="font:600 24px var(--font-heading)">{{ composer.label }}</span><button onClick="{{ closeComposer }}" aria-label="Fermer" style="all:unset;cursor:pointer;width:44px;height:44px;display:flex;align-items:center;justify-content:center"><sa-i n="x" s="24"></sa-i></button></div>
+                <sc-if value="{{ composer.urgent }}"><div style="padding:10px 12px;background:var(--color-accent-900);color:var(--color-bg);font-size:15px">Le répartiteur est avisé immédiatement et vous rappelle.</div></sc-if>
+                <div style="display:flex;flex-wrap:wrap;gap:8px">
+                  <sc-for list="{{ composer.chips }}" as="c">
+                    <button onClick="{{ c.go }}" style="all:unset;cursor:pointer;min-height:46px;padding:0 14px;display:flex;align-items:center;font-size:16px;box-sizing:border-box;border:1px solid var(--color-divider);background:{{ c.bg }};color:{{ c.fg }}">{{ c.label }}</button>
+                  </sc-for>
+                </div>
+                <textarea class="input" value="{{ demandeTxt }}" onChange="{{ onDemTxt }}" placeholder="Détails (optionnel)" style="min-height:80px;font-size:17px"></textarea>
+                <div style="font-size:14px;display:flex;gap:6px;align-items:center"><sa-i n="pin" s="16"></sa-i><span>Site joint : {{ composerSite }}</span></div>
+                <button class="btn btn-primary" onClick="{{ sendDemande }}" style="min-height:58px;font-size:20px;gap:10px"><sa-i n="send" s="22"></sa-i>Envoyer</button>
+              </div>
+            </sc-if>
+            <div style="display:flex;flex-direction:column">
+              <h3 style="margin:0 0 6px;font-size:24px">Mes demandes</h3>
+              <sc-for list="{{ demHist }}" as="d">
+                <div style="display:flex;gap:12px;padding:12px 0;border-top:1px solid var(--color-divider)">
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:13px">{{ d.type }} · {{ d.quand }}</span><span style="font-size:16px;line-height:1.3">{{ d.texte }}</span></div>
+                  <span style="align-self:flex-start;font-size:13px;padding:4px 8px;border:1px solid var(--color-divider);white-space:nowrap">{{ d.statut }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ═════ PLANNING ═════ -->
+        <sc-if value="{{ isPlan }}">
+          <div style="padding:20px;display:flex;flex-direction:column;gap:18px">
+            <h1 style="margin:0;font-size:38px;line-height:1">Planning</h1>
+            <div style="display:flex;gap:6px;overflow-x:auto;margin:0 -20px;padding:0 20px">
+              <sc-for list="{{ planDays }}" as="d">
+                <button onClick="{{ d.go }}" style="all:unset;cursor:pointer;flex:none;width:62px;height:66px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid var(--color-divider);background:{{ d.bg }};color:{{ d.fg }}"><span style="font-size:13px">{{ d.dow }}</span><span style="font:600 24px/1 var(--font-heading)">{{ d.num }}</span></button>
+              </sc-for>
+            </div>
+            <div style="font:600 20px var(--font-heading)">{{ planTitle }}</div>
+            <div style="display:flex;flex-direction:column">
+              <sc-for list="{{ planItems }}" as="p">
+                <div style="display:flex;gap:14px;padding:12px 0;border-top:1px solid var(--color-divider)">
+                  <span style="width:56px;flex:none;font:600 22px/1.1 var(--font-heading)">{{ p.h }}</span>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+                    <span style="font-size:17px;line-height:1.25;font-weight:500">{{ p.nom }}</span>
+                    <span style="font-size:14px">{{ p.tache }} · {{ p.ville }}</span>
+                    <sc-if value="{{ p.rec }}"><span style="align-self:flex-start;display:flex;align-items:center;gap:5px;font-size:13px;padding:3px 8px;border:1px solid var(--color-accent);color:var(--color-accent-700)"><sa-i n="repeat" s="14"></sa-i>{{ p.rec }}</span></sc-if>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
+              <h3 style="margin:0;font-size:24px">Mes visites récurrentes</h3>
+              <sc-for list="{{ recurrences }}" as="r">
+                <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--color-divider)">
+                  <sa-i n="repeat" s="20"></sa-i>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:16px;line-height:1.25">{{ r.nom }}</span><span style="font-size:14px">{{ r.rec }}</span></div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ═════ PROFIL ═════ -->
+        <sc-if value="{{ isProfil }}">
+          <div style="padding:20px;display:flex;flex-direction:column;gap:20px">
+            <div style="display:flex;align-items:center;gap:16px">
+              <div style="width:72px;height:72px;box-sizing:border-box;border:1.5px solid var(--color-text);display:flex;align-items:center;justify-content:center;font:600 30px var(--font-heading)">JR</div>
+              <div style="display:flex;flex-direction:column"><h1 style="margin:0;font-size:32px;line-height:1">{{ me.nom }}</h1><span style="font-size:15px">{{ me.role }}</span></div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--color-divider);border:1px solid var(--color-divider)">
+              <div style="background:var(--color-bg);padding:14px;display:flex;flex-direction:column"><span style="font:600 32px/1 var(--font-heading)">{{ myWeek }} h</span><span style="font-size:14px">Cette semaine</span></div>
+              <div style="background:var(--color-bg);padding:14px;display:flex;flex-direction:column"><span style="font:600 32px/1 var(--font-heading)">{{ jobCount }}</span><span style="font-size:14px">Arrêts aujourd’hui</span></div>
+            </div>
+            <div style="display:flex;flex-direction:column">
+              <div style="display:flex;justify-content:space-between;padding:14px 0;border-top:1px solid var(--color-divider);font-size:16px"><span>Département</span><span style="font-weight:500">{{ me.dept }}</span></div>
+              <div style="display:flex;justify-content:space-between;padding:14px 0;border-top:1px solid var(--color-divider);font-size:16px"><span>Téléphone</span><span style="font-weight:500">{{ me.tel }}</span></div>
+              <div style="display:flex;justify-content:space-between;padding:14px 0;border-top:1px solid var(--color-divider);font-size:16px"><span>Données hors-ligne</span><span style="font-weight:500">{{ queueLbl }}</span></div>
+              <button onClick="{{ toggleSun }}" style="all:unset;cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:10px 0;min-height:56px;box-sizing:border-box;border-top:1px solid var(--color-divider);font-size:16px"><span>Mode plein soleil</span>
+                <span style="width:56px;height:32px;box-sizing:border-box;border:1.5px solid var(--color-text);display:flex;padding:3px;justify-content:{{ sunJustify }};background:{{ sunTrack }}"><span style="width:22px;height:22px;background:{{ sunKnob }}"></span></span>
+              </button>
+              <button onClick="{{ toggleBig }}" style="all:unset;cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:10px 0;min-height:56px;box-sizing:border-box;border-top:1px solid var(--color-divider);border-bottom:1px solid var(--color-divider);font-size:16px"><span>Texte agrandi</span>
+                <span style="width:56px;height:32px;box-sizing:border-box;border:1.5px solid var(--color-text);display:flex;padding:3px;justify-content:{{ bigJustify }};background:{{ bigTrack }}"><span style="width:22px;height:22px;background:{{ bigKnob }}"></span></span>
+              </button>
+            </div>
+            <button onClick="{{ logout }}" class="btn btn-secondary" style="min-height:54px;font-size:18px;gap:10px"><sa-i n="logout" s="22"></sa-i>Se déconnecter</button>
+          </div>
+        </sc-if>
+      </div>
+
+      <sc-if value="{{ hasToast }}">
+        <div style="position:absolute;left:16px;right:16px;bottom:100px;z-index:30;padding:14px 16px;background:var(--color-text);color:var(--color-bg);font-size:16px;display:flex;gap:10px;align-items:center;box-shadow:var(--shadow-lg)"><sa-i n="check" s="20" w="2"></sa-i>{{ toast }}</div>
+      </sc-if>
+
+      <div style="flex:none;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));border-top:1px solid var(--color-text);padding-bottom:26px;background:var(--color-bg)">
+        <sc-for list="{{ tabs }}" as="t">
+          <button onClick="{{ t.go }}" style="all:unset;cursor:pointer;height:62px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;position:relative;color:{{ t.fg }};box-shadow:{{ t.bar }};padding:0 1px">
+            <sa-i n="{{ t.icon }}" s="24"></sa-i><span style="font-size:11px;font-weight:{{ t.fw }}">{{ t.label }}</span>
+            <sc-if value="{{ t.dot }}"><span style="position:absolute;top:9px;right:calc(50% - 20px);width:9px;height:9px;background:var(--color-accent)"></span></sc-if>
+          </button>
+        </sc-for>
+      </div>
+    </div>

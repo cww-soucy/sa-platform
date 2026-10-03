@@ -408,17 +408,6 @@ button{font-family:inherit}
           </div>
         </sc-if>
 
-        <!-- ═════ FICHE TECHNIQUE — ENTREPOT / BUREAU ═════ -->
-        <sc-if value="{{ isFicheEntrepot }}">
-          <div style="padding:24px 20px;display:flex;flex-direction:column;gap:16px">
-            <h1 style="margin:0;font-size:34px;line-height:1.05">{{ entrepotNom }}</h1>
-            <p style="margin:0;font-size:16px;line-height:1.4">Pas de relevé technique ici — ce n’est pas un bassin. Voici ce qu’il y a à faire à l’entrepôt :</p>
-            <button class="btn btn-primary" onClick="{{ goLog }}" style="min-height:58px;font-size:20px;gap:10px"><sa-i n="truck" s="22"></sa-i>Logistique — sorties, bons de livraison</button>
-            <button class="btn btn-secondary" onClick="{{ goDemandes }}" style="min-height:52px;font-size:18px;gap:10px"><sa-i n="message" s="20"></sa-i>Faire une demande</button>
-            <button class="btn btn-secondary" onClick="{{ goToday }}" style="min-height:52px;font-size:18px">Retour à la tournée</button>
-          </div>
-        </sc-if>
-
         <!-- ═════ FICHE TECHNIQUE ═════ -->
         <sc-if value="{{ isFicheEmpty }}">
           <div style="padding:40px 24px;display:flex;flex-direction:column;gap:16px;align-items:flex-start">
@@ -1007,13 +996,7 @@ function Comp(user){
 }
 Comp.prototype.persist=function(){var s=this.state,keep={vals:s.vals,touched:s.touched,checks:s.checks,prods:s.prods,photo:s.photo,notes:s.notes,validated:s.validated,sync:s.sync,photoData:s.photoData,hivChecks:s.hivChecks,hivAntigel:s.hivAntigel,hivEtat:s.hivEtat,hivNote:s.hivNote,hivSent:s.hivSent};
   if(!jset('sa_terrain_state_'+this.user.id+'_'+this.today,keep)){keep.photoData={};jset('sa_terrain_state_'+this.user.id+'_'+this.today,keep);}};
-Comp.prototype.setState=function(p){var self=this,n=typeof p==='function'?p(this.state):p;this.state=Object.assign({},this.state,n);this.update();
-  /* L'écran se met à jour tout de suite ; l'écriture sur le disque (localStorage) est groupée pour ne pas
-     ralentir un appui rapide sur + / − (surtout quand une photo est déjà en mémoire — jusqu'à 280 Ko à
-     réécrire à chaque fois sinon). Rien n'est perdu : persist() s'exécute 150 ms après le dernier changement,
-     et aussi immédiatement avant que la page se ferme ou passe en arrière-plan. */
-  clearTimeout(this._persistT);this._persistT=setTimeout(function(){self.persist();},150);};
-Comp.prototype.flushPersist=function(){clearTimeout(this._persistT);this.persist();};
+Comp.prototype.setState=function(p){var n=typeof p==='function'?p(this.state):p;this.state=Object.assign({},this.state,n);this.persist();this.update();};
 Comp.prototype.flash=function(t){var s=this;clearTimeout(this._tt);this.state.toast=t;this.update();this._tt=setTimeout(function(){s.state.toast=null;s.update();},2600);};
 Comp.prototype.go=function(s){this.setState({screen:s});var c=this.contentRef.current;if(c)c.scrollTop=0;if(s==='logistique')this.loadLog();if(s==='hivernage')this.loadHiv();};
 Comp.prototype.applyTheme=function(){var el=this.rootRef.current;if(!el)return;
@@ -1220,9 +1203,7 @@ Comp.prototype.vals=function(){
     return Object.assign({},j,{nom:s.nom,ville:s.ville,typeCourt:TY(s.type).court,isDone:isDone,isCur:isCur,canPunch:!isDone&&!isCur,nodeBg:isDone?'var(--color-accent-700)':isCur?'var(--color-text)':'var(--color-bg)',op:isDone?0.6:1,fw:isCur?600:400,punch:function(){self.open(j.id);}});});
   var next=jobs.filter(function(j){return j.canPunch;})[0];
   var cur={},fields=[],checks=[],prods=[],ph=null;
-  var isEntrepot=false,entrepotNom='';
-  if(cj){var s0=siteById(cj.site)||pseudoSite(cj.site,'');if(isBureau(s0.nom)){isEntrepot=true;entrepotNom=s0.nom;}}
-  if(cj&&!isEntrepot){var s=siteById(cj.site)||pseudoSite(cj.site,''),T=TY(s.type),sid=s.id,vals=st.vals[sid]||{},tch=st.touched[sid]||{},lastRow=self.last[sid];
+  if(cj){var s=siteById(cj.site)||pseudoSite(cj.site,''),T=TY(s.type),sid=s.id,vals=st.vals[sid]||{},tch=st.touched[sid]||{},lastRow=self.last[sid];
     fields=T.fields.map(function(f){var lv=lastRow&&lastRow.vals&&lastRow.vals[f.key],hasLast=lv!=null;var base=hasLast?lv:(f.lo+f.hi)/2;base=Math.min(f.max,Math.max(f.min,+(Math.round(base/f.step)*f.step).toFixed(self.dec(f.step))));
       var v=vals[f.key]!=null?vals[f.key]:base,touched=!!tch[f.key];
       var pc=function(x){return Math.max(0,Math.min(100,(x-f.min)/(f.max-f.min)*100));};
@@ -1328,7 +1309,7 @@ Comp.prototype.vals=function(){
     bigJustify:big?'flex-end':'flex-start',bigTrack:big?'var(--color-text)':'transparent',bigKnob:big?'var(--color-bg)':'var(--color-text)',
     hasToast:!!st.toast,toast:st.toast,headerTitle:titles[scr]||'La Tournée',
     syncLbl:(this.online&&this.sendErr)?'⚠ '+cap(this.sendErr):(this.online&&Object.keys(this.loadErr).length)?'⚠ Données incomplètes : '+Object.keys(this.loadErr).map(function(k){return self.loadErr[k];}).join(', '):this.online?((this.queueN+opsN)?(this.queueN+opsN)+' envoi(s) en attente':'Connecté · synchro '+(this.syncAt?hhmm(this.syncAt):'—')):'Hors-ligne · '+this.queueN+' fiche(s) en attente',
-    isToday:scr==='today',isTemps:scr==='temps',isPunchForm:scr==='punchform',isStopForm:scr==='stopform',pn:pn,pf:pf,sf:sf,isFiche:scr==='fiche'&&!!cj&&!isEntrepot,isFicheEmpty:scr==='fiche'&&!cj,isFicheEntrepot:scr==='fiche'&&!!cj&&isEntrepot,entrepotNom:entrepotNom,isDem:scr==='demandes',isPlan:scr==='planning',isProfil:scr==='profil',isSoon:scr==='soon',soonTitle:st.soon,
+    isToday:scr==='today',isTemps:scr==='temps',isPunchForm:scr==='punchform',isStopForm:scr==='stopform',pn:pn,pf:pf,sf:sf,isFiche:scr==='fiche'&&!!cj,isFicheEmpty:scr==='fiche'&&!cj,isDem:scr==='demandes',isPlan:scr==='planning',isProfil:scr==='profil',isSoon:scr==='soon',soonTitle:st.soon,
     goToday:function(){self.closeFiche();},goFiche:function(){self.go('fiche');},goLog:function(){self.go('logistique');},goHiv:function(){self.go('hivernage');},goDemandes:function(){self.go('demandes');},demTypes:demTypes,hasComposer:!!cd,composer:composer,composerSite:cj?(cur.nom||'—'):'Aucun (hors site)',closeComposer:function(){self.setState({demande:null});},demandeTxt:st.demandeTxt,onDemTxt:function(e){self.setState({demandeTxt:e.target.value});},demHist:demHist,
     sendDemande:function(){if(!st.demande)return;var t=DT[st.demande],txt=[st.demChip,st.demandeTxt].filter(Boolean).join(' — ')||t.label,s=cj?(cur._site||siteById(cj.site)):null,now=new Date();
       var rec={_t:'demandes',id:self.user.id+'-'+now.getTime(),site_id:s?s.id:null,site_nom:s?s.nom:null,tech:self.user.id,tech_nom:self.me.nom,type:t.label,motif:st.demChip||null,texte:txt,statut:'Envoyée',photo:st.demPhoto||null};
@@ -1346,7 +1327,6 @@ Comp.prototype.vals=function(){
     photoBg:ph?'repeating-linear-gradient(135deg,var(--color-accent-200) 0 1px,transparent 1px 8px)':'transparent',
     validate:function(){if(!cj)return;var s=cur._site,T=cur._T,vv=st.vals[s.id]||{},tt=st.touched[s.id]||{},vout={},ch={},pr={};
       Object.keys(tt).forEach(function(k){if(vv[k]!=null)vout[k]=vv[k];});
-      if(!Object.keys(vout).length&&!(st.photoData[s.id])){self.flash('⚠️ Aucune valeur confirmée — touchez au moins un relevé (+ / − ou le curseur) avant d’enregistrer');return;}
       cur._checks.forEach(function(c){ch[c.label]=c.on;});T.produits.forEach(function(p,i){var q=(st.prods[s.id]||{})[i]||0;if(q>0)pr[p[0]]=q;});
       var now=new Date(),rec={id:self.user.id+'-'+self.today+'-'+s.id,site_id:s.id,site_nom:s.nom,tech:self.user.id,tech_nom:self.me.nom,date:self.today,heure:hhmm(now),type_code:s.type,
         vals:vout,touched:tt,checks:ch,prods:pr,note:st.notes[s.id]||null,photo:st.photoData[s.id]||null,hors_zone:cur.nOut};
@@ -1373,8 +1353,6 @@ function showLogin(){var el=document.getElementById('login');el.style.display='f
       var c=rows[0];if(c.doit_changer_mdp){err.textContent='Changez d’abord votre mot de passe dans SA Platform.';return;}
       localStorage.setItem('sa_terrain_user',JSON.stringify({id:c.id,prenom:c.prenom,nom:c.nom,role:c.role,dept:c.dept,tel:c.tel,email:c.email||''}));location.reload();
     }).catch(function(){err.textContent='Réseau indisponible — réessayez.';});};}
-document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'&&window.__terrain)window.__terrain.flushPersist();});
-window.addEventListener('pagehide',function(){if(window.__terrain)window.__terrain.flushPersist();});
 window.addEventListener('DOMContentLoaded',function(){
   var user=jget('sa_terrain_user',null);
   if(!user){showLogin();return;}
