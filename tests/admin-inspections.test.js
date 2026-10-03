@@ -79,3 +79,20 @@ test('paramètres de relevé : l’admin modifie une plage (validation) et crée
   assert.equal(t.fields[0].label, 'Brome');
   await page.close();
 });
+
+test('bureau / entrepôt : ni dans les inspections ni dans les relevés (ce ne sont pas des bassins)', async () => {
+  const t = base();
+  t.sites.push({ id: 7, nom: 'Soucy Aquatik - Entrepôt', addr: '925 av Newton', notes: '', type: 'autre' }, { id: 8, nom: 'Atelier Lévis', addr: '', notes: '', type: 'interne' });
+  t.releves.push({ id: 'rx', site_id: 7, site_nom: 'Soucy Aquatik - Entrepôt', tech: 'kael', tech_nom: 'Kaël Test', date: iso(new Date()), heure: '15:04', type_code: 'GEN', vals: { ph: 6.9 }, touched: { ph: 1 }, checks: {}, prods: {}, hors_zone: 1 });
+  const { page, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: t });
+  await page.waitForFunction(() => window.__admin && window.__admin.D);
+  const r = await page.evaluate(() => { window.__admin.go('inspections'); const v = window.__admin.vals(); return { rel: window.__admin.D.rel.map((x) => x.id), sites: (v.inspSites || []).map((s) => JSON.stringify(s)) }; });
+  assert.ok(!r.rel.includes('rx'), 'le relevé fait à l’entrepôt est ignoré');
+  assert.ok(!r.sites.some((n) => /Entrepôt|Atelier Lévis/.test(n)), 'bureau / entrepôt absents de la liste des inspections');
+  await page.evaluate(() => { window.__admin.go('sites'); window.__admin.openSiteFiche('8'); });
+  await page.waitForFunction(() => { const v = window.__admin.vals(); return v.sfTypes && v.sfTypes.some((o) => o.sel && o.v === 'interne'); });
+  const types = await page.evaluate(() => window.__admin.vals().sfTypes.map((o) => o.l + (o.sel ? ' *' : '')));
+  assert.ok(types.includes('Bureau / entrepôt (aucun bassin, pas de relevé) *'));
+  assert.deepEqual(errors, []);
+  await page.close();
+});

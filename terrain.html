@@ -436,7 +436,7 @@ button{font-family:inherit}
               </div>
             </div>
 
-            <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-bottom:1px solid var(--color-divider)">
+            <sc-if value="{{ cur.isInterne }}"><div style="padding:22px 20px;display:flex;flex-direction:column;gap:14px"><div style="display:flex;gap:10px;align-items:flex-start"><sa-i n="building" s="28"></sa-i><div style="display:flex;flex-direction:column;gap:4px"><b style="font:600 22px var(--font-heading)">Travail de bureau / entrepôt</b><span style="font-size:16px;line-height:1.4">Aucun bassin ici : pas de relevé à faire. Votre temps est compté sur ce punch ; il sera validé par le bureau.</span></div></div><button class="btn btn-primary" onClick="{{ depunch }}" style="min-height:60px;font-size:21px;width:100%;gap:10px"><sa-i n="logout" s="24"></sa-i>Retour à la tournée</button></div></sc-if><sc-if value="{{ cur.isBassin }}"><div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-bottom:1px solid var(--color-divider)">
               <div style="padding:12px 20px;display:flex;flex-direction:column"><span style="font:600 28px/1 var(--font-heading)">{{ cur.nTouched }}/{{ cur.nFields }}</span><span style="font-size:13px">saisis</span></div>
               <div style="padding:12px 14px;border-left:1px solid var(--color-divider);display:flex;flex-direction:column;background:{{ cur.outBg }};color:{{ cur.outFg }}"><span style="font:600 28px/1 var(--font-heading)">{{ cur.nOut }}</span><span style="font-size:13px">hors zone</span></div>
               <div style="padding:12px 14px;border-left:1px solid var(--color-divider);display:flex;flex-direction:column"><span style="font:600 28px/1 var(--font-heading)">{{ cur.nChecks }}/{{ cur.nChecksTotal }}</span><span style="font-size:13px">vérifs</span></div>
@@ -518,7 +518,7 @@ button{font-family:inherit}
                 <div style="display:flex;align-items:center;gap:8px;font-size:15px"><sa-i n="check" s="20" w="2"></sa-i><span>Fiche validée à {{ cur.validAt }} · {{ cur.syncTxt }}</span></div>
                 <button class="btn btn-primary" onClick="{{ depunch }}" style="min-height:60px;font-size:21px;width:100%;gap:10px"><sa-i n="logout" s="24"></sa-i>Retour à la tournée</button>
               </sc-if>
-            </div>
+            </div></sc-if>
           </div>
         </sc-if>
 
@@ -982,11 +982,11 @@ function buildRef(raw){
   (raw.sites||[]).forEach(function(s){var c=ct[s.id];var code=(c&&c.type_code&&REF.types[c.type_code])?c.type_code:'GEN';
     /* Bassins déclarés dans la fiche du site (sa-admin / SA Platform) : chacun peut avoir ses propres paramètres de relevé */
     var bs=(Array.isArray(s.bassins)?s.bassins:[]).filter(function(b){return b&&String(b.nom||'').trim();}).map(function(b,i){return{id:String(b.id||('b'+i)),nom:String(b.nom).trim(),code:(b.type_code&&REF.types[b.type_code])?b.type_code:code,first:i===0};});
-    var o={id:String(s.id),nom:s.nom||'(sans nom)',ville:villeOf(s.addr),addr:s.addr||'',type:code,bassin:'',bassins:bs,contrat:(c&&c.code)||'',client:''};REF.sites[o.id]=o;if(!/^Fusionné →/.test(s.notes||''))REF.list.push(o);});
+    var o={id:String(s.id),nom:s.nom||'(sans nom)',ville:villeOf(s.addr),addr:s.addr||'',type:code,bassin:'',bassins:bs,contrat:(c&&c.code)||'',client:'',interne:s.type==='interne'||isBureau(s.nom)};REF.sites[o.id]=o;if(!/^Fusionné →/.test(s.notes||''))REF.list.push(o);});
 }
 function siteById(id){return REF.sites[String(id)]||null;}
 function pseudoSite(nom,addr){var id='x:'+norm(nom||addr||'inconnu').replace(/ /g,'-');
-  if(!REF.sites[id])REF.sites[id]={id:id,nom:nom||addr||'Site non répertorié',ville:villeOf(addr),addr:addr||'',type:'GEN',bassin:'',contrat:'',client:''};return REF.sites[id];}
+  if(!REF.sites[id])REF.sites[id]={id:id,nom:nom||addr||'Site non répertorié',ville:villeOf(addr),addr:addr||'',type:'GEN',bassin:'',contrat:'',client:'',interne:isBureau(nom)};return REF.sites[id];}
 function matchSite(a,b){var keys=[a,b].filter(Boolean).map(norm).filter(Boolean);if(!keys.length)return null;
   for(var i=0;i<REF.list.length;i++){var n=norm(REF.list[i].nom);if(keys.indexOf(n)>=0)return REF.list[i];}
   for(var j=0;j<REF.list.length;j++){var m=norm(REF.list[j].nom);if(m.length>4&&keys.some(function(k){return k.indexOf(m)>=0||m.indexOf(k)>=0&&k.length>4;}))return REF.list[j];}
@@ -1032,7 +1032,7 @@ Comp.prototype.soon=function(t){this.setState({soon:t});this.go('soon');};
 
 /* ---------- Chargements ---------- */
 Comp.prototype.loadRef=function(){var self=this;var cached=jget('sa_terrain_ref',null);if(cached)buildRef(cached);
-  return Promise.all([get('types_bassin?select=*'),get('sites?select=id,nom,addr,notes,bassins'),get('contrats?select=*')]).then(function(r){var raw={types:r[0],sites:r[1],contrats:r[2]};jset('sa_terrain_ref',raw);buildRef(raw);self.syncAt=new Date();self.okLoad('ref');}).catch(function(e){self.failLoad('ref','sites et contrats'+(cached?' (copie locale utilisée)':''),e);});};
+  return Promise.all([get('types_bassin?select=*'),get('sites?select=id,nom,addr,notes,bassins,type'),get('contrats?select=*')]).then(function(r){var raw={types:r[0],sites:r[1],contrats:r[2]};jset('sa_terrain_ref',raw);buildRef(raw);self.syncAt=new Date();self.okLoad('ref');}).catch(function(e){self.failLoad('ref','sites et contrats'+(cached?' (copie locale utilisée)':''),e);});};
 Comp.prototype.loadJobs=function(){var self=this,uid=encodeURIComponent(this.user.id),d0=this.today,d6=iso(addDays(new Date(),6));
   var q=[get('workorders?select=id,client,site,type,date,assigne,status,descr,groupe_id&date=gte.'+d0+'&date=lte.'+d6+'&assigne=ilike.*'+uid+'*'),
     get('planning_tasks?select=id,titre,emp,site_id,site_nom,date_debut,date_fin,heure_debut,heure_fin,statut,recurrence,wo_id,plan_id&date_debut=lte.'+d6+'&date_fin=gte.'+d0+'&emp=ilike.*'+uid+'*'),
@@ -1229,7 +1229,7 @@ Comp.prototype.vals=function(){
     return Object.assign({},j,{nom:s.nom,ville:s.ville,typeCourt:TY(s.type).court,isDone:isDone,isCur:isCur,canPunch:!isDone&&!isCur,nodeBg:isDone?'var(--color-accent-700)':isCur?'var(--color-text)':'var(--color-bg)',op:isDone?0.6:1,fw:isCur?600:400,punch:function(){self.open(j.id);}});});
   var next=jobs.filter(function(j){return j.canPunch;})[0];
   var cur={},fields=[],checks=[],prods=[],ph=null;
-  if(cj){var s=siteById(cj.site)||pseudoSite(cj.site,''),bl=s.bassins||[],bsel=bl.length?(bl.filter(function(x){return x.id===(st.bassinSel||{})[s.id];})[0]||bl[0]):null,T=TY(bsel?bsel.code:s.type),sid=bsel&&bl.length>1?s.id+'#'+bsel.id:s.id;
+  if(cj){var s=siteById(cj.site)||pseudoSite(cj.site,''),bl=s.interne?[]:(s.bassins||[]),bsel=bl.length?(bl.filter(function(x){return x.id===(st.bassinSel||{})[s.id];})[0]||bl[0]):null,T=TY(bsel?bsel.code:s.type),sid=bsel&&bl.length>1?s.id+'#'+bsel.id:s.id;
     if(sid!==s.id&&self.last[sid]===undefined)self.loadLast(sid);var vals=st.vals[sid]||{},tch=st.touched[sid]||{},lastRow=self.last[sid];
     fields=T.fields.map(function(f){var lv=lastRow&&lastRow.vals&&lastRow.vals[f.key],hasLast=lv!=null;var base=hasLast?lv:(f.lo+f.hi)/2;base=Math.min(f.max,Math.max(f.min,+(Math.round(base/f.step)*f.step).toFixed(self.dec(f.step))));
       var v=vals[f.key]!=null?vals[f.key]:base,touched=!!tch[f.key];
@@ -1245,8 +1245,9 @@ Comp.prototype.vals=function(){
     checks=T.checks.map(function(label,i){return{label:label,on:!!ck[i],box:ck[i]?'var(--color-text)':'transparent',toggle:function(){self.setState(function(s2){var o={};o[sid]=Object.assign({},s2.checks[sid]||{});o[sid][i]=!ck[i];return{checks:Object.assign({},s2.checks,o)};});}};});
     var pq=st.prods[sid]||{};
     prods=T.produits.map(function(p,i){var q=pq[i]||0;var set=function(n){self.setState(function(s2){var o={};o[sid]=Object.assign({},s2.prods[sid]||{});o[sid][i]=Math.max(0,+(n).toFixed(2));return{prods:Object.assign({},s2.prods,o)};});};return{nom:p[0],unite:p[1],qty:self.fmt(q,p[2]),minus:function(){set(q-p[2]);},plus:function(){set(q+p[2]);}};});
+    if(s.interne){fields=[];checks=[];prods=[];}
     var nOut=fields.filter(function(f){return f.out;}).length,nT=fields.filter(function(f){return!f.pending;}).length,va=st.validated[sid];
-    cur={nom:s.nom,ville:s.ville,bassin:bsel?bsel.nom:s.bassin,hasBassins:bl.length>1,bassinChips:bl.length>1?bl.map(function(b){var on=b.id===bsel.id,k=s.id+'#'+b.id;return{label:b.nom+(st.validated[k]?' ✓':''),bg:on?'var(--color-text)':'transparent',fg:on?'var(--color-bg)':'var(--color-text)',go:function(){var o={};o[s.id]=b.id;self.setState(function(s2){return{bassinSel:Object.assign({},s2.bassinSel||{},o)};});self.loadLast(k);}};}):[],contrat:s.contrat,hasContrat:!!s.contrat,typeLabel:T.label+(s.type==='GEN'?' · valeurs par défaut':''),norme:T.norme,nFields:fields.length,nTouched:nT,nOut:nOut,hasOut:nOut>0,
+    cur={isInterne:!!s.interne,isBassin:!s.interne,nom:s.nom,ville:s.ville,bassin:bsel?bsel.nom:s.bassin,hasBassins:bl.length>1,bassinChips:bl.length>1?bl.map(function(b){var on=b.id===bsel.id,k=s.id+'#'+b.id;return{label:b.nom+(st.validated[k]?' ✓':''),bg:on?'var(--color-text)':'transparent',fg:on?'var(--color-bg)':'var(--color-text)',go:function(){var o={};o[s.id]=b.id;self.setState(function(s2){return{bassinSel:Object.assign({},s2.bassinSel||{},o)};});self.loadLast(k);}};}):[],contrat:s.contrat,hasContrat:!!s.contrat,typeLabel:s.interne?'Lieu de travail interne · aucun bassin':T.label+(s.type==='GEN'?' · valeurs par défaut':''),norme:s.interne?'Pas de relevé':T.norme,nFields:fields.length,nTouched:nT,nOut:nOut,hasOut:nOut>0,
       outBg:nOut?'var(--color-accent-900)':'transparent',outFg:nOut?'var(--color-bg)':'var(--color-text)',nChecks:checks.filter(function(c){return c.on;}).length,nChecksTotal:checks.length,
       isValidated:!!va,notValidated:!va,validAt:va,photoReq:T.photo,sid:sid,syncTxt:st.sync[sid]==='ok'?'synchronisée avec le bureau':'en attente de réseau — sera envoyée automatiquement'};
     ph=st.photo[sid];
@@ -1363,10 +1364,12 @@ Comp.prototype.vals=function(){
     takePhoto:function(){if(cj)self.pickPhoto(cur.sid);},
     photoTitle:ph?'Photo prise à '+ph:'Prendre la photo',photoSub:ph?'Toucher pour reprendre':'Requise : '+(cur.photoReq||''),
     photoBg:ph?'repeating-linear-gradient(135deg,var(--color-accent-200) 0 1px,transparent 1px 8px)':'transparent',
-    validate:function(){if(!cj)return;var s=cur._site,T=cur._T,vv=st.vals[s.id]||{},tt=st.touched[s.id]||{},vout={},ch={},pr={};
+    validate:function(){if(!cj)return;var s=cur._site,T=cur._T,k=cur.sid,vv=st.vals[k]||{},tt=st.touched[k]||{},vout={},ch={},pr={};
+      if(s.interne){self.flash('Bureau / entrepôt : aucun relevé à faire ici');return;}
+      if(!cur.nTouched&&!String(st.notes[k]||'').trim()){self.flash('Aucune mesure saisie — mesurez au moins une valeur, ou écrivez une note (ex. bassin fermé)');return;}
       Object.keys(tt).forEach(function(k){if(vv[k]!=null)vout[k]=vv[k];});
-      cur._checks.forEach(function(c){ch[c.label]=c.on;});T.produits.forEach(function(p,i){var q=(st.prods[s.id]||{})[i]||0;if(q>0)pr[p[0]]=q;});
-      var k=cur.sid,bs=s.bassins||[],b=bs.length>1?bs.filter(function(x){return k===s.id+'#'+x.id;})[0]:(bs[0]||null);
+      cur._checks.forEach(function(c){ch[c.label]=c.on;});T.produits.forEach(function(p,i){var q=(st.prods[k]||{})[i]||0;if(q>0)pr[p[0]]=q;});
+      var bs=s.bassins||[],b=bs.length>1?bs.filter(function(x){return k===s.id+'#'+x.id;})[0]:(bs[0]||null);
       var now=new Date(),rec={_sk:k,id:self.user.id+'-'+self.today+'-'+s.id+(bs.length>1&&b?'-'+b.id:''),site_id:s.id,site_nom:s.nom,tech:self.user.id,tech_nom:self.me.nom,date:self.today,heure:hhmm(now),type_code:b?b.code:s.type,bassin:b?b.nom:null,
         vals:vout,touched:tt,checks:ch,prods:pr,note:st.notes[k]||null,photo:st.photoData[k]||null,hors_zone:cur.nOut};
       var va={};va[k]=hhmm(now);if(k!==s.id&&bs.every(function(x){var kk=s.id+'#'+x.id;return kk===k||st.validated[kk];}))va[s.id]=hhmm(now);self.setState(function(s2){return{validated:Object.assign({},s2.validated,va)};});self.enqueue(rec);
