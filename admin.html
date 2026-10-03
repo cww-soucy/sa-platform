@@ -1786,12 +1786,12 @@ Comp.prototype.load=function(){
   return Promise.all(K.map(function(k){return Q[k];})).then(function(arr){
     var r={};K.forEach(function(k,i){r[k]=arr[i];});
     var T={};r.types.forEach(function(t){T[t.code]=t;});var ct={};r.contrats.forEach(function(c){ct[c.site_id]=c;});
-    var sites=r.sites.map(function(s){var c=ct[s.id],code=(c&&c.type_code&&T[c.type_code])?c.type_code:'GEN';return{id:String(s.id),nom:s.nom||'(sans nom)',addr:s.addr||'',ville:villeOf(s.addr),type:code,contrat:(c&&c.code)||'',notes:s.notes||'',tel:s.tel||'',bassins:Array.isArray(s.bassins)?s.bassins:[],gps:s.gps&&s.gps.lat!=null?s.gps:null};})
+    var sites=r.sites.map(function(s){var c=ct[s.id],code=(c&&c.type_code&&T[c.type_code])?c.type_code:'GEN';return{id:String(s.id),interne:isInterne(s.type,s.nom),nom:s.nom||'(sans nom)',addr:s.addr||'',ville:villeOf(s.addr),type:code,contrat:(c&&c.code)||'',notes:s.notes||'',tel:s.tel||'',bassins:Array.isArray(s.bassins)?s.bassins:[],gps:s.gps&&s.gps.lat!=null?s.gps:null};})
       .sort(function(a,b){return a.nom.localeCompare(b.nom,'fr');});
     var byId={};sites.forEach(function(s){byId[s.id]=s;s.merged=/^Fusionné →/.test(s.notes);});var sitesAll=sites;sites=sites.filter(function(s){return!s.merged;});
     var statut={},email={};(r.statut||[]).forEach(function(c){statut[c.id]=c.statut;if(c.email)email[c.id]=c.email;});
     (r.comptes||[]).forEach(function(c){if(c.email==null&&email[c.id])c.email=email[c.id];});
-    self.D={sites:sites,sitesAll:sitesAll,byId:byId,types:T,comptes:r.comptes,ft:r.ft,wo:r.wo,rel:r.rel.map(function(x){x.site_id=String(x.site_id);return x;}),gps:r.gps,nPlan:r.plan.length,nPt:r.pt.length,dem:r.dem||[],ftAll:r.ftAll||[],fact:r.fact||[],proj:r.proj||[],sond:r.sond||[],geo:r.geo||[],inv:r.inv||[],flotte:r.flotte||[],statut:statut,today:today};
+    self.D={sites:sites,sitesAll:sitesAll,byId:byId,types:T,comptes:r.comptes,ft:r.ft,wo:r.wo,rel:r.rel.map(function(x){x.site_id=String(x.site_id);return x;}).filter(function(x){var s=byId[x.site_id];return!(s?s.interne:isInterne('',x.site_nom));}),gps:r.gps,nPlan:r.plan.length,nPt:r.pt.length,dem:r.dem||[],ftAll:r.ftAll||[],fact:r.fact||[],proj:r.proj||[],sond:r.sond||[],geo:r.geo||[],inv:r.inv||[],flotte:r.flotte||[],statut:statut,today:today};
     self.loadedAt=new Date();self.err='';self.softErr=SOFT_ERR.slice();
     if(!self.state.inspSite){var w=self.D.rel.length?String(self.D.rel[self.D.rel.length-1].site_id):(sites[0]&&sites[0].id);self.state.inspSite=w||null;}
   }).catch(function(e){self.err='Chargement impossible : '+netMsg(e);});
@@ -2808,7 +2808,9 @@ Comp.prototype.startWallTimer=function(){var self=this;if(this._wallT)return;thi
 
 /* ═════════════ FICHE SITE COMPLÈTE (mêmes champs que SA Platform + bassins avec leurs paramètres de relevé) ═════════════
    sites : nom, addr, tel, email, siteweb, type, annee, equips[], files[], bassins[], gps, notes — contrats : type_code (relevé par défaut), code */
-var SITE_TYPES=[['','—'],['commercial','Commercial'],['creusee','Piscine creusée'],['spa','Spa'],['autre','Autre']];
+var SITE_TYPES=[['','—'],['commercial','Commercial'],['creusee','Piscine creusée'],['spa','Spa'],['autre','Autre'],['interne','Bureau / entrepôt (aucun bassin, pas de relevé)']];
+/* Bureau, entrepôt, garage : lieux de travail internes — jamais de bassin ni de relevé (même règle que sa-terrain) */
+function isInterne(type,nom){return type==='interne'||/\b(entrepot|bureau|shop|garage)\b/.test(norm(nom));}
 var BASSIN_TYPES=[['piscine','Piscine'],['spa','Spa'],['pataugeoire','Pataugeoire'],['jeuxdeau','Jeux d’eau'],['autre','Autre']];
 Comp.prototype.openSiteFiche=function(id){var self=this;
   if(!id){this.setState({sf:{id:null,isNew:true,f:{nom:'',addr:'',tel:'',email:'',siteweb:'',type:'',annee:'',equips:[],files:[],bassins:[],gps:null,notes:''},type_code:'GEN',code:'',journal:[],equipIn:'',confirm:false,busy:false,loading:false}});return;}
@@ -3354,7 +3356,7 @@ Comp.prototype.vals=function(){
   // ---- inspections
   var fil=st.inspFilter,typesArr=Object.keys(D.types);
   var typeOptions=[{v:'all',l:'Tous les types de bassin'}].concat(typesArr.map(function(k){return{v:k,l:D.types[k].label};})).map(function(o){return Object.assign({},o,{sel:o.v===fil});});
-  var inspSites=D.sites.filter(function(s){return fil==='all'||s.type===fil;}).map(function(s){var on=s.id===st.inspSite,r=lastRel[s.id],n=r?self.outOf(r).length:0;
+  var inspSites=D.sites.filter(function(s){return!s.interne&&(fil==='all'||s.type===fil);}).map(function(s){var on=s.id===st.inspSite,r=lastRel[s.id],n=r?self.outOf(r).length:0;
     return{nom:s.nom,ville:s.ville,court:self.T(s.type).court,nOut:n||null,bg:on?'var(--color-text)':'transparent',fg:on?'var(--color-bg)':'var(--color-text)',go:function(){self.setState({inspSite:s.id,inspKey:null});}};});
   var is=D.byId[st.inspSite]||D.sites[0]||{id:'',nom:'—',type:'GEN',ville:'',contrat:'',bassins:[]},ibl=is.bassins||[],ib=ibl.filter(function(b){return(b.id||b.nom)===st.inspBassin;})[0]||ibl[0]||null;
   /* Plusieurs bassins : chaque bassin a ses relevés et ses paramètres ; le 1er bassin reprend les anciens relevés sans bassin */

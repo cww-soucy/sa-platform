@@ -209,6 +209,16 @@ ds=open(os.path.join(SRC,'design')+'/ds/styles.css',encoding='utf-8').read()
 ds=re.sub(r"@import url\([^)]*\);\s*",'',ds)
 icons=open(os.path.join(SRC,'design')+'/sa-icons.js',encoding='utf-8').read()
 rt=open(os.path.join(HERE,'runtime.js'),encoding='utf-8').read(); app=open(os.path.join(HERE,'app.js'),encoding='utf-8').read()
+# ---------- FICHE : Bureau / Entrepôt = travail interne, aucun bassin → pas de relevé ----------
+_a='<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-bottom:1px solid var(--color-divider)">'
+_e=re.search(r'\n\s*</div>\n\s*</sc-if>\n\s*<!-- ═════ LOGISTIQUE',M)
+if M.count(_a)==1 and _e and M.find(_a)<_e.start():
+    INT=('<sc-if value="{{ cur.isInterne }}"><div style="padding:22px 20px;display:flex;flex-direction:column;gap:14px">'
+      '<div style="display:flex;gap:10px;align-items:flex-start"><sa-i n="building" s="28"></sa-i><div style="display:flex;flex-direction:column;gap:4px">'
+      '<b style="font:600 22px var(--font-heading)">Travail de bureau / entrepôt</b><span style="font-size:16px;line-height:1.4">Aucun bassin ici : pas de relevé à faire. Votre temps est compté sur ce punch ; il sera validé par le bureau.</span></div></div>'
+      '<button class="btn btn-primary" onClick="{{ depunch }}" style="min-height:60px;font-size:21px;width:100%;gap:10px"><sa-i n="logout" s="24"></sa-i>Retour à la tournée</button></div></sc-if>')
+    k=M.find(_a);M=M[:k]+INT+'<sc-if value="{{ cur.isBassin }}">'+M[k:_e.start()]+'</sc-if>'+M[_e.start():]
+else: print('!! fiche : ancres bureau/entrepôt',M.count(_a),bool(_e))
 html='''<!DOCTYPE html>
 <html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
