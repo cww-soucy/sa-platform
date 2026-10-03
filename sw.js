@@ -1,4 +1,14 @@
 // SA Platform — Service Worker
+// v80 — Restauration : un envoi de fichiers sur GitHub (03/10) avait remis d'anciennes versions d'index.html (v76)
+// et de sw.js (v78) en ligne — les correctifs v79 avaient disparu. Version v79 rétablie à l'identique ; ce numéro
+// v80 force chaque appareil passé à la vieille copie à reprendre la bonne version. Aucune fonction modifiée.
+// v79 — « Marquer terminé » / « Valider » (bons de travail, créneaux, tâches) : les champs termineBy, termineAt,
+// valideBy, valideAt n'avaient aucune colonne au serveur → la fiche entière était refusée et restait bloquée sur
+// l'appareil. Colonnes ajoutées (MIGRATION_2026-10-02_termine_valide.sql) et noms convertis à l'envoi / à la lecture.
+// Créneaux : siteId n'était pas converti en site_id → tous les créneaux créés dans SA Platform étaient refusés
+// (seuls 2 créneaux en base, tous deux venant de sa-admin) ; ceux restés sur un appareil partent à sa prochaine ouverture.
+// Sites créés automatiquement : aValider / creePar / creeLe sans colonne → site refusé ; colonnes ajoutées et converties.
+// Le badge de version (APP_BUILD) suit de nouveau CACHE_NAME (il affichait encore v76).
 // v78 — Trois correctifs de synchronisation, aucune autre fonction touchée :
 // (1) Rapports d'hivernage : le nom du site était envoyé dans une colonne « site » qui n'existe pas au serveur
 // (site_nom) → chaque envoi était refusé et les rapports restaient sur l'appareil. (2) Sorties d'inventaire :
@@ -134,7 +144,7 @@
 // (v59 — Mise en page des fichiers Excel refaite d'après les maquettes validées avant codage. …)
 // (v58 … v49 — voir historique précédent, inchangé.)
 
-var CACHE_NAME = 'sa-platform-v78';
+var CACHE_NAME = 'sa-platform-v80';
 
 // Installation : s'activer tout de suite sans attendre
 self.addEventListener('install', function(event) {

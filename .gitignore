@@ -1,2 +1,7 @@
 node_modules/
 sa-fichiers-*.zip
+# Jamais d'archives ni de fichiers Excel dans le dépôt : tout ce qui est ici est PUBLIÉ sur le site (Cloudflare Pages)
+*.zip
+*.xlsx
+*.xls
+*.csv
