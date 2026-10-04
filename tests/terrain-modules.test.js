@@ -15,7 +15,7 @@ after(async () => { await browser.close(); srv.close(); });
 
 async function ready(page) { await page.waitForFunction(() => window.__terrain && window.__terrain.syncAt); await page.waitForTimeout(100); }
 const T = (page, fn, arg) => page.evaluate(fn, arg);
-const noQueue = (page) => page.waitForFunction(() => !JSON.parse(localStorage.getItem('sa_terrain_queue') || '[]').length && !window.__terrain.ops().length);
+const noQueue = (page) => page.waitForFunction(() => !window.__terrain._pend && !JSON.parse(localStorage.getItem('sa_terrain_queue') || '[]').length && !window.__terrain.ops().length);
 const text = (page) => page.locator('#app').innerText();
 
 test('punch : corriger l’heure de fin depuis le téléphone (protocole SA Platform, soumis au superviseur)', async () => {

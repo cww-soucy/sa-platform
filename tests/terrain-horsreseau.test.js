@@ -27,7 +27,7 @@ test('hors réseau : 30 photos gardées hors de localStorage, puis envoyées au 
   await page.getByText('30 fiche(s) à envoyer').count();
   await page.context().setOffline(false);
   await page.evaluate(() => window.__terrain.flush());
-  await page.waitForFunction(() => JSON.parse(localStorage.getItem('sa_terrain_queue') || '[]').length === 0, null, { timeout: 30000 });
+  await page.waitForFunction(() => !window.__terrain._pend && JSON.parse(localStorage.getItem('sa_terrain_queue') || '[]').length === 0, null, { timeout: 30000 });
   const r = db.rows('releves').find((x) => x.id === 'hr-7');
   assert.equal(r.photo, 'data:image/jpeg;base64,' + 'H'.repeat(300000));
   assert.equal(r.points['MI-0'].photos[0], 'data:image/jpeg;base64,' + 'I'.repeat(300000));

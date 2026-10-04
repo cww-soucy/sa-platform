@@ -1333,8 +1333,8 @@ Comp.prototype.flush=function(){var self=this,q=jget('sa_terrain_queue',[]);if(!
     if(r.ok){var cur=jget('sa_terrain_queue',[]).filter(function(x){return x.id!==item.id;});jset('sa_terrain_queue',cur);self.queueN=cur.length;
       self.sendErr='';if(tbl==='releves'){var s=Object.assign({},self.state.sync);s[item._sk||item.site_id]='ok';self.state=Object.assign({},self.state,{sync:s});self.persist();}else if(tbl==='demandes'){self.loadDem();}else if(tbl==='rapports_hivernage'){self.loadHiv();}else if(tbl==='bons_livraison'){self.loadLog();}self.update();if(cur.length)self.flush();}
     else{self.queueN=q.length;self.sendErr=(tbl==='demandes'?'demande':'fiche')+' refusée par le serveur (HTTP '+r.status+') — gardée sur le téléphone, prévenez le bureau';self.update();}});}).catch(function(){clearTimeout(to);self._fq=false;self.queueN=q.length;self.update();});};
-Comp.prototype.enqueue=function(rec0){var self=this;this.queueN++;this.update();
-  phOut(rec0).then(function(rec){var q=jget('sa_terrain_queue',[]).filter(function(x){return x.id!==rec.id;});q.push(rec);
+Comp.prototype.enqueue=function(rec0){var self=this;this.queueN++;this._pend=(this._pend||0)+1;this.update();
+  phOut(rec0).then(function(rec){self._pend--;var q=jget('sa_terrain_queue',[]).filter(function(x){return x.id!==rec.id;});q.push(rec);
     if(!jset('sa_terrain_queue',q)){rec=Object.assign({},rec,{photo:null});q[q.length-1]=rec;if(!jset('sa_terrain_queue',q))self.sendErr='mémoire du téléphone pleine — fiche non gardée, prévenez le bureau';}
     self.queueN=q.length;self.update();self.flush();});};
 
