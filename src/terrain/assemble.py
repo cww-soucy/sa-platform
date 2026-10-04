@@ -204,10 +204,41 @@ rep('Punché à {{ punchAt }} · {{ cur.ville }}','{{ punchShort }} · {{ cur.vi
 rep('<span class="tag tag-outline" style="font-size:13px;padding:4px 10px;display:inline-block;white-space:nowrap">Contrat {{ cur.contrat }}</span>','<sc-if value="{{ cur.hasContrat }}"><span class="tag tag-outline" style="font-size:13px;padding:4px 10px;display:inline-block;white-space:nowrap">Contrat {{ cur.contrat }}</span></sc-if>',1)
 rep('{{ hivDoneCount }}/33','{{ hivDoneCount }}/{{ hivTotalSites }}',1)
 
+
+# ---------- Visite d'inspection par système (passation 3a) : Démarrer · Eau · systèmes · Résumé ----------
+PZ='<span style="display:inline-flex;align-items:center;gap:6px;font-size:14px;white-space:nowrap"><i style="width:14px;height:14px;box-sizing:border-box;display:inline-block;border:1.5px {{ %s.pzBd }};background:{{ %s.pzBg }}"></i>{{ %s.lib }}</span>'
+i=M.find('<div style="padding:22px 20px 6px;display:flex;align-items:baseline;justify-content:space-between"><h3 style="margin:0;font-size:24px">Relevés</h3>')
+j=M.find('<div style="padding:26px 20px 8px"><h3 style="margin:0;font-size:24px">Vérifications</h3></div>')
+k=M.find('<div style="padding:26px 20px 8px"><h3 style="margin:0;font-size:24px">Produits ajoutés</h3></div>')
+f=M.find('<div style="position:sticky;bottom:0;padding:14px 20px 16px')
+assert 0<i<j<k<f, (i,j,k,f)
+START=('<sc-if value="{{ stStart }}"><div style="padding:18px 20px 8px;display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between;font-size:15px"><b>{{ cur.nSysDone }} systèmes sur {{ cur.nSys }}</b><span>{{ cur.reste }}</span></div>'
+  '<div style="height:8px;border:1px solid var(--color-text)"><div style="height:100%;width:{{ cur.pct }}%;background:var(--color-text)"></div></div></div>'
+  '<sc-for list="{{ sysRows }}" as="y"><button onClick="{{ y.go }}" style="all:unset;cursor:pointer;box-sizing:border-box;display:flex;align-items:center;gap:12px;min-height:62px;padding:8px 20px;border-bottom:1px solid var(--color-divider)"><sa-i n="{{ y.icone }}" s="24"></sa-i>'
+  '<span style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:17px;font-weight:600">{{ y.nom }}</span><span style="font-size:14px">{{ y.txt }}</span></span>'+PZ%('y','y','y')+'<sa-i n="right" s="20"></sa-i></button></sc-for></sc-if>')
+SYS=('<sc-if value="{{ stSys }}"><div style="padding:20px 20px 8px;display:flex;align-items:center;gap:10px"><sa-i n="{{ sysCur.icone }}" s="26"></sa-i><h3 style="margin:0;font-size:24px;flex:1">{{ sysCur.nom }}</h3></div>'
+  '<sc-if value="{{ sysCur.canAll }}"><div style="padding:0 20px 12px"><button class="btn btn-secondary" onClick="{{ sysCur.allOk }}" style="min-height:52px;width:100%;font-size:18px;gap:8px"><sa-i n="check" s="20" w="2"></sa-i>Tout est conforme</button></div></sc-if>'
+  '<sc-for list="{{ sysPts }}" as="q"><div style="padding:12px 20px 14px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:10px">'
+  '<div style="display:flex;gap:8px;align-items:baseline"><span style="font-size:17px;font-weight:500;flex:1">{{ q.libelle }}</span><sc-if value="{{ q.req }}"><span style="font-size:13px;padding:2px 8px;border:1px dashed var(--color-text);white-space:nowrap">Obligatoire</span></sc-if></div>'
+  '<div role="group" aria-label="{{ q.libelle }}" style="display:flex;border:1.5px solid var(--color-text)"><sc-for list="{{ q.opts }}" as="o"><button onClick="{{ o.go }}" aria-pressed="{{ o.on }}" style="all:unset;cursor:pointer;flex:1;text-align:center;min-height:44px;line-height:44px;font:600 15px var(--font-body);background:{{ o.bg }};color:{{ o.fg }};border-left:1px solid var(--color-divider)">{{ o.label }}</button></sc-for></div>'
+  '<sc-if value="{{ q.isMesure }}"><input class="input" inputmode="decimal" value="{{ q.valeur }}" onChange="{{ q.onVal }}" placeholder="Mesure ({{ q.unite }})" aria-label="Mesure : {{ q.libelle }}" style="font:600 20px var(--font-heading);min-height:40px"></sc-if>'
+  '<sc-if value="{{ q.bad }}"><textarea class="input" value="{{ q.note }}" onChange="{{ q.onNote }}" placeholder="{{ q.notePh }}" aria-label="Note : {{ q.libelle }}" style="min-height:64px;font-size:16px"></textarea>'
+  '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><sc-for list="{{ q.thumbs }}" as="t"><img src="{{ t.src }}" alt="Photo" style="width:52px;height:52px;object-fit:cover;border:1px solid var(--color-divider)"></sc-for>'
+  '<button onClick="{{ q.addPhoto }}" style="all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 12px;border:1px solid var(--color-text)"><sa-i n="camera" s="20"></sa-i>Photo</button></div>'
+  '<button onClick="{{ q.toggleWo }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;min-height:44px"><span style="width:26px;height:26px;box-sizing:border-box;border:1.5px solid var(--color-text);background:{{ q.woBg }};color:var(--color-bg);display:flex;align-items:center;justify-content:center"><sc-if value="{{ q.wo }}"><sa-i n="check" s="18" w="2.5"></sa-i></sc-if></span><span style="font-size:16px">Créer un bon de travail urgent</span></button></sc-if>'
+  '</div></sc-for></sc-if>')
+RES=('<sc-if value="{{ stResume }}"><div style="padding:20px 20px 6px;display:flex;flex-direction:column;gap:10px"><h3 style="margin:0;font-size:24px">Résumé</h3><p style="margin:0;font-size:16px;line-height:1.45">{{ resumeTxt }}</p></div>'
+  '<sc-for list="{{ sysRows }}" as="y"><div style="display:flex;align-items:center;gap:10px;padding:10px 20px;border-bottom:1px solid var(--color-divider)"><sa-i n="{{ y.icone }}" s="20"></sa-i><span style="flex:1">{{ y.nom }}</span>'+PZ%('y','y','y')+'</div></sc-for>')
+M=M[:i]+'<sc-if value="{{ stEau }}">'+M[i:j]+'</sc-if>'+START+SYS+RES+M[k:f]+'</sc-if>'+M[f:]
+rep('<span style="font:600 28px/1 var(--font-heading)">{{ cur.nChecks }}/{{ cur.nChecksTotal }}</span><span style="font-size:13px">vérifs</span>','<span style="font:600 28px/1 var(--font-heading)">{{ cur.nSysDone }}/{{ cur.nSys }}</span><span style="font-size:13px">systèmes</span>',1)
+rep('<div style="font-size:13px;color:var(--color-neutral-700)">Dernier relevé : {{ f.lastTxt }}</div>','<div style="font-size:13px;color:var(--color-neutral-700)">Dernier relevé : {{ f.lastTxt }}</div><sc-if value="{{ f.bad }}"><div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:14px;font-weight:600">Qu’avez-vous fait ?</span><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ f.acts }}" as="a"><button onClick="{{ a.go }}" aria-pressed="{{ a.on }}" style="all:unset;cursor:pointer;padding:8px 12px;min-height:28px;border:1.5px solid var(--color-text);font-size:15px;background:{{ a.bg }};color:{{ a.fg }}">{{ a.label }}</button></sc-for></div></div></sc-if>',1)
+rep('<button class="btn btn-primary" onClick="{{ validate }}" style="min-height:60px;font-size:21px;width:100%">Valider la fiche</button>','<sc-if value="{{ stResume }}"><button class="btn btn-primary" onClick="{{ validate }}" style="min-height:60px;font-size:21px;width:100%">{{ validateLbl }}</button></sc-if><sc-if value="{{ notResume }}"><div style="display:flex;gap:8px"><sc-if value="{{ notStart }}"><button class="btn btn-secondary" onClick="{{ stepBack }}" aria-label="Étape précédente" style="min-height:60px;width:64px"><sa-i n="left" s="24"></sa-i></button></sc-if><button class="btn btn-primary" onClick="{{ stepNext }}" style="min-height:60px;font-size:19px;flex:1">{{ nextLbl }}</button></div></sc-if>',1)
+
 open(os.path.join(OUT,'terrain.markup.html'),'w',encoding='utf-8').write(M)
 ds=open(os.path.join(SRC,'design')+'/ds/styles.css',encoding='utf-8').read()
 ds=re.sub(r"@import url\([^)]*\);\s*",'',ds)
 icons=open(os.path.join(SRC,'design')+'/sa-icons.js',encoding='utf-8').read()
+insp=open(os.path.join(SRC,'inspection','model.js'),encoding='utf-8').read(); assert '</script' not in insp.lower()
 rt=open(os.path.join(HERE,'runtime.js'),encoding='utf-8').read(); app=open(os.path.join(HERE,'app.js'),encoding='utf-8').read()
 # ---------- FICHE : Bureau / Entrepôt = travail interne, aucun bassin → pas de relevé ----------
 _a='<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-bottom:1px solid var(--color-divider)">'
@@ -257,7 +288,7 @@ button{font-family:inherit}
 <input id="photoInput" type="file" accept="image/*" capture="environment" style="display:none">
 <template id="tpl">'''+M+'''</template>
 <script>'''+icons+'''</script>
-<script>'''+rt+'''</script>
+<script>'''+insp+'''</script><script>'''+rt+'''</script>
 <script>'''+app+'''</script>
 </body></html>'''
 open(os.path.join(OUT,'terrain.html'),'w',encoding='utf-8').write(html)

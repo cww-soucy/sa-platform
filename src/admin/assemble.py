@@ -764,6 +764,7 @@ lcss=open(os.path.join(LF,'leaflet.css'),encoding='utf-8').read(); ljs=open(os.p
 assert '</script' not in ljs.lower() and '</style' not in lcss.lower()
 # Générateur QR (qrcodejs, MIT — la même bibliothèque que SA Platform) pour les étiquettes d'outils et d'emplacements
 qjs=open(os.path.join(SRC,'vendor','qrcodejs','qrcode.min.js'),encoding='utf-8').read(); assert '</script' not in qjs.lower()
+insp=open(os.path.join(SRC,'inspection','model.js'),encoding='utf-8').read(); assert '</script' not in insp.lower()
 rt=open(os.path.join(HERE,'runtime.js'),encoding='utf-8').read(); app=open(os.path.join(HERE,'app.js'),encoding='utf-8').read()
 import base64
 LOGO='data:image/png;base64,'+base64.b64encode(open(os.path.join(SRC,'design','logo-soucy-aquatik.png'),'rb').read()).decode()
@@ -792,7 +793,7 @@ button{font-family:inherit}a{color:var(--color-accent-700)}
 <style>'''+lcss+'''</style>
 <script>'''+ljs+'''</script>
 <script>'''+qjs+'''</script>
-<script>'''+icons+'''</script><script>window.SA_LOGO='''+repr(LOGO)+''';</script><script>'''+rt+'''</script><script>'''+app+'''</script>
+<script>'''+icons+'''</script><script>window.SA_LOGO='''+repr(LOGO)+''';</script><script>'''+insp+'''</script><script>'''+rt+'''</script><script>'''+app+'''</script>
 </body></html>'''
 open(os.path.join(OUT,'admin.html'),'w',encoding='utf-8').write(html)
 print('taille',len(html),'| règles',len(css))
