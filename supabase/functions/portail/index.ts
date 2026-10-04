@@ -45,6 +45,7 @@ async function envoyerCode(contact: { courriel?: string; cellulaire?: string }, 
       headers: { Authorization: `Bearer ${Deno.env.get("RESEND_API_KEY")}`, "Content-Type": "application/json" },
       body: JSON.stringify({ from: Deno.env.get("PORTAIL_FROM") || "Soucy Aquatik <portail@soucyaquatik.com>", to: [contact.courriel], subject: `Code d'accès : ${code}`, text: txt }),
     });
+    if (!r.ok) console.error("resend", r.status, (await r.text()).slice(0, 300));
     return r.ok;
   }
   if (contact.cellulaire && Deno.env.get("TWILIO_SID")) {
@@ -54,8 +55,10 @@ async function envoyerCode(contact: { courriel?: string; cellulaire?: string }, 
       headers: { Authorization: "Basic " + btoa(`${sid}:${tok}`), "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({ To: "+1" + contact.cellulaire, From: Deno.env.get("TWILIO_FROM") || "", Body: txt }),
     });
+    if (!r.ok) console.error("twilio", r.status, (await r.text()).slice(0, 300));
     return r.ok;
   }
+  console.error("envoi : aucun fournisseur configuré (RESEND_API_KEY / TWILIO_SID)");
   return false;
 }
 async function envoyerCourriel(to: string, sujet: string, texte: string) {
@@ -65,6 +68,7 @@ async function envoyerCourriel(to: string, sujet: string, texte: string) {
     headers: { Authorization: `Bearer ${Deno.env.get("RESEND_API_KEY")}`, "Content-Type": "application/json" },
     body: JSON.stringify({ from: Deno.env.get("PORTAIL_FROM") || "Soucy Aquatik <portail@soucyaquatik.com>", to: [to], subject: sujet, text: texte }),
   });
+  if (!r.ok) console.error("resend", r.status, (await r.text()).slice(0, 300));
   return r.ok;
 }
 
