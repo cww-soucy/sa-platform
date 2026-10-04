@@ -739,6 +739,9 @@ i=M.find('<sc-if value="{{ isCarte }}">')
 j=M.find(_cv,i)
 if i>=0 and j>=0: M=M[:j+len(_cv)]+FIXB+M[j+len(_cv):]
 else: print('!! ancre carte')
+_boite='<div style="width:44px;height:44px;flex:none;background:#004987;color:#ffffff;display:flex;align-items:flex-end;padding:5px;box-sizing:border-box;font:600 11px/0.95 var(--font-heading)">Soucy<br>Aquatik</div>'
+if M.count(_boite)==1: M=M.replace(_boite,'<img src="/src/design/logo-soucy-aquatik.png" alt="Soucy Aquatik" style="width:44px;height:44px;flex:none;object-fit:contain">',1)
+else: print('!! boite logo sa-admin introuvable',M.count(_boite))
 _logo='<div style="display:flex;flex-direction:column;line-height:1.15"><span style="font:600 20px var(--font-heading)">sa-admin</span><span style="font-size:12px;color:var(--color-accent-700)">Centre des opérations</span></div>\n    </div>'
 if M.count(_logo)==1: M=M.replace(_logo,_logo+'<button onClick="{{ openPortail }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;height:38px;padding:0 14px 0 16px;border-bottom:1px solid var(--color-divider);font-weight:600" data-hv="1"><sa-i n="home" s="18"></sa-i>Accueil · toutes les applications</button>',1)
 else: print('!! logo sa-admin introuvable',M.count(_logo))

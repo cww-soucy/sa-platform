@@ -46,11 +46,13 @@
   function erreur(msg) { show(h('div', { class: 'stack card' }, h('h2', { text: 'Service momentanément indisponible' }), h('p', { text: msg || 'Vérifiez votre connexion et réessayez.' }), h('button', { class: 'btn', onclick: function () { location.reload(); } }, 'Réessayer'))); }
 
   /* ---------- connexion : QR → identifiant → code à usage unique ---------- */
+  var LOGO = '../src/design/logo-soucy-aquatik.png';
+  function marque() { return h('img', { class: 'marque', src: LOGO, alt: 'Soucy Aquatik' }); }
   function ecranQr() {
     call('qr', { jeton: P.get('q') }).then(function (r) {
       if (!r.ok) return show(h('div', { class: 'stack card' }, h('h1', { text: 'Lien désactivé' }), h('p', { text: 'Ce code QR n’est plus valide. Demandez la nouvelle affiche à Soucy Aquatik.' })));
       S.qr = r;
-      show(h('div', { class: 'stack', style: 'max-width:440px;margin:0 auto' },
+      show(h('div', { class: 'stack', style: 'max-width:440px;margin:0 auto' }, marque(),
         h('div', { class: 'muted', text: 'Relevés et rapports de cette installation' }),
         h('h1', { text: r.site }), r.bassin ? h('div', { text: r.bassin }) : null,
         h('button', { class: 'btn primary big', onclick: ecranIdent }, 'Accès client'),
@@ -65,7 +67,7 @@
       call('demander_code', { identifiant: S.ident, jeton: P.get('q') }).then(function (r) { ecranCode(r.masque || S.ident, r.minutes || 10); }).catch(function () { erreur(); });
     };
     var btn = h('button', { class: 'btn primary big', type: 'submit' }, 'Recevoir un code');
-    show(h('form', { class: 'stack', style: 'max-width:440px;margin:0 auto', onsubmit: go },
+    show(h('form', { class: 'stack', style: 'max-width:440px;margin:0 auto', onsubmit: go }, marque(),
       h('div', { class: 'row muted' }, icon('eye', 18), 'Connexion sécurisée'),
       h('h1', { text: S.qr ? S.qr.site : 'Portail client' }),
       h('label', { for: 'ident', text: 'Votre courriel ou cellulaire inscrit auprès de Soucy Aquatik' }), inp, btn,
@@ -88,7 +90,7 @@
         setTok(r.session, r.jours); history.replaceState(null, '', location.pathname); charger();
       }).catch(function () { err.textContent = 'Réseau indisponible — réessayez.'; });
     };
-    show(h('form', { class: 'stack', style: 'max-width:440px;margin:0 auto', onsubmit: go },
+    show(h('form', { class: 'stack', style: 'max-width:440px;margin:0 auto', onsubmit: go }, marque(),
       h('div', { class: 'row muted' }, icon('eye', 18), 'Connexion sécurisée'),
       S.qr ? h('div', null, h('div', { class: 'muted', text: 'Installation reconnue' }), h('h2', { text: S.qr.site })) : null,
       h('p', { text: 'Si cette adresse est autorisée, nous avons envoyé un code à ' + masque + '. Il est valide ' + minutes + ' minutes.' }),
@@ -136,7 +138,7 @@
     var lv = vis[0];
 
     var head = h('header', { class: 'head' },
-      D.compte && D.compte.logo ? h('img', { class: 'logo', src: D.compte.logo, alt: D.compte.nom }) : h('b', { text: (D.compte && D.compte.nom) || 'Soucy Aquatik' }),
+      D.compte && D.compte.logo ? h('img', { class: 'logo', src: D.compte.logo, alt: D.compte.nom }) : h('img', { class: 'logo', src: LOGO, alt: 'Soucy Aquatik' }),
       h('div', { class: 'grow' },
         D.sites.length > 1 ? h('select', { class: 'input', style: 'max-width:340px', 'aria-label': 'Mes installations', onchange: function (e) { S.site = e.target.value; S.bassin = null; rendre(); } },
           D.sites.map(function (s) { return h('option', { value: s.id, selected: s.id === site.id }, s.nom); })) : null,
