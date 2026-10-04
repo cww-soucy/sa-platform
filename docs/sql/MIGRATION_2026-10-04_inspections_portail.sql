@@ -106,6 +106,7 @@ create table if not exists public.client_sessions (
   id bigint generated always as identity primary key,
   genre text not null default 'client' check (genre in ('client','admin')),
   contact_id text,                -- client : client_contacts.id ; admin : comptes.id
+  role text,                      -- admin : rôle du compte sa-admin (admin | superviseur)
   jeton_hash text not null unique,
   appareil_hash text,
   expire_le timestamptz not null,
