@@ -11,6 +11,7 @@ pour que les tests vérifient tout avant la mise en ligne.
 | `admin.html` | **sa-admin** — centre des opérations (bureau). **Fichier généré** à partir de `src/admin/` |
 | `terrain.html` | **sa-terrain** — app du technicien (téléphone). **Fichier généré** à partir de `src/terrain/` |
 | `qr-carnet/` | Carnet de bord des salles mécaniques (QR), page publique cloisonnée |
+| `portail/` | **Portail client** (QR + « Envoyer au client ») : lecture seule, accès par code à usage unique, données servies uniquement par la fonction serveur `portail` |
 | `sondage-hivernement-levis.html`, `stats-sondages.html` | Sondages clients (liens envoyés aux clients) |
 | `recuperation.html` | Outil de récupération de données |
 | `sa-admin/`, `sa-terrain/` | Anciennes adresses : redirigent vers `admin.html` / `terrain.html` |
@@ -21,7 +22,8 @@ pour que les tests vérifient tout avant la mise en ligne.
 |---|---|
 | `src/` | Sources de sa-admin et sa-terrain (`app.js`, `assemble.py`), design, bibliothèques. `python3 src/build.py` régénère `admin.html` et `terrain.html` |
 | `tests/` | Tests automatiques (`npm test`), lancés par GitHub à chaque envoi |
-| `supabase/functions/` | Fonctions serveur (lien calendrier `planning-ics`) |
+| `supabase/functions/` | Fonctions serveur (lien calendrier `planning-ics`, portail client `portail`) |
+| `src/inspection/model.js` | Règles des inspections (états, 6 systèmes, gravité, résumé) partagées par sa-admin, sa-terrain et le portail |
 | `docs/` | Passation (`HANDOFF-CLAUDE-CODE.md`), brief de design initial, historique SQL (`docs/sql/`) |
 
 ## Modifier sa-admin ou sa-terrain

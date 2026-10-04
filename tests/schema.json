@@ -180,7 +180,16 @@
     "hors_zone",
     "created_at",
     "updated_at",
-    "bassin"
+    "bassin",
+    "points",
+    "actions",
+    "statut",
+    "source",
+    "saisi_par",
+    "source_detail",
+    "resume",
+    "publiee_le",
+    "envoyee_le"
   ],
   "sites": [
     "id",
@@ -446,5 +455,18 @@
     "alkalinity",
     "notes",
     "created_at"
+  ],
+  "inspection_points": [
+    "id",
+    "systeme_code",
+    "type_code",
+    "libelle",
+    "mode",
+    "unite",
+    "obligatoire",
+    "actions_correctives",
+    "ordre",
+    "actif",
+    "updated_at"
   ]
 }

@@ -1,0 +1,1563 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/industry-e3224710-254a-4f99-a32f-75085300326e/styles.css">
+<script src="_ds/industry-e3224710-254a-4f99-a32f-75085300326e/_ds_bundle.js"></script>
+<script src="src/design/sa-data.js"></script>
+<script src="src/design/sa-icons.js"></script>
+<script src="image-slot.js"></script>
+<style>body{margin:0;background:#e6e7e9}a{color:var(--color-accent-700)}a:hover{color:var(--color-accent-800)}</style>
+</helmet>
+
+<section style="display:flex;flex-direction:column;gap:36px;padding:56px 56px 24px;font-family:var(--font-body);color:var(--color-text);font-size:15px;line-height:1.5">
+  <sc-if value="{{ ready }}" hint-placeholder-val="{{ true }}">
+  <div id="5a" style="display:flex;flex-direction:column;gap:18px">
+    <div style="display:flex;align-items:flex-start;gap:16px">
+      <span style="flex:none;padding:4px 10px;background:var(--color-accent-900);color:#ffffff;font:600 22px/1 var(--font-heading)">5a</span>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span style="font-size:13px;color:var(--color-accent-700)">Tour 5 · sites à plusieurs bassins, plans, admin et niveaux d’accès</span>
+        <span style="font:600 40px/1 var(--font-heading)">Tout se fait aussi depuis sa-admin, et le client voit son installation à ses couleurs</span>
+        <span style="max-width:1300px">Un site peut avoir autant de bassins qu’il faut. Chacun a son état, ses relevés et sa place sur le plan. Les plans (PDF ou images) se rattachent <b>au site, à un bassin ou au dossier client</b>, avec un niveau de visibilité pour chacun. L’admin peut saisir ou corriger une inspection, l’envoyer, gérer le QR et les accès, et voir la page <b>exactement comme le client la verra</b>, à chaque niveau d’accès.</span>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:40px;align-items:flex-start">
+
+      <!-- 5a · Fiche site admin -->
+      <div style="display:flex;flex-direction:column;gap:12px;flex:none">
+        <span style="font:600 20px var(--font-heading)">1 · sa-admin : fiche du site, bassins sur le plan</span>
+        <div style="width:1440px;height:960px;display:grid;grid-template-columns:220px minmax(0,1fr);border:1px solid var(--color-text);background:var(--color-bg);overflow:hidden;box-shadow:var(--shadow-lg);font-size:15px">
+          <nav style="border-right:1px solid var(--color-accent-200);background:var(--color-accent-100);display:flex;flex-direction:column;min-height:0;font-size:14px">
+            <div style="display:flex;align-items:center;gap:10px;padding:14px 14px 16px;border-bottom:1px solid var(--color-divider)">
+              <div style="width:40px;height:40px;flex:none;background:#004987;color:#ffffff;display:flex;align-items:flex-end;padding:4px;box-sizing:border-box;font:600 10px/0.95 var(--font-heading)">Soucy<br>Aquatik</div>
+              <div style="display:flex;flex-direction:column;line-height:1.15"><span style="font:600 19px var(--font-heading)">sa-admin</span><span style="font-size:12px;color:var(--color-accent-700)">Centre des opérations</span></div>
+            </div>
+            <sc-for list="{{ navSites }}" as="g" hint-placeholder-count="3">
+              <div style="display:flex;flex-direction:column;padding:12px 0 2px">
+                <div style="padding:0 14px 4px;font-size:12px;color:var(--color-neutral-700)">{{ g.label }}</div>
+                <sc-for list="{{ g.items }}" as="n" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;gap:10px;height:34px;padding:0 12px 0 11px;border-left:3px solid {{ n.bar }};background:{{ n.bg }};font-weight:{{ n.fw }}"><sa-i n="{{ n.icon }}" s="17"></sa-i><span>{{ n.label }}</span></div>
+                </sc-for>
+              </div>
+            </sc-for>
+          </nav>
+          <div style="display:flex;flex-direction:column;min-width:0;min-height:0">
+            <div style="flex:none;display:flex;align-items:center;gap:16px;padding:14px 28px;border-bottom:1px solid var(--color-divider)">
+              <div style="width:56px;height:56px;flex:none;border:1px solid var(--color-divider)"><image-slot id="logo-client-admin" shape="rect" fit="contain" placeholder="Logo client"></image-slot></div>
+              <div style="flex:1;display:flex;flex-direction:column;line-height:1.2;min-width:0"><span style="font-size:13px">Sites › Ville de Granby · contrat C-26-022</span><span style="font:600 30px/1.1 var(--font-heading)">Complexe aquatique de Granby</span><span style="font-size:14px">6 bassins · 160, rue Dufferin, Granby</span></div>
+              <button class="btn btn-secondary" style="white-space:nowrap"><sa-i n="eye" s="16"></sa-i><span>Voir comme le client</span></button>
+              <button class="btn btn-secondary" style="white-space:nowrap"><sa-i n="users" s="16"></sa-i><span>Accès client et QR</span></button>
+              <button class="btn btn-primary" style="white-space:nowrap"><sa-i n="plus" s="16"></sa-i><span>Nouvelle inspection</span></button>
+            </div>
+            <div style="flex:none;display:flex;gap:2px;padding:0 28px;border-bottom:1px solid var(--color-divider)">
+              <span style="padding:10px 14px;font:600 16px var(--font-heading);border-bottom:3px solid var(--color-accent-700)">Bassins et plan</span>
+              <span style="padding:10px 14px;font:600 16px var(--font-heading);color:var(--color-neutral-700)">Inspections</span>
+              <span style="padding:10px 14px;font:600 16px var(--font-heading);color:var(--color-neutral-700)">Plans et documents · 5</span>
+              <span style="padding:10px 14px;font:600 16px var(--font-heading);color:var(--color-neutral-700)">Équipements</span>
+              <span style="padding:10px 14px;font:600 16px var(--font-heading);color:var(--color-neutral-700)">Accès client · 3</span>
+            </div>
+            <main style="flex:1;min-height:0;padding:20px 28px;display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:24px;overflow:hidden">
+              <div style="display:flex;flex-direction:column;gap:16px;min-width:0;min-height:0">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+                  <div style="display:flex;border:1px solid var(--color-divider)">
+                    <span style="padding:6px 12px;font:600 14px var(--font-heading);background:var(--color-text);color:var(--color-bg);white-space:nowrap">Niveau des bassins</span>
+                    <span style="padding:6px 12px;font:600 14px var(--font-heading);border-left:1px solid var(--color-divider);white-space:nowrap">Salle mécanique</span>
+                    <span style="padding:6px 12px;font:600 14px var(--font-heading);border-left:1px solid var(--color-divider);white-space:nowrap">Extérieur</span>
+                  </div>
+                  <span style="font-size:13px;display:flex;align-items:center;gap:6px"><sa-i n="pin" s="15"></sa-i>Glissez un numéro pour placer un bassin sur le plan</span>
+                </div>
+                <div style="position:relative;height:260px;border:1px solid var(--color-divider);background:#ffffff">
+                  <image-slot id="plan-granby-bassins" shape="rect" fit="contain" placeholder="Déposez le plan du site (image ou PDF exporté)"></image-slot>
+                  <sc-for list="{{ bassins }}" as="b" hint-placeholder-count="6">
+                    <div style="position:absolute;left:{{ b.x }}%;top:{{ b.y }}%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:6px;pointer-events:none">
+                      <span style="width:30px;height:30px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font:600 16px var(--font-heading);background:{{ b.mBg }};color:{{ b.mFg }};border:{{ b.mBd }};box-shadow:{{ b.ring }}">{{ b.n }}</span>
+                      <span style="padding:2px 6px;background:rgba(255,255,255,0.92);font-size:13px;font-weight:500;white-space:nowrap">{{ b.nom }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="display:flex;flex-direction:column">
+                  <div style="display:flex;align-items:baseline;justify-content:space-between;padding-bottom:6px;border-bottom:1px solid var(--color-divider)"><span style="font:600 18px var(--font-heading)">Plans et documents</span><span style="font-size:14px;color:var(--color-accent-700);font-weight:500">+ Ajouter un plan ou un document</span></div>
+                  <sc-for list="{{ docs }}" as="d" hint-placeholder-count="5">
+                    <div style="display:grid;grid-template-columns:20px minmax(0,1fr) 150px 130px;gap:12px;align-items:center;padding:7px 0;border-bottom:1px solid var(--color-divider);opacity:{{ d.op }}">
+                      <sa-i n="file" s="18"></sa-i>
+                      <div style="display:flex;flex-direction:column;line-height:1.25;min-width:0"><span style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ d.t }}</span><span style="font-size:12px">{{ d.m }}</span></div>
+                      <span style="display:flex;align-items:center;gap:6px;font-size:13px"><sa-i n="{{ d.eye }}" s="15"></sa-i>{{ d.lvl }}</span>
+                      <span style="font-size:13px;color:var(--color-accent-700);text-align:right">Visibilité ▾</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;min-height:0;border:1px solid var(--color-divider)">
+                <div style="padding:10px 14px;border-bottom:1px solid var(--color-divider);display:flex;align-items:baseline;justify-content:space-between"><span style="font:600 18px var(--font-heading)">Bassins · 6</span><span style="font-size:13px;color:var(--color-accent-700);font-weight:500">+ Ajouter un bassin</span></div>
+                <sc-for list="{{ bassins }}" as="b" hint-placeholder-count="6">
+                  <div style="display:grid;grid-template-columns:30px minmax(0,1fr);gap:12px;align-items:start;padding:10px 14px 10px 11px;border-left:3px solid {{ b.bar }};border-bottom:1px solid var(--color-divider);background:{{ b.rowBg }}">
+                    <span style="width:28px;height:28px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font:600 15px var(--font-heading);background:{{ b.mBg }};color:{{ b.mFg }};border:{{ b.mBd }}">{{ b.n }}</span>
+                    <div style="display:flex;flex-direction:column;line-height:1.3;min-width:0">
+                      <div style="display:flex;justify-content:space-between;gap:8px"><span style="font-weight:600">{{ b.nom }}</span><span style="font-size:13px;white-space:nowrap">{{ b.stl }}</span></div>
+                      <span style="font-size:13px">{{ b.resume }}</span>
+                      <span style="font-size:12px;color:var(--color-neutral-700)">{{ b.vol }} · {{ b.last }}</span>
+                    </div>
+                  </div>
+                </sc-for>
+                <div style="margin-top:auto;padding:12px 14px;display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--color-divider)">
+                  <span style="font-size:13px;color:var(--color-neutral-700)">Bassin 1 sélectionné</span>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap">
+                    <button class="btn btn-secondary" style="white-space:nowrap">Dernière inspection</button>
+                    <button class="btn btn-secondary" style="white-space:nowrap">Paramètres du bassin</button>
+                    <button class="btn btn-ghost" style="white-space:nowrap"><sa-i n="send" s="15"></sa-i><span>Envoyer</span></button>
+                  </div>
+                </div>
+              </div>
+            </main>
+          </div>
+        </div>
+        <span style="font-size:14px;max-width:1440px">Le plan vient d’une image ou d’un PDF exporté ; on y place les bassins une seule fois. Une installation complexe comme celle-ci a un plan par niveau (bassins, salle mécanique, extérieur). Chaque document a sa visibilité : interne, ou visible à partir d’un niveau d’accès client.</span>
+      </div>
+
+      <!-- 5b · Saisie bureau + niveaux -->
+      <div style="display:flex;flex-direction:column;gap:12px;flex:none">
+        <span style="font:600 20px var(--font-heading)">2 · sa-admin : saisir ou corriger une inspection, régler ce que voit le client</span>
+        <div style="width:1440px;height:960px;display:grid;grid-template-columns:220px minmax(0,1fr);border:1px solid var(--color-text);background:var(--color-bg);overflow:hidden;box-shadow:var(--shadow-lg);font-size:15px">
+          <nav style="border-right:1px solid var(--color-accent-200);background:var(--color-accent-100);display:flex;flex-direction:column;min-height:0;font-size:14px">
+            <div style="display:flex;align-items:center;gap:10px;padding:14px 14px 16px;border-bottom:1px solid var(--color-divider)">
+              <div style="width:40px;height:40px;flex:none;background:#004987;color:#ffffff;display:flex;align-items:flex-end;padding:4px;box-sizing:border-box;font:600 10px/0.95 var(--font-heading)">Soucy<br>Aquatik</div>
+              <div style="display:flex;flex-direction:column;line-height:1.15"><span style="font:600 19px var(--font-heading)">sa-admin</span><span style="font-size:12px;color:var(--color-accent-700)">Centre des opérations</span></div>
+            </div>
+            <sc-for list="{{ nav }}" as="g" hint-placeholder-count="3">
+              <div style="display:flex;flex-direction:column;padding:12px 0 2px">
+                <div style="padding:0 14px 4px;font-size:12px;color:var(--color-neutral-700)">{{ g.label }}</div>
+                <sc-for list="{{ g.items }}" as="n" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;gap:10px;height:34px;padding:0 12px 0 11px;border-left:3px solid {{ n.bar }};background:{{ n.bg }};font-weight:{{ n.fw }}"><sa-i n="{{ n.icon }}" s="17"></sa-i><span>{{ n.label }}</span></div>
+                </sc-for>
+              </div>
+            </sc-for>
+          </nav>
+          <div style="display:flex;flex-direction:column;min-width:0;min-height:0">
+            <div style="flex:none;display:flex;align-items:center;gap:16px;padding:14px 28px;border-bottom:1px solid var(--color-divider)">
+              <div style="flex:1;display:flex;flex-direction:column;line-height:1.2"><span style="font-size:13px">Complexe aquatique de Granby › Inspections</span><span style="font:600 28px/1.1 var(--font-heading)">Nouvelle inspection · saisie au bureau</span></div>
+              <span style="font-size:13px;padding:3px 8px;border:1px solid var(--color-divider)">Brouillon enregistré 10:14</span>
+            </div>
+            <main style="flex:1;min-height:0;padding:20px 28px;display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:28px;overflow:hidden">
+              <div style="display:flex;flex-direction:column;gap:16px;min-width:0;min-height:0">
+                <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px">
+                  <div class="field"><label>Date et heure</label><input class="input" value="2026-10-01 10:05"></div>
+                  <div class="field"><label>Au nom de</label><select class="input"><option>Sophie Gagnon</option></select></div>
+                  <div class="field"><label>Source</label><select class="input"><option>Relevé transmis par téléphone</option></select></div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  <span style="font-size:13px">Bassin</span>
+                  <div style="display:flex;flex-wrap:wrap;gap:6px">
+                    <sc-for list="{{ bassins }}" as="b" hint-placeholder-count="6">
+                      <span style="display:flex;align-items:center;gap:8px;padding:6px 10px 6px 6px;border:1px solid var(--color-divider);background:{{ b.rowBg }};font-size:14px;white-space:nowrap"><span style="width:22px;height:22px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font:600 13px var(--font-heading);background:{{ b.mBg }};color:{{ b.mFg }};border:{{ b.mBd }}">{{ b.n }}</span>{{ b.nom }}</span>
+                    </sc-for>
+                  </div>
+                </div>
+                <div style="display:flex;flex-direction:column;border-top:1px solid var(--color-divider)">
+                  <div style="display:flex;flex-direction:column;gap:10px;padding:12px 0;border-bottom:1px solid var(--color-divider)">
+                    <div style="display:flex;align-items:center;gap:10px"><sa-i n="droplet" s="18"></sa-i><span style="font:600 19px var(--font-heading);flex:1">Eau du bassin</span><span style="font-size:13px">1 hors zone</span></div>
+                    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 14px">
+                      <div class="field"><label>pH · 7,2 – 7,6</label><input class="input" value="7,4"></div>
+                      <div class="field"><label>Chlore libre · 1,0 – 2,0</label><input class="input" value="1,6"></div>
+                      <div class="field"><label style="color:var(--color-accent-900);font-weight:600">Chlore combiné · max 0,5</label><input class="input" value="0,7" style="background:var(--color-accent-900);color:#ffffff;border-color:var(--color-accent-900)"></div>
+                      <div class="field"><label>Alcalinité · 80 – 120</label><input class="input" value="100"></div>
+                      <div class="field"><label>Dureté · 200 – 400</label><input class="input" value="280"></div>
+                      <div class="field"><label>Température · 26 – 28</label><input class="input" value="27,5"></div>
+                      <div class="field"><label>Turbidité · 0 – 0,5</label><input class="input" value="0,2"></div>
+                      <div class="field"><label>Pression filtre · 8 – 15</label><input class="input" value="12"></div>
+                    </div>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:10px;min-height:52px;border-bottom:1px solid var(--color-divider)"><sa-i n="flask" s="18"></sa-i><span style="font:600 19px var(--font-heading);flex:1">Traitement et dosage</span><span style="font-size:13px">1 action · 1 à surveiller</span><span style="width:12px;height:12px;box-sizing:border-box;border:1.5px solid var(--color-text);background:var(--color-accent-900)"></span><sa-i n="right" s="16"></sa-i></div>
+                  <div style="display:flex;align-items:center;gap:10px;min-height:52px;border-bottom:1px solid var(--color-divider)"><sa-i n="cycle" s="18"></sa-i><span style="font:600 19px var(--font-heading);flex:1">Circulation et filtration</span><button class="btn btn-ghost" style="white-space:nowrap"><sa-i n="check" s="15"></sa-i><span>Tout conforme</span></button><sa-i n="right" s="16"></sa-i></div>
+                  <div style="display:flex;align-items:center;gap:10px;min-height:52px;border-bottom:1px solid var(--color-divider)"><sa-i n="thermo" s="18"></sa-i><span style="font:600 19px var(--font-heading);flex:1">Chauffage et ventilation</span><button class="btn btn-ghost" style="white-space:nowrap"><sa-i n="check" s="15"></sa-i><span>Tout conforme</span></button><sa-i n="right" s="16"></sa-i></div>
+                  <div style="display:flex;align-items:center;gap:10px;min-height:52px;border-bottom:1px solid var(--color-divider)"><sa-i n="alert" s="18"></sa-i><span style="font:600 19px var(--font-heading);flex:1">Sécurité et RQEP</span><span style="font-size:13px">1 à surveiller</span><span style="width:12px;height:12px;box-sizing:border-box;border:1.5px solid var(--color-text);background:repeating-linear-gradient(135deg,var(--color-text) 0 1.5px,transparent 1.5px 4px)"></span><sa-i n="right" s="16"></sa-i></div>
+                  <div style="display:flex;align-items:center;gap:10px;min-height:52px;border-bottom:1px solid var(--color-divider)"><sa-i n="building" s="18"></sa-i><span style="font:600 19px var(--font-heading);flex:1">Structure et surfaces</span><span style="font-size:13px">2 à surveiller</span><span style="width:12px;height:12px;box-sizing:border-box;border:1.5px solid var(--color-text);background:repeating-linear-gradient(135deg,var(--color-text) 0 1.5px,transparent 1.5px 4px)"></span><sa-i n="right" s="16"></sa-i></div>
+                  <div style="display:flex;align-items:center;gap:10px;min-height:52px"><sa-i n="package" s="18"></sa-i><span style="font:600 19px var(--font-heading);flex:1">Produits, photos et note</span><span style="font-size:13px">Ajouter des fichiers depuis l’ordinateur</span><sa-i n="right" s="16"></sa-i></div>
+                </div>
+                <div style="margin-top:auto;display:flex;align-items:center;gap:10px;padding-top:12px;border-top:1px solid var(--color-divider)">
+                  <span style="font-size:13px;flex:1;color:var(--color-neutral-700)">Saisie bureau : la visite est marquée « saisie par G. Lemieux » dans le journal.</span>
+                  <button class="btn btn-ghost" style="white-space:nowrap">Enregistrer le brouillon</button>
+                  <button class="btn btn-secondary" style="white-space:nowrap"><sa-i n="eye" s="16"></sa-i><span>Aperçu client</span></button>
+                  <button class="btn btn-primary" style="white-space:nowrap"><sa-i n="send" s="16"></sa-i><span>Valider et publier</span></button>
+                </div>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:18px;min-height:0">
+                <div style="display:flex;flex-direction:column;border:1px solid var(--color-divider)">
+                  <div style="padding:10px 14px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:2px"><span style="font:600 18px var(--font-heading)">Niveaux d’accès client</span><span style="font-size:13px">Ville de Granby · modifiable par client</span></div>
+                  <div style="display:grid;grid-template-columns:minmax(0,1fr) 62px 62px 62px;align-items:end;padding:8px 14px;border-bottom:1px solid var(--color-divider);font-size:12px;line-height:1.2"><span></span><span style="text-align:center">Opéra­teur</span><span style="text-align:center">Gestion­naire</span><span style="text-align:center">Direction</span></div>
+                  <sc-for list="{{ levels }}" as="r" hint-placeholder-count="9">
+                    <div style="display:grid;grid-template-columns:minmax(0,1fr) 62px 62px 62px;align-items:center;padding:6px 14px;border-bottom:1px solid var(--color-divider);font-size:14px">
+                      <span>{{ r.l }}</span>
+                      <sc-for list="{{ r.cells }}" as="c" hint-placeholder-count="3"><span style="display:flex;justify-content:center"><span style="width:18px;height:18px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;background:{{ c.bg }};border:{{ c.bd }};color:var(--color-bg);font-size:12px">{{ c.v }}</span></span></sc-for>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:8px;padding:12px 14px;border:1px solid var(--color-divider)">
+                  <span style="font:600 18px var(--font-heading)">Après publication</span>
+                  <div style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="width:18px;height:18px;flex:none;background:var(--color-text);color:var(--color-bg);display:flex;align-items:center;justify-content:center"><sa-i n="check" s="13" w="2"></sa-i></span>Visible sur la page QR du bassin 1</div>
+                  <div style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="width:18px;height:18px;flex:none;background:var(--color-text);color:var(--color-bg);display:flex;align-items:center;justify-content:center"><sa-i n="check" s="13" w="2"></sa-i></span>Courriel à Julie Morin (Gestionnaire)</div>
+                  <div style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="width:18px;height:18px;flex:none;box-sizing:border-box;border:1.5px solid var(--color-text)"></span>Texto à Marc Dubé (Opérateur)</div>
+                  <span style="font-size:13px;color:var(--color-accent-700);font-weight:500;padding-top:4px">Voir comme : Opérateur · Gestionnaire · Direction</span>
+                </div>
+              </div>
+            </main>
+          </div>
+        </div>
+        <span style="font-size:14px;max-width:1440px">Le même formulaire que sa-terrain, en version bureau : utile pour un relevé transmis par téléphone, une correction ou une visite sans réseau. Tout est journalisé. Les niveaux d’accès se règlent par client et s’appliquent à toutes ses installations.</span>
+      </div>
+
+      <!-- 5c · Portail client desktop -->
+      <div style="display:flex;flex-direction:column;gap:12px;flex:none">
+        <span style="font:600 20px var(--font-heading)">3 · Ce que voit le client · niveau Gestionnaire, sur ordinateur</span>
+        <div style="width:1440px;height:960px;display:flex;flex-direction:column;border:1px solid var(--color-neutral-400);background:#ffffff;overflow:hidden;box-shadow:var(--shadow-lg);font-size:15px">
+          <div style="flex:none;height:40px;display:flex;align-items:center;gap:12px;padding:0 14px;background:var(--color-neutral-200);border-bottom:1px solid var(--color-neutral-400)">
+            <span style="display:flex;gap:6px"><span style="width:11px;height:11px;border-radius:50%;background:var(--color-neutral-400)"></span><span style="width:11px;height:11px;border-radius:50%;background:var(--color-neutral-400)"></span><span style="width:11px;height:11px;border-radius:50%;background:var(--color-neutral-400)"></span></span>
+            <span style="flex:1;max-width:560px;margin:0 auto;height:26px;display:flex;align-items:center;gap:6px;padding:0 10px;background:#ffffff;font-size:13px"><sa-i n="check" s="13" w="2"></sa-i>clients.soucyaquatik.com/granby/complexe-aquatique</span>
+          </div>
+          <div style="flex:none;display:flex;align-items:center;gap:20px;padding:14px 32px;border-bottom:1px solid var(--color-divider)">
+            <div style="width:150px;height:52px;flex:none"><image-slot id="logo-client-portail" shape="rect" fit="contain" placeholder="Logo du client"></image-slot></div>
+            <div style="width:1px;height:40px;background:var(--color-divider)"></div>
+            <div style="flex:1;display:flex;flex-direction:column;line-height:1.2"><span style="font-size:13px;display:flex;align-items:center;gap:4px">Mes installations · 3 <sa-i n="down" s="14"></sa-i></span><span style="font:600 28px/1.1 var(--font-heading)">Complexe aquatique de Granby</span></div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;line-height:1.25"><span style="font-weight:500">Julie Morin</span><span style="font-size:13px">Accès Gestionnaire</span></div>
+            <div style="display:flex;align-items:center;gap:8px;padding-left:16px;border-left:1px solid var(--color-divider)"><span style="font-size:12px;line-height:1.2;text-align:right">Entretenu par</span><div style="width:36px;height:36px;background:#004987;color:#ffffff;display:flex;align-items:flex-end;padding:4px;box-sizing:border-box;font:600 9px/0.95 var(--font-heading)">Soucy<br>Aquatik</div></div>
+          </div>
+          <div style="flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:28px;padding:22px 32px;overflow:hidden">
+            <div style="display:flex;flex-direction:column;gap:18px;min-width:0;min-height:0">
+              <div style="padding:12px 16px;background:var(--color-accent-100);display:flex;gap:12px;align-items:flex-start"><sa-i n="wrench" s="20"></sa-i><div style="display:flex;flex-direction:column;gap:2px"><span style="font:600 18px var(--font-heading)">Bassin sportif : intervention en cours</span><span style="font-size:15px">Pompe doseuse de chlore en réparation, pièce prévue le 2 oct. Le chlore est ajusté à la main d’ici là.</span></div></div>
+              <div style="position:relative;height:220px;border:1px solid var(--color-divider)">
+                <image-slot id="plan-granby-portail" shape="rect" fit="contain" placeholder="Plan du site (même plan que dans sa-admin)"></image-slot>
+                <sc-for list="{{ bassins }}" as="b" hint-placeholder-count="6">
+                  <div style="position:absolute;left:{{ b.x }}%;top:{{ b.y }}%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:6px;pointer-events:none">
+                    <span style="width:30px;height:30px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font:600 16px var(--font-heading);background:{{ b.mBg }};color:{{ b.mFg }};border:{{ b.mBd }};box-shadow:{{ b.ring }}">{{ b.n }}</span>
+                    <span style="padding:2px 6px;background:rgba(255,255,255,0.92);font-size:13px;font-weight:500;white-space:nowrap">{{ b.nom }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;align-items:center;gap:2px;border-bottom:1px solid var(--color-divider)">
+                  <span style="padding:8px 14px;font:600 16px var(--font-heading);border-bottom:3px solid var(--color-accent-700)">Historique · bassin 1</span>
+                  <span style="padding:8px 14px;font:600 16px var(--font-heading);color:var(--color-neutral-700)">Rapports</span>
+                  <span style="padding:8px 14px;font:600 16px var(--font-heading);color:var(--color-neutral-700)">Plans et documents</span>
+                  <span style="padding:8px 14px;font:600 16px var(--font-heading);color:var(--color-neutral-700)">Interventions</span>
+                  <span style="padding:8px 14px;font:600 16px var(--font-heading);color:var(--color-neutral-500);display:flex;align-items:center;gap:6px">Factures <span style="font:400 12px var(--font-body)">· niveau Direction</span></span>
+                  <span style="flex:1"></span>
+                  <span style="font-size:14px;color:var(--color-accent-700);font-weight:500;display:flex;align-items:center;gap:6px"><sa-i n="download" s="15"></sa-i>Excel</span>
+                </div>
+                <div style="display:grid;grid-template-columns:200px minmax(0,1fr);gap:20px;align-items:start">
+                  <div style="display:flex;flex-direction:column;gap:4px">
+                    <span style="font-size:14px">Chlore combiné · 30 jours</span>
+                    <span style="font:600 32px/1 var(--font-heading)">0,7 <span style="font-size:15px;font-weight:400">mg/L</span></span>
+                    <span style="font-size:13px">Norme : 0,5 au maximum</span>
+                    <span style="font-size:13px;color:var(--color-accent-700);font-weight:500;padding-top:6px">Changer de paramètre ▾</span>
+                  </div>
+                  <div style="position:relative;height:120px;border-left:1px solid var(--color-neutral-500);border-bottom:1px solid var(--color-neutral-500)">
+                    <div style="position:absolute;left:0;right:0;top:58.3%;bottom:0;background:var(--color-accent-100)"></div>
+                    <svg viewBox="0 0 1000 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible"><path d="{{ histPts }}" fill="none" stroke="currentColor" stroke-width="1.5" vector-effect="non-scaling-stroke"></path></svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;min-height:0;border:1px solid var(--color-divider)">
+              <div style="padding:10px 14px;border-bottom:1px solid var(--color-divider);display:flex;align-items:baseline;justify-content:space-between"><span style="font:600 18px var(--font-heading)">Vos bassins</span><span style="font-size:13px">Visite d’aujourd’hui</span></div>
+              <sc-for list="{{ bassins }}" as="b" hint-placeholder-count="6">
+                <div style="display:grid;grid-template-columns:30px minmax(0,1fr) 14px;gap:12px;align-items:start;padding:11px 14px 11px 11px;border-left:3px solid {{ b.bar }};border-bottom:1px solid var(--color-divider);background:{{ b.rowBg }}">
+                  <span style="width:28px;height:28px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font:600 15px var(--font-heading);background:{{ b.mBg }};color:{{ b.mFg }};border:{{ b.mBd }}">{{ b.n }}</span>
+                  <div style="display:flex;flex-direction:column;line-height:1.3;min-width:0"><span style="font-weight:600">{{ b.nom }}</span><span style="font-size:14px">{{ b.stl }} · {{ b.resume }}</span></div>
+                  <sa-i n="right" s="14"></sa-i>
+                </div>
+              </sc-for>
+              <div style="margin-top:auto;padding:12px 14px;display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--color-divider)">
+                <button class="btn btn-primary btn-block" style="white-space:nowrap"><sa-i n="file" s="16"></sa-i><span>Rapport de la visite d’aujourd’hui</span></button>
+                <div style="display:flex;justify-content:space-between;font-size:14px"><span style="display:flex;align-items:center;gap:6px"><sa-i n="phone" s="15"></sa-i>Sophie Gagnon</span><span style="display:flex;align-items:center;gap:6px"><sa-i n="alert" s="15"></sa-i>Urgence 24/7</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <span style="font-size:14px;max-width:1440px">Logo du client en tête (rattaché au client dans sa-admin, ou au site s’il diffère), et Soucy Aquatik en signature. Les onglets suivent le niveau d’accès : « Factures » est grisé ici parce qu’il est réservé au niveau Direction.</span>
+      </div>
+
+      <!-- 5d · Portail client mobile opérateur -->
+      <div style="display:flex;flex-direction:column;gap:12px;width:390px;flex:none">
+        <span style="font:600 20px var(--font-heading)">4 · Niveau Opérateur, scanné en salle mécanique</span>
+        <div style="width:390px;height:844px;box-sizing:border-box;border:10px solid var(--color-text);border-radius:48px;background:#ffffff;overflow:hidden;display:flex;flex-direction:column">
+          <div style="height:40px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-weight:600;font-size:14px"><span>06:40</span><span style="font-size:12px">LTE · 91 %</span></div>
+          <div style="padding:6px 20px 12px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--color-divider)">
+            <div style="width:96px;height:36px;flex:none"><image-slot id="logo-client-mobile" shape="rect" fit="contain" placeholder="Logo"></image-slot></div>
+            <span style="flex:1"></span>
+            <span style="font-size:13px;padding:3px 8px;border:1px solid var(--color-divider)">Marc Dubé · Opérateur</span>
+          </div>
+          <div style="padding:12px 20px 8px;display:flex;flex-direction:column;gap:2px"><span style="font:600 24px/1.1 var(--font-heading)">Complexe aquatique de Granby</span><span style="font-size:14px">Scanné : salle mécanique · 6 bassins</span></div>
+          <div style="display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden">
+            <sc-for list="{{ bassins }}" as="b" hint-placeholder-count="6">
+              <div style="display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:12px;align-items:center;min-height:58px;padding:0 20px;border-bottom:1px solid var(--color-divider)">
+                <span style="width:28px;height:28px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font:600 15px var(--font-heading);background:{{ b.mBg }};color:{{ b.mFg }};border:{{ b.mBd }}">{{ b.n }}</span>
+                <div style="display:flex;flex-direction:column;line-height:1.25;min-width:0"><span style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ b.nom }}</span><span style="font-size:13px">{{ b.stl }} · {{ b.last }}</span></div>
+                <sa-i n="right" s="16"></sa-i>
+              </div>
+            </sc-for>
+            <div style="display:flex;flex-direction:column;padding:8px 20px">
+              <div style="display:flex;align-items:center;justify-content:space-between;min-height:48px;border-bottom:1px solid var(--color-divider)"><span>Registre RQEP · septembre</span><span style="display:flex;align-items:center;gap:6px;color:var(--color-accent-700);font-weight:500"><sa-i n="download" s="17"></sa-i>PDF</span></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;min-height:48px;border-bottom:1px solid var(--color-divider)"><span>Plan d’ensemble</span><span style="display:flex;align-items:center;gap:6px;color:var(--color-accent-700);font-weight:500"><sa-i n="eye" s="17"></sa-i>Voir</span></div>
+            </div>
+            <div style="margin:6px 20px;padding:10px 12px;border:1px dashed var(--color-neutral-500);font-size:14px;color:var(--color-neutral-700);line-height:1.4">Historique, rapports et exports : accès Gestionnaire. <span style="color:var(--color-accent-700);font-weight:500">Demander l’accès</span></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--color-divider)">
+            <div style="padding:12px 16px 22px;display:flex;align-items:center;gap:8px;font-size:14px"><sa-i n="phone" s="18"></sa-i><span>Technicien</span></div>
+            <div style="padding:12px 16px 22px;display:flex;align-items:center;gap:8px;font-size:14px;border-left:1px solid var(--color-divider)"><sa-i n="alert" s="18"></sa-i><span>Urgence 24/7</span></div>
+          </div>
+        </div>
+        <span style="font-size:14px">Même page, moins d’options : l’opérateur voit l’état de chaque bassin et les relevés du jour, et télécharge le registre pour l’inspecteur.</span>
+      </div>
+
+    </div>
+  </div>
+  </sc-if>
+
+  <div id="4a" style="display:flex;flex-direction:column;gap:18px;max-width:2400px">
+    <div style="display:flex;align-items:flex-start;gap:16px">
+      <span style="flex:none;padding:4px 10px;background:var(--color-accent-900);color:#ffffff;font:600 22px/1 var(--font-heading)">4a</span>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span style="font-size:13px;color:var(--color-accent-700)">Tour 4 · portail client</span>
+        <span style="font:600 40px/1 var(--font-heading)">Code QR dans la salle mécanique → relevés et rapports de l’installation</span>
+        <span style="max-width:1300px">Le client scanne l’affiche avec son téléphone et arrive sur la page de son installation : état du jour, relevés, rapports, interventions en cours. Le rapport « Envoyé au client » mène à la même page. Côté sécurité, <b>le code QR n’ouvre rien à lui seul</b> : il identifie l’installation, puis seule une personne autorisée y entre, avec un code reçu sur son courriel ou son cellulaire.</span>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border:1px solid var(--color-divider);max-width:1900px">
+      <div style="padding:12px 16px;border-right:1px solid var(--color-divider);display:flex;flex-direction:column;gap:4px"><span style="font:600 17px var(--font-heading)">Le QR identifie, il ne donne pas accès</span><span style="font-size:14px">Jeton aléatoire non devinable ; aucune donnée sans connexion.</span></div>
+      <div style="padding:12px 16px;border-right:1px solid var(--color-divider);display:flex;flex-direction:column;gap:4px"><span style="font:600 17px var(--font-heading)">Contacts autorisés seulement</span><span style="font-size:14px">Courriel ou cellulaire inscrit dans sa-admin ; code à 6 chiffres valable 10 min.</span></div>
+      <div style="padding:12px 16px;border-right:1px solid var(--color-divider);display:flex;flex-direction:column;gap:4px"><span style="font:600 17px var(--font-heading)">Appareil mémorisé 90 jours</span><span style="font-size:14px">L’opérateur qui passe chaque jour ne refait pas le code.</span></div>
+      <div style="padding:12px 16px;border-right:1px solid var(--color-divider);display:flex;flex-direction:column;gap:4px"><span style="font:600 17px var(--font-heading)">Lecture seule, par site</span><span style="font-size:14px">Un contact ne voit que ses installations ; les factures restent masquées par défaut.</span></div>
+      <div style="padding:12px 16px;display:flex;flex-direction:column;gap:4px"><span style="font:600 17px var(--font-heading)">Révocable et journalisé</span><span style="font-size:14px">Chaque accès est noté ; on régénère le QR si l’affiche est compromise.</span></div>
+    </div>
+
+    <div style="display:flex;gap:40px;align-items:flex-start">
+
+      <!-- Affiche -->
+      <div style="display:flex;flex-direction:column;gap:12px;width:400px;flex:none">
+        <span style="font:600 20px var(--font-heading)">1 · L’affiche, posée dans la salle mécanique</span>
+        <div style="width:400px;height:560px;box-sizing:border-box;border:1px solid var(--color-neutral-400);background:#ffffff;box-shadow:var(--shadow-md);display:flex;flex-direction:column;padding:28px 30px;gap:16px">
+          <div style="display:flex;align-items:center;gap:10px"><div style="width:44px;height:44px;flex:none;background:#004987;color:#ffffff;display:flex;align-items:flex-end;padding:5px;box-sizing:border-box;font:600 11px/0.95 var(--font-heading)">Soucy<br>Aquatik</div><span style="font:600 15px/1.2 var(--font-heading)">Relevés et rapports<br>de cette installation</span></div>
+          <span style="font:600 30px/1.05 var(--font-heading)">Complexe aquatique de Granby</span>
+          <div style="align-self:center;width:210px;height:210px;position:relative;background:repeating-conic-gradient(var(--color-text) 0 25%,#ffffff 0 50%) 0 0/14px 14px;outline:12px solid #ffffff;margin:12px 0">
+            <span style="position:absolute;left:0;top:0;width:56px;height:56px;box-sizing:border-box;border:9px solid var(--color-text);background:#ffffff;box-shadow:inset 0 0 0 9px #ffffff,inset 0 0 0 30px var(--color-text)"></span>
+            <span style="position:absolute;right:0;top:0;width:56px;height:56px;box-sizing:border-box;border:9px solid var(--color-text);background:#ffffff;box-shadow:inset 0 0 0 9px #ffffff,inset 0 0 0 30px var(--color-text)"></span>
+            <span style="position:absolute;left:0;bottom:0;width:56px;height:56px;box-sizing:border-box;border:9px solid var(--color-text);background:#ffffff;box-shadow:inset 0 0 0 9px #ffffff,inset 0 0 0 30px var(--color-text)"></span>
+          </div>
+          <span style="font-size:15px;text-align:center">Scannez avec l’appareil photo de votre téléphone.</span>
+          <span style="font-size:13px;text-align:center;color:var(--color-neutral-700)">Accès réservé aux personnes autorisées par le gestionnaire du site.</span>
+          <div style="margin-top:auto;display:flex;justify-content:space-between;font-size:13px;border-top:1px solid var(--color-divider);padding-top:10px"><span>Urgence 24/7 · 418 781-0620</span><span style="color:var(--color-neutral-700)">SA-S08-B1</span></div>
+        </div>
+        <span style="font-size:14px">Imprimée depuis sa-admin, comme les étiquettes QR actuelles. Un code par bassin si le site en a plusieurs.</span>
+      </div>
+
+      <!-- Vérification -->
+      <div style="display:flex;flex-direction:column;gap:12px;width:390px;flex:none">
+        <span style="font:600 20px var(--font-heading)">2 · Vérification, une seule fois par appareil</span>
+        <div style="width:390px;height:844px;box-sizing:border-box;border:10px solid var(--color-text);border-radius:48px;background:var(--color-bg);overflow:hidden;display:flex;flex-direction:column">
+          <div style="height:40px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-weight:600;font-size:14px"><span>14:12</span><span style="font-size:12px">LTE · 64 %</span></div>
+          <div style="padding:10px 22px 18px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--color-divider)"><div style="width:36px;height:36px;flex:none;background:#004987;color:#ffffff;display:flex;align-items:flex-end;padding:4px;box-sizing:border-box;font:600 9px/0.95 var(--font-heading)">Soucy<br>Aquatik</div><span style="font-size:14px;display:flex;align-items:center;gap:6px"><sa-i n="check" s="15" w="2"></sa-i>Connexion sécurisée</span></div>
+          <div style="padding:24px 22px;display:flex;flex-direction:column;gap:20px;flex:1">
+            <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:14px;color:var(--color-neutral-700)">Installation reconnue</span><span style="font:600 28px/1.1 var(--font-heading)">Complexe aquatique de Granby</span><span style="font-size:15px">Bassin 50 m · Ville de Granby</span></div>
+            <p style="margin:0;font-size:16px;line-height:1.5">Nous avons envoyé un code à <b>j•••••@granby.ca</b>. Entrez-le pour voir les relevés et les rapports.</p>
+            <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px">
+              <span style="height:56px;display:flex;align-items:center;justify-content:center;border:1px solid var(--color-neutral-400);font:600 26px var(--font-heading)">4</span>
+              <span style="height:56px;display:flex;align-items:center;justify-content:center;border:1px solid var(--color-neutral-400);font:600 26px var(--font-heading)">8</span>
+              <span style="height:56px;display:flex;align-items:center;justify-content:center;border:1px solid var(--color-neutral-400);font:600 26px var(--font-heading)">1</span>
+              <span style="height:56px;display:flex;align-items:center;justify-content:center;border:2px solid var(--color-accent-700);font:600 26px var(--font-heading)"><span style="width:1.5px;height:26px;background:var(--color-text)"></span></span>
+              <span style="height:56px;border:1px solid var(--color-neutral-400)"></span>
+              <span style="height:56px;border:1px solid var(--color-neutral-400)"></span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;min-height:44px"><span style="width:22px;height:22px;flex:none;background:var(--color-text);color:var(--color-bg);display:flex;align-items:center;justify-content:center"><sa-i n="check" s="16" w="2"></sa-i></span><span style="font-size:15px">Se souvenir de cet appareil 90 jours</span></div>
+            <button class="btn btn-primary btn-block" style="height:52px;font-size:16px;white-space:nowrap">Accéder à l’installation</button>
+            <span style="font-size:14px;color:var(--color-accent-700);text-align:center">Renvoyer le code · Utiliser mon cellulaire</span>
+            <span style="margin-top:auto;font-size:13px;color:var(--color-neutral-700);text-align:center;line-height:1.4">Vous n’êtes pas sur la liste ? Demandez l’accès à votre gestionnaire ; il l’ajoute dans votre compte Soucy Aquatik.</span>
+          </div>
+        </div>
+        <span style="font-size:14px">L’étape d’avant demande le courriel ou le cellulaire. S’il n’est pas autorisé pour ce site, aucune information n’est révélée.</span>
+      </div>
+
+      <!-- Accueil portail -->
+      <div style="display:flex;flex-direction:column;gap:12px;width:390px;flex:none">
+        <span style="font:600 20px var(--font-heading)">3 · L’état de l’installation, en mots simples</span>
+        <div style="width:390px;height:844px;box-sizing:border-box;border:10px solid var(--color-text);border-radius:48px;background:var(--color-bg);overflow:hidden;display:flex;flex-direction:column">
+          <div style="height:40px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-weight:600;font-size:14px"><span>14:13</span><span style="font-size:12px">LTE · 64 %</span></div>
+          <div style="padding:8px 20px 14px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:2px">
+            <span style="font-size:13px;color:var(--color-neutral-700)">Ville de Granby · J. Morin</span>
+            <span style="font:600 26px/1.1 var(--font-heading)">Complexe aquatique de Granby</span>
+            <span style="font-size:14px">Dernière visite : aujourd’hui 07:48 · Sophie Gagnon</span>
+          </div>
+          <div style="display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden">
+            <div style="margin:10px 20px 2px;padding:10px 14px;background:var(--color-accent-100);display:flex;flex-direction:column;gap:4px">
+              <span style="font:600 18px/1.2 var(--font-heading)">2 interventions en cours</span>
+              <span style="font-size:15px;line-height:1.45">La pompe doseuse de chlore est en réparation : pièce prévue le 2 oct. En attendant, le chlore est ajusté à la main. Le chlore combiné est un peu élevé ; une chloration choc a été faite.</span>
+            </div>
+            <div style="display:flex;flex-direction:column;padding:6px 20px">
+              <div style="display:flex;align-items:center;justify-content:space-between;min-height:44px;border-bottom:1px solid var(--color-divider)"><span>Eau du bassin</span><span style="display:flex;align-items:center;gap:8px;font-size:14px">Intervention<span style="width:14px;height:14px;box-sizing:border-box;border:1.5px solid var(--color-text);background:var(--color-accent-900)"></span></span></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;min-height:44px;border-bottom:1px solid var(--color-divider)"><span>Traitement et dosage</span><span style="display:flex;align-items:center;gap:8px;font-size:14px">Intervention<span style="width:14px;height:14px;box-sizing:border-box;border:1.5px solid var(--color-text);background:var(--color-accent-900)"></span></span></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;min-height:44px;border-bottom:1px solid var(--color-divider)"><span>Sécurité et RQEP</span><span style="display:flex;align-items:center;gap:8px;font-size:14px">À votre attention<span style="width:14px;height:14px;box-sizing:border-box;border:1.5px solid var(--color-text);background:repeating-linear-gradient(135deg,var(--color-text) 0 1.5px,transparent 1.5px 4px)"></span></span></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;min-height:44px;border-bottom:1px solid var(--color-divider)"><span>Structure et surfaces</span><span style="display:flex;align-items:center;gap:8px;font-size:14px">À surveiller<span style="width:14px;height:14px;box-sizing:border-box;border:1.5px solid var(--color-text);background:repeating-linear-gradient(135deg,var(--color-text) 0 1.5px,transparent 1.5px 4px)"></span></span></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;min-height:44px;border-bottom:1px solid var(--color-divider)"><span>Circulation et filtration</span><span style="display:flex;align-items:center;gap:8px;font-size:14px">Conforme<span style="width:14px;height:14px;box-sizing:border-box;border:1.5px solid var(--color-text)"></span></span></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;min-height:44px"><span>Chauffage et ventilation</span><span style="display:flex;align-items:center;gap:8px;font-size:14px">Conforme<span style="width:14px;height:14px;box-sizing:border-box;border:1.5px solid var(--color-text)"></span></span></div>
+            </div>
+            <div style="margin:4px 20px;padding:10px 12px;border:1px solid var(--color-divider);font-size:14px;line-height:1.4"><b>À votre attention :</b> le registre RQEP n’a pas été signé le 30 sept.</div>
+            <div style="display:flex;flex-direction:column;gap:8px;padding:10px 20px">
+              <button class="btn btn-primary btn-block" style="height:48px;font-size:16px;white-space:nowrap"><sa-i n="file" s="18"></sa-i><span>Rapport de la visite d’aujourd’hui</span></button>
+              <button class="btn btn-secondary btn-block" style="height:48px;font-size:16px;white-space:nowrap"><sa-i n="chart" s="18"></sa-i><span>Relevés et historique</span></button>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--color-divider)">
+            <div style="padding:12px 16px 22px;display:flex;align-items:center;gap:8px;font-size:14px"><sa-i n="phone" s="18"></sa-i><span>Sophie Gagnon</span></div>
+            <div style="padding:12px 16px 22px;display:flex;align-items:center;gap:8px;font-size:14px;border-left:1px solid var(--color-divider)"><sa-i n="alert" s="18"></sa-i><span>Urgence 24/7</span></div>
+          </div>
+        </div>
+        <span style="font-size:14px">Les mêmes 6 systèmes que l’admin, avec un vocabulaire client : « Intervention » plutôt qu’« Action requise », et ce qui dépend du client mis en avant.</span>
+      </div>
+
+      <!-- Relevés & rapports -->
+      <div style="display:flex;flex-direction:column;gap:12px;width:390px;flex:none">
+        <span style="font:600 20px var(--font-heading)">4 · Relevés, rapports, interventions</span>
+        <div style="width:390px;height:844px;box-sizing:border-box;border:10px solid var(--color-text);border-radius:48px;background:var(--color-bg);overflow:hidden;display:flex;flex-direction:column">
+          <div style="height:40px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-weight:600;font-size:14px"><span>14:14</span><span style="font-size:12px">LTE · 63 %</span></div>
+          <div style="padding:6px 20px 10px;display:flex;align-items:center;gap:10px"><sa-i n="left" s="20"></sa-i><span style="font:600 22px var(--font-heading)">Complexe aquatique de Granby</span></div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--color-divider);border-bottom:1px solid var(--color-divider)">
+            <span style="height:46px;display:flex;align-items:center;justify-content:center;font-weight:600;border-bottom:3px solid var(--color-accent-700)">Relevés</span>
+            <span style="height:46px;display:flex;align-items:center;justify-content:center">Rapports</span>
+            <span style="height:46px;display:flex;align-items:center;justify-content:center">Interventions</span>
+          </div>
+          <div style="display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden">
+            <div style="padding:12px 20px;display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid var(--color-divider)"><span style="font-size:14px">30 derniers jours</span><span style="font:600 22px var(--font-heading)">94 % dans la norme</span></div>
+            <div style="padding:10px 20px 4px;font-size:13px;color:var(--color-neutral-700)">Aujourd’hui 07:48</div>
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:0 20px 10px;border-bottom:1px solid var(--color-divider);font-size:15px">
+              <span>pH</span><span style="font-weight:600;text-align:right">7,4</span>
+              <span>Chlore libre</span><span style="font-weight:600;text-align:right">1,6 mg/L</span>
+              <span>Chlore combiné <span style="font-size:13px">(max 0,5)</span></span><span style="font-weight:600;text-align:right;padding:0 6px;background:var(--color-accent-900);color:#ffffff">0,7 mg/L</span>
+              <span>Alcalinité</span><span style="font-weight:600;text-align:right">100 ppm</span>
+              <span>Température</span><span style="font-weight:600;text-align:right">27,5 °C</span>
+              <span>Turbidité</span><span style="font-weight:600;text-align:right">0,2 UTN</span>
+            </div>
+            <div style="padding:12px 20px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--color-divider)">
+              <span style="font-size:14px">Chlore libre · 30 jours</span>
+              <div style="position:relative;height:70px;border-bottom:1px solid var(--color-neutral-500)">
+                <div style="position:absolute;left:0;right:0;top:30%;height:28%;background:var(--color-accent-100)"></div>
+                <svg viewBox="0 0 300 70" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%"><path d="M0 38 L20 34 L40 40 L60 30 L80 36 L100 33 L120 44 L140 35 L160 31 L180 37 L200 34 L220 29 L240 36 L260 33 L280 38 L300 35" fill="none" stroke="currentColor" stroke-width="1.5" vector-effect="non-scaling-stroke"></path></svg>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;padding:6px 20px">
+              <span style="font-size:13px;color:var(--color-neutral-700);padding:6px 0">Registre RQEP</span>
+              <div style="display:flex;align-items:center;justify-content:space-between;min-height:48px;border-bottom:1px solid var(--color-divider)"><span>Septembre 2026</span><span style="display:flex;align-items:center;gap:6px;color:var(--color-accent-700);font-weight:500"><sa-i n="download" s="17"></sa-i>PDF</span></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;min-height:48px;border-bottom:1px solid var(--color-divider)"><span>Août 2026</span><span style="display:flex;align-items:center;gap:6px;color:var(--color-accent-700);font-weight:500"><sa-i n="download" s="17"></sa-i>PDF</span></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;min-height:48px"><span>Export Excel · 12 mois</span><span style="display:flex;align-items:center;gap:6px;color:var(--color-accent-700);font-weight:500"><sa-i n="download" s="17"></sa-i>XLSX</span></div>
+            </div>
+          </div>
+        </div>
+        <span style="font-size:14px">Utile pour l’inspecteur du ministère : le registre mensuel se télécharge sur place, directement depuis la salle mécanique.</span>
+      </div>
+
+      <!-- Admin : accès client -->
+      <div style="display:flex;flex-direction:column;gap:12px;width:760px;flex:none">
+        <span style="font:600 20px var(--font-heading)">5 · Dans sa-admin : Sites › Accès client</span>
+        <div style="width:760px;box-sizing:border-box;border:1px solid var(--color-neutral-400);background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column;font-size:15px">
+          <div style="padding:14px 20px;border-bottom:1px solid var(--color-divider);display:flex;align-items:center;justify-content:space-between"><div style="display:flex;flex-direction:column;line-height:1.2"><span style="font-size:13px">Complexe aquatique de Granby</span><span style="font:600 24px var(--font-heading)">Accès client</span></div><button class="btn btn-ghost btn-icon" aria-label="Fermer"><sa-i n="x" s="18"></sa-i></button></div>
+          <div style="display:grid;grid-template-columns:220px minmax(0,1fr);gap:24px;padding:18px 20px">
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="width:150px;height:150px;position:relative;background:repeating-conic-gradient(var(--color-text) 0 25%,#ffffff 0 50%) 0 0/10px 10px;outline:8px solid #ffffff;margin:8px">
+                <span style="position:absolute;left:0;top:0;width:40px;height:40px;box-sizing:border-box;border:7px solid var(--color-text);background:#ffffff;box-shadow:inset 0 0 0 6px #ffffff,inset 0 0 0 20px var(--color-text)"></span>
+                <span style="position:absolute;right:0;top:0;width:40px;height:40px;box-sizing:border-box;border:7px solid var(--color-text);background:#ffffff;box-shadow:inset 0 0 0 6px #ffffff,inset 0 0 0 20px var(--color-text)"></span>
+                <span style="position:absolute;left:0;bottom:0;width:40px;height:40px;box-sizing:border-box;border:7px solid var(--color-text);background:#ffffff;box-shadow:inset 0 0 0 6px #ffffff,inset 0 0 0 20px var(--color-text)"></span>
+              </div>
+              <span style="font-size:13px">SA-S08-B1 · actif depuis le 12 mai</span>
+              <button class="btn btn-primary" style="white-space:nowrap"><sa-i n="file" s="16"></sa-i><span>Imprimer l’affiche</span></button>
+              <button class="btn btn-secondary" style="white-space:nowrap"><sa-i n="cycle" s="16"></sa-i><span>Régénérer le code</span></button>
+              <span style="font-size:12px;color:var(--color-neutral-700);line-height:1.35">Régénérer désactive immédiatement l’ancienne affiche.</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+              <div style="display:flex;flex-direction:column">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;padding-bottom:6px;border-bottom:1px solid var(--color-divider)"><span style="font:600 18px var(--font-heading)">Contacts autorisés</span><span style="font-size:14px;color:var(--color-accent-700);font-weight:500">+ Ajouter</span></div>
+                <div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1.4fr) 110px 24px;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--color-divider)"><span style="font-weight:500">Julie Morin</span><span style="font-size:14px">j.morin@granby.ca</span><span style="font-size:13px">Auj. 14:13</span><sa-i n="x" s="16"></sa-i></div>
+                <div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1.4fr) 110px 24px;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--color-divider)"><span style="font-weight:500">Marc Dubé · opérateur</span><span style="font-size:14px">450 555-0142</span><span style="font-size:13px">Hier 06:40</span><sa-i n="x" s="16"></sa-i></div>
+                <div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1.4fr) 110px 24px;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--color-divider)"><span style="font-weight:500">Service des loisirs</span><span style="font-size:14px">loisirs@granby.ca</span><span style="font-size:13px">Jamais</span><sa-i n="x" s="16"></sa-i></div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <span style="font:600 18px var(--font-heading);padding-bottom:6px;border-bottom:1px solid var(--color-divider)">Ce que le client voit</span>
+                <div style="display:flex;flex-wrap:wrap;gap:8px 18px;font-size:14px">
+                  <span style="display:flex;align-items:center;gap:8px"><span style="width:18px;height:18px;background:var(--color-text);color:var(--color-bg);display:flex;align-items:center;justify-content:center"><sa-i n="check" s="13" w="2"></sa-i></span>État et relevés</span>
+                  <span style="display:flex;align-items:center;gap:8px"><span style="width:18px;height:18px;background:var(--color-text);color:var(--color-bg);display:flex;align-items:center;justify-content:center"><sa-i n="check" s="13" w="2"></sa-i></span>Rapports de visite</span>
+                  <span style="display:flex;align-items:center;gap:8px"><span style="width:18px;height:18px;background:var(--color-text);color:var(--color-bg);display:flex;align-items:center;justify-content:center"><sa-i n="check" s="13" w="2"></sa-i></span>Interventions en cours</span>
+                  <span style="display:flex;align-items:center;gap:8px"><span style="width:18px;height:18px;box-sizing:border-box;border:1.5px solid var(--color-text)"></span>Factures</span>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:4px;font-size:13px">
+                <span style="font:600 18px var(--font-heading);padding-bottom:6px;border-bottom:1px solid var(--color-divider)">Journal des accès</span>
+                <span>Auj. 14:13 · Julie Morin · QR salle mécanique · appareil mémorisé</span>
+                <span>Hier 06:40 · Marc Dubé · QR salle mécanique</span>
+                <span>29 sept. 11:02 · tentative refusée · courriel non autorisé</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <span style="font-size:14px">Le gestionnaire chez Soucy contrôle qui entre et ce qu’il voit. Plus tard, le client pourrait gérer lui-même ses contacts.</span>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="3a" style="display:flex;flex-direction:column;gap:18px;max-width:2200px">
+    <div style="display:flex;align-items:flex-start;gap:16px">
+      <span style="flex:none;padding:4px 10px;background:var(--color-accent-900);color:#ffffff;font:600 22px/1 var(--font-heading)">3a</span>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span style="font-size:13px;color:var(--color-accent-700)">Tour 3 · d’où viennent les données</span>
+        <span style="font:600 40px/1 var(--font-heading)">Saisie terrain dans sa-terrain : une visite, du début à l’envoi</span>
+        <span style="max-width:1200px">Le technicien remplit les 6 mêmes systèmes, dans le même ordre que ce que l’admin lit en 2a, 2b et 2c. On saisit <b>par exception</b> : un tap sur « Tout est conforme », et on ne détaille que ce qui ne va pas. La zone visée s’affiche pendant la saisie. Un écart demande une réponse : correction, photo, bon de travail. Les produits et les photos sont saisis sur place. À l’envoi, sa-admin a tout ; hors réseau, l’envoi se fait au retour du signal.</span>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:40px;align-items:flex-start">
+
+      <!-- ① Démarrer -->
+      <div style="display:flex;flex-direction:column;gap:12px;width:390px;flex:none">
+        <span style="font:600 20px var(--font-heading)">1 · Démarrer la visite</span>
+        <div style="width:390px;height:844px;box-sizing:border-box;border:10px solid var(--color-text);border-radius:48px;background:var(--color-bg);overflow:hidden;display:flex;flex-direction:column">
+          <div style="height:40px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-weight:600;font-size:14px"><span>07:48</span><span style="font-size:12px">LTE · 82 %</span></div>
+          <div style="padding:6px 18px 14px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:2px">
+            <span style="display:flex;align-items:center;gap:6px;font-size:14px;color:var(--color-accent-700)"><sa-i n="left" s="16"></sa-i>Tournée du jour</span>
+            <span style="font:600 26px/1.1 var(--font-heading)">Complexe aquatique de Granby</span>
+            <span style="font-size:14px">Bassin 50 m · RQEP · punché à 07:48</span>
+          </div>
+          <div style="padding:14px 18px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--color-divider)">
+            <div style="display:flex;justify-content:space-between;font-size:14px"><span>2 systèmes sur 6</span><span>≈ 12 min restantes</span></div>
+            <div style="height:6px;background:var(--color-neutral-200)"><div style="width:33%;height:100%;background:var(--color-accent-700)"></div></div>
+          </div>
+          <div style="display:flex;flex-direction:column;flex:1">
+            <div style="display:flex;align-items:center;gap:12px;min-height:62px;padding:0 18px;border-bottom:1px solid var(--color-divider)"><sa-i n="droplet" s="20"></sa-i><div style="flex:1;display:flex;flex-direction:column;line-height:1.25"><span style="font-weight:600">Eau du bassin</span><span style="font-size:13px">Fait · 1 action requise</span></div><span style="width:14px;height:14px;box-sizing:border-box;border:1.5px solid var(--color-text);background:var(--color-accent-900)"></span></div>
+            <div style="display:flex;align-items:center;gap:12px;min-height:62px;padding:0 18px;border-bottom:1px solid var(--color-divider)"><sa-i n="cycle" s="20"></sa-i><div style="flex:1;display:flex;flex-direction:column;line-height:1.25"><span style="font-weight:600">Circulation et filtration</span><span style="font-size:13px">Fait · conforme</span></div><span style="width:14px;height:14px;box-sizing:border-box;border:1.5px solid var(--color-text)"></span></div>
+            <div style="display:flex;align-items:center;gap:12px;min-height:62px;padding:0 18px;border-bottom:1px solid var(--color-divider);background:var(--color-accent-100)"><sa-i n="flask" s="20"></sa-i><div style="flex:1;display:flex;flex-direction:column;line-height:1.25"><span style="font-weight:600">Traitement et dosage</span><span style="font-size:13px">À faire · 4 points</span></div><sa-i n="right" s="18"></sa-i></div>
+            <div style="display:flex;align-items:center;gap:12px;min-height:62px;padding:0 18px;border-bottom:1px solid var(--color-divider)"><sa-i n="thermo" s="20"></sa-i><div style="flex:1;display:flex;flex-direction:column;line-height:1.25"><span style="font-weight:600">Chauffage et ventilation</span><span style="font-size:13px">À faire · 3 points</span></div><sa-i n="right" s="18"></sa-i></div>
+            <div style="display:flex;align-items:center;gap:12px;min-height:62px;padding:0 18px;border-bottom:1px solid var(--color-divider)"><sa-i n="alert" s="20"></sa-i><div style="flex:1;display:flex;flex-direction:column;line-height:1.25"><span style="font-weight:600">Sécurité et RQEP</span><span style="font-size:13px">À faire · 6 points</span></div><sa-i n="right" s="18"></sa-i></div>
+            <div style="display:flex;align-items:center;gap:12px;min-height:62px;padding:0 18px;border-bottom:1px solid var(--color-divider)"><sa-i n="building" s="20"></sa-i><div style="flex:1;display:flex;flex-direction:column;line-height:1.25"><span style="font-weight:600">Structure et surfaces</span><span style="font-size:13px">À faire · 5 points</span></div><sa-i n="right" s="18"></sa-i></div>
+            <div style="display:flex;align-items:center;gap:12px;min-height:62px;padding:0 18px;color:var(--color-neutral-700)"><sa-i n="package" s="20"></sa-i><div style="flex:1;display:flex;flex-direction:column;line-height:1.25"><span style="font-weight:600">Produits et photos</span><span style="font-size:13px">2 produits · 1 photo</span></div><sa-i n="right" s="18"></sa-i></div>
+          </div>
+          <div style="padding:12px 18px 22px;border-top:1px solid var(--color-divider)"><button class="btn btn-primary btn-block" style="height:52px;font-size:16px;white-space:nowrap"><span>Continuer : Traitement et dosage</span><sa-i n="right" s="18"></sa-i></button></div>
+        </div>
+        <span style="font-size:14px">Les systèmes viennent de la fiche du site (Sites › Équipements). L’ordre suit la tournée, mais on peut sauter n’importe où.</span>
+      </div>
+
+      <!-- ② Eau -->
+      <div style="display:flex;flex-direction:column;gap:12px;width:390px;flex:none">
+        <span style="font:600 20px var(--font-heading)">2 · Eau : la zone s’affiche pendant la saisie</span>
+        <div style="width:390px;height:844px;box-sizing:border-box;border:10px solid var(--color-text);border-radius:48px;background:var(--color-bg);overflow:hidden;display:flex;flex-direction:column">
+          <div style="height:40px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-weight:600;font-size:14px"><span>07:51</span><span style="font-size:12px">LTE · 82 %</span></div>
+          <div style="padding:6px 18px 10px;border-bottom:1px solid var(--color-divider);display:flex;align-items:center;gap:10px"><sa-i n="left" s="20"></sa-i><div style="flex:1;display:flex;flex-direction:column;line-height:1.2"><span style="font:600 22px var(--font-heading)">Eau du bassin</span><span style="font-size:13px">7 paramètres · relevé aux 4 h · faites défiler</span></div><span style="font-size:13px">1 / 6</span></div>
+          <div style="display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden">
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) 84px;gap:10px;align-items:center;min-height:52px;padding:0 18px;border-bottom:1px solid var(--color-divider)"><div style="display:flex;flex-direction:column;line-height:1.2"><span style="font-weight:500">pH</span><span style="font-size:12px;color:var(--color-neutral-700)">Zone 7,2 – 7,6</span></div><span style="height:40px;display:flex;align-items:center;justify-content:flex-end;padding:0 10px;border:1px solid var(--color-divider);font:600 20px var(--font-heading)">7,4</span></div>
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) 84px;gap:10px;align-items:center;min-height:52px;padding:0 18px;border-bottom:1px solid var(--color-divider)"><div style="display:flex;flex-direction:column;line-height:1.2"><span style="font-weight:500">Chlore libre <span style="font-size:12px;font-weight:400">mg/L</span></span><span style="font-size:12px;color:var(--color-neutral-700)">Zone 1,0 – 2,0</span></div><span style="height:40px;display:flex;align-items:center;justify-content:flex-end;padding:0 10px;border:1px solid var(--color-divider);font:600 20px var(--font-heading)">1,6</span></div>
+            <div style="display:flex;flex-direction:column;gap:8px;padding:10px 18px 12px;border-bottom:1px solid var(--color-divider);background:var(--color-accent-100)">
+              <div style="display:grid;grid-template-columns:minmax(0,1fr) 84px;gap:10px;align-items:center"><div style="display:flex;flex-direction:column;line-height:1.2"><span style="font-weight:600">Chlore combiné <span style="font-size:12px;font-weight:400">mg/L</span></span><span style="font-size:12px;font-weight:600;color:var(--color-accent-900)">Hors zone · max 0,5</span></div><span style="height:40px;display:flex;align-items:center;justify-content:flex-end;padding:0 10px;background:var(--color-accent-900);color:#ffffff;font:600 20px var(--font-heading)">0,7</span></div>
+              <span style="font-size:13px">Qu’avez-vous fait ?</span>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <span style="padding:8px 12px;font-size:14px;background:var(--color-text);color:var(--color-bg)">Chloration choc</span>
+                <span style="padding:8px 12px;font-size:14px;border:1px solid var(--color-neutral-400);background:var(--color-bg)">Apport d’eau neuve</span>
+                <span style="padding:8px 12px;font-size:14px;border:1px solid var(--color-neutral-400);background:var(--color-bg)">Signaler seulement</span>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) 84px;gap:10px;align-items:center;min-height:52px;padding:0 18px;border-bottom:1px solid var(--color-divider)"><div style="display:flex;flex-direction:column;line-height:1.2"><span style="font-weight:500">Alcalinité totale <span style="font-size:12px;font-weight:400">ppm</span></span><span style="font-size:12px;color:var(--color-neutral-700)">Zone 80 – 120</span></div><span style="height:40px;display:flex;align-items:center;justify-content:flex-end;padding:0 10px;border:1px solid var(--color-divider);font:600 20px var(--font-heading)">100</span></div>
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) 84px;gap:10px;align-items:center;min-height:52px;padding:0 18px;border-bottom:1px solid var(--color-divider)"><div style="display:flex;flex-direction:column;line-height:1.2"><span style="font-weight:500">Température <span style="font-size:12px;font-weight:400">°C</span></span><span style="font-size:12px;color:var(--color-neutral-700)">Zone 26 – 28</span></div><span style="height:40px;display:flex;align-items:center;justify-content:flex-end;padding:0 10px;border:1px solid var(--color-divider);font:600 20px var(--font-heading)">27,5</span></div>
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) 84px;gap:10px;align-items:center;min-height:52px;padding:0 18px;border-bottom:1px solid var(--color-divider)"><div style="display:flex;flex-direction:column;line-height:1.2"><span style="font-weight:500">Turbidité <span style="font-size:12px;font-weight:400">UTN</span></span><span style="font-size:12px;color:var(--color-neutral-700)">Zone 0 – 0,5</span></div><span style="height:40px;display:flex;align-items:center;justify-content:flex-end;padding:0 10px;border:2px solid var(--color-accent-700);font:600 20px var(--font-heading)">0,2<span style="width:1.5px;height:22px;background:var(--color-text);margin-left:2px"></span></span></div>
+          </div>
+          <div style="flex:none;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:8px 8px 20px;background:var(--color-neutral-200)">
+            <span style="height:46px;display:flex;align-items:center;justify-content:center;background:var(--color-bg);font:500 22px var(--font-body)">1</span><span style="height:46px;display:flex;align-items:center;justify-content:center;background:var(--color-bg);font:500 22px var(--font-body)">2</span><span style="height:46px;display:flex;align-items:center;justify-content:center;background:var(--color-bg);font:500 22px var(--font-body)">3</span>
+            <span style="height:46px;display:flex;align-items:center;justify-content:center;background:var(--color-bg);font:500 22px var(--font-body)">4</span><span style="height:46px;display:flex;align-items:center;justify-content:center;background:var(--color-bg);font:500 22px var(--font-body)">5</span><span style="height:46px;display:flex;align-items:center;justify-content:center;background:var(--color-bg);font:500 22px var(--font-body)">6</span>
+            <span style="height:46px;display:flex;align-items:center;justify-content:center;background:var(--color-bg);font:500 22px var(--font-body)">7</span><span style="height:46px;display:flex;align-items:center;justify-content:center;background:var(--color-bg);font:500 22px var(--font-body)">8</span><span style="height:46px;display:flex;align-items:center;justify-content:center;background:var(--color-bg);font:500 22px var(--font-body)">9</span>
+            <span style="height:46px;display:flex;align-items:center;justify-content:center;background:var(--color-bg);font:500 22px var(--font-body)">,</span><span style="height:46px;display:flex;align-items:center;justify-content:center;background:var(--color-bg);font:500 22px var(--font-body)">0</span><span style="height:46px;display:flex;align-items:center;justify-content:center;background:var(--color-accent-700);color:#ffffff;font:600 16px var(--font-body)">Suivant</span>
+          </div>
+        </div>
+        <span style="font-size:14px">Clavier numérique, « Suivant » passe au champ suivant. La valeur passe en plein dès qu’elle sort de la zone, et le technicien dit ce qu’il a fait.</span>
+      </div>
+
+      <!-- ③ Équipements -->
+      <div style="display:flex;flex-direction:column;gap:12px;width:390px;flex:none">
+        <span style="font:600 20px var(--font-heading)">3 · Équipements : on signale l’exception</span>
+        <div style="width:390px;height:844px;box-sizing:border-box;border:10px solid var(--color-text);border-radius:48px;background:var(--color-bg);overflow:hidden;display:flex;flex-direction:column">
+          <div style="height:40px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-weight:600;font-size:14px"><span>07:58</span><span style="font-size:12px">LTE · 81 %</span></div>
+          <div style="padding:6px 18px 10px;border-bottom:1px solid var(--color-divider);display:flex;align-items:center;gap:10px"><sa-i n="left" s="20"></sa-i><div style="flex:1;display:flex;flex-direction:column;line-height:1.2"><span style="font:600 22px var(--font-heading)">Traitement et dosage</span><span style="font-size:13px">4 points</span></div><span style="font-size:13px">3 / 6</span></div>
+          <div style="padding:8px 18px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:6px">
+            <button class="btn btn-secondary btn-block" style="height:44px;font-size:16px;white-space:nowrap"><sa-i n="check" s="18"></sa-i><span>Tout est conforme</span></button>
+            
+          </div>
+          <div style="display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden">
+            <div style="display:flex;flex-direction:column;gap:10px;padding:12px 18px;border-bottom:1px solid var(--color-divider)">
+              <span style="font-weight:600">Pompe doseuse chlore</span>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--color-divider)"><span style="height:42px;display:flex;align-items:center;justify-content:center;font-size:14px">Conforme</span><span style="height:42px;display:flex;align-items:center;justify-content:center;font-size:14px;border-left:1px solid var(--color-divider)">À surveiller</span><span style="height:42px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;background:var(--color-accent-900);color:#ffffff">Action</span></div>
+              <div style="padding:10px 12px;border:1px solid var(--color-divider);font-size:15px;line-height:1.4">Débit nul depuis 07:12. Chloration manuelle en attendant la pièce.</div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <span style="width:52px;height:52px;background:var(--color-neutral-200)"></span>
+                <span style="width:52px;height:52px;box-sizing:border-box;border:1px dashed var(--color-neutral-500);display:flex;align-items:center;justify-content:center"><sa-i n="camera" s="22"></sa-i></span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;min-height:44px"><span style="width:22px;height:22px;flex:none;box-sizing:border-box;background:var(--color-text);color:var(--color-bg);display:flex;align-items:center;justify-content:center"><sa-i n="check" s="16" w="2"></sa-i></span><span style="font-size:15px">Créer un bon de travail urgent</span></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;padding:12px 18px;border-bottom:1px solid var(--color-divider)">
+              <span style="font-weight:600">Réservoir d’hypochlorite</span>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--color-divider)"><span style="height:42px;display:flex;align-items:center;justify-content:center;font-size:14px">Conforme</span><span style="height:42px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;border-left:1px solid var(--color-divider);background:var(--color-accent-100)">À surveiller</span><span style="height:42px;display:flex;align-items:center;justify-content:center;font-size:14px;border-left:1px solid var(--color-divider)">Action</span></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;font-size:15px"><span>Niveau</span><span style="height:40px;min-width:84px;display:flex;align-items:center;justify-content:flex-end;padding:0 10px;border:1px solid var(--color-divider);font:600 20px var(--font-heading)">35 %</span></div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;min-height:48px;padding:0 18px;border-bottom:1px solid var(--color-divider)"><span>Pompe doseuse pH</span><span style="display:flex;align-items:center;gap:8px;font-size:14px">Conforme<span style="width:14px;height:14px;box-sizing:border-box;border:1.5px solid var(--color-text)"></span></span></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;min-height:48px;padding:0 18px"><span>Sondes pH / ORP</span><span style="display:flex;align-items:center;gap:8px;font-size:14px">Conforme<span style="width:14px;height:14px;box-sizing:border-box;border:1.5px solid var(--color-text)"></span></span></div>
+          </div>
+          <div style="padding:12px 18px 22px;border-top:1px solid var(--color-divider)"><button class="btn btn-primary btn-block" style="height:52px;font-size:16px;white-space:nowrap"><span>Système suivant</span><sa-i n="right" s="18"></sa-i></button></div>
+        </div>
+        <span style="font-size:14px">Tout est « conforme » par défaut. Seuls les écarts s’ouvrent : note, photo, et la case pour créer le bon de travail directement depuis le terrain.</span>
+      </div>
+
+      <!-- ④ Sécurité -->
+      <div style="display:flex;flex-direction:column;gap:12px;width:390px;flex:none">
+        <span style="font:600 20px var(--font-heading)">4 · Sécurité RQEP : une liste oui / non</span>
+        <div style="width:390px;height:844px;box-sizing:border-box;border:10px solid var(--color-text);border-radius:48px;background:var(--color-bg);overflow:hidden;display:flex;flex-direction:column">
+          <div style="height:40px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-weight:600;font-size:14px"><span>08:06</span><span style="font-size:12px">LTE · 80 %</span></div>
+          <div style="padding:6px 18px 10px;border-bottom:1px solid var(--color-divider);display:flex;align-items:center;gap:10px"><sa-i n="left" s="20"></sa-i><div style="flex:1;display:flex;flex-direction:column;line-height:1.2"><span style="font:600 22px var(--font-heading)">Sécurité et RQEP</span><span style="font-size:13px">6 points · obligatoires</span></div><span style="font-size:13px">5 / 6</span></div>
+          <div style="display:flex;flex-direction:column;flex:1">
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) 112px;gap:12px;align-items:center;min-height:58px;padding:0 18px;border-bottom:1px solid var(--color-divider)"><span>Drain principal visible du bord</span><div style="display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--color-divider)"><span style="height:40px;display:flex;align-items:center;justify-content:center;font-weight:600;background:var(--color-text);color:var(--color-bg)">Oui</span><span style="height:40px;display:flex;align-items:center;justify-content:center">Non</span></div></div>
+            <div style="display:flex;flex-direction:column;gap:8px;padding:10px 18px 12px;border-bottom:1px solid var(--color-divider);background:var(--color-accent-100)">
+              <div style="display:grid;grid-template-columns:minmax(0,1fr) 112px;gap:12px;align-items:center"><span style="font-weight:600">Registre RQEP signé</span><div style="display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--color-divider);background:var(--color-bg)"><span style="height:40px;display:flex;align-items:center;justify-content:center">Oui</span><span style="height:40px;display:flex;align-items:center;justify-content:center;font-weight:600;background:var(--color-accent-900);color:#ffffff">Non</span></div></div>
+              <div style="padding:10px 12px;border:1px solid var(--color-divider);background:var(--color-bg);font-size:15px">Manquant le 30 sept. · responsable avisé</div>
+            </div>
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) 112px;gap:12px;align-items:center;min-height:58px;padding:0 18px;border-bottom:1px solid var(--color-divider)"><span>Trousse de premiers soins complète</span><div style="display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--color-divider)"><span style="height:40px;display:flex;align-items:center;justify-content:center;font-weight:600;background:var(--color-text);color:var(--color-bg)">Oui</span><span style="height:40px;display:flex;align-items:center;justify-content:center">Non</span></div></div>
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) 112px;gap:12px;align-items:center;min-height:58px;padding:0 18px;border-bottom:1px solid var(--color-divider)"><span>Matériel de sauvetage en place</span><div style="display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--color-divider)"><span style="height:40px;display:flex;align-items:center;justify-content:center;font-weight:600;background:var(--color-text);color:var(--color-bg)">Oui</span><span style="height:40px;display:flex;align-items:center;justify-content:center">Non</span></div></div>
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) 112px;gap:12px;align-items:center;min-height:58px;padding:0 18px;border-bottom:1px solid var(--color-divider)"><span>Affichage des profondeurs lisible</span><div style="display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--color-divider)"><span style="height:40px;display:flex;align-items:center;justify-content:center;font-weight:600;background:var(--color-text);color:var(--color-bg)">Oui</span><span style="height:40px;display:flex;align-items:center;justify-content:center">Non</span></div></div>
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) 112px;gap:12px;align-items:center;min-height:58px;padding:0 18px;border-bottom:1px solid var(--color-divider)"><span>Arrêt d’urgence des pompes testé</span><div style="display:grid;grid-template-columns:1fr 1fr;border:1px dashed var(--color-neutral-500)"><span style="height:40px;display:flex;align-items:center;justify-content:center;color:var(--color-neutral-700)">Oui</span><span style="height:40px;display:flex;align-items:center;justify-content:center;color:var(--color-neutral-700)">Non</span></div></div>
+            <span style="padding:12px 18px;font-size:13px;color:var(--color-neutral-700)">Points définis par type de bassin dans sa-admin › Paramètres de relevé.</span>
+          </div>
+          <div style="padding:12px 18px 22px;border-top:1px solid var(--color-divider)"><button class="btn btn-primary btn-block" style="height:52px;font-size:16px;white-space:nowrap" disabled><span>1 point à répondre</span></button></div>
+        </div>
+        <span style="font-size:14px">Les points obligatoires bloquent l’envoi tant qu’ils n’ont pas de réponse. Un « Non » demande une note.</span>
+      </div>
+
+      <!-- ⑤ Résumé -->
+      <div style="display:flex;flex-direction:column;gap:12px;width:390px;flex:none">
+        <span style="font:600 20px var(--font-heading)">5 · Résumé, produits, envoi</span>
+        <div style="width:390px;height:844px;box-sizing:border-box;border:10px solid var(--color-text);border-radius:48px;background:var(--color-bg);overflow:hidden;display:flex;flex-direction:column">
+          <div style="height:40px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-weight:600;font-size:14px"><span>08:31</span><span style="font-size:12px">LTE · 79 %</span></div>
+          <div style="padding:6px 18px 10px;border-bottom:1px solid var(--color-divider);display:flex;align-items:center;gap:10px"><sa-i n="left" s="20"></sa-i><span style="flex:1;font:600 22px var(--font-heading)">Résumé de la visite</span></div>
+          <div style="display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden">
+            <p style="margin:0;padding:12px 18px;font-size:15px;line-height:1.5;border-bottom:1px solid var(--color-divider);text-wrap:pretty"><b>2 actions requises :</b> pompe doseuse de chlore à l’arrêt, chlore combiné à 0,7. <b>4 à surveiller.</b> Le reste est conforme.</p>
+            <div style="display:flex;flex-direction:column;padding:4px 18px;border-bottom:1px solid var(--color-divider)">
+              <div style="display:flex;justify-content:space-between;align-items:center;min-height:36px;font-size:15px"><span>Eau du bassin</span><span style="width:14px;height:14px;box-sizing:border-box;border:1.5px solid var(--color-text);background:var(--color-accent-900)"></span></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;min-height:36px;font-size:15px"><span>Traitement et dosage</span><span style="width:14px;height:14px;box-sizing:border-box;border:1.5px solid var(--color-text);background:var(--color-accent-900)"></span></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;min-height:36px;font-size:15px"><span>Sécurité et RQEP</span><span style="width:14px;height:14px;box-sizing:border-box;border:1.5px solid var(--color-text);background:repeating-linear-gradient(135deg,var(--color-text) 0 1.5px,transparent 1.5px 4px)"></span></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;min-height:36px;font-size:15px"><span>Structure et surfaces</span><span style="width:14px;height:14px;box-sizing:border-box;border:1.5px solid var(--color-text);background:repeating-linear-gradient(135deg,var(--color-text) 0 1.5px,transparent 1.5px 4px)"></span></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;min-height:36px;font-size:15px"><span>Circulation et filtration</span><span style="width:14px;height:14px;box-sizing:border-box;border:1.5px solid var(--color-text)"></span></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;min-height:36px;font-size:15px"><span>Chauffage et ventilation</span><span style="width:14px;height:14px;box-sizing:border-box;border:1.5px solid var(--color-text)"></span></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;padding:10px 18px;border-bottom:1px solid var(--color-divider)">
+              <span style="font-size:13px;color:var(--color-neutral-700)">Produits ajoutés</span>
+              <div style="display:grid;grid-template-columns:minmax(0,1fr) 44px 52px 44px;align-items:center;gap:0"><span style="font-size:15px">Hypochlorite 12 %</span><span style="height:44px;display:flex;align-items:center;justify-content:center;border:1px solid var(--color-divider)"><sa-i n="minus" s="18"></sa-i></span><span style="text-align:center;font:600 18px var(--font-heading)">18 L</span><span style="height:44px;display:flex;align-items:center;justify-content:center;border:1px solid var(--color-divider)"><sa-i n="plus" s="18"></sa-i></span></div>
+              <div style="display:grid;grid-template-columns:minmax(0,1fr) 44px 52px 44px;align-items:center;gap:0"><span style="font-size:15px">Bicarbonate de sodium</span><span style="height:44px;display:flex;align-items:center;justify-content:center;border:1px solid var(--color-divider)"><sa-i n="minus" s="18"></sa-i></span><span style="text-align:center;font:600 18px var(--font-heading)">4 kg</span><span style="height:44px;display:flex;align-items:center;justify-content:center;border:1px solid var(--color-divider)"><sa-i n="plus" s="18"></sa-i></span></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;padding:10px 18px">
+              <span style="font-size:13px;color:var(--color-neutral-700)">Signature du responsable sur place (facultatif)</span>
+              <div style="height:70px;border:1px dashed var(--color-neutral-500)"></div>
+            </div>
+          </div>
+          <div style="padding:12px 18px 22px;border-top:1px solid var(--color-divider);display:flex;flex-direction:column;gap:6px"><button class="btn btn-primary btn-block" style="height:52px;font-size:16px;white-space:nowrap"><sa-i n="send" s="18"></sa-i><span>Valider et envoyer</span></button><span style="font-size:12px;text-align:center;color:var(--color-neutral-700)">Hors réseau : envoyé automatiquement au retour du signal</span></div>
+        </div>
+        <span style="font-size:14px">Le résumé s’écrit tout seul à partir des réponses. À l’envoi, la visite apparaît dans sa-admin (2a, 2b, 2c) et le bon de travail est créé.</span>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:40px;padding:56px 56px 24px;font-family:var(--font-body);color:var(--color-text);font-size:15px;line-height:1.5">
+
+  <div style="display:flex;flex-direction:column;gap:20px;max-width:1440px">
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <span style="font-size:13px;color:var(--color-accent-700)">Tour 2 · suite à « ergonomie de lecture » et « trop de chimie, pas assez d’installation »</span>
+      <h1 style="margin:0;font:600 48px/1 var(--font-heading)">L’installation au complet, à lire d’abord</h1>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr))">
+      
+      <div style="padding:16px 18px;border-right:1px solid var(--color-divider);display:flex;flex-direction:column;gap:6px"><span style="font:600 20px/1.15 var(--font-heading)">6 systèmes, la chimie n’en est qu’un</span><span style="font-size:14px">Eau, traitement, circulation, chauffage, sécurité RQEP, structure. Chacun a le même poids à l’écran.</span></div>
+      <div style="padding:16px 18px;border-right:1px solid var(--color-divider);display:flex;flex-direction:column;gap:8px"><span style="font:600 20px/1.15 var(--font-heading)">3 états, écrits en toutes lettres</span>
+        <div style="display:flex;flex-direction:column;gap:4px;font-size:14px">
+          <span style="display:flex;align-items:center;gap:8px"><span style="width:12px;height:12px;box-sizing:border-box;border:1.5px solid var(--color-text)"></span>Conforme</span>
+          <span style="display:flex;align-items:center;gap:8px"><span style="width:12px;height:12px;box-sizing:border-box;border:1.5px solid var(--color-text);background:repeating-linear-gradient(135deg,var(--color-text) 0 1.5px,transparent 1.5px 4px)"></span>À surveiller</span>
+          <span style="display:flex;align-items:center;gap:8px"><span style="width:12px;height:12px;box-sizing:border-box;border:1.5px solid var(--color-text);background:var(--color-accent-900)"></span>Action requise</span>
+        </div>
+      </div>
+      <div style="padding:16px 18px;border-right:1px solid var(--color-divider);display:flex;flex-direction:column;gap:6px"><span style="font:600 20px/1.15 var(--font-heading)">Les exceptions d’abord</span><span style="font-size:14px">Ce qui est conforme tient en une ligne. Les chiffres détaillés viennent seulement si on les demande.</span></div>
+      <div style="padding:16px 18px;display:flex;flex-direction:column;gap:6px"><span style="font:600 20px/1.15 var(--font-heading)">Lecture confortable</span><span style="font-size:14px">Texte en 15 px, une colonne de lecture, des phrases plutôt que des grilles de chiffres, du plein seulement pour l’urgent.</span></div>
+    </div>
+  </div>
+
+  <sc-if value="{{ ready }}" hint-placeholder-val="{{ true }}">
+  <div style="display:flex;gap:56px;align-items:flex-start">
+
+    <!-- ═════════════ 2a — BILAN PAR SYSTÈME ═════════════ -->
+    <div id="2a" style="display:flex;flex-direction:column;gap:16px;flex:none">
+      <div style="display:flex;align-items:flex-start;gap:16px;max-width:1440px">
+        <span style="flex:none;padding:4px 10px;background:var(--color-accent-900);color:#ffffff;font:600 22px/1 var(--font-heading)">2a</span>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <span style="font:600 28px/1 var(--font-heading)">Bilan par système</span>
+          <span style="max-width:1100px">Une phrase de verdict, puis 6 cartes, une par système de l’installation. Chaque carte nomme ce qui ne va pas en mots, ou dit « conforme » en une ligne. En bas, une seule liste « À faire » regroupe tout. Dans la liste de sites, 4 pastilles par site : eau, mécanique, sécurité, structure.</span>
+        </div>
+      </div>
+      <div style="width:1440px;height:960px;display:grid;grid-template-columns:220px minmax(0,1fr);border:1px solid var(--color-text);background:var(--color-bg);overflow:hidden;box-shadow:var(--shadow-lg);font-size:15px">
+        <nav style="border-right:1px solid var(--color-accent-200);background:var(--color-accent-100);display:flex;flex-direction:column;min-height:0;font-size:14px">
+          <div style="display:flex;align-items:center;gap:10px;padding:14px 14px 16px;border-bottom:1px solid var(--color-divider)">
+            <div style="width:40px;height:40px;flex:none;background:#004987;color:#ffffff;display:flex;align-items:flex-end;padding:4px;box-sizing:border-box;font:600 10px/0.95 var(--font-heading)">Soucy<br>Aquatik</div>
+            <div style="display:flex;flex-direction:column;line-height:1.15"><span style="font:600 19px var(--font-heading)">sa-admin</span><span style="font-size:12px;color:var(--color-accent-700)">Centre des opérations</span></div>
+          </div>
+          <sc-for list="{{ nav }}" as="g" hint-placeholder-count="3">
+            <div style="display:flex;flex-direction:column;padding:12px 0 2px">
+              <div style="padding:0 14px 4px;font-size:12px;color:var(--color-neutral-700)">{{ g.label }}</div>
+              <sc-for list="{{ g.items }}" as="n" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:10px;height:34px;padding:0 12px 0 11px;border-left:3px solid {{ n.bar }};background:{{ n.bg }};font-weight:{{ n.fw }}"><sa-i n="{{ n.icon }}" s="17"></sa-i><span>{{ n.label }}</span></div>
+              </sc-for>
+            </div>
+          </sc-for>
+        </nav>
+        <div style="display:flex;flex-direction:column;min-width:0;min-height:0">
+          <header style="flex:none;display:flex;align-items:center;gap:20px;padding:12px 28px;border-bottom:2px solid var(--color-accent-500);min-height:68px;box-sizing:border-box">
+            <div style="display:flex;flex-direction:column;flex:1"><h1 style="margin:0;font-size:30px;line-height:1.05">Inspections et rapports</h1><span style="font-size:13px">État de chaque installation, constaté en tournée</span></div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:13px;white-space:nowrap"><span style="width:8px;height:8px;background:var(--color-accent)"></span><span>En direct · jeu 1er oct. · 09:42</span></div>
+          </header>
+          <main style="flex:1;min-height:0;padding:22px 28px;display:grid;grid-template-columns:272px minmax(0,1fr);gap:24px;overflow:hidden">
+
+            <div style="display:flex;flex-direction:column;border:1px solid var(--color-divider);min-height:0;overflow:hidden">
+              <div style="padding:10px;border-bottom:1px solid var(--color-divider)"><div style="position:relative"><div style="position:absolute;left:10px;top:9px;pointer-events:none"><sa-i n="search" s="17"></sa-i></div><input class="input" placeholder="Site, client, ville…" style="padding-left:34px"></div></div>
+              <div style="display:grid;grid-template-columns:minmax(0,1fr) repeat(4,22px);gap:4px;align-items:center;padding:7px 12px;border-bottom:1px solid var(--color-divider);font-size:12px;color:var(--color-neutral-700)">
+                <span>Trié par gravité</span>
+                <span title="Eau" style="display:flex;justify-content:center"><sa-i n="droplet" s="15"></sa-i></span><span title="Mécanique" style="display:flex;justify-content:center"><sa-i n="wrench" s="15"></sa-i></span><span title="Sécurité" style="display:flex;justify-content:center"><sa-i n="alert" s="15"></sa-i></span><span title="Structure" style="display:flex;justify-content:center"><sa-i n="building" s="15"></sa-i></span>
+              </div>
+              <sc-for list="{{ sites2 }}" as="s" hint-placeholder-count="12">
+                <div style="display:grid;grid-template-columns:minmax(0,1fr) repeat(4,22px);gap:4px;align-items:center;padding:8px 12px 8px 9px;border-left:3px solid {{ s.bar }};border-bottom:1px solid var(--color-divider);background:{{ s.bg }}">
+                  <div style="display:flex;flex-direction:column;line-height:1.25;min-width:0"><span style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.nom }}</span><span style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.meta }}</span></div>
+                  <sc-for list="{{ s.sqs }}" as="q" hint-placeholder-count="4"><span style="display:flex;justify-content:center"><span title="{{ q.stl }}" style="width:12px;height:12px;box-sizing:border-box;border:{{ q.bd }};background:{{ q.sq }}"></span></span></sc-for>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:16px;min-width:0;min-height:0">
+              <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px">
+                <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                  <span style="font-size:13px">{{ sel.typeLabel }} · contrat {{ sel.contrat }}</span>
+                  <h2 style="margin:0;font-size:32px;line-height:1.05">{{ sel.nom }}</h2>
+                  <span style="font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ sel.client }} · {{ sel.bassin }} · dernière visite {{ sel.last }} par {{ sel.tech }}</span>
+                </div>
+                <div style="display:flex;gap:8px;flex:none">
+                  <button class="btn btn-primary" style="white-space:nowrap"><sa-i n="file" s="16"></sa-i><span>Rapport client</span></button>
+                  <button class="btn btn-secondary" style="white-space:nowrap"><sa-i n="chart" s="16"></sa-i><span>Tendances de l’eau</span></button>
+                </div>
+              </div>
+
+              <div style="display:flex;align-items:center;gap:24px;padding:12px 16px;border:1px solid var(--color-accent-300);background:var(--color-accent-100)">
+                <span style="font:600 22px/1.2 var(--font-heading);flex:1">{{ verdict.a }} actions requises, {{ verdict.w }} points à surveiller, {{ verdict.o }} points conformes.</span>
+                <span style="display:flex;align-items:center;gap:8px;font-size:14px;white-space:nowrap"><span style="width:12px;height:12px;box-sizing:border-box;border:1.5px solid var(--color-text);background:var(--color-accent-900)"></span>{{ verdict.a }}</span>
+                <span style="display:flex;align-items:center;gap:8px;font-size:14px;white-space:nowrap"><span style="width:12px;height:12px;box-sizing:border-box;border:1.5px solid var(--color-text);background:repeating-linear-gradient(135deg,var(--color-text) 0 1.5px,transparent 1.5px 4px)"></span>{{ verdict.w }}</span>
+                <span style="display:flex;align-items:center;gap:8px;font-size:14px;white-space:nowrap"><span style="width:12px;height:12px;box-sizing:border-box;border:1.5px solid var(--color-text)"></span>{{ verdict.o }}</span>
+              </div>
+
+              <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--color-divider);border:1px solid var(--color-divider)">
+                <sc-for list="{{ sysCards }}" as="c" hint-placeholder-count="6">
+                  <div style="display:flex;flex-direction:column;background:var(--color-bg);min-height:156px">
+                    <div style="display:flex;align-items:center;gap:8px;padding:9px 14px;background:{{ c.headBg }};color:{{ c.headFg }}">
+                      <sa-i n="{{ c.icon }}" s="17"></sa-i><span style="font:600 18px/1.15 var(--font-heading);flex:1;min-width:0">{{ c.nom }}</span>
+                      <span style="font-size:13px;white-space:nowrap">{{ c.stl }}</span><span style="width:12px;height:12px;flex:none;box-sizing:border-box;border:1.5px solid currentColor;background:{{ c.sq }}"></span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:6px;padding:8px 14px 12px;flex:1">
+                      <sc-for list="{{ c.ex }}" as="e" hint-placeholder-count="2">
+                        <div style="display:grid;grid-template-columns:12px minmax(0,1fr);gap:10px;align-items:start">
+                          <span style="width:12px;height:12px;margin-top:5px;box-sizing:border-box;border:1.5px solid var(--color-text);background:{{ e.sq }}"></span>
+                          <div style="display:flex;flex-direction:column;line-height:1.3"><span><b style="font-weight:600">{{ e.l }}</b> · {{ e.v }}</span><span style="font-size:13px;color:var(--color-neutral-700)">{{ e.d }}</span></div>
+                        </div>
+                      </sc-for>
+                      <sc-if value="{{ c.allOk }}"><span style="color:var(--color-neutral-700)">Rien à signaler.</span></sc-if>
+                      <span style="margin-top:auto;display:flex;justify-content:space-between;font-size:13px;padding-top:6px;border-top:1px solid var(--color-divider)"><span>{{ c.okTxt }}</span><span style="color:var(--color-accent-700);font-weight:500">Détail →</span></span>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+
+              <section style="display:flex;flex-direction:column">
+                
+                <div style="padding:10px 16px;border-bottom:1px solid var(--color-divider);display:flex;align-items:baseline;justify-content:space-between"><h3 style="margin:0;font-size:22px">À faire</h3><span style="font-size:13px">Tous systèmes confondus · les plus urgents en haut</span></div>
+                <sc-for list="{{ todo }}" as="t" hint-placeholder-count="5">
+                  <div style="display:grid;grid-template-columns:12px minmax(0,1fr) 170px 230px;gap:14px;align-items:center;padding:6px 16px;border-bottom:1px solid var(--color-divider)">
+                    <span style="width:12px;height:12px;box-sizing:border-box;border:1.5px solid var(--color-text);background:{{ t.sq }}"></span>
+                    <span style="font-weight:500">{{ t.t }}</span>
+                    <span style="font-size:13px">{{ t.sys }}</span>
+                    <span style="font-size:13px;text-align:right">{{ t.who }}</span>
+                  </div>
+                </sc-for>
+              </section>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═════════════ 2b — RAPPORT DE VISITE ═════════════ -->
+    <div id="2b" style="display:flex;flex-direction:column;gap:16px;flex:none">
+      <div style="display:flex;align-items:flex-start;gap:16px;max-width:1440px">
+        <span style="flex:none;padding:4px 10px;background:var(--color-accent-900);color:#ffffff;font:600 22px/1 var(--font-heading)">2b</span>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <span style="font:600 28px/1 var(--font-heading)">Rapport de visite, à lire comme un document</span>
+          <span style="max-width:1100px">On lit une visite, pas un tableau. Un résumé en phrases, puis les systèmes triés par gravité (pas par discipline). Pour l’eau, on n’affiche que les paramètres hors zone ; les systèmes conformes tiennent en une ligne. À gauche, l’historique des visites ; à droite, les photos et les produits. L’écran donne déjà ce que le client recevra.</span>
+        </div>
+      </div>
+      <div style="width:1440px;height:960px;display:grid;grid-template-columns:220px minmax(0,1fr);border:1px solid var(--color-text);background:var(--color-bg);overflow:hidden;box-shadow:var(--shadow-lg);font-size:15px">
+        <nav style="border-right:1px solid var(--color-accent-200);background:var(--color-accent-100);display:flex;flex-direction:column;min-height:0;font-size:14px">
+          <div style="display:flex;align-items:center;gap:10px;padding:14px 14px 16px;border-bottom:1px solid var(--color-divider)">
+            <div style="width:40px;height:40px;flex:none;background:#004987;color:#ffffff;display:flex;align-items:flex-end;padding:4px;box-sizing:border-box;font:600 10px/0.95 var(--font-heading)">Soucy<br>Aquatik</div>
+            <div style="display:flex;flex-direction:column;line-height:1.15"><span style="font:600 19px var(--font-heading)">sa-admin</span><span style="font-size:12px;color:var(--color-accent-700)">Centre des opérations</span></div>
+          </div>
+          <sc-for list="{{ nav }}" as="g" hint-placeholder-count="3">
+            <div style="display:flex;flex-direction:column;padding:12px 0 2px">
+              <div style="padding:0 14px 4px;font-size:12px;color:var(--color-neutral-700)">{{ g.label }}</div>
+              <sc-for list="{{ g.items }}" as="n" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:10px;height:34px;padding:0 12px 0 11px;border-left:3px solid {{ n.bar }};background:{{ n.bg }};font-weight:{{ n.fw }}"><sa-i n="{{ n.icon }}" s="17"></sa-i><span>{{ n.label }}</span></div>
+              </sc-for>
+            </div>
+          </sc-for>
+        </nav>
+        <div style="display:flex;flex-direction:column;min-width:0;min-height:0">
+          <header style="flex:none;display:flex;align-items:center;gap:20px;padding:12px 28px;border-bottom:2px solid var(--color-accent-500);min-height:68px;box-sizing:border-box">
+            <div style="display:flex;flex-direction:column;flex:1"><h1 style="margin:0;font-size:30px;line-height:1.05">Inspections et rapports</h1><span style="font-size:13px">État de chaque installation, constaté en tournée</span></div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:13px;white-space:nowrap"><span style="width:8px;height:8px;background:var(--color-accent)"></span><span>En direct · jeu 1er oct. · 09:42</span></div>
+          </header>
+          <div style="flex:none;display:flex;align-items:center;gap:16px;padding:14px 28px;border-bottom:1px solid var(--color-divider)">
+            <div style="flex:none;display:flex;align-items:center;gap:10px;padding:6px 12px;border:1px solid var(--color-divider);cursor:pointer"><sa-i n="building" s="18"></sa-i><span style="font:600 22px/1 var(--font-heading);white-space:nowrap">{{ sel.nom }}</span><sa-i n="down" s="18"></sa-i></div>
+            <span style="font-size:14px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ sel.client }} · {{ sel.typeLabel }} · {{ sel.bassin }}</span>
+            <button class="btn btn-ghost" style="white-space:nowrap"><sa-i n="left" s="16"></sa-i><span>Site précédent</span></button>
+            <button class="btn btn-ghost" style="white-space:nowrap"><span>Site suivant</span><sa-i n="right" s="16"></sa-i></button>
+          </div>
+          <main style="flex:1;min-height:0;padding:22px 28px;display:grid;grid-template-columns:220px minmax(0,1fr) 250px;gap:28px;overflow:hidden">
+
+            <div style="display:flex;flex-direction:column;min-height:0;overflow:hidden">
+              <span style="font-size:13px;color:var(--color-neutral-700);padding-bottom:6px;border-bottom:1px solid var(--color-divider)">Visites</span>
+              <sc-for list="{{ visits }}" as="v" hint-placeholder-count="8">
+                <div style="display:grid;grid-template-columns:minmax(0,1fr) 12px;gap:8px;align-items:center;padding:9px 8px 9px 9px;border-left:3px solid {{ v.bar }};border-bottom:1px solid var(--color-divider);background:{{ v.bg }}">
+                  <div style="display:flex;flex-direction:column;line-height:1.3;min-width:0"><span style="font:600 17px var(--font-heading)">{{ v.d }} <span style="font-weight:400;font-size:14px">· {{ v.h }}</span></span><span style="font-size:13px;font-weight:{{ v.fw }}">{{ v.sum }}</span><span style="font-size:12px;color:var(--color-neutral-700)">{{ v.tech }}</span></div>
+                  <span style="width:12px;height:12px;box-sizing:border-box;border:1.5px solid var(--color-text);background:{{ v.sq }}"></span>
+                </div>
+              </sc-for>
+            </div>
+
+            <article style="display:flex;flex-direction:column;gap:18px;min-width:0;min-height:0;overflow:hidden">
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px"><h2 style="margin:0;font-size:30px;line-height:1.1">Visite du 1er octobre, 07:48</h2><span style="font-size:13px;white-space:nowrap">Sophie Gagnon · validée 08:31</span></div>
+                <p style="margin:0;font-size:16px;line-height:1.6;text-wrap:pretty"><b>Deux actions requises :</b> la pompe doseuse de chlore est à l’arrêt depuis 07:12 (chloration manuelle en cours) et le chlore combiné atteint 0,7 mg/L pour un maximum de 0,5. <b>À surveiller :</b> réservoir d’hypochlorite à 35 %, registre RQEP non signé le 30 sept., carrelage et éclairage du couloir 7. Circulation, filtration et chauffage sont conformes.</p>
+              </div>
+              <sc-for list="{{ report }}" as="r" hint-placeholder-count="6">
+                <section style="display:flex;flex-direction:column;border-top:1px solid var(--color-divider)">
+                  <div style="display:flex;align-items:center;gap:10px;padding:9px 0 6px">
+                    <sa-i n="{{ r.icon }}" s="18"></sa-i><h3 style="margin:0;font-size:21px;flex:1">{{ r.nom }}</h3>
+                    <span style="font-size:14px">{{ r.stl }}</span><span style="width:12px;height:12px;box-sizing:border-box;border:1.5px solid var(--color-text);background:{{ r.sq }}"></span>
+                  </div>
+                  <sc-if value="{{ r.open }}">
+                    <div style="display:flex;flex-direction:column">
+                      <sc-for list="{{ r.rows }}" as="i" hint-placeholder-count="4">
+                        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 120px;gap:14px;align-items:baseline;padding:7px 0;border-bottom:1px solid var(--color-divider)">
+                          <span style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><span>{{ i.l }}</span><sc-if value="{{ i.tag }}"><span style="font-size:12px;white-space:nowrap;padding:0 6px;border:1px solid var(--color-accent-700);color:var(--color-accent-800)">{{ i.tag }}</span></sc-if></span>
+                          <span style="display:flex;flex-direction:column;line-height:1.35"><span style="font-weight:600">{{ i.v }}</span><span style="font-size:13px;color:var(--color-neutral-700)">{{ i.d }}</span></span>
+                          <span style="display:flex;align-items:center;justify-content:flex-end;gap:8px;font-size:13px;white-space:nowrap">{{ i.stl }}<span style="width:12px;height:12px;flex:none;box-sizing:border-box;border:1.5px solid var(--color-text);background:{{ i.sq }}"></span></span>
+                        </div>
+                      </sc-for>
+                      <sc-if value="{{ r.more }}"><span style="padding:7px 0;font-size:14px;color:var(--color-accent-700);font-weight:500">{{ r.more }} →</span></sc-if>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ r.closed }}"><span style="padding:0 0 8px 28px;font-size:14px;color:var(--color-neutral-700);text-wrap:pretty">{{ r.summary }}</span></sc-if>
+                </section>
+              </sc-for>
+            </article>
+
+            <aside style="display:flex;flex-direction:column;gap:18px;min-height:0;overflow:hidden">
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <span style="font-size:13px;color:var(--color-neutral-700);padding-bottom:6px;border-bottom:1px solid var(--color-divider)">Photos · 3</span>
+                <div style="display:flex;flex-direction:column;gap:3px"><div style="height:104px;background:var(--color-neutral-200)"></div><span style="font-size:13px">Pompe doseuse chlore, tête</span></div>
+                <div style="display:flex;flex-direction:column;gap:3px"><div style="height:104px;background:var(--color-neutral-200)"></div><span style="font-size:13px">Carrelage, couloir 7</span></div>
+                <div style="display:flex;flex-direction:column;gap:3px"><div style="height:104px;background:var(--color-neutral-200)"></div><span style="font-size:13px">Projecteur P4</span></div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <span style="font-size:13px;color:var(--color-neutral-700);padding-bottom:6px;border-bottom:1px solid var(--color-divider)">Produits ajoutés</span>
+                <div style="display:flex;justify-content:space-between;font-size:14px"><span>Hypochlorite 12 % (manuel)</span><b>18 L</b></div>
+                <div style="display:flex;justify-content:space-between;font-size:14px"><span>Bicarbonate de sodium</span><b>4 kg</b></div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px;margin-top:auto">
+                <button class="btn btn-primary blueprint btn-block" style="white-space:nowrap"><sa-i n="send" s="16"></sa-i><span>Envoyer au client</span></button>
+                <button class="btn btn-secondary btn-block" style="white-space:nowrap"><sa-i n="file" s="16"></sa-i><span>PDF</span></button>
+              </div>
+            </aside>
+          </main>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═════════════ 2c — SCHÉMA DE L'INSTALLATION ═════════════ -->
+    <div id="2c" style="display:flex;flex-direction:column;gap:16px;flex:none">
+      <div style="display:flex;align-items:flex-start;gap:16px;max-width:1440px">
+        <span style="flex:none;padding:4px 10px;background:var(--color-accent-900);color:#ffffff;font:600 22px/1 var(--font-heading)">2c</span>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <span style="font:600 28px/1 var(--font-heading)">Schéma de l’installation</span>
+          <span style="max-width:1100px">L’installation est dessinée comme le parcours de l’eau : bassin, goulottes, préfiltre, pompe, filtres, dosage, échangeur, retour. Chaque équipement porte son état, et la panne se repère là où elle se trouve dans le circuit. Sécurité, structure et ventilation sont hors circuit, juste en dessous. Un clic ouvre la fiche de l’équipement et son historique.</span>
+        </div>
+      </div>
+      <div style="width:1440px;height:960px;display:grid;grid-template-columns:220px minmax(0,1fr);border:1px solid var(--color-text);background:var(--color-bg);overflow:hidden;box-shadow:var(--shadow-lg);font-size:15px">
+        <nav style="border-right:1px solid var(--color-accent-200);background:var(--color-accent-100);display:flex;flex-direction:column;min-height:0;font-size:14px">
+          <div style="display:flex;align-items:center;gap:10px;padding:14px 14px 16px;border-bottom:1px solid var(--color-divider)">
+            <div style="width:40px;height:40px;flex:none;background:#004987;color:#ffffff;display:flex;align-items:flex-end;padding:4px;box-sizing:border-box;font:600 10px/0.95 var(--font-heading)">Soucy<br>Aquatik</div>
+            <div style="display:flex;flex-direction:column;line-height:1.15"><span style="font:600 19px var(--font-heading)">sa-admin</span><span style="font-size:12px;color:var(--color-accent-700)">Centre des opérations</span></div>
+          </div>
+          <sc-for list="{{ nav }}" as="g" hint-placeholder-count="3">
+            <div style="display:flex;flex-direction:column;padding:12px 0 2px">
+              <div style="padding:0 14px 4px;font-size:12px;color:var(--color-neutral-700)">{{ g.label }}</div>
+              <sc-for list="{{ g.items }}" as="n" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:10px;height:34px;padding:0 12px 0 11px;border-left:3px solid {{ n.bar }};background:{{ n.bg }};font-weight:{{ n.fw }}"><sa-i n="{{ n.icon }}" s="17"></sa-i><span>{{ n.label }}</span></div>
+              </sc-for>
+            </div>
+          </sc-for>
+        </nav>
+        <div style="display:flex;flex-direction:column;min-width:0;min-height:0">
+          <header style="flex:none;display:flex;align-items:center;gap:20px;padding:12px 28px;border-bottom:2px solid var(--color-accent-500);min-height:68px;box-sizing:border-box">
+            <div style="display:flex;flex-direction:column;flex:1"><h1 style="margin:0;font-size:30px;line-height:1.05">Inspections et rapports</h1><span style="font-size:13px">État de chaque installation, constaté en tournée</span></div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:13px;white-space:nowrap"><span style="width:8px;height:8px;background:var(--color-accent)"></span><span>En direct · jeu 1er oct. · 09:42</span></div>
+          </header>
+          <div style="flex:none;display:flex;align-items:center;gap:16px;padding:14px 28px;border-bottom:1px solid var(--color-divider)">
+            <div style="flex:none;display:flex;align-items:center;gap:10px;padding:6px 12px;border:1px solid var(--color-divider);cursor:pointer"><sa-i n="building" s="18"></sa-i><span style="font:600 22px/1 var(--font-heading);white-space:nowrap">{{ sel.nom }}</span><sa-i n="down" s="18"></sa-i></div>
+            <span style="font-size:14px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Visite du 1er oct. 07:48 · {{ sel.tech }} · {{ verdict.a }} actions requises, {{ verdict.w }} à surveiller</span>
+            <button class="btn btn-secondary" style="white-space:nowrap"><sa-i n="chart" s="16"></sa-i><span>Tendances de l’eau</span></button>
+            <button class="btn btn-primary" style="white-space:nowrap"><sa-i n="file" s="16"></sa-i><span>Rapport client</span></button>
+          </div>
+          <main style="flex:1;min-height:0;padding:24px 28px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:28px;overflow:hidden">
+
+            <div style="display:flex;flex-direction:column;gap:22px;min-width:0">
+              <div style="display:flex;align-items:baseline;justify-content:space-between"><h3 style="margin:0;font-size:22px">Circuit de l’eau</h3><span style="font-size:13px">Cliquez un équipement pour sa fiche</span></div>
+              <div style="display:flex;flex-direction:column">
+                <div style="display:flex;align-items:stretch">
+                  <sc-for list="{{ flow1 }}" as="n" hint-placeholder-count="4">
+                    <div style="flex:1;min-width:0;display:flex;flex-direction:column;border:1px solid var(--color-divider);background:var(--color-bg);box-shadow:{{ n.ring }};cursor:pointer">
+                      <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;padding:6px 10px;background:{{ n.headBg }};color:{{ n.headFg }};font-size:13px"><span>{{ n.stl }}</span><span style="width:12px;height:12px;box-sizing:border-box;border:1.5px solid currentColor;background:{{ n.sq }}"></span></div>
+                      <div style="display:flex;flex-direction:column;gap:2px;padding:8px 10px 10px"><span style="font:600 17px/1.15 var(--font-heading)">{{ n.nom }}</span><span style="font:600 26px/1.1 var(--font-heading)">{{ n.val }}</span><span style="font-size:13px">{{ n.sub }}</span></div>
+                    </div>
+                    <sc-if value="{{ n.arrow }}"><div style="flex:none;width:36px;display:flex;align-items:center"><span style="flex:1;height:1px;background:var(--color-neutral-500)"></span><sa-i n="right" s="14" w="2"></sa-i></div></sc-if>
+                  </sc-for>
+                </div>
+                <div style="display:flex;justify-content:space-between;height:40px">
+                  <div style="width:calc((100% - 108px) / 4);display:flex;flex-direction:column;align-items:center"><span style="display:flex;transform:rotate(180deg)"><sa-i n="down" s="14" w="2"></sa-i></span><span style="flex:1;width:1px;background:var(--color-neutral-500);margin-top:-8px"></span></div>
+                  <div style="width:calc((100% - 108px) / 4);display:flex;flex-direction:column;align-items:center"><span style="flex:1;width:1px;background:var(--color-neutral-500);margin-bottom:-8px"></span><sa-i n="down" s="14" w="2"></sa-i></div>
+                </div>
+                <div style="display:flex;flex-direction:row-reverse;align-items:stretch">
+                  <sc-for list="{{ flow2 }}" as="n" hint-placeholder-count="4">
+                    <div style="flex:1;min-width:0;display:flex;flex-direction:column;border:1px solid var(--color-divider);background:var(--color-bg);box-shadow:{{ n.ring }};cursor:pointer">
+                      <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;padding:6px 10px;background:{{ n.headBg }};color:{{ n.headFg }};font-size:13px"><span>{{ n.stl }}</span><span style="width:12px;height:12px;box-sizing:border-box;border:1.5px solid currentColor;background:{{ n.sq }}"></span></div>
+                      <div style="display:flex;flex-direction:column;gap:2px;padding:8px 10px 10px"><span style="font:600 17px/1.15 var(--font-heading)">{{ n.nom }}</span><span style="font:600 26px/1.1 var(--font-heading)">{{ n.val }}</span><span style="font-size:13px">{{ n.sub }}</span></div>
+                    </div>
+                    <sc-if value="{{ n.arrow }}"><div style="flex:none;width:36px;display:flex;align-items:center"><sa-i n="left" s="14" w="2"></sa-i><span style="flex:1;height:1px;background:var(--color-neutral-500)"></span></div></sc-if>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <div style="display:flex;align-items:baseline;justify-content:space-between"><h3 style="margin:0;font-size:22px">Hors circuit</h3></div>
+                <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px">
+                  <sc-for list="{{ offCircuit }}" as="n" hint-placeholder-count="3">
+                    <div style="display:flex;flex-direction:column;border:1px solid var(--color-divider);cursor:pointer">
+                      <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;padding:6px 10px;background:{{ n.headBg }};color:{{ n.headFg }};font-size:13px"><span>{{ n.stl }}</span><span style="width:12px;height:12px;box-sizing:border-box;border:1.5px solid currentColor;background:{{ n.sq }}"></span></div>
+                      <div style="display:flex;flex-direction:column;gap:2px;padding:8px 10px 10px"><span style="font:600 17px/1.15 var(--font-heading)">{{ n.nom }}</span><span style="font:600 26px/1.1 var(--font-heading)">{{ n.val }}</span><span style="font-size:13px">{{ n.sub }}</span></div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div style="display:flex;gap:20px;font-size:13px;color:var(--color-neutral-700);margin-top:auto">
+                <span>Schéma établi à la mise en service · modifiable dans Sites › Équipements</span>
+              </div>
+            </div>
+
+            <aside style="display:flex;flex-direction:column;min-height:0;overflow:hidden">
+              
+              <div style="padding:12px 16px;background:var(--color-accent-900);color:#ffffff;display:flex;flex-direction:column;gap:2px">
+                <span style="font-size:13px">Action requise · Traitement et dosage</span>
+                <span style="font:600 24px/1.1 var(--font-heading)">Dosage chlore / pH</span>
+              </div>
+              <div style="display:flex;flex-direction:column;padding:4px 16px">
+                <sc-for list="{{ dosItems }}" as="i" hint-placeholder-count="4">
+                  <div style="display:grid;grid-template-columns:12px minmax(0,1fr);gap:10px;align-items:start;padding:8px 0;border-bottom:1px solid var(--color-divider)">
+                    <span style="width:12px;height:12px;margin-top:5px;box-sizing:border-box;border:1.5px solid var(--color-text);background:{{ i.sq }}"></span>
+                    <div style="display:flex;flex-direction:column;line-height:1.35"><span><b style="font-weight:600">{{ i.l }}</b> · {{ i.v }}</span><span style="font-size:13px;color:var(--color-neutral-700)">{{ i.d }}</span></div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px;padding:12px 16px">
+                <span style="font:600 17px var(--font-heading)">Historique</span>
+                <sc-for list="{{ hist }}" as="h" hint-placeholder-count="4">
+                  <div style="display:flex;flex-direction:column;line-height:1.3;padding-left:10px;border-left:1.5px solid var(--color-text)"><span style="font:600 14px var(--font-heading)">{{ h.h }}</span><span style="font-size:14px">{{ h.t }}</span></div>
+                </sc-for>
+              </div>
+              <div style="margin-top:auto;padding:12px 16px;border-top:1px solid var(--color-divider);display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn btn-primary" style="white-space:nowrap"><sa-i n="folder" s="16"></sa-i><span>Ouvrir le bon D-26-060</span></button>
+                <button class="btn btn-ghost" style="white-space:nowrap"><sa-i n="camera" s="16"></sa-i><span>Photos (1)</span></button>
+              </div>
+            </aside>
+          </main>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  </sc-if>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:40px;padding:56px;font-family:var(--font-body);color:var(--color-text);font-size:14px;line-height:1.45">
+
+  <div style="display:flex;flex-direction:column;gap:20px;max-width:1440px">
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <span style="font-size:13px;color:var(--color-accent-700)">Tour 1 · sa-admin · Terrain › Inspections et rapports</span>
+      <h1 style="margin:0;font:600 48px/1 var(--font-heading)">Inspections — 3 directions</h1>
+    </div>
+    <div class="blueprint" style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr))">
+      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      <div style="padding:16px 18px;border-right:1px solid var(--color-divider);display:flex;flex-direction:column;gap:6px"><span style="font:600 15px var(--font-heading);color:var(--color-accent-800)">Problème 1</span><span style="font:600 19px/1.15 var(--font-heading)">Un paramètre à la fois</span><span style="font-size:13px">Il faut cliquer jusqu’à 8 onglets pour savoir ce qui cloche sur un site.</span></div>
+      <div style="padding:16px 18px;border-right:1px solid var(--color-divider);display:flex;flex-direction:column;gap:6px"><span style="font:600 15px var(--font-heading);color:var(--color-accent-800)">Problème 2</span><span style="font:600 19px/1.15 var(--font-heading)">Liste de sites sans priorité</span><span style="font-size:13px">Ordre fixe, pas de date de dernière visite : l’urgent n’est pas en haut.</span></div>
+      <div style="padding:16px 18px;border-right:1px solid var(--color-divider);display:flex;flex-direction:column;gap:6px"><span style="font:600 15px var(--font-heading);color:var(--color-accent-800)">Problème 3</span><span style="font:600 19px/1.15 var(--font-heading)">Visites réduites à des chiffres</span><span style="font-size:13px">Technicien, notes, points de contrôle, produits et photos absents du tableau.</span></div>
+      <div style="padding:16px 18px;border-right:1px solid var(--color-divider);display:flex;flex-direction:column;gap:6px"><span style="font:600 15px var(--font-heading);color:var(--color-accent-800)">Problème 4</span><span style="font:600 19px/1.15 var(--font-heading)">Aucune vue d’ensemble</span><span style="font-size:13px">Impossible de voir tous les sites hors zone sans passer par Monitoring.</span></div>
+      <div style="padding:16px 18px;display:flex;flex-direction:column;gap:6px"><span style="font:600 15px var(--font-heading);color:var(--color-accent-800)">Problème 5</span><span style="font:600 19px/1.15 var(--font-heading)">Actions au même niveau</span><span style="font-size:13px">« Paramètres de relevé » (configuration) côtoie le rapport et l’Excel (consultation).</span></div>
+    </div>
+  </div>
+
+  <sc-if value="{{ ready }}" hint-placeholder-val="{{ true }}">
+  <div style="display:flex;gap:56px;align-items:flex-start">
+
+    <!-- ═════════════ 1a — MATRICE ═════════════ -->
+    <div id="1a" style="display:flex;flex-direction:column;gap:16px;flex:none">
+      <div style="display:flex;align-items:flex-start;gap:16px;max-width:1440px">
+        <span style="flex:none;padding:4px 10px;background:var(--color-accent-900);color:#ffffff;font:600 22px/1 var(--font-heading)">1a</span>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <span style="font:600 28px/1 var(--font-heading)">Matrice de conformité</span>
+          <span style="font-size:14px;max-width:1100px">Tous les paramètres × les 12 dernières visites sur un seul écran. Les cases hors zone sont pleines : on voit l’écart, sa durée et sa récurrence d’un coup d’œil. Un clic sur une ligne ouvre la tendance détaillée sur place. La liste de sites est triée par gravité.</span>
+        </div>
+      </div>
+      <div style="width:1440px;height:960px;display:grid;grid-template-columns:220px minmax(0,1fr);border:1px solid var(--color-text);background:var(--color-bg);overflow:hidden;box-shadow:var(--shadow-lg)">
+        <nav style="border-right:1px solid var(--color-accent-200);background:var(--color-accent-100);display:flex;flex-direction:column;min-height:0">
+          <div style="display:flex;align-items:center;gap:10px;padding:14px 14px 16px;border-bottom:1px solid var(--color-divider)">
+            <div style="width:40px;height:40px;flex:none;background:#004987;color:#ffffff;display:flex;align-items:flex-end;padding:4px;box-sizing:border-box;font:600 10px/0.95 var(--font-heading)">Soucy<br>Aquatik</div>
+            <div style="display:flex;flex-direction:column;line-height:1.15"><span style="font:600 19px var(--font-heading)">sa-admin</span><span style="font-size:12px;color:var(--color-accent-700)">Centre des opérations</span></div>
+          </div>
+          <sc-for list="{{ nav }}" as="g" hint-placeholder-count="3">
+            <div style="display:flex;flex-direction:column;padding:12px 0 2px">
+              <div style="padding:0 14px 4px;font-size:12px;color:var(--color-neutral-700)">{{ g.label }}</div>
+              <sc-for list="{{ g.items }}" as="n" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:10px;height:34px;padding:0 12px 0 11px;border-left:3px solid {{ n.bar }};background:{{ n.bg }};font-weight:{{ n.fw }}"><sa-i n="{{ n.icon }}" s="17"></sa-i><span>{{ n.label }}</span></div>
+              </sc-for>
+            </div>
+          </sc-for>
+        </nav>
+        <div style="display:flex;flex-direction:column;min-width:0;min-height:0">
+          <header style="flex:none;display:flex;align-items:center;gap:20px;padding:12px 28px;border-bottom:2px solid var(--color-accent-500);min-height:68px;box-sizing:border-box">
+            <div style="display:flex;flex-direction:column;flex:1"><h1 style="margin:0;font-size:30px;line-height:1.05">Inspections et rapports</h1><span style="font-size:13px">Relevés techniques saisis en tournée, par site et dans le temps</span></div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:13px;white-space:nowrap"><span style="width:8px;height:8px;background:var(--color-accent)"></span><span>En direct · jeu 1er oct. · 09:42</span></div>
+          </header>
+          <main style="flex:1;min-height:0;padding:22px 28px;display:grid;grid-template-columns:264px minmax(0,1fr);gap:24px;overflow:hidden">
+
+            <div style="display:flex;flex-direction:column;border:1px solid var(--color-divider);min-height:0;overflow:hidden">
+              <div style="padding:10px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:8px">
+                <div style="position:relative"><div style="position:absolute;left:10px;top:9px;pointer-events:none"><sa-i n="search" s="17"></sa-i></div><input class="input" placeholder="Site, client, ville…" style="padding-left:34px"></div>
+                <div style="display:flex;border:1px solid var(--color-divider)">
+                  <span style="flex:1;text-align:center;padding:6px 0;font:600 14px var(--font-heading);background:var(--color-text);color:var(--color-bg)">Gravité</span>
+                  <span style="flex:1;text-align:center;padding:6px 0;font:600 14px var(--font-heading);border-left:1px solid var(--color-divider)">A–Z</span>
+                  <span style="flex:1;text-align:center;padding:6px 0;font:600 14px var(--font-heading);border-left:1px solid var(--color-divider)">Type</span>
+                </div>
+              </div>
+              <div style="padding:8px 12px 6px;font-size:12px;color:var(--color-neutral-700);border-bottom:1px solid var(--color-divider)">Hors zone au dernier relevé · {{ nAttn }}</div>
+              <sc-for list="{{ listAttn }}" as="s" hint-placeholder-count="5">
+                <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--color-divider);background:{{ s.bg }};color:{{ s.fg }}">
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25"><span style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.nom }}</span><span style="font-size:12px">{{ s.meta }} · {{ s.last }}</span></div>
+                  <span style="font:600 13px var(--font-heading);min-width:20px;height:20px;padding:0 5px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;background:{{ s.badgeBg }};color:{{ s.badgeFg }};border:1px solid currentColor">{{ s.nOut }}</span>
+                </div>
+              </sc-for>
+              <div style="padding:8px 12px 6px;font-size:12px;color:var(--color-neutral-700);border-bottom:1px solid var(--color-divider)">Conformes · {{ nOk }}</div>
+              <sc-for list="{{ listOk }}" as="s" hint-placeholder-count="5">
+                <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--color-divider)">
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25"><span style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.nom }}</span><span style="font-size:12px">{{ s.meta }} · {{ s.last }}</span></div>
+                  <span style="font-size:12px">{{ s.pct }}</span>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:16px;min-width:0;min-height:0">
+              <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px">
+                <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                  <span style="font-size:13px">{{ sel.typeLabel }} · contrat {{ sel.contrat }} · {{ sel.norme }}</span>
+                  <h2 style="margin:0;font-size:32px;line-height:1.05">{{ sel.nom }}</h2>
+                  <span style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ sel.client }} · {{ sel.bassin }} · technicienne : {{ sel.tech }}</span>
+                </div>
+                <div style="display:flex;gap:8px;flex:none">
+                  <button class="btn btn-primary blueprint" style="white-space:nowrap"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><sa-i n="file" s="16"></sa-i><span>Rapport PDF</span></button>
+                  <button class="btn btn-secondary" style="white-space:nowrap"><sa-i n="download" s="16"></sa-i><span>Excel</span></button>
+                  <button class="btn btn-ghost btn-icon" aria-label="Paramètres de relevé"><sa-i n="edit" s="17"></sa-i></button>
+                </div>
+              </div>
+
+              <div class="blueprint" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr))">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div style="padding:12px 16px;border-right:1px solid var(--color-divider);display:flex;flex-direction:column"><span style="font-size:12px">Dernière visite</span><span style="font:600 26px/1.1 var(--font-heading)">{{ sel.last }}</span><span style="font-size:12px">{{ sel.tech }}</span></div>
+                <div style="padding:12px 16px;border-right:1px solid var(--color-divider);display:flex;flex-direction:column;background:var(--color-accent-900);color:#ffffff"><span style="font-size:12px">Hors zone au dernier relevé</span><span style="font:600 26px/1.1 var(--font-heading)">{{ sel.nOut }}</span><span style="font-size:12px">{{ sel.outTxt }}</span></div>
+                <div style="padding:12px 16px;border-right:1px solid var(--color-divider);display:flex;flex-direction:column"><span style="font-size:12px">Conformité 30 jours</span><span style="font:600 26px/1.1 var(--font-heading)">{{ sel.pct }}</span><span style="font-size:12px">{{ sel.daysOut }} jours avec au moins un écart</span></div>
+                <div style="padding:12px 16px;display:flex;flex-direction:column"><span style="font-size:12px">Prochaine visite</span><span style="font:600 26px/1.1 var(--font-heading)">Ven 2 oct.</span><span style="font-size:12px">{{ sel.freq }}</span></div>
+              </div>
+
+              <section class="blueprint" style="display:flex;flex-direction:column;min-height:0">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div style="padding:10px 16px;border-bottom:1px solid var(--color-divider);display:flex;align-items:center;justify-content:space-between;gap:12px">
+                  <h3 style="margin:0;font-size:22px">Relevés par visite</h3>
+                  <div style="display:flex;align-items:center;gap:16px">
+                    <span style="display:flex;align-items:center;gap:6px;font-size:12px"><span style="width:12px;height:12px;background:var(--color-accent-900)"></span>Hors zone</span>
+                    <div style="display:flex;border:1px solid var(--color-divider)">
+                      <span style="padding:5px 12px;white-space:nowrap;font:600 14px var(--font-heading);background:var(--color-text);color:var(--color-bg)">12 visites</span>
+                      <span style="padding:5px 12px;white-space:nowrap;font:600 14px var(--font-heading);border-left:1px solid var(--color-divider)">30 jours</span>
+                      <span style="padding:5px 12px;white-space:nowrap;font:600 14px var(--font-heading);border-left:1px solid var(--color-divider)">90 jours</span>
+                    </div>
+                  </div>
+                </div>
+                <div style="display:grid;grid-template-columns:20px 170px 92px repeat(12,minmax(0,1fr)) 58px;align-items:end;padding:8px 16px 6px;border-bottom:1px solid var(--color-text);font-size:12px">
+                  <span></span><span>Paramètre</span><span>Zone visée</span>
+                  <sc-for list="{{ matCols }}" as="c" hint-placeholder-count="12"><span style="display:flex;flex-direction:column;align-items:center;line-height:1.1;font-weight:{{ c.fw }}"><span style="font:600 15px var(--font-heading)">{{ c.day }}</span><span>{{ c.mon }}</span></span></sc-for>
+                  <span style="text-align:right">30 j</span>
+                </div>
+                <sc-for list="{{ matRows }}" as="r" hint-placeholder-count="8">
+                  <div style="display:flex;flex-direction:column;border-bottom:1px solid var(--color-divider);background:{{ r.rowBg }}">
+                    <div style="display:grid;grid-template-columns:20px 170px 92px repeat(12,minmax(0,1fr)) 58px;align-items:center;padding:0 16px;height:36px;cursor:pointer">
+                      <sa-i n="{{ r.chev }}" s="15"></sa-i>
+                      <span style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.label }} <span style="font-weight:400;font-size:12px">{{ r.unit }}</span></span>
+                      <span style="font-size:13px">{{ r.zone }}</span>
+                      <sc-for list="{{ r.cells }}" as="c" hint-placeholder-count="12"><span style="display:flex;align-items:center;justify-content:center;height:28px;margin:0 1px;font:{{ c.fw }} 14px var(--font-heading);background:{{ c.bg }};color:{{ c.fg }}">{{ c.v }}</span></sc-for>
+                      <span style="text-align:right;font:600 15px var(--font-heading)">{{ r.pct }}</span>
+                    </div>
+                    <sc-if value="{{ r.open }}">
+                      <div style="display:grid;grid-template-columns:48px minmax(0,1fr) 200px;gap:0 16px;padding:8px 16px 16px 36px">
+                        <div style="position:relative;height:150px;font-size:12px">
+                          <span style="position:absolute;right:4px;top:-8px">{{ chart.maxTxt }}</span>
+                          <span style="position:absolute;right:4px;top:{{ chart.hiTop }}%;transform:translateY(-50%);font-weight:600;color:var(--color-accent-800)">{{ chart.hiTxt }}</span>
+                          <span style="position:absolute;right:4px;top:{{ chart.loTop }}%;transform:translateY(-50%);font-weight:600;color:var(--color-accent-800)">{{ chart.loTxt }}</span>
+                          <span style="position:absolute;right:4px;bottom:-8px">{{ chart.minTxt }}</span>
+                        </div>
+                        <div style="position:relative;height:150px;border-left:1px solid var(--color-text);border-bottom:1px solid var(--color-text);background:var(--color-bg)">
+                          <div style="position:absolute;left:0;right:0;top:{{ chart.hiTop }}%;height:{{ chart.bandH }}%;background:repeating-linear-gradient(135deg,var(--color-accent-300) 0 1px,transparent 1px 7px);border-top:1px solid var(--color-accent-700);border-bottom:1px solid var(--color-accent-700)"></div>
+                          <svg viewBox="0 0 1000 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible"><path d="{{ chart.path }}" fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke"></path></svg>
+                          <sc-for list="{{ chart.dots }}" as="d" hint-placeholder-count="30"><div style="position:absolute;left:{{ d.x }}%;top:{{ d.y }}%;width:{{ d.s }}px;height:{{ d.s }}px;transform:translate(-50%,-50%);box-sizing:border-box;border:1.5px solid var(--color-text);background:{{ d.bg }}"></div></sc-for>
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:8px;font-size:13px">
+                          <span style="font:600 16px var(--font-heading)">30 derniers jours</span>
+                          <sc-for list="{{ chart.stats }}" as="k" hint-placeholder-count="4"><div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--color-divider);padding-bottom:4px"><span>{{ k.l }}</span><span style="font:600 15px var(--font-heading)">{{ k.v }}</span></div></sc-for>
+                        </div>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </section>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═════════════ 1b — TRIAGE ═════════════ -->
+    <div id="1b" style="display:flex;flex-direction:column;gap:16px;flex:none">
+      <div style="display:flex;align-items:flex-start;gap:16px;max-width:1440px">
+        <span style="flex:none;padding:4px 10px;background:var(--color-accent-900);color:#ffffff;font:600 22px/1 var(--font-heading)">1b</span>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <span style="font:600 28px/1 var(--font-heading)">File d’attention, tous sites</span>
+          <span style="font-size:14px;max-width:1100px">L’écran s’ouvre sur ce qui demande une action : les sites hors zone en tête, avec les valeurs fautives nommées et une bande de 30 jours (une case par jour, pleine s’il y a eu un écart). Un clic ouvre un panneau latéral avec chaque paramètre placé sur sa zone, sans quitter la liste.</span>
+        </div>
+      </div>
+      <div style="width:1440px;height:960px;display:grid;grid-template-columns:220px minmax(0,1fr);border:1px solid var(--color-text);background:var(--color-bg);overflow:hidden;box-shadow:var(--shadow-lg)">
+        <nav style="border-right:1px solid var(--color-accent-200);background:var(--color-accent-100);display:flex;flex-direction:column;min-height:0">
+          <div style="display:flex;align-items:center;gap:10px;padding:14px 14px 16px;border-bottom:1px solid var(--color-divider)">
+            <div style="width:40px;height:40px;flex:none;background:#004987;color:#ffffff;display:flex;align-items:flex-end;padding:4px;box-sizing:border-box;font:600 10px/0.95 var(--font-heading)">Soucy<br>Aquatik</div>
+            <div style="display:flex;flex-direction:column;line-height:1.15"><span style="font:600 19px var(--font-heading)">sa-admin</span><span style="font-size:12px;color:var(--color-accent-700)">Centre des opérations</span></div>
+          </div>
+          <sc-for list="{{ nav }}" as="g" hint-placeholder-count="3">
+            <div style="display:flex;flex-direction:column;padding:12px 0 2px">
+              <div style="padding:0 14px 4px;font-size:12px;color:var(--color-neutral-700)">{{ g.label }}</div>
+              <sc-for list="{{ g.items }}" as="n" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:10px;height:34px;padding:0 12px 0 11px;border-left:3px solid {{ n.bar }};background:{{ n.bg }};font-weight:{{ n.fw }}"><sa-i n="{{ n.icon }}" s="17"></sa-i><span>{{ n.label }}</span></div>
+              </sc-for>
+            </div>
+          </sc-for>
+        </nav>
+        <div style="display:flex;flex-direction:column;min-width:0;min-height:0">
+          <header style="flex:none;display:flex;align-items:center;gap:20px;padding:12px 28px;border-bottom:2px solid var(--color-accent-500);min-height:68px;box-sizing:border-box">
+            <div style="display:flex;flex-direction:column;flex:1"><h1 style="margin:0;font-size:30px;line-height:1.05">Inspections et rapports</h1><span style="font-size:13px">Relevés techniques saisis en tournée, par site et dans le temps</span></div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:13px;white-space:nowrap"><span style="width:8px;height:8px;background:var(--color-accent)"></span><span>En direct · jeu 1er oct. · 09:42</span></div>
+          </header>
+          <main style="flex:1;min-height:0;padding:22px 28px;display:flex;flex-direction:column;gap:18px;overflow:hidden">
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+              <div style="position:relative;width:260px"><div style="position:absolute;left:10px;top:9px;pointer-events:none"><sa-i n="search" s="17"></sa-i></div><input class="input" placeholder="Site, client, ville…" style="padding-left:34px"></div>
+              <div style="display:flex;border:1px solid var(--color-divider)">
+                <span style="padding:7px 14px;font:600 15px var(--font-heading);background:var(--color-text);color:var(--color-bg)">Tous</span>
+                <span style="padding:7px 14px;font:600 15px var(--font-heading);border-left:1px solid var(--color-divider)">Municipales</span>
+                <span style="padding:7px 14px;font:600 15px var(--font-heading);border-left:1px solid var(--color-divider)">Spas</span>
+                <span style="padding:7px 14px;font:600 15px var(--font-heading);border-left:1px solid var(--color-divider)">Jeux d’eau</span>
+                <span style="padding:7px 14px;font:600 15px var(--font-heading);border-left:1px solid var(--color-divider)">Résidentiel</span>
+              </div>
+              <select class="input" style="width:200px"><option>Tous les techniciens</option></select>
+              <span style="flex:1"></span>
+              <button class="btn btn-secondary" style="white-space:nowrap"><sa-i n="download" s="16"></sa-i><span>Exporter la vue</span></button>
+            </div>
+
+            <div class="blueprint" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr))">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+                <div style="padding:12px 18px;border-right:1px solid var(--color-divider);display:flex;flex-direction:column;background:{{ k.bg }};color:{{ k.fg }}"><span style="font-size:12px">{{ k.l }}</span><span style="font:600 34px/1 var(--font-heading)">{{ k.v }}</span><span style="font-size:12px">{{ k.sub }}</span></div>
+              </sc-for>
+            </div>
+
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:20px;min-height:0;flex:1">
+              <div style="display:flex;flex-direction:column;border-top:1px solid var(--color-text);min-height:0;overflow:hidden">
+                <div style="display:grid;grid-template-columns:minmax(0,1.3fr) 110px minmax(0,1.4fr) 180px 46px;gap:12px;padding:8px 12px;font-size:12px;border-bottom:1px solid var(--color-divider)"><span>Site</span><span>Dernière visite</span><span>Hors zone au dernier relevé</span><span>30 derniers jours</span><span style="text-align:right">Conf.</span></div>
+                <div style="padding:10px 12px 6px;font:600 16px var(--font-heading);border-bottom:1px solid var(--color-divider)">À traiter · {{ nAttn }}</div>
+                <sc-for list="{{ triAttn }}" as="t" hint-placeholder-count="6">
+                  <div style="display:grid;grid-template-columns:minmax(0,1.3fr) 110px minmax(0,1.4fr) 180px 46px;gap:12px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--color-divider);background:{{ t.bg }};box-shadow:{{ t.ring }}">
+                    <div style="display:flex;flex-direction:column;line-height:1.25;min-width:0"><span style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.nom }}</span><span style="font-size:12px">{{ t.meta }}</span></div>
+                    <div style="display:flex;flex-direction:column;line-height:1.25;font-size:13px"><span style="font:600 15px var(--font-heading)">{{ t.last }}</span><span style="font-size:12px">{{ t.tech }}</span></div>
+                    <div style="display:flex;flex-wrap:wrap;gap:4px">
+                      <sc-for list="{{ t.chips }}" as="c" hint-placeholder-count="1"><span style="white-space:nowrap;padding:2px 7px;background:var(--color-accent-900);color:#ffffff;font-size:12px"><b style="font:600 13px var(--font-heading)">{{ c.val }}</b> {{ c.label }} · {{ c.dir }}</span></sc-for>
+                    </div>
+                    <div style="display:flex;gap:2px">
+                      <sc-for list="{{ t.strip }}" as="d" hint-placeholder-count="30"><span style="width:4px;height:16px;box-sizing:border-box;background:{{ d.bg }};border:{{ d.bd }}"></span></sc-for>
+                    </div>
+                    <span style="text-align:right;font:600 15px var(--font-heading)">{{ t.pct }}</span>
+                  </div>
+                </sc-for>
+                <div style="padding:14px 12px 6px;font:600 16px var(--font-heading);border-bottom:1px solid var(--color-divider)">Conformes · {{ nOk }}</div>
+                <sc-for list="{{ triOk }}" as="t" hint-placeholder-count="6">
+                  <div style="display:grid;grid-template-columns:minmax(0,1.3fr) 110px minmax(0,1.4fr) 180px 46px;gap:12px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--color-divider)">
+                    <div style="display:flex;flex-direction:column;line-height:1.25;min-width:0"><span style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.nom }}</span><span style="font-size:12px">{{ t.meta }}</span></div>
+                    <div style="display:flex;flex-direction:column;line-height:1.25;font-size:13px"><span style="font:600 15px var(--font-heading)">{{ t.last }}</span><span style="font-size:12px">{{ t.tech }}</span></div>
+                    <span style="font-size:13px;color:var(--color-neutral-700)">Tout dans la zone</span>
+                    <div style="display:flex;gap:2px">
+                      <sc-for list="{{ t.strip }}" as="d" hint-placeholder-count="30"><span style="width:4px;height:16px;box-sizing:border-box;background:{{ d.bg }};border:{{ d.bd }}"></span></sc-for>
+                    </div>
+                    <span style="text-align:right;font:600 15px var(--font-heading)">{{ t.pct }}</span>
+                  </div>
+                </sc-for>
+              </div>
+
+              <aside class="blueprint" style="display:flex;flex-direction:column;min-height:0;overflow:hidden;box-shadow:var(--shadow-md)">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div style="padding:14px 16px;border-bottom:1px solid var(--color-divider);display:flex;gap:10px;align-items:flex-start">
+                  <div style="flex:1;display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-size:12px">{{ sel.court }} · {{ sel.norme }}</span><span style="font:600 22px/1.1 var(--font-heading)">{{ sel.nom }}</span><span style="font-size:12px">Dernier relevé {{ sel.last }} · {{ sel.tech }}</span></div>
+                  <button class="btn btn-ghost btn-icon" aria-label="Fermer"><sa-i n="x" s="18"></sa-i></button>
+                </div>
+                <div style="display:flex;flex-direction:column;padding:4px 16px;flex:1;min-height:0">
+                  <sc-for list="{{ ranges }}" as="p" hint-placeholder-count="8">
+                    <div style="display:flex;flex-direction:column;gap:5px;padding:8px 0;border-bottom:1px solid var(--color-divider)">
+                      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px"><span style="font-size:13px">{{ p.label }}</span><span style="padding:0 6px;font:600 16px var(--font-heading);background:{{ p.bg }};color:{{ p.fg }}">{{ p.val }}</span></div>
+                      <div style="position:relative;height:8px;border:1px solid var(--color-text)">
+                        <div style="position:absolute;top:0;bottom:0;left:{{ p.zl }}%;width:{{ p.zw }}%;background:repeating-linear-gradient(135deg,var(--color-accent-500) 0 1px,transparent 1px 4px);border-left:1px solid var(--color-accent-700);border-right:1px solid var(--color-accent-700)"></div>
+                        <div style="position:absolute;top:-5px;bottom:-5px;left:{{ p.pos }}%;width:3px;transform:translateX(-50%);background:var(--color-text)"></div>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="padding:12px 16px;border-top:1px solid var(--color-divider);display:flex;gap:8px;flex-wrap:wrap">
+                  <button class="btn btn-primary blueprint" style="white-space:nowrap"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><sa-i n="wrench" s="16"></sa-i><span>Créer un bon de correction</span></button>
+                  <button class="btn btn-secondary" style="white-space:nowrap"><span>Fiche complète</span><sa-i n="right" s="16"></sa-i></button>
+                </div>
+              </aside>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═════════════ 1c — PETITS MULTIPLES + JOURNAL ═════════════ -->
+    <div id="1c" style="display:flex;flex-direction:column;gap:16px;flex:none">
+      <div style="display:flex;align-items:flex-start;gap:16px;max-width:1440px">
+        <span style="flex:none;padding:4px 10px;background:var(--color-accent-900);color:#ffffff;font:600 22px/1 var(--font-heading)">1c</span>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <span style="font:600 28px/1 var(--font-heading)">Fiche de site : tous les graphiques + journal</span>
+          <span style="font-size:14px;max-width:1100px">Les onglets disparaissent : chaque paramètre a son mini-graphique 30 jours avec sa zone, la carte passe en plein quand la dernière valeur est hors zone. Dessous, un vrai journal de visite : technicien, écarts, points de contrôle, produits ajoutés, photos et note, ce qui alimente directement le rapport client.</span>
+        </div>
+      </div>
+      <div style="width:1440px;height:960px;display:grid;grid-template-columns:220px minmax(0,1fr);border:1px solid var(--color-text);background:var(--color-bg);overflow:hidden;box-shadow:var(--shadow-lg)">
+        <nav style="border-right:1px solid var(--color-accent-200);background:var(--color-accent-100);display:flex;flex-direction:column;min-height:0">
+          <div style="display:flex;align-items:center;gap:10px;padding:14px 14px 16px;border-bottom:1px solid var(--color-divider)">
+            <div style="width:40px;height:40px;flex:none;background:#004987;color:#ffffff;display:flex;align-items:flex-end;padding:4px;box-sizing:border-box;font:600 10px/0.95 var(--font-heading)">Soucy<br>Aquatik</div>
+            <div style="display:flex;flex-direction:column;line-height:1.15"><span style="font:600 19px var(--font-heading)">sa-admin</span><span style="font-size:12px;color:var(--color-accent-700)">Centre des opérations</span></div>
+          </div>
+          <sc-for list="{{ nav }}" as="g" hint-placeholder-count="3">
+            <div style="display:flex;flex-direction:column;padding:12px 0 2px">
+              <div style="padding:0 14px 4px;font-size:12px;color:var(--color-neutral-700)">{{ g.label }}</div>
+              <sc-for list="{{ g.items }}" as="n" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:10px;height:34px;padding:0 12px 0 11px;border-left:3px solid {{ n.bar }};background:{{ n.bg }};font-weight:{{ n.fw }}"><sa-i n="{{ n.icon }}" s="17"></sa-i><span>{{ n.label }}</span></div>
+              </sc-for>
+            </div>
+          </sc-for>
+        </nav>
+        <div style="display:flex;flex-direction:column;min-width:0;min-height:0">
+          <header style="flex:none;display:flex;align-items:center;gap:20px;padding:12px 28px;border-bottom:2px solid var(--color-accent-500);min-height:68px;box-sizing:border-box">
+            <div style="display:flex;flex-direction:column;flex:1"><h1 style="margin:0;font-size:30px;line-height:1.05">Inspections et rapports</h1><span style="font-size:13px">Relevés techniques saisis en tournée, par site et dans le temps</span></div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:13px;white-space:nowrap"><span style="width:8px;height:8px;background:var(--color-accent)"></span><span>En direct · jeu 1er oct. · 09:42</span></div>
+          </header>
+          <main style="flex:1;min-height:0;padding:22px 28px;display:grid;grid-template-columns:264px minmax(0,1fr);gap:24px;overflow:hidden">
+
+            <div style="display:flex;flex-direction:column;border:1px solid var(--color-divider);min-height:0;overflow:hidden">
+              <div style="padding:10px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:8px">
+                <div style="position:relative"><div style="position:absolute;left:10px;top:9px;pointer-events:none"><sa-i n="search" s="17"></sa-i></div><input class="input" placeholder="Site, client, ville…" style="padding-left:34px"></div>
+                <div style="display:flex;border:1px solid var(--color-divider)">
+                  <span style="flex:1;text-align:center;padding:6px 0;font:600 14px var(--font-heading);background:var(--color-text);color:var(--color-bg)">Gravité</span>
+                  <span style="flex:1;text-align:center;padding:6px 0;font:600 14px var(--font-heading);border-left:1px solid var(--color-divider)">A–Z</span>
+                  <span style="flex:1;text-align:center;padding:6px 0;font:600 14px var(--font-heading);border-left:1px solid var(--color-divider)">Type</span>
+                </div>
+              </div>
+              <sc-for list="{{ listAll }}" as="s" hint-placeholder-count="12">
+                <div style="display:flex;flex-direction:column;gap:5px;padding:8px 12px;border-bottom:1px solid var(--color-divider);background:{{ s.bg }};color:{{ s.fg }}">
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <div style="flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25"><span style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.nom }}</span><span style="font-size:12px">{{ s.meta }} · {{ s.last }}</span></div>
+                    <sc-if value="{{ s.nOut }}"><span style="font:600 13px var(--font-heading);min-width:20px;height:20px;padding:0 5px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;background:{{ s.badgeBg }};color:{{ s.badgeFg }};border:1px solid currentColor">{{ s.nOut }}</span></sc-if>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:16px;min-width:0;min-height:0">
+              <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px">
+                <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                  <span style="font-size:13px">{{ sel.typeLabel }} · contrat {{ sel.contrat }} · {{ sel.norme }}</span>
+                  <h2 style="margin:0;font-size:32px;line-height:1.05">{{ sel.nom }}</h2>
+                  <span style="font-size:13px">{{ sel.client }} · {{ sel.bassin }} · dernière visite {{ sel.last }}</span>
+                </div>
+                <div style="display:flex;gap:8px;flex:none;align-items:center">
+                  <div style="display:flex;flex:none;border:1px solid var(--color-divider)">
+                    <span style="padding:6px 12px;white-space:nowrap;font:600 14px var(--font-heading)">7 j</span>
+                    <span style="padding:6px 12px;white-space:nowrap;font:600 14px var(--font-heading);border-left:1px solid var(--color-divider);background:var(--color-text);color:var(--color-bg)">30 j</span>
+                    <span style="padding:6px 12px;white-space:nowrap;font:600 14px var(--font-heading);border-left:1px solid var(--color-divider)">90 j</span>
+                  </div>
+                  <button class="btn btn-primary blueprint" style="white-space:nowrap"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><sa-i n="file" s="16"></sa-i><span>Rapport PDF</span></button>
+                  <button class="btn btn-secondary btn-icon" aria-label="Excel"><sa-i n="download" s="17"></sa-i></button>
+                </div>
+              </div>
+
+              <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--color-divider);border:1px solid var(--color-divider)">
+                <sc-for list="{{ smalls }}" as="m" hint-placeholder-count="8">
+                  <div style="display:flex;flex-direction:column;background:var(--color-bg)">
+                    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px;padding:8px 12px 4px;background:{{ m.headBg }};color:{{ m.headFg }}">
+                      <span style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ m.label }}</span>
+                      <span style="font:600 22px/1 var(--font-heading);white-space:nowrap">{{ m.last }}<span style="font-size:12px;font-weight:400"> {{ m.unit }}</span></span>
+                    </div>
+                    <div style="position:relative;height:62px;margin:8px 12px 0;border-bottom:1px solid var(--color-text)">
+                      <div style="position:absolute;left:0;right:0;top:{{ m.chart.hiTop }}%;height:{{ m.chart.bandH }}%;background:repeating-linear-gradient(135deg,var(--color-accent-300) 0 1px,transparent 1px 6px);border-top:1px solid var(--color-accent-700);border-bottom:1px solid var(--color-accent-700)"></div>
+                      <svg viewBox="0 0 1000 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible"><path d="{{ m.chart.path }}" fill="none" stroke="currentColor" stroke-width="1.5" vector-effect="non-scaling-stroke"></path></svg>
+                      <sc-for list="{{ m.chart.outs }}" as="d" hint-placeholder-count="2"><div style="position:absolute;left:{{ d.x }}%;top:{{ d.y }}%;width:7px;height:7px;transform:translate(-50%,-50%);background:var(--color-text)"></div></sc-for>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding:5px 12px 9px;font-size:12px"><span>Zone {{ m.zone }}</span><span>{{ m.pct }} dans la zone</span></div>
+                  </div>
+                </sc-for>
+              </div>
+
+              <section class="blueprint" style="display:flex;flex-direction:column;min-height:0">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div style="padding:10px 16px;border-bottom:1px solid var(--color-divider);display:flex;align-items:baseline;justify-content:space-between"><h3 style="margin:0;font-size:22px">Journal des visites</h3><span style="font-size:13px">Cliquez une visite pour voir toutes les valeurs et les photos</span></div>
+                <div style="display:grid;grid-template-columns:92px 120px minmax(0,1.5fr) 70px minmax(0,1.1fr) 50px;gap:12px;padding:7px 16px;font-size:12px;border-bottom:1px solid var(--color-divider)"><span>Date</span><span>Technicien</span><span>Relevés</span><span>Contrôles</span><span>Produits ajoutés</span><span style="text-align:right">Photos</span></div>
+                <sc-for list="{{ journal }}" as="j" hint-placeholder-count="6">
+                  <div style="display:grid;grid-template-columns:92px 120px minmax(0,1.5fr) 70px minmax(0,1.1fr) 50px;gap:12px;align-items:start;padding:8px 16px;border-bottom:1px solid var(--color-divider)">
+                    <div style="display:flex;flex-direction:column;line-height:1.2"><span style="font:600 15px var(--font-heading)">{{ j.d }}</span><span style="font-size:12px">{{ j.h }}</span></div>
+                    <span style="font-size:13px">{{ j.tech }}</span>
+                    <div style="display:flex;flex-direction:column;gap:3px">
+                      <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center">
+                        <sc-for list="{{ j.outs }}" as="c" hint-placeholder-count="1"><span style="white-space:nowrap;padding:1px 6px;background:var(--color-accent-900);color:#ffffff;font-size:12px"><b style="font:600 13px var(--font-heading)">{{ c.val }}</b> {{ c.label }}</span></sc-for>
+                        <span style="font-size:12px">{{ j.okTxt }}</span>
+                      </div>
+                      <sc-if value="{{ j.note }}"><span style="font-size:12px;font-style:italic">« {{ j.note }} »</span></sc-if>
+                    </div>
+                    <span style="font:600 15px var(--font-heading)">{{ j.checks }}</span>
+                    <span style="font-size:13px">{{ j.prod }}</span>
+                    <span style="display:flex;align-items:center;justify-content:flex-end;gap:4px;font-size:13px"><sa-i n="camera" s="15"></sa-i>{{ j.photos }}</span>
+                  </div>
+                </sc-for>
+              </section>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  </sc-if>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  componentDidMount() { this._h = () => this.forceUpdate(); window.addEventListener('sa-data', this._h); if (window.SA_DATA) this.forceUpdate(); }
+  componentWillUnmount() { window.removeEventListener('sa-data', this._h); }
+  renderVals() {
+    const D = window.SA_DATA;
+    if (!D) return { ready: false };
+    const SEL = 'S08', EXP = 'clc', OUT = 'var(--color-accent-900)';
+    const fr = (v, step) => Number(v).toFixed(step >= 1 ? 0 : step < 0.1 ? 2 : 1).replace('.', ',');
+    const isOut = (f, v) => v < f.lo || v > f.hi;
+    const times = ['07:48', '08:24', '09:02', '08:40', '07:30', '10:15', '13:20'];
+    const unitOf = f => f.kind === 'count' ? '' : (f.unit || '');
+
+    const stats = D.SITES.map((s, i) => {
+      const T = D.TYPES[s.type], F = T.fields, H = D.HIST[s.id];
+      const days = H[F[0].key].map((_, di) => F.some(f => isOut(f, H[f.key][di].v)));
+      let tot = 0, ok = 0; F.forEach(f => H[f.key].forEach(x => { tot++; if (!isOut(f, x.v)) ok++; }));
+      const lastOut = F.filter(f => isOut(f, H[f.key][H[f.key].length - 1].v)).map(f => { const v = H[f.key][H[f.key].length - 1].v; return { label: f.label, val: fr(v, f.step) + (unitOf(f) ? ' ' + unitOf(f) : ''), dir: v < f.lo ? 'bas' : 'élevé' }; });
+      const today = D.TECHS.some(t => t.site === s.id);
+      return { s, T, F, H, days, pct: Math.round(ok / tot * 100), lastOut, nOut: lastOut.length, tech: D.tech(s.tech), last: today ? 'Auj. ' + times[i % 7] : (i % 3 === 0 ? 'Hier' : '30 sept.') };
+    });
+    const sorted = [...stats].sort((a, b) => b.nOut - a.nOut || a.pct - b.pct);
+    const cur = stats.find(x => x.s.id === SEL);
+
+    const nav = [['Terrain', [['activity', 'Monitoring'], ['map', 'Carte des sites'], ['chart', 'Inspections']]], ['Gestion', [['grid', 'Vue globale'], ['clipboard', 'Plan de Match'], ['folder', 'Opérations'], ['calendar', 'Planning équipe'], ['building', 'Sites'], ['receipt', 'Facturation'], ['snow', 'Hivernage']]], ['Matériel', [['truck', 'Logistique'], ['package', 'Stock'], ['wrench', 'Outils']]]]
+      .map(([label, items]) => ({ label, items: items.map(([icon, l]) => { const on = l === 'Inspections'; return { icon, label: l, bar: on ? 'var(--color-accent-700)' : 'transparent', bg: on ? 'var(--color-bg)' : 'transparent', fw: on ? 600 : 400 }; }) }));
+
+    const item = x => { const on = x.s.id === SEL; return { nom: x.s.nom, meta: x.s.ville + ' · ' + x.T.court, last: x.last, pct: x.pct + ' %', nOut: x.nOut || null, bg: on ? 'var(--color-accent-700)' : 'transparent', fg: on ? 'var(--color-bg)' : 'var(--color-text)', badgeBg: on ? 'var(--color-bg)' : OUT, badgeFg: on ? 'var(--color-text)' : '#ffffff' }; };
+    const attn = sorted.filter(x => x.nOut), okS = sorted.filter(x => !x.nOut);
+
+    const mkChart = (f, h) => {
+      const n = h.length, yp = v => (1 - (v - f.min) / (f.max - f.min)) * 100, xp = i => n > 1 ? i / (n - 1) * 100 : 50;
+      const vs = h.map(x => x.v), outs = vs.filter(v => isOut(f, v)).length, avg = vs.reduce((a, b) => a + b, 0) / n;
+      return {
+        path: h.map((x, i) => (i ? 'L' : 'M') + (xp(i) * 10).toFixed(1) + ' ' + yp(x.v).toFixed(1)).join(' '),
+        dots: h.map((x, i) => ({ x: xp(i), y: yp(x.v), s: isOut(f, x.v) ? 11 : 7, bg: isOut(f, x.v) ? 'var(--color-text)' : 'var(--color-bg)' })),
+        outs: h.map((x, i) => ({ x: xp(i), y: yp(x.v), o: isOut(f, x.v) })).filter(d => d.o),
+        hiTop: yp(f.hi), loTop: yp(f.lo), bandH: Math.max(yp(f.lo) - yp(f.hi), 1.5),
+        minTxt: fr(f.min, f.step), maxTxt: fr(f.max, f.step), loTxt: f.lo === f.min ? '' : fr(f.lo, f.step), hiTxt: f.hi === f.max ? '' : fr(f.hi, f.step),
+        pct: Math.round((n - outs) / n * 100) + ' %', nOut: outs,
+        stats: [{ l: 'Moyenne', v: fr(avg, f.step) }, { l: 'Min / max', v: fr(Math.min(...vs), f.step) + ' / ' + fr(Math.max(...vs), f.step) }, { l: 'Dans la zone', v: Math.round((n - outs) / n * 100) + ' %' }, { l: 'Jours hors zone', v: String(outs) }]
+      };
+    };
+
+    const NV = 12, h0 = cur.H[cur.F[0].key];
+    const matCols = h0.slice(-NV).map((x, i) => { const [day, mon] = x.d.split(' '); return { day, mon: mon || '', fw: i === NV - 1 ? 600 : 400 }; });
+    const matRows = cur.F.map(f => {
+      const h = cur.H[f.key], open = f.key === EXP, outs = h.filter(x => isOut(f, x.v)).length;
+      return { label: f.label, unit: unitOf(f), zone: fr(f.lo, f.step) + ' – ' + fr(f.hi, f.step), open, chev: open ? 'down' : 'right', rowBg: open ? 'var(--color-accent-100)' : 'transparent', pct: Math.round((30 - outs) / 30 * 100) + ' %',
+        cells: h.slice(-NV).map((x, ci) => { const o = isOut(f, x.v); return { v: fr(x.v, f.step), bg: o ? OUT : 'transparent', fg: o ? '#ffffff' : 'var(--color-text)', fw: o || ci === NV - 1 ? 600 : 400 }; }) };
+    });
+    const chart = mkChart(cur.F.find(f => f.key === EXP), cur.H[EXP]);
+
+    const strip = x => x.days.map(o => ({ bg: o ? OUT : 'transparent', bd: o ? 'none' : '1px solid var(--color-neutral-400)' }));
+    const tri = x => { const on = x.s.id === SEL; return { nom: x.s.nom, meta: x.s.ville + ' · ' + x.T.court, last: x.last, tech: x.tech.nom, chips: x.lastOut, strip: strip(x), pct: x.pct + ' %', bg: on ? 'var(--color-accent-100)' : 'transparent', ring: on ? 'inset 3px 0 0 var(--color-text)' : 'none' }; };
+    const avgPct = Math.round(stats.reduce((a, x) => a + x.pct, 0) / stats.length);
+    const nVals = stats.reduce((a, x) => a + x.nOut, 0);
+    const kpis = [
+      { l: 'Sites suivis', v: String(stats.length), sub: 'Bureau et entrepôt exclus', bg: 'transparent', fg: 'var(--color-text)' },
+      { l: 'Sites hors zone au dernier relevé', v: String(attn.length), sub: nVals + ' valeurs à corriger', bg: OUT, fg: '#ffffff' },
+      { l: 'Conformité moyenne · 30 j', v: avgPct + ' %', sub: 'Toutes valeurs confondues', bg: 'transparent', fg: 'var(--color-text)' },
+      { l: 'Relevés saisis aujourd’hui', v: String(D.TECHS.filter(t => t.site).length), sub: 'Sur ' + D.TECHS.filter(t => t.statut !== 'congé').length + ' techniciens en tournée', bg: 'transparent', fg: 'var(--color-text)' }
+    ];
+    const ranges = cur.F.map(f => { const h = cur.H[f.key], v = h[h.length - 1].v, o = isOut(f, v), sp = f.max - f.min;
+      return { label: f.label + (unitOf(f) ? ' (' + unitOf(f) + ')' : ''), val: fr(v, f.step), bg: o ? OUT : 'transparent', fg: o ? '#ffffff' : 'var(--color-text)', zl: (f.lo - f.min) / sp * 100, zw: Math.max((f.hi - f.lo) / sp * 100, 1), pos: Math.min(100, Math.max(0, (v - f.min) / sp * 100)) }; });
+
+    const smalls = cur.F.map(f => { const h = cur.H[f.key], v = h[h.length - 1].v, o = isOut(f, v), c = mkChart(f, h);
+      return { label: f.label, unit: unitOf(f), last: fr(v, f.step), zone: fr(f.lo, f.step) + '–' + fr(f.hi, f.step), pct: c.pct, chart: c, headBg: o ? OUT : 'transparent', headFg: o ? '#ffffff' : 'var(--color-text)' }; });
+    const P = cur.T.produits, hrs = ['07:48', '07:52', '07:41', '07:55', '07:46', '07:50'];
+    const notes = ['Pompe doseuse chlore à l’arrêt — chloration manuelle, alerte transmise', 'Chloration choc en fin de journée', '', 'Préfiltre colmaté, nettoyé', '', ''];
+    const journal = [29, 28, 27, 26, 25, 24].map((di, k) => {
+      const outs = cur.F.filter(f => isOut(f, cur.H[f.key][di].v)).map(f => ({ label: f.label, val: fr(cur.H[f.key][di].v, f.step) }));
+      return { d: h0[di].d, h: hrs[k], tech: k === 3 ? 'Maxime Tremblay' : cur.tech.nom, outs, okTxt: (cur.F.length - outs.length) + '/' + cur.F.length + ' dans la zone', note: notes[k] || (outs.length ? 'Correction effectuée sur place' : ''),
+        checks: (k === 1 ? 3 : 4) + '/' + cur.T.checks.length, prod: P[k % P.length][0] + ' · ' + [6, 4, 2, 8, 3, 5][k] + ' ' + P[k % P.length][1], photos: String([3, 1, 2, 2, 1, 2][k]) };
+    });
+
+    // ── Tour 2 : l'installation au complet
+    const HATCH = 'repeating-linear-gradient(135deg,var(--color-text) 0 1.5px,transparent 1.5px 4px)';
+    const STX = { ok: ['Conforme', 'transparent'], watch: ['À surveiller', HATCH], action: ['Action requise', OUT], na: ['Sans objet', 'transparent'] };
+    const rank = { action: 0, watch: 1, ok: 2, na: 3 };
+    const dec = o => Object.assign({}, o, { stl: STX[o.st][0], sq: STX[o.st][1], bd: o.st === 'na' ? '1px dashed var(--color-neutral-500)' : '1.5px solid var(--color-text)', tag: o.tag || null, d: o.d || '' });
+    const eauItems = cur.F.filter(f => f.key !== 'psi').map(f => { const v = cur.H[f.key][cur.H[f.key].length - 1].v; return { l: f.label, v: fr(v, f.step) + (unitOf(f) ? ' ' + unitOf(f) : ''), d: 'Zone ' + fr(f.lo, f.step) + ' – ' + fr(f.hi, f.step), st: isOut(f, v) ? 'action' : 'ok', tag: isOut(f, v) ? 'Depuis 2 visites' : null }; });
+    const nEauOk = eauItems.filter(x => x.st === 'ok').length;
+    const SYS = [
+      { k: 'eau', nom: 'Eau du bassin', icon: 'droplet', st: 'action', resume: eauItems.filter(x => x.st !== 'ok').map(x => x.l + ' ' + x.v).join(' · '), items: eauItems },
+      { k: 'dos', nom: 'Traitement et dosage', icon: 'flask', st: 'action', resume: 'Pompe doseuse de chlore à l’arrêt depuis 07:12', items: [
+        { l: 'Pompe doseuse chlore', v: 'Débit nul', d: 'Depuis 07:12 · chloration manuelle en cours', st: 'action', tag: 'Nouveau' }, { l: 'Réservoir d’hypochlorite', v: '35 %', d: 'Environ 4 jours d’autonomie', st: 'watch' },
+        { l: 'Pompe doseuse pH', v: 'Fonctionne', st: 'ok' }, { l: 'Sondes pH / ORP', v: 'Étalonnées', d: '15 sept.', st: 'ok' }] },
+      { k: 'secu', nom: 'Sécurité et conformité RQEP', icon: 'alert', st: 'watch', resume: 'Registre RQEP non signé le 30 sept.', items: [
+        { l: 'Registre RQEP signé', v: 'Manquant le 30 sept.', st: 'watch', tag: 'Nouveau' }, { l: 'Drain principal visible du bord', v: 'Oui', st: 'ok' }, { l: 'Trousse de premiers soins', v: 'Complète', st: 'ok' },
+        { l: 'Matériel de sauvetage', v: 'En place', st: 'ok' }, { l: 'Affichage des profondeurs', v: 'Lisible', st: 'ok' }, { l: 'Arrêt d’urgence des pompes', v: 'Testé', st: 'ok' }] },
+      { k: 'struct', nom: 'Structure et surfaces', icon: 'building', st: 'watch', resume: '2 tuiles fissurées · 1 projecteur hors service', items: [
+        { l: 'Carrelage du bassin', v: '2 tuiles fissurées', d: 'Couloir 7, côté profond · photo', st: 'watch', tag: 'Depuis le 24 sept.' }, { l: 'Éclairage subaquatique', v: '1 sur 12 hors service', d: 'Projecteur P4', st: 'watch' },
+        { l: 'Joints et margelle', v: 'En bon état', st: 'ok' }, { l: 'Échelles et mains courantes', v: 'Fixées', st: 'ok' }, { l: 'Plongeoirs', v: 'En bon état', st: 'ok' }] },
+      { k: 'circ', nom: 'Circulation et filtration', icon: 'cycle', st: 'ok', resume: 'Tout est conforme', items: [
+        { l: 'Pompe de recirculation', v: '410 m³/h', d: 'Nominal 420 m³/h', st: 'ok' }, { l: 'Filtres à sable (3)', v: '12 psi', d: 'Dernier lavage 28 sept.', st: 'ok' }, { l: 'Préfiltre', v: 'Nettoyé', st: 'ok' },
+        { l: 'Goulottes et écumoires', v: 'Dégagées', st: 'ok' }, { l: 'Vannes et manomètres', v: 'En bon état', st: 'ok' }] },
+      { k: 'chauf', nom: 'Chauffage et ventilation', icon: 'thermo', st: 'ok', resume: 'Tout est conforme', items: [
+        { l: 'Échangeur de chaleur', v: '27,5 °C', d: 'Consigne 27 °C', st: 'ok' }, { l: 'Déshumidificateur', v: '58 % HR', d: 'Cible 50 – 60 %', st: 'ok' }, { l: 'Odeur de chloramines', v: 'Faible', st: 'ok' }] }
+    ];
+    const allItems = SYS.flatMap(s => s.items);
+    const verdict = { a: allItems.filter(x => x.st === 'action').length, w: allItems.filter(x => x.st === 'watch').length, o: allItems.filter(x => x.st === 'ok').length };
+    const plural = (n, s) => n + ' ' + s + (n > 1 ? 's' : '');
+    const sysCards = SYS.map(s => { const bad = s.items.filter(x => x.st !== 'ok').sort((a, b) => rank[a.st] - rank[b.st]), nOk = s.items.filter(x => x.st === 'ok').length;
+      return Object.assign(dec({ st: s.st }), { nom: s.nom, icon: s.icon, resume: s.resume, ex: bad.slice(0, 2).map(dec), more: bad.length > 2 ? '+ ' + (bad.length - 2) + ' autre(s)' : '', okTxt: plural(nOk, 'point') + ' conforme' + (nOk > 1 ? 's' : '') + ' sur ' + s.items.length, allOk: !bad.length, headBg: s.st === 'action' ? OUT : s.st === 'watch' ? 'var(--color-accent-100)' : 'transparent', headFg: s.st === 'action' ? '#ffffff' : 'var(--color-text)' }); });
+    const todo = [
+      { st: 'action', t: 'Remplacer la tête de la pompe doseuse de chlore', sys: 'Traitement et dosage', who: 'Bon D-26-060 · urgent · Sophie Gagnon' },
+      { st: 'action', t: 'Abaisser le chlore combiné (chloration choc, apport d’eau neuve)', sys: 'Eau du bassin', who: 'À assigner' },
+      { st: 'watch', t: 'Livrer de l’hypochlorite avant lundi', sys: 'Traitement et dosage', who: 'Logistique' },
+      { st: 'watch', t: 'Faire signer le registre RQEP par le responsable', sys: 'Sécurité', who: 'Client · Ville de Granby' },
+      { st: 'watch', t: 'Soumission : 2 tuiles et projecteur P4', sys: 'Structure', who: 'À planifier à la fermeture' }
+    ].map(dec);
+    const siteSt = x => { const i = D.SITES.indexOf(x.s), sa = D.SALLES[x.s.id], m = sa ? [sa.pompe, sa.filtre, sa.dosage] : [];
+      return [x.nOut ? 'action' : x.pct < 90 ? 'watch' : 'ok', !sa ? 'na' : m.includes('alerte') ? 'action' : m.includes('attn') ? 'watch' : 'ok', x.s.id === SEL || i % 6 === 2 ? 'watch' : 'ok', x.s.id === SEL || i % 5 === 3 ? 'watch' : 'ok']; };
+    const score = a => a.reduce((t, s) => t + (s === 'action' ? 10 : s === 'watch' ? 3 : 0), 0);
+    const sites2 = stats.map(x => ({ x, st: siteSt(x) })).sort((a, b) => score(b.st) - score(a.st)).slice(0, 14).map(({ x, st }) => { const on = x.s.id === SEL;
+      return { nom: x.s.nom, meta: x.s.ville + ' · ' + x.T.court + ' · ' + x.last, sqs: st.map(s => dec({ st: s })), bg: on ? 'var(--color-accent-100)' : 'transparent', bar: on ? 'var(--color-accent-700)' : 'transparent' }; });
+    const report = [...SYS].sort((a, b) => rank[a.st] - rank[b.st]).map(s => { const isEau = s.k === 'eau', rows = (isEau ? s.items.filter(x => x.st !== 'ok') : [...s.items].sort((a, b) => rank[a.st] - rank[b.st])).map(dec);
+      return Object.assign(dec({ st: s.st }), { nom: s.nom, icon: s.icon, open: s.st !== 'ok', closed: s.st === 'ok', rows, more: isEau ? nEauOk + ' autres paramètres dans la zone · afficher le tableau complet et les tendances' : '', summary: s.items.map(x => x.l + ' ' + x.v.toLowerCase()).join(' · ') }); });
+    const visits = [['Auj. 1er oct.', '07:48', 'Sophie Gagnon', 2, 4, true], ['30 sept.', '07:52', 'Sophie Gagnon', 0, 3], ['29 sept.', '07:41', 'Sophie Gagnon', 0, 2], ['28 sept.', '07:55', 'Maxime Tremblay', 1, 1], ['25 sept.', '07:46', 'Sophie Gagnon', 0, 1], ['24 sept.', '07:50', 'Sophie Gagnon', 0, 1], ['23 sept.', '07:44', 'Sophie Gagnon', 0, 0], ['22 sept.', '07:49', 'Sophie Gagnon', 0, 0]]
+      .map(([d, h, tech, a, w, on]) => Object.assign(dec({ st: a ? 'action' : w ? 'watch' : 'ok' }), { d, h, tech, sum: a || w ? [a ? plural(a, 'action') : '', w ? w + ' à surveiller' : ''].filter(Boolean).join(' · ') : 'Tout conforme', bg: on ? 'var(--color-accent-100)' : 'transparent', bar: on ? 'var(--color-accent-700)' : 'transparent', fw: on ? 600 : 400 }));
+    const N = (nom, st, val, sub, sel) => Object.assign(dec({ st }), { nom, val, sub, headBg: st === 'action' ? OUT : st === 'watch' ? 'var(--color-accent-100)' : 'transparent', headFg: st === 'action' ? '#ffffff' : 'var(--color-text)', ring: sel ? '0 0 0 3px var(--color-bg), 0 0 0 5px var(--color-text)' : 'none' });
+    const flow1 = [N('Bassin · eau', 'action', nEauOk + ' / ' + eauItems.length, 'paramètres dans la zone'), N('Goulottes et écumoires', 'ok', 'Dégagées', 'Vérifié 07:50'), N('Préfiltre', 'ok', 'Nettoyé', 'Panier vidé 07:55'), N('Pompe de recirculation', 'ok', '410 m³/h', 'Nominal 420 m³/h')].map((n, i) => Object.assign(n, { arrow: i < 3 }));
+    const flow2 = [N('Filtres à sable (3)', 'ok', '12 psi', 'Lavage 28 sept.'), N('Dosage chlore / pH', 'action', 'Débit nul', 'Pompe chlore depuis 07:12', true), N('Échangeur de chaleur', 'ok', '27,5 °C', 'Consigne 27 °C'), N('Retour au bassin', 'ok', '24 buses', 'Débit régulier')].map((n, i) => Object.assign(n, { arrow: i < 3 }));
+    const offCircuit = [N('Sécurité et RQEP', 'watch', '5 / 6', 'Registre non signé le 30 sept.'), N('Structure et surfaces', 'watch', '2 points', 'Tuiles couloir 7 · projecteur P4'), N('Ventilation et air', 'ok', '58 % HR', 'Odeur de chloramines faible')];
+    const dosItems = SYS[1].items.map(dec);
+    const hist = [['1er oct. 07:12', 'Alarme du contrôleur : débit nul, pompe doseuse chlore'], ['1er oct. 07:48', 'Constaté sur place par Sophie Gagnon · chloration manuelle'], ['1er oct. 09:38', 'Bon D-26-060 ouvert · urgent'], ['15 sept.', 'Étalonnage des sondes pH / ORP']].map(([h, t]) => ({ h, t }));
+
+    // ── Tour 5 : multi-bassins, plans, niveaux d'accès
+    const MK = { action: ['var(--color-accent-900)', '#ffffff', '2px solid var(--color-accent-900)'], watch: ['var(--color-accent-100)', 'var(--color-text)', '2px solid var(--color-text)'], ok: ['#ffffff', 'var(--color-text)', '2px solid var(--color-text)'], na: ['#ffffff', 'var(--color-neutral-700)', '2px dashed var(--color-neutral-500)'] };
+    const STC = { action: 'Intervention', watch: 'À surveiller', ok: 'Conforme', na: 'Hiverné' };
+    const bassins = [
+      ['1', 'Bassin sportif 50 m', '1 900 m³ · RQEP 4 h', 'action', 'Chlore combiné 0,7 · pompe doseuse à l’arrêt', 30, 46, 'Auj. 07:48'],
+      ['2', 'Bassin récréatif', '420 m³ · RQEP 4 h', 'ok', 'Tout est conforme', 66, 34, 'Auj. 08:05'],
+      ['3', 'Fosse de plongée', '780 m³ · RQEP 4 h', 'watch', 'Turbidité 0,5 UTN, à la limite', 30, 80, 'Auj. 08:12'],
+      ['4', 'Pataugeoire', '38 m³ · vidange quotidienne', 'ok', 'Tout est conforme', 80, 66, 'Auj. 08:20'],
+      ['5', 'Spa 12 places', '6 m³ · RQEP spa 2 h', 'watch', 'Température 39,5 °C (max 39)', 58, 72, 'Auj. 08:24'],
+      ['6', 'Jeux d’eau extérieurs', '18 jets · saisonnier', 'na', 'Hivernés depuis le 15 sept.', 88, 14, '15 sept.']
+    ].map(([n, nom, vol, st, resume, x, y, last], i) => ({ n, nom, vol, st, stl: STC[st], resume, x, y, last, mBg: MK[st][0], mFg: MK[st][1], mBd: MK[st][2], sq: STX[st === 'na' ? 'ok' : st][1], sqBd: st === 'na' ? '1.5px dashed var(--color-neutral-500)' : '1.5px solid var(--color-text)', rowBg: i === 0 ? 'var(--color-accent-100)' : 'transparent', bar: i === 0 ? 'var(--color-accent-700)' : 'transparent', ring: i === 0 ? '0 0 0 3px #ffffff, 0 0 0 5px var(--color-text)' : 'none' }));
+    const Y = '✓';
+    const levels = [['État des bassins', Y, Y, Y], ['Relevés du jour', Y, Y, Y], ['Registre RQEP (PDF)', Y, Y, Y], ['Plans du site', Y, Y, Y], ['Historique et graphiques', '', Y, Y], ['Rapports de visite', '', Y, Y], ['Interventions et bons', '', Y, Y], ['Exports Excel', '', Y, Y], ['Factures et soumissions', '', '', Y]]
+      .map(([l, a, b, c]) => ({ l, cells: [a, b, c].map(v => ({ v, bg: v ? 'var(--color-accent-700)' : 'transparent', bd: v ? 'none' : '1.5px solid var(--color-neutral-400)' })) }));
+    const docs = [
+      ['Plan d’ensemble — niveau des bassins', 'PDF · 2,4 Mo · site', 'Opérateur', true],
+      ['Salle mécanique — schéma de tuyauterie', 'PDF · 1,1 Mo · site', 'Gestionnaire', true],
+      ['Fosse de plongée — coupe et profondeurs', 'Image · 640 Ko · bassin 3', 'Opérateur', true],
+      ['Contrat C-26-022 et annexes', 'PDF · dossier client', 'Direction', true],
+      ['Fiche technique — pompe doseuse', 'PDF · interne', 'Interne Soucy', false]
+    ].map(([t, m, lvl, vis]) => ({ t, m, lvl, vis, eye: vis ? 'eye' : 'x', op: vis ? 1 : 0.6 }));
+    const histPts = h0.map((x, i) => (i ? 'L' : 'M') + (i / 29 * 1000).toFixed(0) + ' ' + ((1 - (cur.H.clc[i].v - 0) / 1.2) * 100).toFixed(1)).join(' ');
+
+    return {
+      ready: true, nav, navSites: nav.map(g => ({ label: g.label, items: g.items.map(n => { const on = n.label === 'Sites'; return Object.assign({}, n, { bar: on ? 'var(--color-accent-700)' : 'transparent', bg: on ? 'var(--color-bg)' : 'transparent', fw: on ? 600 : 400 }); }) })), bassins, levels, docs, histPts,
+      sysCards, verdict, todo, sites2, report, visits, flow1, flow2, offCircuit, dosItems, hist,
+      listAttn: attn.map(item), listOk: okS.slice(0, 10).map(item), listAll: sorted.slice(0, 15).map(item), nAttn: attn.length, nOk: okS.length,
+      sel: { nom: cur.s.nom, client: cur.s.client, contrat: cur.s.contrat, bassin: cur.s.bassin, typeLabel: cur.T.label, court: cur.T.court, norme: cur.T.norme, tech: cur.tech.nom, last: cur.last, freq: cur.s.freq, pct: cur.pct + ' %', nOut: String(cur.nOut), outTxt: cur.lastOut.map(o => o.label + ' ' + o.val).join(' · '), daysOut: cur.days.filter(Boolean).length },
+      matCols, matRows, chart,
+      kpis, triAttn: attn.slice(0, 7).map(tri), triOk: okS.slice(0, 8).map(tri), ranges,
+      smalls, journal
+    };
+  }
+}
+
+</script>
+</body>
+</html>

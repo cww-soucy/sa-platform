@@ -1,0 +1,237 @@
+<!-- sa-admin › Inspections (passation 2a, 2b, 5a-1, 5a-2, 4a-5, 4a-1) — inséré par assemble.py ; logique : inspections.js -->
+<sc-if value="{{ isInspNew }}">
+<div style="display:grid;grid-template-columns:272px minmax(0,1fr);border:1px solid var(--color-divider);min-height:calc(100vh - 170px)">
+  <aside style="border-right:1px solid var(--color-divider);display:flex;flex-direction:column;min-width:0">
+    <div style="padding:12px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--color-divider)">
+      <input class="input" type="search" placeholder="Rechercher un site…" aria-label="Rechercher un site" value="{{ iq.q }}" onInput="{{ iq.onQ }}">
+      <div style="display:flex;align-items:center;gap:6px;font-size:13px"><span style="flex:1">Trié par gravité</span><span title="Eau"><sa-i n="droplet" s="15"></sa-i></span><span title="Mécanique"><sa-i n="wrench" s="15"></sa-i></span><span title="Sécurité"><sa-i n="alert" s="15"></sa-i></span><span title="Structure"><sa-i n="building" s="15"></sa-i></span></div>
+    </div>
+    <div style="overflow-y:auto;flex:1">
+      <sc-for list="{{ iq.sites }}" as="s">
+        <button onClick="{{ s.go }}" style="all:unset;cursor:pointer;box-sizing:border-box;width:100%;display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--color-divider);background:{{ s.bg }};box-shadow:{{ s.bar }}">
+          <span style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.nom }}</span><span style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.sub }}</span></span>
+          <sc-for list="{{ s.pz }}" as="p"><i title="{{ p.t }}" style="{{ p.st }}"></i></sc-for>
+        </button>
+      </sc-for>
+    </div>
+  </aside>
+  <section style="min-width:0;display:flex;flex-direction:column">
+    <div style="padding:16px 22px 12px;border-bottom:2px solid var(--color-accent-500);display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
+      <sc-if value="{{ iq.h.logo }}"><img src="{{ iq.h.logo }}" alt="Logo du client" style="width:56px;height:56px;object-fit:contain;border:1px solid var(--color-divider)"></sc-if>
+      <div style="flex:1;min-width:240px;display:flex;flex-direction:column;gap:2px">
+        <span style="font-size:14px;color:var(--color-accent-700)">{{ iq.h.type }} · contrat {{ iq.h.contrat }}</span>
+        <h2 style="margin:0;font-size:32px;line-height:1.05">{{ iq.h.nom }}</h2>
+        <span style="font-size:14px">{{ iq.h.sub }}</span>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary" onClick="{{ iq.goRapport }}"><sa-i n="file" s="16"></sa-i>Rapport client</button>
+        <button class="btn btn-secondary" onClick="{{ iq.goTend }}"><sa-i n="chart" s="16"></sa-i>Tendances de l’eau</button>
+        <button class="btn btn-secondary" onClick="{{ iq.goSaisie }}"><sa-i n="plus" s="16"></sa-i>Nouvelle inspection</button>
+        <button class="btn btn-secondary" onClick="{{ iq.voirClient }}"><sa-i n="eye" s="16"></sa-i>Voir comme le client</button>
+      </div>
+    </div>
+    <div role="tablist" style="display:flex;gap:2px;padding:0 22px;border-bottom:1px solid var(--color-divider);overflow-x:auto">
+      <sc-for list="{{ iq.tabs }}" as="t"><button role="tab" aria-selected="{{ t.on }}" onClick="{{ t.go }}" style="all:unset;cursor:pointer;white-space:nowrap;padding:10px 12px;font:600 16px var(--font-heading);border-bottom:3px solid {{ t.bd }}">{{ t.label }}</button></sc-for>
+    </div>
+
+    <!-- ═ Bilan par système (2a) ═ -->
+    <sc-if value="{{ iq.isBilan }}"><div style="padding:18px 22px;display:flex;flex-direction:column;gap:16px">
+      <sc-if value="{{ iq.noVisit }}"><div style="border:1px dashed var(--color-text);padding:14px">Aucune visite publiée pour ce site. Les visites apparaissent ici dès qu’un technicien valide une inspection dans sa-terrain, ou après une saisie bureau.</div></sc-if>
+      <sc-if value="{{ iq.hasVisit }}">
+        <div style="background:var(--color-accent-100);border:1px solid var(--color-accent-300);padding:14px 16px;display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+          <b style="flex:1;min-width:260px;font-size:17px">{{ iq.verdict }}</b>
+          <sc-for list="{{ iq.cpt }}" as="c"><span style="display:inline-flex;align-items:center;gap:6px;font-size:14px"><i style="{{ c.st }}"></i><b style="font:600 22px var(--font-heading)">{{ c.n }}</b>{{ c.l }}</span></sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--color-divider);border-left:1px solid var(--color-divider)">
+          <sc-for list="{{ iq.cards }}" as="c"><div style="border-right:1px solid var(--color-divider);border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column">
+            <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:{{ c.hbg }};color:{{ c.hfg }}"><sa-i n="{{ c.icone }}" s="20"></sa-i><b style="flex:1;font:600 18px var(--font-heading)">{{ c.nom }}</b><span style="display:inline-flex;align-items:center;gap:6px;font-size:13px"><i style="{{ c.pz }}"></i>{{ c.lib }}</span></div>
+            <div style="padding:10px 12px;flex:1;display:flex;flex-direction:column;gap:6px;font-size:15px">
+              <sc-for list="{{ c.top }}" as="x"><div><b>{{ x.libelle }}</b><sc-if value="{{ x.valeur }}"> · {{ x.valeur }}</sc-if><div style="font-size:13px;color:var(--color-neutral-700)">{{ x.detail }}</div></div></sc-for>
+              <sc-if value="{{ c.rien }}"><div>Rien à signaler.</div></sc-if>
+            </div>
+            <button onClick="{{ c.go }}" style="all:unset;cursor:pointer;display:flex;justify-content:space-between;padding:8px 12px;border-top:1px solid var(--color-divider);font-size:13px"><span>{{ c.pied }}</span><span>Détail →</span></button>
+          </div></sc-for>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px"><h3 style="margin:0;font-size:22px">À faire</h3>
+          <sc-if value="{{ iq.noTodo }}"><div style="font-size:15px">Aucun point à suivre.</div></sc-if>
+          <table class="table" style="font-size:14px"><tbody><sc-for list="{{ iq.todo }}" as="t"><tr>
+            <td style="width:150px"><span style="display:inline-flex;align-items:center;gap:6px"><i style="{{ t.pz }}"></i>{{ t.lib }}</span></td>
+            <td><b>{{ t.libelle }}</b><sc-if value="{{ t.valeur }}"> · {{ t.valeur }}</sc-if><div style="font-size:13px">{{ t.note }}</div></td><td>{{ t.sys }}</td><td>{{ t.bassin }}</td>
+            <td style="text-align:right;white-space:nowrap"><sc-if value="{{ t.hasWo }}"><span style="font-size:13px">Bon de travail créé</span></sc-if><sc-if value="{{ t.noWo }}"><button class="btn btn-secondary" onClick="{{ t.mkWo }}">Créer un bon de travail</button></sc-if></td>
+          </tr></sc-for></tbody></table>
+        </div>
+      </sc-if>
+    </div></sc-if>
+
+    <!-- ═ Rapport de visite (2b) ═ -->
+    <sc-if value="{{ iq.isVisite }}"><div style="display:grid;grid-template-columns:220px minmax(0,1fr) 250px;flex:1">
+      <div style="border-right:1px solid var(--color-divider);overflow-y:auto">
+        <div style="padding:10px 12px;display:flex;gap:6px"><button class="btn btn-ghost" onClick="{{ iq.prevSite }}" aria-label="Site précédent"><sa-i n="left" s="16"></sa-i></button><span style="flex:1;font-size:13px;align-self:center">Visites</span><button class="btn btn-ghost" onClick="{{ iq.nextSite }}" aria-label="Site suivant"><sa-i n="right" s="16"></sa-i></button></div>
+        <sc-if value="{{ iq.noVisit }}"><div style="padding:12px;font-size:14px">Aucune visite.</div></sc-if>
+        <sc-for list="{{ iq.visites }}" as="v"><button onClick="{{ v.go }}" style="all:unset;cursor:pointer;box-sizing:border-box;width:100%;display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-top:1px solid var(--color-divider);background:{{ v.bg }};box-shadow:{{ v.bar }}">
+          <span style="display:flex;justify-content:space-between;gap:6px"><b>{{ v.date }}</b><i style="{{ v.pz }}"></i></span><span style="font-size:13px">{{ v.txt }}</span><span style="font-size:12px;color:var(--color-neutral-700)">{{ v.tech }}</span><sc-if value="{{ v.brouillon }}"><span style="font-size:12px;font-weight:600">Brouillon</span></sc-if>
+        </button></sc-for>
+      </div>
+      <article style="padding:18px 22px;display:flex;flex-direction:column;gap:14px;min-width:0">
+        <sc-if value="{{ iq.hasVisit }}">
+          <div><h2 style="margin:0;font-size:26px">{{ iq.v.titre }}</h2><div style="font-size:14px">{{ iq.v.sub }}</div></div>
+          <p style="margin:0;font-size:16px;line-height:1.5">{{ iq.v.resume }}</p>
+          <sc-for list="{{ iq.v.sections }}" as="sec"><section style="border-top:1px solid var(--color-divider);padding-top:10px;display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;align-items:center;gap:8px"><sa-i n="{{ sec.icone }}" s="20"></sa-i><b style="flex:1;font:600 20px var(--font-heading)">{{ sec.nom }}</b><span style="display:inline-flex;align-items:center;gap:6px;font-size:14px"><i style="{{ sec.pz }}"></i>{{ sec.lib }}</span></div>
+            <sc-if value="{{ sec.open }}"><table class="table" style="font-size:14px"><tbody><sc-for list="{{ sec.rows }}" as="x"><tr><td style="width:34%"><b>{{ x.libelle }}</b></td><td>{{ x.valeur }}<div style="font-size:13px">{{ x.detail }}</div></td><td style="white-space:nowrap"><span style="display:inline-flex;align-items:center;gap:6px"><i style="{{ x.pz }}"></i>{{ x.lib }}</span><div style="font-size:12px">{{ x.tag }}</div></td></tr></sc-for></tbody></table>
+              <sc-if value="{{ sec.more }}"><button class="btn btn-ghost" onClick="{{ iq.goTend }}" style="align-self:flex-start">{{ sec.more }}</button></sc-if></sc-if>
+            <sc-if value="{{ sec.closed }}"><div style="font-size:14px;color:var(--color-neutral-700)">{{ sec.liste }}</div></sc-if>
+          </section></sc-for>
+        </sc-if>
+      </article>
+      <aside style="border-left:1px solid var(--color-divider);padding:16px;display:flex;flex-direction:column;gap:12px">
+        <sc-if value="{{ iq.hasVisit }}">
+          <b>Photos</b><sc-if value="{{ iq.v.noPhoto }}"><span style="font-size:14px">Aucune photo.</span></sc-if>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"><sc-for list="{{ iq.v.photos }}" as="p"><figure style="margin:0"><img src="{{ p.src }}" alt="{{ p.leg }}" style="width:100%;aspect-ratio:1;object-fit:cover;border:1px solid var(--color-divider)"><figcaption style="font-size:12px">{{ p.leg }}</figcaption></figure></sc-for></div>
+          <b>Produits ajoutés</b><sc-if value="{{ iq.v.noProd }}"><span style="font-size:14px">Aucun.</span></sc-if>
+          <sc-for list="{{ iq.v.prods }}" as="p"><div style="display:flex;justify-content:space-between;font-size:14px"><span>{{ p.nom }}</span><b>{{ p.q }}</b></div></sc-for>
+          <sc-if value="{{ iq.v.envoye }}"><div style="font-size:13px">{{ iq.v.envoye }}</div></sc-if>
+          <button class="btn btn-primary" onClick="{{ iq.v.envoyer }}"><sa-i n="send" s="16"></sa-i>Envoyer au client</button>
+          <button class="btn btn-secondary" onClick="{{ iq.v.pdf }}"><sa-i n="file" s="16"></sa-i>PDF</button>
+          <sc-if value="{{ iq.v.brouillon }}"><button class="btn btn-secondary" onClick="{{ iq.v.editer }}">Reprendre le brouillon</button></sc-if>
+        </sc-if>
+      </aside>
+    </div></sc-if>
+
+    <!-- ═ Saisie bureau (5a-2) ═ -->
+    <sc-if value="{{ iq.isSaisie }}"><div style="display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:0;flex:1">
+      <div style="padding:18px 22px;display:flex;flex-direction:column;gap:14px;min-width:0">
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px">
+          <div class="field"><label>Date</label><input class="input" type="date" value="{{ iq.f.date }}" onInput="{{ iq.f.onDate }}"></div>
+          <div class="field"><label>Heure</label><input class="input" type="time" value="{{ iq.f.heure }}" onInput="{{ iq.f.onHeure }}"></div>
+          <div class="field"><label>Au nom de</label><select class="input" onChange="{{ iq.f.onTech }}"><sc-for list="{{ iq.f.techs }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></sc-for></select></div>
+          <div class="field"><label>Source</label><select class="input" onChange="{{ iq.f.onSrc }}"><sc-for list="{{ iq.f.srcs }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></sc-for></select></div>
+        </div>
+        <sc-if value="{{ iq.f.hasB }}"><div class="field"><label>Bassin</label><select class="input" onChange="{{ iq.f.onB }}" style="max-width:340px"><sc-for list="{{ iq.f.bassins }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></sc-for></select></div></sc-if>
+        <h3 style="margin:6px 0 0;font-size:22px">Eau du bassin</h3>
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px">
+          <sc-for list="{{ iq.f.eau }}" as="e"><div class="field"><label>{{ e.label }}</label><input class="input" inputmode="decimal" value="{{ e.v }}" onInput="{{ e.on }}" aria-label="{{ e.aria }}" style="font:600 20px var(--font-heading);background:{{ e.bg }};color:{{ e.fg }}"></div></sc-for>
+        </div>
+        <sc-for list="{{ iq.f.sys }}" as="y"><details open="{{ y.open }}" style="border:1px solid var(--color-divider)">
+          <summary style="cursor:pointer;padding:10px 12px;display:flex;align-items:center;gap:10px"><sa-i n="{{ y.icone }}" s="18"></sa-i><b style="flex:1">{{ y.nom }}</b><span style="font-size:13px">{{ y.txt }}</span></summary>
+          <div style="padding:0 12px 12px;display:flex;flex-direction:column;gap:8px">
+            <sc-if value="{{ y.canAll }}"><button class="btn btn-secondary" onClick="{{ y.allOk }}" style="align-self:flex-start">Tout conforme</button></sc-if>
+            <sc-for list="{{ y.pts }}" as="q"><div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;border-top:1px solid var(--color-divider);padding-top:8px">
+              <span>{{ q.libelle }}<sc-if value="{{ q.req }}"> <b>(obligatoire)</b></sc-if></span>
+              <div role="group" aria-label="{{ q.libelle }}" style="display:flex;border:1px solid var(--color-text)"><sc-for list="{{ q.opts }}" as="o"><button onClick="{{ o.go }}" aria-pressed="{{ o.on }}" style="all:unset;cursor:pointer;padding:6px 10px;font-size:14px;font-weight:600;background:{{ o.bg }};color:{{ o.fg }}">{{ o.label }}</button></sc-for></div>
+              <sc-if value="{{ q.bad }}"><input class="input" value="{{ q.note }}" onInput="{{ q.onNote }}" placeholder="Note" aria-label="Note : {{ q.libelle }}" style="grid-column:1 / -1"></sc-if>
+            </div></sc-for>
+          </div>
+        </details></sc-for>
+        <div class="field"><label>Note de la visite</label><textarea class="input" value="{{ iq.f.note }}" onInput="{{ iq.f.onNote }}" style="min-height:70px"></textarea></div>
+        <p style="margin:0;font-size:15px"><b>Résumé :</b> {{ iq.f.resume }}</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--color-divider);padding-top:12px">
+          <button class="btn btn-secondary" onClick="{{ iq.f.brouillon }}">Enregistrer le brouillon</button>
+          <button class="btn btn-secondary" onClick="{{ iq.voirClient }}">Aperçu client</button>
+          <span style="flex:1"></span>
+          <button class="btn btn-primary" onClick="{{ iq.f.publier }}">{{ iq.f.publierLbl }}</button>
+        </div>
+        <div style="font-size:13px">Toute saisie bureau est journalisée : « saisie par {{ iq.f.par }} ».</div>
+      </div>
+      <aside style="border-left:1px solid var(--color-divider);padding:16px;display:flex;flex-direction:column;gap:12px">
+        <b>Niveaux d’accès du client</b>
+        <table class="table" style="font-size:13px"><thead><tr><th></th><th>Opér.</th><th>Gest.</th><th>Dir.</th></tr></thead><tbody><sc-for list="{{ iq.grille }}" as="g"><tr><td>{{ g.l }}</td><td>{{ g.o }}</td><td>{{ g.g }}</td><td>{{ g.d }}</td></tr></sc-for></tbody></table>
+        <b>Après publication</b>
+        <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" checked="{{ iq.f.envoyer }}" onChange="{{ iq.f.onEnvoyer }}">Aviser les contacts du client (courriel)</label>
+        <div style="font-size:13px">Le rapport est visible sur le portail (page du code QR) dès la publication.</div>
+      </aside>
+    </div></sc-if>
+
+    <!-- ═ Bassins et plan (5a-1) ═ -->
+    <sc-if value="{{ iq.isBassins }}"><div style="display:grid;grid-template-columns:minmax(0,1fr) 400px;flex:1">
+      <div style="padding:18px 22px;display:flex;flex-direction:column;gap:12px;min-width:0">
+        <sc-if value="{{ iq.needAdmin }}"><div style="border:1px dashed var(--color-text);padding:12px;font-size:14px">Plans et documents : ouvrez d’abord la gestion sécurisée dans l’onglet « Accès client ».</div></sc-if>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><sc-for list="{{ iq.plans }}" as="p"><button onClick="{{ p.go }}" style="all:unset;cursor:pointer;padding:6px 12px;border:1px solid var(--color-text);font-weight:600;background:{{ p.bg }};color:{{ p.fg }}">{{ p.label }}</button></sc-for>
+          <label class="btn btn-secondary" style="cursor:pointer">+ Plan (image)<input type="file" accept="image/*" onChange="{{ iq.upPlan }}" style="display:none"></label></div>
+        <div onPointerDown="{{ iq.planDown }}" onPointerMove="{{ iq.planMove }}" onPointerUp="{{ iq.planUp }}" style="position:relative;height:260px;border:1px solid var(--color-divider);background:var(--color-neutral-100);touch-action:none">
+          <sc-if value="{{ iq.planSrc }}"><img src="{{ iq.planSrc }}" alt="Plan" draggable="false" style="width:100%;height:100%;object-fit:contain;pointer-events:none"></sc-if>
+          <sc-if value="{{ iq.noPlan }}"><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px">Aucun plan pour ce site.</div></sc-if>
+          <sc-for list="{{ iq.markers }}" as="m"><span data-bassin="{{ m.id }}" title="{{ m.nom }}" style="position:absolute;left:{{ m.x }}%;top:{{ m.y }}%;transform:translate(-50%,-50%);width:30px;height:30px;display:flex;align-items:center;justify-content:center;font:600 16px var(--font-heading);cursor:grab;{{ m.st }}">{{ m.n }}</span></sc-for>
+        </div>
+        <div style="font-size:13px">Glissez un numéro pour placer le bassin sur le plan (position enregistrée en % du plan).</div>
+        <h3 style="margin:8px 0 0;font-size:20px">Plans et documents</h3>
+        <label class="btn btn-secondary" style="cursor:pointer;align-self:flex-start">+ Document<input type="file" onChange="{{ iq.upDoc }}" style="display:none"></label>
+        <table class="table" style="font-size:14px"><tbody><sc-for list="{{ iq.docs }}" as="d"><tr><td><sa-i n="{{ d.icon }}" s="16"></sa-i></td><td><sc-if value="{{ d.url }}"><a href="{{ d.url }}" target="_blank" rel="noopener">{{ d.titre }}</a></sc-if><sc-if value="{{ d.noUrl }}">{{ d.titre }}</sc-if><div style="font-size:12px">{{ d.sub }}</div></td>
+          <td><select class="input" aria-label="Visibilité : {{ d.titre }}" onChange="{{ d.onVis }}" style="min-height:34px"><sc-for list="{{ d.vis }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></sc-for></select></td><td><button class="btn btn-ghost" onClick="{{ d.del }}" aria-label="Retirer {{ d.titre }}"><sa-i n="x" s="16"></sa-i></button></td></tr></sc-for></tbody></table>
+      </div>
+      <aside style="border-left:1px solid var(--color-divider);padding:16px;display:flex;flex-direction:column;gap:10px">
+        <b>Bassins ({{ iq.nB }})</b>
+        <sc-for list="{{ iq.bassins }}" as="b"><div style="display:flex;gap:10px;align-items:flex-start;border-top:1px solid var(--color-divider);padding-top:8px">
+          <span style="width:30px;height:30px;flex:none;display:flex;align-items:center;justify-content:center;font:600 16px var(--font-heading);{{ b.st }}">{{ b.n }}</span>
+          <div style="flex:1;display:flex;flex-direction:column"><b>{{ b.nom }}</b><span style="font-size:13px">{{ b.etat }} · {{ b.resume }}</span><span style="font-size:12px;color:var(--color-neutral-700)">{{ b.meta }}</span></div>
+        </div></sc-for>
+        <div style="border-top:1px solid var(--color-divider);padding-top:10px;display:flex;flex-direction:column;gap:6px">
+          <b>+ Ajouter un bassin</b>
+          <input class="input" placeholder="Nom (ex. Pataugeoire)" aria-label="Nom du nouveau bassin" value="{{ iq.nb.nom }}" onInput="{{ iq.nb.onNom }}">
+          <select class="input" aria-label="Type du nouveau bassin" onChange="{{ iq.nb.onType }}"><sc-for list="{{ iq.nb.types }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></sc-for></select>
+          <input class="input" placeholder="Volume (m³)" aria-label="Volume du nouveau bassin" value="{{ iq.nb.vol }}" onInput="{{ iq.nb.onVol }}">
+          <button class="btn btn-primary" onClick="{{ iq.nb.add }}">Ajouter le bassin</button>
+        </div>
+      </aside>
+    </div></sc-if>
+
+    <!-- ═ Accès client et QR (4a-5) ═ -->
+    <sc-if value="{{ iq.isAcces }}"><div style="padding:18px 22px;display:flex;flex-direction:column;gap:16px">
+      <sc-if value="{{ iq.needAdmin }}"><form onSubmit="{{ iq.ouvrir }}" style="display:flex;flex-direction:column;gap:10px;max-width:420px;border:1px solid var(--color-divider);padding:16px">
+        <b>Gestion sécurisée des accès client</b><span style="font-size:14px">Les contacts, codes QR et journaux ne sont pas lisibles avec la clé publique. Confirmez votre mot de passe pour ouvrir une session de gestion de 12 heures.</span>
+        <input class="input" type="password" autocomplete="current-password" aria-label="Mot de passe" placeholder="Votre mot de passe" value="{{ iq.pw }}" onInput="{{ iq.onPw }}">
+        <button class="btn btn-primary" type="submit">Ouvrir la gestion</button><span style="font-size:14px">{{ iq.adminErr }}</span>
+      </form></sc-if>
+      <sc-if value="{{ iq.hasAdmin }}">
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+          <div class="field" style="flex:1;min-width:240px"><label>Compte client (organisation)</label><input class="input" value="{{ iq.cp.nom }}" onInput="{{ iq.cp.onNom }}" placeholder="ex. Ville de Granby"></div>
+          <label class="btn btn-secondary" style="cursor:pointer">Logo du client<input type="file" accept="image/*" onChange="{{ iq.cp.upLogo }}" style="display:none"></label>
+          <button class="btn btn-primary" onClick="{{ iq.cp.save }}">{{ iq.cp.saveLbl }}</button>
+        </div>
+        <sc-if value="{{ iq.cp.exists }}">
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px">
+          <section style="display:flex;flex-direction:column;gap:8px"><h3 style="margin:0;font-size:20px">Codes QR</h3>
+            <sc-for list="{{ iq.qrs }}" as="q"><div style="display:flex;gap:12px;align-items:center;border-top:1px solid var(--color-divider);padding-top:8px">
+              <sc-if value="{{ q.img }}"><img src="{{ q.img }}" alt="Code QR {{ q.code }}" style="width:96px;height:96px"></sc-if>
+              <div style="flex:1;display:flex;flex-direction:column;gap:4px"><b>{{ q.nom }}</b><span style="font-size:13px">{{ q.code }} · {{ q.etat }}</span>
+                <div style="display:flex;gap:6px;flex-wrap:wrap"><sc-if value="{{ q.img }}"><button class="btn btn-secondary" onClick="{{ q.print }}">Imprimer l’affiche</button></sc-if><button class="btn btn-secondary" onClick="{{ q.regen }}">{{ q.regenLbl }}</button></div></div>
+            </div></sc-for>
+            <span style="font-size:13px">« Régénérer » désactive immédiatement l’ancien code.</span>
+          </section>
+          <section style="display:flex;flex-direction:column;gap:8px"><h3 style="margin:0;font-size:20px">Ce que le client voit</h3>
+            <table class="table" style="font-size:13px"><thead><tr><th></th><th>Opérateur</th><th>Gestionnaire</th><th>Direction</th></tr></thead><tbody><sc-for list="{{ iq.droits }}" as="g"><tr><td>{{ g.l }}</td><sc-for list="{{ g.c }}" as="c"><td><input type="checkbox" aria-label="{{ c.aria }}" checked="{{ c.on }}" onChange="{{ c.go }}"></td></sc-for></tr></sc-for></tbody></table>
+          </section>
+        </div>
+        <section style="display:flex;flex-direction:column;gap:8px"><h3 style="margin:0;font-size:20px">Contacts autorisés</h3>
+          <table class="table" style="font-size:14px"><thead><tr><th>Nom</th><th>Niveau</th><th>Courriel</th><th>Cellulaire</th><th>Dernier accès</th><th></th></tr></thead><tbody>
+            <sc-for list="{{ iq.contacts }}" as="c"><tr><td>{{ c.nom }}</td><td>{{ c.niveau }}</td><td>{{ c.courriel }}</td><td>{{ c.cel }}</td><td>{{ c.acces }}</td><td><button class="btn btn-ghost" onClick="{{ c.del }}">Retirer</button></td></tr></sc-for>
+            <tr><td><input class="input" aria-label="Nom du contact" value="{{ iq.nc.nom }}" onInput="{{ iq.nc.onNom }}"></td><td><select class="input" aria-label="Niveau du contact" onChange="{{ iq.nc.onNiv }}"><sc-for list="{{ iq.nc.nivs }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></sc-for></select></td>
+              <td><input class="input" type="email" aria-label="Courriel du contact" value="{{ iq.nc.courriel }}" onInput="{{ iq.nc.onMail }}"></td><td><input class="input" aria-label="Cellulaire du contact" value="{{ iq.nc.cel }}" onInput="{{ iq.nc.onCel }}"></td><td></td><td><button class="btn btn-primary" onClick="{{ iq.nc.add }}">Ajouter</button></td></tr>
+          </tbody></table>
+        </section>
+        <section style="display:flex;flex-direction:column;gap:8px"><h3 style="margin:0;font-size:20px">Journal des accès</h3>
+          <sc-if value="{{ iq.noJournal }}"><span style="font-size:14px">Aucun accès pour l’instant.</span></sc-if>
+          <table class="table" style="font-size:13px"><tbody><sc-for list="{{ iq.journal }}" as="j"><tr><td style="white-space:nowrap">{{ j.quand }}</td><td>{{ j.qui }}</td><td>{{ j.action }}</td><td style="font-weight:{{ j.fw }}">{{ j.res }}</td></tr></sc-for></tbody></table>
+        </section>
+        </sc-if>
+        <span style="font-size:13px">{{ iq.envoiTxt }}</span>
+      </sc-if>
+    </div></sc-if>
+
+    <!-- ═ Points de contrôle (catalogue) ═ -->
+    <sc-if value="{{ iq.isPoints }}"><div style="padding:18px 22px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><b>Type de bassin</b><select class="input" aria-label="Type de bassin" onChange="{{ iq.pc.onType }}" style="max-width:320px"><sc-for list="{{ iq.pc.types }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></sc-for></select><span style="font-size:13px">{{ iq.pc.src }}</span></div>
+      <table class="table" style="font-size:14px"><thead><tr><th>Système</th><th>Point de contrôle</th><th>Réponse</th><th>Obligatoire</th><th>Actif</th></tr></thead><tbody>
+        <sc-for list="{{ iq.pc.rows }}" as="r"><tr>
+          <td><select class="input" aria-label="Système : {{ r.libelle }}" onChange="{{ r.onSys }}" style="min-height:34px"><sc-for list="{{ r.sys }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></sc-for></select></td>
+          <td><input class="input" value="{{ r.libelle }}" onChange="{{ r.onLib }}" aria-label="Libellé" style="min-height:34px"></td>
+          <td><select class="input" aria-label="Réponse : {{ r.libelle }}" onChange="{{ r.onMode }}" style="min-height:34px"><sc-for list="{{ r.modes }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></sc-for></select></td>
+          <td><input type="checkbox" aria-label="Obligatoire : {{ r.libelle }}" checked="{{ r.obl }}" onChange="{{ r.onObl }}"></td><td><input type="checkbox" aria-label="Actif : {{ r.libelle }}" checked="{{ r.actif }}" onChange="{{ r.onActif }}"></td>
+        </tr></sc-for>
+      </tbody></table>
+      <div style="display:flex;gap:8px;align-items:center"><input class="input" placeholder="Nouveau point de contrôle" aria-label="Nouveau point de contrôle" value="{{ iq.pc.nouveau }}" onInput="{{ iq.pc.onNouveau }}" style="max-width:420px"><button class="btn btn-primary" onClick="{{ iq.pc.add }}">Ajouter</button></div>
+      <span style="font-size:13px">Les points de l’eau (paramètres et zones) se règlent dans « Paramètres de relevé » (onglet Tendances de l’eau). Retirer un point = le rendre inactif : l’historique reste lisible.</span>
+    </div></sc-if>
+  </section>
+</div>
+</sc-if>

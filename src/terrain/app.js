@@ -71,9 +71,10 @@ function noBon(prefix){var d=new Date();return prefix+d.getFullYear()+pad(d.getM
 function cap(s){s=String(s||'');return s.charAt(0).toUpperCase()+s.slice(1);}
 
 /* ---------- Données de référence (types, sites, contrats) : cache local pour le hors-ligne ---------- */
-var REF={types:{},sites:{},list:[]};
+var REF={types:{},sites:{},list:[],cat:[]};
 function villeOf(addr){var p=String(addr||'').split(',').map(function(x){return x.trim();}).filter(function(x){return x&&!/^(qc|québec|quebec|canada)$/i.test(x)&&!/[a-z]\d[a-z]\s?\d[a-z]\d/i.test(x);});return p.length>1?p[p.length-1].replace(/^Ville de\s+/i,''):'';}
 function buildRef(raw){
+  REF.cat=Array.isArray(raw.cat)?raw.cat:[];
   REF.types={};(raw.types||[]).forEach(function(t){REF.types[t.code]={label:t.label,court:t.court||t.label,norme:t.norme||'',fields:t.fields||[],checks:t.checks||[],produits:t.produits||[],photo:t.photo||'Vue d’ensemble du bassin'};});
   var ct={};(raw.contrats||[]).forEach(function(c){ct[c.site_id]=c;});
   REF.sites={};REF.list=[];
@@ -101,10 +102,10 @@ function Comp(user){
   var prefs=jget('sa_terrain_prefs',{});this.prefs={sun:!!prefs.sun,big:!!prefs.big};
   var saved=jget('sa_terrain_state_'+user.id+'_'+this.today,{});
   this.inv=[];this.bons=[];this.hivRep={};this.lastSortie=null;this._sig={strokes:[],w:0};
-  this.dem=[];this.ft=jget(LSK_FT+user.id+'_'+iso(mondayOf(new Date())),null);this.state=Object.assign({pf:{q:'',lieu:'',siteId:null,odt:'',detail:'',km:'',src:null},sf:{km:''},demande:null,demChip:null,demandeTxt:'',screen:'today',logTab:'sortie',sortie:{},invQ:'',bonSel:null,signer:'',hivFilter:'todo',hivSel:null,hivChecks:{},hivAntigel:{},hivEtat:{},hivNote:{},hivSent:{},demPhoto:null,pe:null,openJob:null,vals:{},touched:{},checks:{},prods:{},photo:{},photoData:{},notes:{},validated:{},sync:{},planDay:0,toast:null,soon:''},saved);
+  this.dem=[];this.ft=jget(LSK_FT+user.id+'_'+iso(mondayOf(new Date())),null);this.state=Object.assign({pf:{q:'',lieu:'',siteId:null,odt:'',detail:'',km:'',src:null},sf:{km:''},demande:null,demChip:null,demandeTxt:'',screen:'today',logTab:'sortie',sortie:{},invQ:'',bonSel:null,signer:'',hivFilter:'todo',hivSel:null,hivChecks:{},hivAntigel:{},hivEtat:{},hivNote:{},hivSent:{},demPhoto:null,pe:null,openJob:null,vals:{},touched:{},checks:{},prods:{},photo:{},photoData:{},notes:{},validated:{},sync:{},pts:{},acts:{},step:{},planDay:0,toast:null,soon:''},saved);
   this.state.toast=null;this.state.screen='today';this.state.pf={q:'',lieu:'',siteId:null,odt:'',detail:'',km:'',src:null};this.state.sf={km:''};
 }
-Comp.prototype.persist=function(){var s=this.state,keep={vals:s.vals,touched:s.touched,checks:s.checks,prods:s.prods,photo:s.photo,notes:s.notes,validated:s.validated,sync:s.sync,photoData:s.photoData,hivChecks:s.hivChecks,hivAntigel:s.hivAntigel,hivEtat:s.hivEtat,hivNote:s.hivNote,hivSent:s.hivSent};
+Comp.prototype.persist=function(){var s=this.state,keep={vals:s.vals,touched:s.touched,checks:s.checks,prods:s.prods,photo:s.photo,notes:s.notes,validated:s.validated,sync:s.sync,photoData:s.photoData,pts:s.pts,acts:s.acts,step:s.step,hivChecks:s.hivChecks,hivAntigel:s.hivAntigel,hivEtat:s.hivEtat,hivNote:s.hivNote,hivSent:s.hivSent};
   if(!jset('sa_terrain_state_'+this.user.id+'_'+this.today,keep)){keep.photoData={};jset('sa_terrain_state_'+this.user.id+'_'+this.today,keep);}};
 Comp.prototype.setState=function(p){var n=typeof p==='function'?p(this.state):p;this.state=Object.assign({},this.state,n);this.persist();this.update();};
 Comp.prototype.flash=function(t){var s=this;clearTimeout(this._tt);this.state.toast=t;this.update();this._tt=setTimeout(function(){s.state.toast=null;s.update();},2600);};
@@ -130,7 +131,7 @@ Comp.prototype.soon=function(t){this.setState({soon:t});this.go('soon');};
 
 /* ---------- Chargements ---------- */
 Comp.prototype.loadRef=function(){var self=this;var cached=jget('sa_terrain_ref',null);if(cached)buildRef(cached);
-  return Promise.all([get('types_bassin?select=*'),get('sites?select=id,nom,addr,notes,bassins,type'),get('contrats?select=*')]).then(function(r){var raw={types:r[0],sites:r[1],contrats:r[2]};jset('sa_terrain_ref',raw);buildRef(raw);self.syncAt=new Date();self.okLoad('ref');}).catch(function(e){self.failLoad('ref','sites et contrats'+(cached?' (copie locale utilisée)':''),e);});};
+  return Promise.all([get('types_bassin?select=*'),get('sites?select=id,nom,addr,notes,bassins,type'),get('contrats?select=*'),get('inspection_points?select=*&actif=eq.true').catch(function(){return null;})]).then(function(r){var raw={types:r[0],sites:r[1],contrats:r[2],cat:r[3]||(cached&&cached.cat)||[]};jset('sa_terrain_ref',raw);buildRef(raw);self.syncAt=new Date();self.okLoad('ref');}).catch(function(e){self.failLoad('ref','sites et contrats'+(cached?' (copie locale utilisée)':''),e);});};
 Comp.prototype.loadJobs=function(){var self=this,uid=encodeURIComponent(this.user.id),d0=this.today,d6=iso(addDays(new Date(),6));
   var q=[get('workorders?select=id,client,site,type,date,assigne,status,descr,groupe_id&date=gte.'+d0+'&date=lte.'+d6+'&assigne=ilike.*'+uid+'*'),
     get('planning_tasks?select=id,titre,emp,site_id,site_nom,date_debut,date_fin,heure_debut,heure_fin,statut,recurrence,wo_id,plan_id&date_debut=lte.'+d6+'&date_fin=gte.'+d0+'&emp=ilike.*'+uid+'*'),
@@ -259,6 +260,10 @@ Comp.prototype.enqueue=function(rec){var q=jget('sa_terrain_queue',[]).filter(fu
 Comp.prototype.pickImage=function(cb){var inp=document.getElementById('photoInput');inp.value='';inp.onchange=function(){var f=inp.files&&inp.files[0];if(!f)return;
   var img=new Image(),u=URL.createObjectURL(f);img.onload=function(){var k=Math.min(1,900/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);
     c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);cb(c.toDataURL('image/jpeg',0.6));};img.src=u;};inp.click();};
+/* ---------- Visite d'inspection : état d'un point, étape, photo d'un point ---------- */
+Comp.prototype.setPt=function(sid,id,patch){this.setState(function(s2){var o=Object.assign({},s2.pts||{}),p=Object.assign({},o[sid]||{});p[id]=Object.assign({},p[id]||{},patch);o[sid]=p;return{pts:o};});};
+Comp.prototype.setStep=function(sid,v){var o=Object.assign({},this.state.step||{});o[sid]=v;this.setState({step:o});var c=this.contentRef&&this.contentRef.current;if(c&&c.scrollTo)c.scrollTo(0,0);};
+Comp.prototype.ptPhoto=function(sid,id){var self=this;this.pickImage(function(data){var x=((self.state.pts||{})[sid]||{})[id]||{};self.setPt(sid,id,{photos:(x.photos||[]).concat([data]).slice(-3)});});};
 Comp.prototype.pickPhoto=function(sid){var self=this;this.pickImage(function(data){
     self.setState(function(s){var a={},b={};a[sid]=hhmm(new Date());b[sid]=data;return{photo:Object.assign({},s.photo,a),photoData:Object.assign({},s.photoData,b)};});});};
 
@@ -344,12 +349,38 @@ Comp.prototype.vals=function(){
     var pq=st.prods[sid]||{};
     prods=T.produits.map(function(p,i){var q=pq[i]||0;var set=function(n){self.setState(function(s2){var o={};o[sid]=Object.assign({},s2.prods[sid]||{});o[sid][i]=Math.max(0,+(n).toFixed(2));return{prods:Object.assign({},s2.prods,o)};});};return{nom:p[0],unite:p[1],qty:self.fmt(q,p[2]),minus:function(){set(q-p[2]);},plus:function(){set(q+p[2]);}};});
     if(s.interne){fields=[];checks=[];prods=[];}
+    var I=window.SAInsp,PTS=s.interne?[]:I.pointsDuType(bsel?bsel.code:s.type,REF.cat,T.checks),ps=(st.pts||{})[sid]||{},acts=(st.acts||{})[sid]||{},vv0={};
+    Object.keys(tch).forEach(function(k){if(vals[k]!=null)vv0[k]=vals[k];});
+    var items=I.itemsVisite({type_code:bsel?bsel.code:s.type,vals:vv0,touched:tch,points:ps,actions:acts},T,REF.cat),se=I.etatsSystemes(items);
+    var sysL=I.SYSTEMES.filter(function(x){return x.code==='eau'?fields.length>0:PTS.some(function(p){return p.systeme_code===x.code;});});
+    var steps=['start'].concat(sysL.map(function(x){return x.code;})).concat(['resume']),step=(st.step||{})[sid]||'start';if(steps.indexOf(step)<0)step='start';
+    var PZB={ok:['solid var(--color-text)','transparent'],watch:['solid var(--color-text)','repeating-linear-gradient(135deg,var(--color-text) 0 1.5px,transparent 1.5px 4px)'],action:['solid var(--color-accent-900)','var(--color-accent-900)'],na:['dashed var(--color-neutral-500)','transparent']};
+    var sysDone=function(c){return c==='eau'?fields.every(function(f){return!!tch[f.key];}):PTS.filter(function(p){return p.systeme_code===c;}).every(function(p){return ps[p.id]&&ps[p.id].etat;});};
+    var nSysDone=sysL.filter(function(x){return sysDone(x.code);}).length,missing=PTS.filter(function(p){return p.obligatoire&&!(ps[p.id]&&ps[p.id].etat);});
+    var sysRows=sysL.map(function(x){var e=se[x.code],d=sysDone(x.code),n=x.code==='eau'?fields.length:PTS.filter(function(p){return p.systeme_code===x.code;}).length;
+      return{nom:x.nom,icone:x.icone,lib:d||e!=='na'?I.LIB[e]:'',pzBd:PZB[e][0],pzBg:d||e!=='na'?PZB[e][1]:'transparent',txt:d?'Fait · '+I.LIB[e]:'À faire · '+n+' point'+(n>1?'s':''),go:function(){self.setStep(sid,x.code);}};});
+    var sysCur=I.SYSTEMES.filter(function(x){return x.code===step;})[0]||{};
+    var sysPts=PTS.filter(function(p){return p.systeme_code===step;}).map(function(p){var x=ps[p.id]||{},yn=p.mode==='ouinon',bad=x.etat==='watch'||x.etat==='action';
+      var O=yn?[['ok','Oui'],['action','Non']]:[['ok','Conforme'],['watch','À surveiller'],['action','Action']];
+      return{libelle:p.libelle,req:!!p.obligatoire&&!x.etat,isMesure:p.mode==='mesure',unite:p.unite||'',valeur:x.valeur==null?'':String(x.valeur),bad:bad,note:x.note||'',wo:!!x.wo,woBg:x.wo?'var(--color-text)':'transparent',
+        notePh:yn?'Note obligatoire : que manque-t-il ?':'Note (ce qui a été constaté, ce qui reste à faire)',thumbs:(x.photos||[]).map(function(src){return{src:src};}),
+        opts:O.map(function(o){var on=x.etat===o[0];return{label:o[1],on:on,bg:on?(o[0]==='action'?'var(--color-accent-900)':'var(--color-text)'):'transparent',fg:on?'#ffffff':'var(--color-text)',go:function(){self.setPt(sid,p.id,{etat:on?null:o[0]});}};}),
+        onNote:function(e){self.setPt(sid,p.id,{note:e.target.value});},onVal:function(e){self.setPt(sid,p.id,{valeur:e.target.value.replace(',','.')});},
+        addPhoto:function(){self.ptPhoto(sid,p.id);},toggleWo:function(){self.setPt(sid,p.id,{wo:!x.wo});}};});
+    sysCur=Object.assign({},sysCur,{canAll:step!=='securite'&&sysPts.length>0,allOk:function(){self.setState(function(s2){var o=Object.assign({},s2.pts||{}),q=Object.assign({},o[sid]||{});PTS.filter(function(p){return p.systeme_code===step&&p.mode!=='ouinon';}).forEach(function(p){q[p.id]=Object.assign({},q[p.id]||{},{etat:'ok'});});o[sid]=q;return{pts:o};});}});
+    var ACTS=['Chloration choc','Apport d’eau neuve','Signaler seulement'];
+    fields.forEach(function(f){var src=(T.fields.filter(function(x){return x.key===f.key;})[0]||{}),L=Array.isArray(src.actions)&&src.actions.length?src.actions:ACTS;
+      f.acts=L.map(function(a){var on=acts[f.key]===a;return{label:a,on:on,bg:on?'var(--color-text)':'transparent',fg:on?'var(--color-bg)':'var(--color-text)',go:function(){self.setState(function(s2){var o=Object.assign({},s2.acts||{}),q=Object.assign({},o[sid]||{});q[f.key]=on?null:a;o[sid]=q;return{acts:o};});}};});});
+    var si=steps.indexOf(step),nx=steps[si+1],nxS=I.SYSTEMES.filter(function(x){return x.code===nx;})[0];
     var nOut=fields.filter(function(f){return f.out;}).length,nT=fields.filter(function(f){return!f.pending;}).length,va=st.validated[sid];
     cur={isInterne:!!s.interne,isBassin:!s.interne,nom:s.nom,ville:s.ville,bassin:bsel?bsel.nom:s.bassin,hasBassins:bl.length>1,bassinChips:bl.length>1?bl.map(function(b){var on=b.id===bsel.id,k=s.id+'#'+b.id;return{label:b.nom+(st.validated[k]?' ✓':''),bg:on?'var(--color-text)':'transparent',fg:on?'var(--color-bg)':'var(--color-text)',go:function(){var o={};o[s.id]=b.id;self.setState(function(s2){return{bassinSel:Object.assign({},s2.bassinSel||{},o)};});self.loadLast(k);}};}):[],contrat:s.contrat,hasContrat:!!s.contrat,typeLabel:s.interne?'Lieu de travail interne · aucun bassin':T.label+(s.type==='GEN'?' · valeurs par défaut':''),norme:s.interne?'Pas de relevé':T.norme,nFields:fields.length,nTouched:nT,nOut:nOut,hasOut:nOut>0,
       outBg:nOut?'var(--color-accent-900)':'transparent',outFg:nOut?'var(--color-bg)':'var(--color-text)',nChecks:checks.filter(function(c){return c.on;}).length,nChecksTotal:checks.length,
-      isValidated:!!va,notValidated:!va,validAt:va,photoReq:T.photo,sid:sid,syncTxt:st.sync[sid]==='ok'?'synchronisée avec le bureau':'en attente de réseau — sera envoyée automatiquement'};
+      isValidated:!!va,notValidated:!va,validAt:va,photoReq:T.photo,sid:sid,nSys:sysL.length,nSysDone:nSysDone,pct:sysL.length?nSysDone/sysL.length*100:0,reste:sysL.length-nSysDone?'reste '+(sysL.length-nSysDone)+' système'+(sysL.length-nSysDone>1?'s':''):'prêt à valider',syncTxt:st.sync[sid]==='ok'?'synchronisée avec le bureau':'en attente de réseau — sera envoyée automatiquement'};
     ph=st.photo[sid];
-    cur._site=s;cur._T=T;cur._fields=fields;cur._checks=checks;
+    cur._site=s;cur._T=T;cur._fields=fields;cur._checks=checks;cur._pts=PTS;cur._ps=ps;cur._acts=acts;cur._items=items;cur._missing=missing;
+    var stepV={step:step,stStart:step==='start',stEau:step==='eau',stSys:step!=='start'&&step!=='eau'&&step!=='resume',stResume:step==='resume',notResume:step!=='resume',notStart:step!=='start',sysRows:sysRows,sysCur:sysCur,sysPts:sysPts,
+      resumeTxt:I.resume(items),validateLbl:missing.length?missing.length+' point'+(missing.length>1?'s':'')+' à répondre':'Valider et envoyer',
+      nextLbl:step==='start'?'Continuer : '+(nxS?nxS.nom:'Résumé'):'Suivant : '+(nxS?nxS.nom:'Résumé'),stepNext:function(){self.setStep(sid,nx||'resume');},stepBack:function(){self.setStep(sid,steps[Math.max(0,si-1)]);}};
   }
   var punchOn=!!(this.punch&&cj&&(String(this.punch.siteId)===cj.site||cj.id==='punch'));
   var days=this.days.length?this.days:[{dow:JOURS[new Date().getDay()].slice(0,3),num:dnum(new Date()),title:'Aujourd’hui',items:[]}];
@@ -457,27 +488,38 @@ Comp.prototype.vals=function(){
     punchLbl:punchOn?'Punché depuis '+this.punch.start:'Fiche ouverte · aucun punch actif',punchShort:punchOn?'Punché à '+this.punch.start:'Aucun punch actif',
     punchElapsed:(punchOn&&this.punch.start)?(function(){var p=self.punch.start.split(':'),m=(nowD.getHours()*60+nowD.getMinutes())-(+p[0]*60+ +p[1]);if(m<0)return'';return m>=60?Math.floor(m/60)+' h '+pad(m%60):m+' min';})():'',
     nextJob:next?{punchHere:function(){var jj=self.jobs.filter(function(x){return x.id===next.id;})[0];self.openPunchForm(jj);},nom:next.nom,h:next.h||'sans heure',ville:next.ville,punch:next.punch}:{},
-    depunch:function(){self.closeFiche();},cur:cur,fields:fields,checks:checks,prods:prods,
+    depunch:function(){self.closeFiche();},cur:cur,fields:fields,checks:checks,prods:prods,stStart:false,stEau:false,stSys:false,stResume:false,notResume:true,sysRows:[],sysCur:{},sysPts:[],
     noteTxt:cj?(st.notes[cur.sid]||''):'',onNote:function(e){var v=e.target.value;if(!cj)return;self.setState(function(s2){var o={};o[cur.sid]=v;return{notes:Object.assign({},s2.notes,o)};});},
     takePhoto:function(){if(cj)self.pickPhoto(cur.sid);},
     photoTitle:ph?'Photo prise à '+ph:'Prendre la photo',photoSub:ph?'Toucher pour reprendre':'Requise : '+(cur.photoReq||''),
     photoBg:ph?'repeating-linear-gradient(135deg,var(--color-accent-200) 0 1px,transparent 1px 8px)':'transparent',
     validate:function(){if(!cj)return;var s=cur._site,T=cur._T,k=cur.sid,vv=st.vals[k]||{},tt=st.touched[k]||{},vout={},ch={},pr={};
       if(s.interne){self.flash('Bureau / entrepôt : aucun relevé à faire ici');return;}
-      if(!cur.nTouched&&!String(st.notes[k]||'').trim()){self.flash('Aucune mesure saisie — mesurez au moins une valeur, ou écrivez une note (ex. bassin fermé)');return;}
+      var I=window.SAInsp,ps=cur._ps,PTS=cur._pts,nPts=Object.keys(ps).filter(function(id){return ps[id]&&ps[id].etat;}).length;
+      if(cur._missing.length){self.flash(cur._missing.length+' point(s) obligatoire(s) à répondre : '+cur._missing.map(function(p){return p.libelle;}).join(', '));self.setStep(k,cur._missing[0].systeme_code);return;}
+      var sansNote=PTS.filter(function(p){var x=ps[p.id];return p.mode==='ouinon'&&x&&x.etat==='action'&&!String(x.note||'').trim();});
+      if(sansNote.length){self.flash('« Non » exige une note : '+sansNote[0].libelle);self.setStep(k,sansNote[0].systeme_code);return;}
+      if(!cur.nTouched&&!nPts&&!String(st.notes[k]||'').trim()){self.flash('Aucune mesure saisie — mesurez au moins une valeur, ou écrivez une note (ex. bassin fermé)');return;}
       Object.keys(tt).forEach(function(k){if(vv[k]!=null)vout[k]=vv[k];});
-      cur._checks.forEach(function(c){ch[c.label]=c.on;});T.produits.forEach(function(p,i){var q=(st.prods[k]||{})[i]||0;if(q>0)pr[p[0]]=q;});
+      PTS.forEach(function(p){ch[p.libelle]=!!(ps[p.id]&&ps[p.id].etat==='ok');});T.produits.forEach(function(p,i){var q=(st.prods[k]||{})[i]||0;if(q>0)pr[p[0]]=q;});
       var bs=s.bassins||[],b=bs.length>1?bs.filter(function(x){return k===s.id+'#'+x.id;})[0]:(bs[0]||null);
       var now=new Date(),rec={_sk:k,id:self.user.id+'-'+self.today+'-'+s.id+(bs.length>1&&b?'-'+b.id:''),site_id:s.id,site_nom:s.nom,tech:self.user.id,tech_nom:self.me.nom,date:self.today,heure:hhmm(now),type_code:b?b.code:s.type,bassin:b?b.nom:null,
         vals:vout,touched:tt,checks:ch,prods:pr,note:st.notes[k]||null,photo:st.photoData[k]||null,hors_zone:cur.nOut};
-      var va={};va[k]=hhmm(now);if(k!==s.id&&bs.every(function(x){var kk=s.id+'#'+x.id;return kk===k||st.validated[kk];}))va[s.id]=hhmm(now);self.setState(function(s2){return{validated:Object.assign({},s2.validated,va)};});self.enqueue(rec);
+      /* Visite par système : états des points, mesures prises, résumé ; bon de travail urgent créé pour les points cochés */
+      var pout={},aout={},wos=[];PTS.forEach(function(p){var x=ps[p.id];if(!x||!x.etat)return;var o={etat:x.etat};if(x.note)o.note=x.note;if(x.valeur!=null&&x.valeur!=='')o.valeur=x.valeur;if(x.photos&&x.photos.length)o.photos=x.photos;
+        if(x.wo&&(x.etat==='watch'||x.etat==='action')){o.wo_id='wo-insp-'+rec.id+'-'+p.id;wos.push({id:o.wo_id,client:s.nom,site:s.addr||s.nom,type:'réparation',priorite:'urgent',status:'ouvert',date:self.today,assigne:'',
+          descr:'Inspection '+(b?b.nom+' · ':'')+I.NOM[p.systeme_code]+' : '+p.libelle+(x.note?' — '+x.note:''),created_by:self.user.id,created_at:now.toISOString(),updated_at:now.toISOString()});}
+        pout[p.id]=o;});
+      cur._fields.forEach(function(f){if(f.out&&cur._acts[f.key])aout[f.key]=cur._acts[f.key];});
+      Object.assign(rec,{points:pout,actions:aout,statut:'publiee',source:'terrain',resume:I.resume(cur._items),publiee_le:now.toISOString()});
+      var va={};va[k]=hhmm(now);if(k!==s.id&&bs.every(function(x){var kk=s.id+'#'+x.id;return kk===k||st.validated[kk];}))va[s.id]=hhmm(now);self.setState(function(s2){return{validated:Object.assign({},s2.validated,va)};});self.enqueue(rec);wos.forEach(function(w){self.enqueue(Object.assign({_t:'workorders'},w));});
       self.flash(navigator.onLine?'Fiche enregistrée':'Fiche enregistrée — sera envoyée au retour du réseau');},
     planDays:days.map(function(d,i){return Object.assign({dow:d.dow,num:d.num,go:function(){self.setState({planDay:i});}},segStyle(st.planDay===i));}),
     planTitle:dsel.title,planItems:dsel.items.map(function(it){var s=siteById(it[1])||pseudoSite(it[1],'');return{h:it[0]||'—',nom:s.nom,ville:s.ville,tache:it[2],rec:it[3]};}),recurrences:Object.keys(recMap).map(function(k){return recMap[k];}),
     myWeek:this.hours==null?'—':fr(Math.round(this.hours*100)/100),me:this.me,queueLbl:this.queueN?this.queueN+' fiche(s) à envoyer':'Rien en attente',
     bureauTel:String(this.bureau||'').replace(/[^\d+]/g,''),logout:function(){localStorage.removeItem('sa_terrain_user');location.reload();},
     tabs:TABS.map(function(t){return{label:t[1],icon:t[2],go:function(){self.go(t[0]);},fg:tabOf===t[0]?'var(--color-text)':'var(--color-neutral-600)',fw:tabOf===t[0]?600:400,bar:tabOf===t[0]?'inset 0 3px 0 var(--color-text)':'none',dot:t[0]==='fiche'&&!!cj};})
-  });};
+  },stepV||{});};
 Comp.prototype.update=function(){if(!this._host)return;SARender(document.getElementById('tpl'),this._host,this.vals());this.applyTheme();this.bindSig();};
 /* Mot de bienvenue : « Bonjour Kaël » en tête de la tournée ; écran d'accueil au logo juste après la connexion */
 function bonjour(p){var h=new Date().getHours();return(h<12?'Bonjour':h<18?'Bon après-midi':'Bonsoir')+(p?' '+p:'');}
