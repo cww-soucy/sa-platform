@@ -40,6 +40,9 @@ Comp.prototype.admUpload=function(file,dossier){var self=this,t=this.admTok();if
     return fetch(r.url,{method:'PUT',headers:{'Content-Type':file.type||'application/octet-stream','x-upsert':'false'},body:file}).then(function(x){if(!x.ok)throw new Error('HTTP '+x.status);return r.path;});})
     .catch(function(e){self.flash('Téléversement impossible : '+e.message);return null;});};
 Comp.prototype.compteOf=function(site){return((this.adm&&this.adm.comptes)||[]).filter(function(c){return(c.sites||[]).map(String).indexOf(site.id)>=0;})[0]||null;};
+Comp.prototype.inspTabsPref=function(v){var K='sa_admin_insp_onglets';
+  try{if(v){localStorage.setItem(K,JSON.stringify(v));return v;}var p=JSON.parse(localStorage.getItem(K)||'null');if(p&&Array.isArray(p.ordre)&&Array.isArray(p.cache))return p;}catch(e){}
+  return{ordre:[],cache:[]};};
 Comp.prototype.voirClient=function(site,niveau){var t=this.admTok();if(!t){this.setState({inspView:'acces'});this.flash('Ouvrez la gestion sécurisée pour l’aperçu client');return;}
   var c=this.compteOf(site),u='portail/?apercu=1&site='+encodeURIComponent(site.id)+(c?'&compte='+encodeURIComponent(c.id):'')+'&niveau='+(niveau||'gestionnaire');
   var w=window.open(u,'_blank');if(!w)this.flash('Fenêtre bloquée — autorisez les fenêtres');};
@@ -109,9 +112,21 @@ Comp.prototype.inspVals=function(){
       pz:['eau','meca','secu','struct'].map(function(k){return{t:PZT[k]+' : '+I.LIB[x.pz[k]],st:pzSt(x.pz[k])};}),go:function(){self.setState({inspSite:s.id,inspVisite:null,isf:null,inspBassin:null});}};});
   var TABS=[['bilan','Bilan par système'],['visite','Visites'],['tendances','Tendances de l’eau'],['saisie','Nouvelle inspection'],['bassins','Bassins et plan'],['acces','Accès client'],['points','Points de contrôle']];
   var go=function(v){return function(){var p={inspView:v};if(v==='saisie'&&!st.isf)p.isf=self.isfNew(site);self.setState(p);if(v==='acces'||v==='bassins'){if(self.admTok()&&!self.adm)self.admLoad();}};};
-  var tabs=TABS.map(function(t){return{label:t[1],on:view===t[0],bd:view===t[0]?'var(--color-accent-700)':'transparent',go:go(t[0])};});
+  // Onglets personnalisables (ordre et visibilité), mémorisés sur ce navigateur
+  var pref=this.inspTabsPref(),LIBT={};TABS.forEach(function(t){LIBT[t[0]]=t[1];});
+  var ordre=pref.ordre.filter(function(k){return LIBT[k];}).concat(TABS.map(function(t){return t[0];}).filter(function(k){return pref.ordre.indexOf(k)<0;}));
+  var vis=ordre.filter(function(k){return pref.cache.indexOf(k)<0||k===view;});
+  var tabs=vis.map(function(k){return{label:LIBT[k],on:view===k,bd:view===k?'var(--color-accent-700)':'transparent',go:go(k)};});
+  var perso=!!st.inspPerso,savePref=function(o,c){self.inspTabsPref({ordre:o,cache:c});self.setState({inspPrefV:(st.inspPrefV||0)+1});};
   var cp=this.compteOf(site),lv=S.lastV,nb=(site.bassins||[]).length;
-  var iq={q:st.iqQ||'',onQ:function(e){self.setState({iqQ:e.target.value});},sites:list,tabs:tabs,isBilan:view==='bilan',isVisite:view==='visite',isSaisie:view==='saisie',isBassins:view==='bassins',isAcces:view==='acces',isPoints:view==='points',
+  var iq={q:st.iqQ||'',onQ:function(e){self.setState({iqQ:e.target.value});},sites:list,tabs:tabs,
+    perso:perso,persoLbl:perso?'Terminé':'Personnaliser',togglePerso:function(){self.setState({inspPerso:!perso});},
+    persoRows:ordre.map(function(k,i){var cache=pref.cache.indexOf(k)>=0;return{label:LIBT[k],on:!cache,aria:'Afficher l’onglet '+LIBT[k],
+      toggle:function(e){var c=pref.cache.filter(function(x){return x!==k;});if(!e.target.checked){if(ordre.length-c.length<=1){self.flash('Gardez au moins un onglet');return;}c.push(k);}savePref(ordre,c);},
+      up:function(){if(!i)return;var o=ordre.slice();o.splice(i-1,0,o.splice(i,1)[0]);savePref(o,pref.cache);},
+      down:function(){if(i>=ordre.length-1)return;var o=ordre.slice();o.splice(i+1,0,o.splice(i,1)[0]);savePref(o,pref.cache);},
+      upDis:i===0,downDis:i===ordre.length-1};}),
+    persoReset:function(){savePref([],[]);self.flash('Onglets réinitialisés');},isBilan:view==='bilan',isVisite:view==='visite',isSaisie:view==='saisie',isBassins:view==='bassins',isAcces:view==='acces',isPoints:view==='points',
     h:{nom:site.nom,type:T.label,contrat:site.contrat||'—',logo:cp&&cp.logo_url?cp.logo_url:'',sub:[cp?cp.nom:site.ville,nb>1?nb+' bassins':(nb?site.bassins[0].nom:'1 bassin'),lv?'dernière visite le '+fdateL(lv.date)+' par '+(lv.r.tech_nom||lv.r.tech):'aucune visite publiée'].filter(Boolean).join(' · ')},
     goRapport:go('visite'),goTend:go('tendances'),goSaisie:function(){self.setState({inspView:'saisie',isf:self.isfNew(site)});},voirClient:function(){self.voirClient(site);},
     hasVisit:!!(view==='visite'?S.vis.length:lv),noVisit:!(view==='visite'?S.vis.length:lv)};
@@ -225,7 +240,7 @@ Comp.prototype.inspVals=function(){
     var RES={ok:'Accès',refuse:'Refusé',otp_echoue:'Code erroné',otp_envoye:'Code envoyé',envoi_impossible:'Envoi impossible',revoque:'Code QR révoqué'};
     iq.journal=(adm.journal||[]).filter(function(j){return(cp&&j.compte_id===cp.id)||ids[j.contact_id]||qids[j.qr_id];}).slice(0,60).map(function(j){return{quand:fdate(j.quand)+' '+String(j.quand).slice(11,16),qui:ids[j.contact_id]||j.identifiant||'—',action:j.action||'',res:RES[j.resultat]||j.resultat,fw:j.resultat==='ok'?400:600};});
     iq.noJournal=!iq.journal.length;
-    iq.envoiTxt=(adm.envoi?'Envoi des codes par courriel : actif.':'Envoi des codes : aucun fournisseur de courriel configuré sur le serveur (RESEND_API_KEY) — les contacts ne peuvent pas encore recevoir leur code.')+(adm.role!=='admin'?' Rôle superviseur : lecture seule.':'');}
+    iq.envoiTxt=(adm.envoi?'Envoi des codes par courriel : actif.':'Envoi des codes : aucun fournisseur de courriel configuré sur le serveur (RESEND_API_KEY) — les contacts ne peuvent pas encore recevoir leur code.');}
   else{iq.cp={};iq.qrs=[];iq.droits=[];iq.contacts=[];iq.nc={nivs:[]};iq.journal=[];}
   /* ----- Catalogue des points de contrôle ----- */
   if(view==='points'){var tc=st.pcType||site.type,TP=this.T(tc),cat=(D.cat||[]).filter(function(p){return p.type_code===tc||!p.type_code;}),derive=!(D.cat||[]).some(function(p){return p.type_code===tc;});
