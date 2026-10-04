@@ -202,3 +202,26 @@ test('onglets personnalisables : masquer et réordonner, gardé sur le navigateu
   assert.deepEqual(errors, []);
   await page.close();
 });
+
+test('accès client : courriel déjà autorisé pour un autre compte → message clair, rien n’est écrit', async () => {
+  const { page, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: tables() });
+  const S = { comptes: [{ id: 'cl-a', nom: 'Ville de Test', sites: ['1'], niveaux: {} }, { id: 'cl-b', nom: 'Autre client', sites: ['2'], niveaux: {} }],
+    contacts: [{ id: 'ct-1', compte_id: 'cl-b', nom: 'Jeanne', courriel: 'jeanne@ville.qc.ca', niveau: 'gestionnaire', actif: true }], qr: [], journal: [], documents: [] }, writes = [];
+  await page.route(FN, async (route) => {
+    const b = JSON.parse(route.request().postData()), ok = (o) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(o) });
+    if (b.action === 'admin_ouvrir') return ok({ ok: true, session: 'ADM-TOKEN-xxxxxxxxxxxxxxxx', role: 'admin' });
+    if (b.action === 'admin_lire') return ok({ ok: true, role: 'admin', ...S, portail: 'https://sa-platform.pages.dev/portail/', envoi: true });
+    if (b.action === 'admin_ecrire') { writes.push(b); return ok({ ok: false, message: 'duplicate key value violates unique constraint "client_contacts_courriel"' }); }
+    return ok({ ok: false });
+  });
+  await open(page, 'acces');
+  await page.getByLabel('Mot de passe').fill('bon');
+  await page.getByRole('button', { name: 'Ouvrir la gestion' }).click();
+  await page.getByLabel('Nom du contact').fill('Jeanne G.');
+  await page.getByLabel('Courriel du contact').fill('Jeanne@Ville.qc.ca');
+  await page.getByRole('button', { name: 'Ajouter', exact: true }).click();
+  await toast(page, /déjà autorisé pour le compte « Autre client »/);
+  assert.equal(writes.length, 0);
+  assert.deepEqual(errors, []);
+  await page.close();
+});

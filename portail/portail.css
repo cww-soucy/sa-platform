@@ -17,6 +17,7 @@ a{color:var(--color-accent-700)}
 .input{width:100%;min-height:44px;border:1px solid var(--color-text);background:var(--color-bg);padding:8px 12px;font:400 17px var(--font-body);color:var(--color-text);border-radius:0}
 .otp{display:flex;gap:8px}.otp input{width:46px;height:56px;text-align:center;font:600 26px var(--font-heading);border:1.5px solid var(--color-text);background:var(--color-bg);border-radius:0}
 .head{display:flex;align-items:center;gap:14px;padding-bottom:12px;border-bottom:2px solid var(--color-accent-500);margin-bottom:16px;flex-wrap:wrap}
+.marque{width:88px;height:88px;object-fit:contain;align-self:center}
 .head img.logo{height:52px;max-width:150px;object-fit:contain}
 .badge{display:inline-block;border:1px solid var(--color-text);padding:2px 8px;font-size:13px;font-weight:600}
 .box{background:var(--color-accent-100);border:1px solid var(--color-accent-300);padding:12px 14px}
