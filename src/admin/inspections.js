@@ -33,7 +33,7 @@ Comp.prototype.admLoad=function(){var self=this,t=this.admTok();if(!t){this.adm=
   return pfn('admin_lire',{},t).then(function(r){if(!r.ok){if(r.session===false){try{localStorage.removeItem('sa_portail_admin');}catch(e){}}self.adm=null;self.update();return;}self.adm=r;self.update();})
     .catch(function(){self.adm=null;self.update();});};
 Comp.prototype.admWrite=function(table,row,del){var self=this,t=this.admTok();if(!t){this.flash('Session de gestion expirée — rouvrez-la dans « Accès client »');return Promise.resolve(false);}
-  return pfn('admin_ecrire',del?{table:table,supprimer:true,id:row.id}:{table:table,row:row},t).then(function(r){if(!r.ok){self.flash('Refusé : '+(r.message||'erreur'));return false;}return self.admLoad().then(function(){return true;});});};
+  return pfn('admin_ecrire',del?{table:table,supprimer:true,id:row.id}:{table:table,row:row},t).then(function(r){if(!r.ok){var m=String(r.message||'erreur');self.flash(/client_contacts_courriel/.test(m)?'Ce courriel est déjà autorisé pour un autre compte client : retirez-le de ce compte d’abord.':/duplicate key/.test(m)?'Refusé : cette fiche existe déjà.':'Refusé : '+m);return false;}return self.admLoad().then(function(){return true;});});};
 Comp.prototype.admUpload=function(file,dossier){var self=this,t=this.admTok();if(!t){this.flash('Ouvrez d’abord la gestion sécurisée (onglet « Accès client »)');return Promise.resolve(null);}
   if(file.size>15*1024*1024){this.flash('Fichier trop lourd (15 Mo maximum)');return Promise.resolve(null);}
   return pfn('admin_televerser',{nom:file.name,dossier:dossier},t).then(function(r){if(!r.ok||!r.url)throw new Error(r.message||'téléversement refusé');
@@ -235,6 +235,8 @@ Comp.prototype.inspVals=function(){
     iq.nc={nom:ncf.nom,courriel:ncf.courriel,cel:ncf.cel,nivs:['operateur','gestionnaire','direction'].map(function(n){return{v:n,l:I.NIVEAU_NOM[n],sel:n===ncf.niveau};}),
       onNom:function(e){setNc({nom:e.target.value});},onNiv:function(e){setNc({niveau:e.target.value});},onMail:function(e){setNc({courriel:e.target.value});},onCel:function(e){setNc({cel:e.target.value});},
       add:function(){if(!cp){self.flash('Créez d’abord le compte client');return;}if(!String(ncf.nom).trim()||(!String(ncf.courriel).trim()&&!String(ncf.cel).trim())){self.flash('Nom et courriel (ou cellulaire) requis');return;}
+        var mail=String(ncf.courriel).trim().toLowerCase(),dup=mail&&(adm.contacts||[]).filter(function(x){return x.actif!==false&&String(x.courriel||'').toLowerCase()===mail;})[0];
+        if(dup){var dc=(adm.comptes||[]).filter(function(x){return x.id===dup.compte_id;})[0];self.flash('Ce courriel est déjà autorisé pour le compte « '+(dc?dc.nom:dup.compte_id)+' » : retirez-le de ce compte d’abord.');return;}
         self.admWrite('client_contacts',{id:rid('ct-'),compte_id:cp.id,nom:String(ncf.nom).trim(),courriel:String(ncf.courriel).trim()||null,cellulaire:String(ncf.cel).trim()||null,niveau:ncf.niveau,actif:true}).then(function(ok){if(ok){self.setState({iqNc:null});self.flash('Contact autorisé');}});}};
     var ids={};cts.forEach(function(c){ids[c.id]=c.nom;});var qids={};qrs.forEach(function(q){if(q.site_id===site.id)qids[q.id]=1;});
     var RES={ok:'Accès',refuse:'Refusé',otp_echoue:'Code erroné',otp_envoye:'Code envoyé',envoi_impossible:'Envoi impossible',revoque:'Code QR révoqué'};

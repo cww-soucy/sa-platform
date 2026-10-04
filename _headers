@@ -26,6 +26,13 @@
 /terrain.html
   Cache-Control: no-cache, must-revalidate
 
+# Adresses sans « .html » (Cloudflare Pages sert /admin.html à /admin) : sinon le navigateur garde une ancienne version.
+/admin
+  Cache-Control: no-cache, must-revalidate
+
+/terrain
+  Cache-Control: no-cache, must-revalidate
+
 # Anciennes adresses (prototypes retirés le 03/10) : redirection + désinstallation de l'ancien service worker.
 /sa-terrain/*
   Cache-Control: no-cache, must-revalidate
