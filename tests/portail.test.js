@@ -74,7 +74,7 @@ test('portail : QR → courriel → code → installation (gestionnaire), sans v
   await page.getByText('Code incorrect ou expiré.').waitFor();
   for (const [i, d] of [...'123456'].entries()) await page.getByLabel('Chiffre ' + (i + 1)).fill(d);
   await page.getByRole('button', { name: 'Accéder' }).click();
-  await page.getByText('Entretenu par Soucy Aquatik').waitFor();
+  await page.locator('.opere').getByText('Opéré par').waitFor();
   const txt = await page.textContent('main');
   assert.match(txt, /3 interventions en cours/, '2 points en action + 1 bon de travail ouvert');
   assert.match(txt, /À votre attention/);
@@ -100,7 +100,7 @@ test('portail : niveau Opérateur — historique et rapports réservés, demande
   for (const [i, d] of [...'123456'].entries()) await page.getByLabel('Chiffre ' + (i + 1)).fill(d);
   await page.getByLabel('Se souvenir de cet appareil 90 jours').check();
   await page.getByRole('button', { name: 'Accéder' }).click();
-  await page.getByText('Entretenu par Soucy Aquatik').waitFor();
+  await page.locator('.opere').getByText('Opéré par').waitFor();
   await page.getByRole('tab', { name: 'Historique' }).click();
   await page.getByText('Historique : accès Gestionnaire.').waitFor();
   assert.doesNotMatch(await page.textContent('main'), /Registre absent/, 'notes du technicien : niveau rapports seulement');
