@@ -507,7 +507,242 @@ button{font-family:inherit}a{color:var(--color-accent-700)}
       </template>
 
       <!-- ═════ INSPECTIONS ═════ -->
-      <template data-sc="if" value="{{ isInspections }}"><template data-sc="if" value="{{ noHist }}"><div style="margin:12px 28px 0;padding:12px 14px;border:1px dashed var(--color-text);font-size:15px">{{ histMsg }}</div></template>
+      <template data-sc="if" value="{{ isInspNew }}">
+<div style="display:grid;grid-template-columns:272px minmax(0,1fr);border:1px solid var(--color-divider);min-height:calc(100vh - 170px)">
+  <aside style="border-right:1px solid var(--color-divider);display:flex;flex-direction:column;min-width:0">
+    <div style="padding:12px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--color-divider)">
+      <input class="input" type="search" placeholder="Rechercher un site…" aria-label="Rechercher un site" value="{{ iq.q }}" onInput="{{ iq.onQ }}">
+      <div style="display:flex;align-items:center;gap:6px;font-size:13px"><span style="flex:1">Trié par gravité</span><span title="Eau"><sa-i n="droplet" s="15"></sa-i></span><span title="Mécanique"><sa-i n="wrench" s="15"></sa-i></span><span title="Sécurité"><sa-i n="alert" s="15"></sa-i></span><span title="Structure"><sa-i n="building" s="15"></sa-i></span></div>
+    </div>
+    <div style="overflow-y:auto;flex:1">
+      <template data-sc="for" list="{{ iq.sites }}" as="s">
+        <button onClick="{{ s.go }}" style="all:unset;cursor:pointer;box-sizing:border-box;width:100%;display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--color-divider);background:{{ s.bg }};box-shadow:{{ s.bar }}">
+          <span style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.nom }}</span><span style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.sub }}</span></span>
+          <template data-sc="for" list="{{ s.pz }}" as="p"><i title="{{ p.t }}" style="{{ p.st }}"></i></template>
+        </button>
+      </template>
+    </div>
+  </aside>
+  <section style="min-width:0;display:flex;flex-direction:column">
+    <div style="padding:16px 22px 12px;border-bottom:2px solid var(--color-accent-500);display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
+      <template data-sc="if" value="{{ iq.h.logo }}"><img src="{{ iq.h.logo }}" alt="Logo du client" style="width:56px;height:56px;object-fit:contain;border:1px solid var(--color-divider)"></template>
+      <div style="flex:1;min-width:240px;display:flex;flex-direction:column;gap:2px">
+        <span style="font-size:14px;color:var(--color-accent-700)">{{ iq.h.type }} · contrat {{ iq.h.contrat }}</span>
+        <h2 style="margin:0;font-size:32px;line-height:1.05">{{ iq.h.nom }}</h2>
+        <span style="font-size:14px">{{ iq.h.sub }}</span>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary" onClick="{{ iq.goRapport }}"><sa-i n="file" s="16"></sa-i>Rapport client</button>
+        <button class="btn btn-secondary" onClick="{{ iq.goTend }}"><sa-i n="chart" s="16"></sa-i>Tendances de l’eau</button>
+        <button class="btn btn-secondary" onClick="{{ iq.goSaisie }}"><sa-i n="plus" s="16"></sa-i>Nouvelle inspection</button>
+        <button class="btn btn-secondary" onClick="{{ iq.voirClient }}"><sa-i n="eye" s="16"></sa-i>Voir comme le client</button>
+      </div>
+    </div>
+    <div role="tablist" style="display:flex;gap:2px;padding:0 22px;border-bottom:1px solid var(--color-divider);overflow-x:auto">
+      <template data-sc="for" list="{{ iq.tabs }}" as="t"><button role="tab" aria-selected="{{ t.on }}" onClick="{{ t.go }}" style="all:unset;cursor:pointer;white-space:nowrap;padding:10px 12px;font:600 16px var(--font-heading);border-bottom:3px solid {{ t.bd }}">{{ t.label }}</button></template>
+    </div>
+
+    <!-- ═ Bilan par système (2a) ═ -->
+    <template data-sc="if" value="{{ iq.isBilan }}"><div style="padding:18px 22px;display:flex;flex-direction:column;gap:16px">
+      <template data-sc="if" value="{{ iq.noVisit }}"><div style="border:1px dashed var(--color-text);padding:14px">Aucune visite publiée pour ce site. Les visites apparaissent ici dès qu’un technicien valide une inspection dans sa-terrain, ou après une saisie bureau.</div></template>
+      <template data-sc="if" value="{{ iq.hasVisit }}">
+        <div style="background:var(--color-accent-100);border:1px solid var(--color-accent-300);padding:14px 16px;display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+          <b style="flex:1;min-width:260px;font-size:17px">{{ iq.verdict }}</b>
+          <template data-sc="for" list="{{ iq.cpt }}" as="c"><span style="display:inline-flex;align-items:center;gap:6px;font-size:14px"><i style="{{ c.st }}"></i><b style="font:600 22px var(--font-heading)">{{ c.n }}</b>{{ c.l }}</span></template>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--color-divider);border-left:1px solid var(--color-divider)">
+          <template data-sc="for" list="{{ iq.cards }}" as="c"><div style="border-right:1px solid var(--color-divider);border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column">
+            <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:{{ c.hbg }};color:{{ c.hfg }}"><sa-i n="{{ c.icone }}" s="20"></sa-i><b style="flex:1;font:600 18px var(--font-heading)">{{ c.nom }}</b><span style="display:inline-flex;align-items:center;gap:6px;font-size:13px"><i style="{{ c.pz }}"></i>{{ c.lib }}</span></div>
+            <div style="padding:10px 12px;flex:1;display:flex;flex-direction:column;gap:6px;font-size:15px">
+              <template data-sc="for" list="{{ c.top }}" as="x"><div><b>{{ x.libelle }}</b><template data-sc="if" value="{{ x.valeur }}"> · {{ x.valeur }}</template><div style="font-size:13px;color:var(--color-neutral-700)">{{ x.detail }}</div></div></template>
+              <template data-sc="if" value="{{ c.rien }}"><div>Rien à signaler.</div></template>
+            </div>
+            <button onClick="{{ c.go }}" style="all:unset;cursor:pointer;display:flex;justify-content:space-between;padding:8px 12px;border-top:1px solid var(--color-divider);font-size:13px"><span>{{ c.pied }}</span><span>Détail →</span></button>
+          </div></template>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px"><h3 style="margin:0;font-size:22px">À faire</h3>
+          <template data-sc="if" value="{{ iq.noTodo }}"><div style="font-size:15px">Aucun point à suivre.</div></template>
+          <table class="table" style="font-size:14px"><tbody><template data-sc="for" list="{{ iq.todo }}" as="t"><tr>
+            <td style="width:150px"><span style="display:inline-flex;align-items:center;gap:6px"><i style="{{ t.pz }}"></i>{{ t.lib }}</span></td>
+            <td><b>{{ t.libelle }}</b><template data-sc="if" value="{{ t.valeur }}"> · {{ t.valeur }}</template><div style="font-size:13px">{{ t.note }}</div></td><td>{{ t.sys }}</td><td>{{ t.bassin }}</td>
+            <td style="text-align:right;white-space:nowrap"><template data-sc="if" value="{{ t.hasWo }}"><span style="font-size:13px">Bon de travail créé</span></template><template data-sc="if" value="{{ t.noWo }}"><button class="btn btn-secondary" onClick="{{ t.mkWo }}">Créer un bon de travail</button></template></td>
+          </tr></template></tbody></table>
+        </div>
+      </template>
+    </div></template>
+
+    <!-- ═ Rapport de visite (2b) ═ -->
+    <template data-sc="if" value="{{ iq.isVisite }}"><div style="display:grid;grid-template-columns:220px minmax(0,1fr) 250px;flex:1">
+      <div style="border-right:1px solid var(--color-divider);overflow-y:auto">
+        <div style="padding:10px 12px;display:flex;gap:6px"><button class="btn btn-ghost" onClick="{{ iq.prevSite }}" aria-label="Site précédent"><sa-i n="left" s="16"></sa-i></button><span style="flex:1;font-size:13px;align-self:center">Visites</span><button class="btn btn-ghost" onClick="{{ iq.nextSite }}" aria-label="Site suivant"><sa-i n="right" s="16"></sa-i></button></div>
+        <template data-sc="if" value="{{ iq.noVisit }}"><div style="padding:12px;font-size:14px">Aucune visite.</div></template>
+        <template data-sc="for" list="{{ iq.visites }}" as="v"><button onClick="{{ v.go }}" style="all:unset;cursor:pointer;box-sizing:border-box;width:100%;display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-top:1px solid var(--color-divider);background:{{ v.bg }};box-shadow:{{ v.bar }}">
+          <span style="display:flex;justify-content:space-between;gap:6px"><b>{{ v.date }}</b><i style="{{ v.pz }}"></i></span><span style="font-size:13px">{{ v.txt }}</span><span style="font-size:12px;color:var(--color-neutral-700)">{{ v.tech }}</span><template data-sc="if" value="{{ v.brouillon }}"><span style="font-size:12px;font-weight:600">Brouillon</span></template>
+        </button></template>
+      </div>
+      <article style="padding:18px 22px;display:flex;flex-direction:column;gap:14px;min-width:0">
+        <template data-sc="if" value="{{ iq.hasVisit }}">
+          <div><h2 style="margin:0;font-size:26px">{{ iq.v.titre }}</h2><div style="font-size:14px">{{ iq.v.sub }}</div></div>
+          <p style="margin:0;font-size:16px;line-height:1.5">{{ iq.v.resume }}</p>
+          <template data-sc="for" list="{{ iq.v.sections }}" as="sec"><section style="border-top:1px solid var(--color-divider);padding-top:10px;display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;align-items:center;gap:8px"><sa-i n="{{ sec.icone }}" s="20"></sa-i><b style="flex:1;font:600 20px var(--font-heading)">{{ sec.nom }}</b><span style="display:inline-flex;align-items:center;gap:6px;font-size:14px"><i style="{{ sec.pz }}"></i>{{ sec.lib }}</span></div>
+            <template data-sc="if" value="{{ sec.open }}"><table class="table" style="font-size:14px"><tbody><template data-sc="for" list="{{ sec.rows }}" as="x"><tr><td style="width:34%"><b>{{ x.libelle }}</b></td><td>{{ x.valeur }}<div style="font-size:13px">{{ x.detail }}</div></td><td style="white-space:nowrap"><span style="display:inline-flex;align-items:center;gap:6px"><i style="{{ x.pz }}"></i>{{ x.lib }}</span><div style="font-size:12px">{{ x.tag }}</div></td></tr></template></tbody></table>
+              <template data-sc="if" value="{{ sec.more }}"><button class="btn btn-ghost" onClick="{{ iq.goTend }}" style="align-self:flex-start">{{ sec.more }}</button></template></template>
+            <template data-sc="if" value="{{ sec.closed }}"><div style="font-size:14px;color:var(--color-neutral-700)">{{ sec.liste }}</div></template>
+          </section></template>
+        </template>
+      </article>
+      <aside style="border-left:1px solid var(--color-divider);padding:16px;display:flex;flex-direction:column;gap:12px">
+        <template data-sc="if" value="{{ iq.hasVisit }}">
+          <b>Photos</b><template data-sc="if" value="{{ iq.v.noPhoto }}"><span style="font-size:14px">Aucune photo.</span></template>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"><template data-sc="for" list="{{ iq.v.photos }}" as="p"><figure style="margin:0"><img src="{{ p.src }}" alt="{{ p.leg }}" style="width:100%;aspect-ratio:1;object-fit:cover;border:1px solid var(--color-divider)"><figcaption style="font-size:12px">{{ p.leg }}</figcaption></figure></template></div>
+          <b>Produits ajoutés</b><template data-sc="if" value="{{ iq.v.noProd }}"><span style="font-size:14px">Aucun.</span></template>
+          <template data-sc="for" list="{{ iq.v.prods }}" as="p"><div style="display:flex;justify-content:space-between;font-size:14px"><span>{{ p.nom }}</span><b>{{ p.q }}</b></div></template>
+          <template data-sc="if" value="{{ iq.v.envoye }}"><div style="font-size:13px">{{ iq.v.envoye }}</div></template>
+          <button class="btn btn-primary" onClick="{{ iq.v.envoyer }}"><sa-i n="send" s="16"></sa-i>Envoyer au client</button>
+          <button class="btn btn-secondary" onClick="{{ iq.v.pdf }}"><sa-i n="file" s="16"></sa-i>PDF</button>
+          <template data-sc="if" value="{{ iq.v.brouillon }}"><button class="btn btn-secondary" onClick="{{ iq.v.editer }}">Reprendre le brouillon</button></template>
+        </template>
+      </aside>
+    </div></template>
+
+    <!-- ═ Saisie bureau (5a-2) ═ -->
+    <template data-sc="if" value="{{ iq.isSaisie }}"><div style="display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:0;flex:1">
+      <div style="padding:18px 22px;display:flex;flex-direction:column;gap:14px;min-width:0">
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px">
+          <div class="field"><label>Date</label><input class="input" type="date" value="{{ iq.f.date }}" onInput="{{ iq.f.onDate }}"></div>
+          <div class="field"><label>Heure</label><input class="input" type="time" value="{{ iq.f.heure }}" onInput="{{ iq.f.onHeure }}"></div>
+          <div class="field"><label>Au nom de</label><select class="input" onChange="{{ iq.f.onTech }}"><template data-sc="for" list="{{ iq.f.techs }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select></div>
+          <div class="field"><label>Source</label><select class="input" onChange="{{ iq.f.onSrc }}"><template data-sc="for" list="{{ iq.f.srcs }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select></div>
+        </div>
+        <template data-sc="if" value="{{ iq.f.hasB }}"><div class="field"><label>Bassin</label><select class="input" onChange="{{ iq.f.onB }}" style="max-width:340px"><template data-sc="for" list="{{ iq.f.bassins }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select></div></template>
+        <h3 style="margin:6px 0 0;font-size:22px">Eau du bassin</h3>
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px">
+          <template data-sc="for" list="{{ iq.f.eau }}" as="e"><div class="field"><label>{{ e.label }}</label><input class="input" inputmode="decimal" value="{{ e.v }}" onInput="{{ e.on }}" aria-label="{{ e.aria }}" style="font:600 20px var(--font-heading);background:{{ e.bg }};color:{{ e.fg }}"></div></template>
+        </div>
+        <template data-sc="for" list="{{ iq.f.sys }}" as="y"><details open="{{ y.open }}" style="border:1px solid var(--color-divider)">
+          <summary style="cursor:pointer;padding:10px 12px;display:flex;align-items:center;gap:10px"><sa-i n="{{ y.icone }}" s="18"></sa-i><b style="flex:1">{{ y.nom }}</b><span style="font-size:13px">{{ y.txt }}</span></summary>
+          <div style="padding:0 12px 12px;display:flex;flex-direction:column;gap:8px">
+            <template data-sc="if" value="{{ y.canAll }}"><button class="btn btn-secondary" onClick="{{ y.allOk }}" style="align-self:flex-start">Tout conforme</button></template>
+            <template data-sc="for" list="{{ y.pts }}" as="q"><div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;border-top:1px solid var(--color-divider);padding-top:8px">
+              <span>{{ q.libelle }}<template data-sc="if" value="{{ q.req }}"> <b>(obligatoire)</b></template></span>
+              <div role="group" aria-label="{{ q.libelle }}" style="display:flex;border:1px solid var(--color-text)"><template data-sc="for" list="{{ q.opts }}" as="o"><button onClick="{{ o.go }}" aria-pressed="{{ o.on }}" style="all:unset;cursor:pointer;padding:6px 10px;font-size:14px;font-weight:600;background:{{ o.bg }};color:{{ o.fg }}">{{ o.label }}</button></template></div>
+              <template data-sc="if" value="{{ q.bad }}"><input class="input" value="{{ q.note }}" onInput="{{ q.onNote }}" placeholder="Note" aria-label="Note : {{ q.libelle }}" style="grid-column:1 / -1"></template>
+            </div></template>
+          </div>
+        </details></template>
+        <div class="field"><label>Note de la visite</label><textarea class="input" value="{{ iq.f.note }}" onInput="{{ iq.f.onNote }}" style="min-height:70px"></textarea></div>
+        <p style="margin:0;font-size:15px"><b>Résumé :</b> {{ iq.f.resume }}</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--color-divider);padding-top:12px">
+          <button class="btn btn-secondary" onClick="{{ iq.f.brouillon }}">Enregistrer le brouillon</button>
+          <button class="btn btn-secondary" onClick="{{ iq.voirClient }}">Aperçu client</button>
+          <span style="flex:1"></span>
+          <button class="btn btn-primary" onClick="{{ iq.f.publier }}">{{ iq.f.publierLbl }}</button>
+        </div>
+        <div style="font-size:13px">Toute saisie bureau est journalisée : « saisie par {{ iq.f.par }} ».</div>
+      </div>
+      <aside style="border-left:1px solid var(--color-divider);padding:16px;display:flex;flex-direction:column;gap:12px">
+        <b>Niveaux d’accès du client</b>
+        <table class="table" style="font-size:13px"><thead><tr><th></th><th>Opér.</th><th>Gest.</th><th>Dir.</th></tr></thead><tbody><template data-sc="for" list="{{ iq.grille }}" as="g"><tr><td>{{ g.l }}</td><td>{{ g.o }}</td><td>{{ g.g }}</td><td>{{ g.d }}</td></tr></template></tbody></table>
+        <b>Après publication</b>
+        <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" checked="{{ iq.f.envoyer }}" onChange="{{ iq.f.onEnvoyer }}">Aviser les contacts du client (courriel)</label>
+        <div style="font-size:13px">Le rapport est visible sur le portail (page du code QR) dès la publication.</div>
+      </aside>
+    </div></template>
+
+    <!-- ═ Bassins et plan (5a-1) ═ -->
+    <template data-sc="if" value="{{ iq.isBassins }}"><div style="display:grid;grid-template-columns:minmax(0,1fr) 400px;flex:1">
+      <div style="padding:18px 22px;display:flex;flex-direction:column;gap:12px;min-width:0">
+        <template data-sc="if" value="{{ iq.needAdmin }}"><div style="border:1px dashed var(--color-text);padding:12px;font-size:14px">Plans et documents : ouvrez d’abord la gestion sécurisée dans l’onglet « Accès client ».</div></template>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><template data-sc="for" list="{{ iq.plans }}" as="p"><button onClick="{{ p.go }}" style="all:unset;cursor:pointer;padding:6px 12px;border:1px solid var(--color-text);font-weight:600;background:{{ p.bg }};color:{{ p.fg }}">{{ p.label }}</button></template>
+          <label class="btn btn-secondary" style="cursor:pointer">+ Plan (image)<input type="file" accept="image/*" onChange="{{ iq.upPlan }}" style="display:none"></label></div>
+        <div onPointerDown="{{ iq.planDown }}" onPointerMove="{{ iq.planMove }}" onPointerUp="{{ iq.planUp }}" style="position:relative;height:260px;border:1px solid var(--color-divider);background:var(--color-neutral-100);touch-action:none">
+          <template data-sc="if" value="{{ iq.planSrc }}"><img src="{{ iq.planSrc }}" alt="Plan" draggable="false" style="width:100%;height:100%;object-fit:contain;pointer-events:none"></template>
+          <template data-sc="if" value="{{ iq.noPlan }}"><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px">Aucun plan pour ce site.</div></template>
+          <template data-sc="for" list="{{ iq.markers }}" as="m"><span data-bassin="{{ m.id }}" title="{{ m.nom }}" style="position:absolute;left:{{ m.x }}%;top:{{ m.y }}%;transform:translate(-50%,-50%);width:30px;height:30px;display:flex;align-items:center;justify-content:center;font:600 16px var(--font-heading);cursor:grab;{{ m.st }}">{{ m.n }}</span></template>
+        </div>
+        <div style="font-size:13px">Glissez un numéro pour placer le bassin sur le plan (position enregistrée en % du plan).</div>
+        <h3 style="margin:8px 0 0;font-size:20px">Plans et documents</h3>
+        <label class="btn btn-secondary" style="cursor:pointer;align-self:flex-start">+ Document<input type="file" onChange="{{ iq.upDoc }}" style="display:none"></label>
+        <table class="table" style="font-size:14px"><tbody><template data-sc="for" list="{{ iq.docs }}" as="d"><tr><td><sa-i n="{{ d.icon }}" s="16"></sa-i></td><td><template data-sc="if" value="{{ d.url }}"><a href="{{ d.url }}" target="_blank" rel="noopener">{{ d.titre }}</a></template><template data-sc="if" value="{{ d.noUrl }}">{{ d.titre }}</template><div style="font-size:12px">{{ d.sub }}</div></td>
+          <td><select class="input" aria-label="Visibilité : {{ d.titre }}" onChange="{{ d.onVis }}" style="min-height:34px"><template data-sc="for" list="{{ d.vis }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select></td><td><button class="btn btn-ghost" onClick="{{ d.del }}" aria-label="Retirer {{ d.titre }}"><sa-i n="x" s="16"></sa-i></button></td></tr></template></tbody></table>
+      </div>
+      <aside style="border-left:1px solid var(--color-divider);padding:16px;display:flex;flex-direction:column;gap:10px">
+        <b>Bassins ({{ iq.nB }})</b>
+        <template data-sc="for" list="{{ iq.bassins }}" as="b"><div style="display:flex;gap:10px;align-items:flex-start;border-top:1px solid var(--color-divider);padding-top:8px">
+          <span style="width:30px;height:30px;flex:none;display:flex;align-items:center;justify-content:center;font:600 16px var(--font-heading);{{ b.st }}">{{ b.n }}</span>
+          <div style="flex:1;display:flex;flex-direction:column"><b>{{ b.nom }}</b><span style="font-size:13px">{{ b.etat }} · {{ b.resume }}</span><span style="font-size:12px;color:var(--color-neutral-700)">{{ b.meta }}</span></div>
+        </div></template>
+        <div style="border-top:1px solid var(--color-divider);padding-top:10px;display:flex;flex-direction:column;gap:6px">
+          <b>+ Ajouter un bassin</b>
+          <input class="input" placeholder="Nom (ex. Pataugeoire)" aria-label="Nom du nouveau bassin" value="{{ iq.nb.nom }}" onInput="{{ iq.nb.onNom }}">
+          <select class="input" aria-label="Type du nouveau bassin" onChange="{{ iq.nb.onType }}"><template data-sc="for" list="{{ iq.nb.types }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select>
+          <input class="input" placeholder="Volume (m³)" aria-label="Volume du nouveau bassin" value="{{ iq.nb.vol }}" onInput="{{ iq.nb.onVol }}">
+          <button class="btn btn-primary" onClick="{{ iq.nb.add }}">Ajouter le bassin</button>
+        </div>
+      </aside>
+    </div></template>
+
+    <!-- ═ Accès client et QR (4a-5) ═ -->
+    <template data-sc="if" value="{{ iq.isAcces }}"><div style="padding:18px 22px;display:flex;flex-direction:column;gap:16px">
+      <template data-sc="if" value="{{ iq.needAdmin }}"><form onSubmit="{{ iq.ouvrir }}" style="display:flex;flex-direction:column;gap:10px;max-width:420px;border:1px solid var(--color-divider);padding:16px">
+        <b>Gestion sécurisée des accès client</b><span style="font-size:14px">Les contacts, codes QR et journaux ne sont pas lisibles avec la clé publique. Confirmez votre mot de passe pour ouvrir une session de gestion de 12 heures.</span>
+        <input class="input" type="password" autocomplete="current-password" aria-label="Mot de passe" placeholder="Votre mot de passe" value="{{ iq.pw }}" onInput="{{ iq.onPw }}">
+        <button class="btn btn-primary" type="submit">Ouvrir la gestion</button><span style="font-size:14px">{{ iq.adminErr }}</span>
+      </form></template>
+      <template data-sc="if" value="{{ iq.hasAdmin }}">
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+          <div class="field" style="flex:1;min-width:240px"><label>Compte client (organisation)</label><input class="input" value="{{ iq.cp.nom }}" onInput="{{ iq.cp.onNom }}" placeholder="ex. Ville de Granby"></div>
+          <label class="btn btn-secondary" style="cursor:pointer">Logo du client<input type="file" accept="image/*" onChange="{{ iq.cp.upLogo }}" style="display:none"></label>
+          <button class="btn btn-primary" onClick="{{ iq.cp.save }}">{{ iq.cp.saveLbl }}</button>
+        </div>
+        <template data-sc="if" value="{{ iq.cp.exists }}">
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px">
+          <section style="display:flex;flex-direction:column;gap:8px"><h3 style="margin:0;font-size:20px">Codes QR</h3>
+            <template data-sc="for" list="{{ iq.qrs }}" as="q"><div style="display:flex;gap:12px;align-items:center;border-top:1px solid var(--color-divider);padding-top:8px">
+              <template data-sc="if" value="{{ q.img }}"><img src="{{ q.img }}" alt="Code QR {{ q.code }}" style="width:96px;height:96px"></template>
+              <div style="flex:1;display:flex;flex-direction:column;gap:4px"><b>{{ q.nom }}</b><span style="font-size:13px">{{ q.code }} · {{ q.etat }}</span>
+                <div style="display:flex;gap:6px;flex-wrap:wrap"><template data-sc="if" value="{{ q.img }}"><button class="btn btn-secondary" onClick="{{ q.print }}">Imprimer l’affiche</button></template><button class="btn btn-secondary" onClick="{{ q.regen }}">{{ q.regenLbl }}</button></div></div>
+            </div></template>
+            <span style="font-size:13px">« Régénérer » désactive immédiatement l’ancien code.</span>
+          </section>
+          <section style="display:flex;flex-direction:column;gap:8px"><h3 style="margin:0;font-size:20px">Ce que le client voit</h3>
+            <table class="table" style="font-size:13px"><thead><tr><th></th><th>Opérateur</th><th>Gestionnaire</th><th>Direction</th></tr></thead><tbody><template data-sc="for" list="{{ iq.droits }}" as="g"><tr><td>{{ g.l }}</td><template data-sc="for" list="{{ g.c }}" as="c"><td><input type="checkbox" aria-label="{{ c.aria }}" checked="{{ c.on }}" onChange="{{ c.go }}"></td></template></tr></template></tbody></table>
+          </section>
+        </div>
+        <section style="display:flex;flex-direction:column;gap:8px"><h3 style="margin:0;font-size:20px">Contacts autorisés</h3>
+          <table class="table" style="font-size:14px"><thead><tr><th>Nom</th><th>Niveau</th><th>Courriel</th><th>Cellulaire</th><th>Dernier accès</th><th></th></tr></thead><tbody>
+            <template data-sc="for" list="{{ iq.contacts }}" as="c"><tr><td>{{ c.nom }}</td><td>{{ c.niveau }}</td><td>{{ c.courriel }}</td><td>{{ c.cel }}</td><td>{{ c.acces }}</td><td><button class="btn btn-ghost" onClick="{{ c.del }}">Retirer</button></td></tr></template>
+            <tr><td><input class="input" aria-label="Nom du contact" value="{{ iq.nc.nom }}" onInput="{{ iq.nc.onNom }}"></td><td><select class="input" aria-label="Niveau du contact" onChange="{{ iq.nc.onNiv }}"><template data-sc="for" list="{{ iq.nc.nivs }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select></td>
+              <td><input class="input" type="email" aria-label="Courriel du contact" value="{{ iq.nc.courriel }}" onInput="{{ iq.nc.onMail }}"></td><td><input class="input" aria-label="Cellulaire du contact" value="{{ iq.nc.cel }}" onInput="{{ iq.nc.onCel }}"></td><td></td><td><button class="btn btn-primary" onClick="{{ iq.nc.add }}">Ajouter</button></td></tr>
+          </tbody></table>
+        </section>
+        <section style="display:flex;flex-direction:column;gap:8px"><h3 style="margin:0;font-size:20px">Journal des accès</h3>
+          <template data-sc="if" value="{{ iq.noJournal }}"><span style="font-size:14px">Aucun accès pour l’instant.</span></template>
+          <table class="table" style="font-size:13px"><tbody><template data-sc="for" list="{{ iq.journal }}" as="j"><tr><td style="white-space:nowrap">{{ j.quand }}</td><td>{{ j.qui }}</td><td>{{ j.action }}</td><td style="font-weight:{{ j.fw }}">{{ j.res }}</td></tr></template></tbody></table>
+        </section>
+        </template>
+        <span style="font-size:13px">{{ iq.envoiTxt }}</span>
+      </template>
+    </div></template>
+
+    <!-- ═ Points de contrôle (catalogue) ═ -->
+    <template data-sc="if" value="{{ iq.isPoints }}"><div style="padding:18px 22px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><b>Type de bassin</b><select class="input" aria-label="Type de bassin" onChange="{{ iq.pc.onType }}" style="max-width:320px"><template data-sc="for" list="{{ iq.pc.types }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select><span style="font-size:13px">{{ iq.pc.src }}</span></div>
+      <table class="table" style="font-size:14px"><thead><tr><th>Système</th><th>Point de contrôle</th><th>Réponse</th><th>Obligatoire</th><th>Actif</th></tr></thead><tbody>
+        <template data-sc="for" list="{{ iq.pc.rows }}" as="r"><tr>
+          <td><select class="input" aria-label="Système : {{ r.libelle }}" onChange="{{ r.onSys }}" style="min-height:34px"><template data-sc="for" list="{{ r.sys }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select></td>
+          <td><input class="input" value="{{ r.libelle }}" onChange="{{ r.onLib }}" aria-label="Libellé" style="min-height:34px"></td>
+          <td><select class="input" aria-label="Réponse : {{ r.libelle }}" onChange="{{ r.onMode }}" style="min-height:34px"><template data-sc="for" list="{{ r.modes }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select></td>
+          <td><input type="checkbox" aria-label="Obligatoire : {{ r.libelle }}" checked="{{ r.obl }}" onChange="{{ r.onObl }}"></td><td><input type="checkbox" aria-label="Actif : {{ r.libelle }}" checked="{{ r.actif }}" onChange="{{ r.onActif }}"></td>
+        </tr></template>
+      </tbody></table>
+      <div style="display:flex;gap:8px;align-items:center"><input class="input" placeholder="Nouveau point de contrôle" aria-label="Nouveau point de contrôle" value="{{ iq.pc.nouveau }}" onInput="{{ iq.pc.onNouveau }}" style="max-width:420px"><button class="btn btn-primary" onClick="{{ iq.pc.add }}">Ajouter</button></div>
+      <span style="font-size:13px">Les points de l’eau (paramètres et zones) se règlent dans « Paramètres de relevé » (onglet Tendances de l’eau). Retirer un point = le rendre inactif : l’historique reste lisible.</span>
+    </div></template>
+  </section>
+</div>
+</template><template data-sc="if" value="{{ isInspections }}"><div role="tablist" style="display:flex;gap:2px;margin:0 0 12px;border-bottom:1px solid var(--color-divider);overflow-x:auto"><template data-sc="for" list="{{ iqTabs }}" as="t"><button role="tab" aria-selected="{{ t.on }}" onClick="{{ t.go }}" style="all:unset;cursor:pointer;white-space:nowrap;padding:10px 12px;font:600 16px var(--font-heading);border-bottom:3px solid {{ t.bd }}">{{ t.label }}</button></template></div><template data-sc="if" value="{{ noHist }}"><div style="margin:12px 28px 0;padding:12px 14px;border:1px dashed var(--color-text);font-size:15px">{{ histMsg }}</div></template>
         <div style="display:grid;grid-template-columns:280px minmax(0,1fr);gap:24px;align-items:start">
           <div style="display:flex;flex-direction:column;border:1px solid var(--color-divider);position:sticky;top:0;max-height:calc(100vh - 140px);overflow:auto">
             <div style="padding:10px;border-bottom:1px solid var(--color-divider)">
@@ -1931,7 +2166,9 @@ Comp.prototype.load=function(){
     comptes:soft('comptes_publics?select=id,prenom,nom,role,dept,tel',[]),
     ft:soft('feuilles_temps?select=uid,emp,week,days,total_h&week=gte.'+iso(addDays(now,-56)),[]),
     wo:soft('workorders?select=id,client,site,type,priorite,status,date,assigne,descr,groupe_id&order=date.asc',[]),
-    rel:soft('releves?select=id,site_id,site_nom,tech,tech_nom,date,heure,type_code,vals,touched,checks,prods,note,hors_zone,bassin&date=gte.'+since+'&order=date.asc,heure.asc',[]),
+    rel:get('releves?select=id,site_id,site_nom,tech,tech_nom,date,heure,type_code,vals,touched,checks,prods,note,hors_zone,bassin,points,actions,statut,source,saisi_par,source_detail,resume,publiee_le,envoyee_le,photo&date=gte.'+since+'&order=date.asc,heure.asc')
+      .catch(function(){return soft('releves?select=id,site_id,site_nom,tech,tech_nom,date,heure,type_code,vals,touched,checks,prods,note,hors_zone,bassin&date=gte.'+since+'&order=date.asc,heure.asc',[]);}),
+    cat:get('inspection_points?select=*').catch(function(){return[];}),
     gps:soft('punch_gps_log?select=emp,heure,lieu,date&date=eq.'+today+'&order=heure.desc&limit=30',[]),
     plan:soft('plan?select=id&date=eq.'+today,[]),pt:soft('planning_tasks?select=id&date_debut=lte.'+today+'&date_fin=gte.'+today,[]),
     dem:soft('demandes?select=id,tech,tech_nom,site_nom,type,motif,texte,statut,created_at,has_photo&order=created_at.desc&limit=40',[]),
@@ -1948,7 +2185,7 @@ Comp.prototype.load=function(){
     var byId={};sites.forEach(function(s){byId[s.id]=s;s.merged=/^Fusionné →/.test(s.notes);});var sitesAll=sites;sites=sites.filter(function(s){return!s.merged;});
     var statut={},email={};(r.statut||[]).forEach(function(c){statut[c.id]=c.statut;if(c.email)email[c.id]=c.email;});
     (r.comptes||[]).forEach(function(c){if(c.email==null&&email[c.id])c.email=email[c.id];});
-    self.D={sites:sites,sitesAll:sitesAll,byId:byId,types:T,comptes:r.comptes,ft:r.ft,wo:r.wo,rel:r.rel.map(function(x){x.site_id=String(x.site_id);return x;}).filter(function(x){var s=byId[x.site_id];return!(s?s.interne:isInterne('',x.site_nom));}),gps:r.gps,nPlan:r.plan.length,nPt:r.pt.length,dem:r.dem||[],ftAll:r.ftAll||[],fact:r.fact||[],proj:r.proj||[],sond:r.sond||[],geo:r.geo||[],inv:r.inv||[],flotte:r.flotte||[],statut:statut,today:today};
+    self.D={sites:sites,sitesAll:sitesAll,byId:byId,types:T,comptes:r.comptes,ft:r.ft,wo:r.wo,rel:r.rel.map(function(x){x.site_id=String(x.site_id);return x;}).filter(function(x){var s=byId[x.site_id];return!(s?s.interne:isInterne('',x.site_nom));}),gps:r.gps,nPlan:r.plan.length,nPt:r.pt.length,dem:r.dem||[],ftAll:r.ftAll||[],fact:r.fact||[],proj:r.proj||[],sond:r.sond||[],geo:r.geo||[],inv:r.inv||[],flotte:r.flotte||[],cat:r.cat||[],statut:statut,today:today};
     self.loadedAt=new Date();self.err='';self.softErr=SOFT_ERR.slice();
     if(!self.state.inspSite){var w=self.D.rel.length?String(self.D.rel[self.D.rel.length-1].site_id):(sites[0]&&sites[0].id);self.state.inspSite=w||null;}
   }).catch(function(e){self.err='Chargement impossible : '+netMsg(e);});
@@ -3682,7 +3919,7 @@ Comp.prototype.vals=function(){
     exportMsg:function(){self.printInsp(is.id);},
     opsFilters:opsFilters,dossiers:dossiers,newDossier:function(){self.openDlg({type:'Bon de travail'});},noDossier:dossiers.length===0,
     nouveaux:nouveaux,siteTypeOptions:siteTypeOptions,siteType:stype,onSiteType:function(e){self.setState({siteType:e.target.value});},siteRows:siteRows,siteCount:siteRows.length,noNouveaux:nouveaux.length===0},
-    this.tempsVals(punchRows),this.empVals(),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals(),this.stockVals(),this.outilsVals(),this.monVals(),this.siteFicheVals(),this.typesVals(),this.carteCtlVals(),this.plan2Vals(),this.calVals(),this.seriesVals(),this.globVals(),this.commVals());
+    this.tempsVals(punchRows),this.empVals(),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals(),this.stockVals(),this.outilsVals(),this.monVals(),this.siteFicheVals(),this.typesVals(),this.carteCtlVals(),this.plan2Vals(),this.calVals(),this.seriesVals(),this.globVals(),this.commVals(),this.inspVals());
 };
 Comp.prototype.update=function(){if(!this._host)return;SARender(document.getElementById('tpl'),this._host,this.vals());this.syncMap();var el=this.rootRef.current;if(el)el.style.setProperty('--sa-row','10px');};
 Comp.prototype.mount=function(host){var self=this;this._host=host;var hm=hashMod();if(hm&&TITLES_OK(hm))this.state.mod=hm;this.update();
@@ -3701,6 +3938,253 @@ function showLogin(){var el=document.getElementById('login');el.style.display='f
     }).catch(function(){err.textContent='Réseau indisponible — réessayez.';});};}
 window.addEventListener('DOMContentLoaded',function(){var user=jget('sa_admin_user',null);if(!user){showLogin();return;}
   document.getElementById('login').style.display='none';var c=new Comp(user);window.__admin=c;c.mount(document.getElementById('app'));});
+/* ---------- sa-admin › Inspections (refonte : 6 systèmes, rapport de visite, saisie bureau, bassins et plan, accès client) ----------
+   Inséré dans app.js par assemble.py (même portée : get, rest, Comp, fdate, iso, norm, fr, qrData, escH, auditT…).
+   Règles de calcul : src/inspection/model.js (window.SAInsp). Passation : docs/design_handoff_inspections_portail/README.md. */
+var PFN=SB+'/functions/v1/portail';
+function pfn(action,body,tok){return fetch(PFN,{method:'POST',headers:Object.assign({'Content-Type':'application/json'},tok?{'x-portail-session':tok}:{}),body:JSON.stringify(Object.assign({action:action},body||{}))})
+  .then(function(r){return r.json().catch(function(){return{ok:false,message:'HTTP '+r.status};});});}
+var PZS={ok:'border:1.5px solid var(--color-text)',watch:'border:1.5px solid var(--color-text);background:repeating-linear-gradient(135deg,var(--color-text) 0 1.5px,transparent 1.5px 4px)',action:'border:1.5px solid var(--color-accent-900);background:var(--color-accent-900)',na:'border:1.5px dashed var(--color-neutral-500)'};
+function pzSt(e,sz){sz=sz||12;return'display:inline-block;flex:none;box-sizing:border-box;width:'+sz+'px;height:'+sz+'px;'+(PZS[e]||PZS.na);}
+var MK={ok:'border:1.5px solid var(--color-text);background:var(--color-bg)',watch:'border:1.5px solid var(--color-text);background:repeating-linear-gradient(135deg,var(--color-accent-200) 0 2px,var(--color-bg) 2px 5px)',action:'border:1.5px solid var(--color-accent-900);background:var(--color-accent-900);color:#ffffff',na:'border:1.5px dashed var(--color-neutral-500);background:var(--color-bg)'};
+var DROIT_LIB={etat:'État des systèmes',releves:'Relevés du jour',rqep:'Registre RQEP',plans:'Plans',historique:'Historique',rapports:'Rapports de visite',interventions:'Interventions',exports:'Exports Excel',factures:'Factures'};
+var SRCS=[['telephone','Relevé transmis par téléphone'],['correction','Correction'],['sans_reseau','Visite sans réseau'],['bureau','Saisie au bureau']];
+function rid(p){return p+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+function fdateL(s){if(!s)return'—';var p=String(s).slice(0,10).split('-');return(+p[2])+' '+MOIS[+p[1]-1]+' '+p[0];}
+function num(v){if(v==null||v==='')return null;var n=parseFloat(String(v).replace(',','.'));return isNaN(n)?null:n;}
+
+Comp.prototype.admTok=function(){var o=jget('sa_portail_admin',null);if(o&&o.t&&o.exp>Date.now())return o.t;return null;};
+Comp.prototype.inspItems=function(r){return window.SAInsp.itemsVisite(r,this.T(r.type_code),this.D.cat||[]);};
+/* Visites d'un site, plus récente d'abord ; chaque visite est rattachée à un bassin (le 1er bassin reprend les anciens relevés sans bassin) */
+Comp.prototype.inspVisits=function(site){var self=this,b0=((site.bassins||[])[0]||{}).nom||'';
+  return this.D.rel.filter(function(r){return r.site_id===site.id;}).map(function(r){return{r:r,date:r.date,bassin:r.bassin||b0,items:self.inspItems(r),pub:(r.statut||'publiee')==='publiee'};})
+    .sort(function(a,b){return(b.date+(b.r.heure||'')).localeCompare(a.date+(a.r.heure||''));});};
+Comp.prototype.inspSummary=function(site){var I=window.SAInsp,vis=this.inspVisits(site),last={},items=[];
+  vis.forEach(function(v){if(v.pub&&!last[v.bassin])last[v.bassin]=v;});Object.keys(last).forEach(function(k){items=items.concat(last[k].items.map(function(i){return Object.assign({bassin:k,_v:last[k]},i);}));});
+  var se=I.etatsSystemes(items),lastV=vis.filter(function(v){return v.pub;})[0]||null;
+  return{vis:vis,last:last,items:items,se:se,pz:I.pastilles(se),score:I.score(items),lastV:lastV};};
+
+Comp.prototype.admOpen=function(){var self=this,pw=this.state.iqPw||'';if(!pw){this.setState({iqAdminErr:'Entrez votre mot de passe.'});return;}
+  this.setState({iqAdminErr:'Vérification…'});
+  pfn('admin_ouvrir',{id:this.user.id,mdp:pw}).then(function(r){if(!r.ok){self.setState({iqAdminErr:r.message||'Refusé.'});return;}
+    try{localStorage.setItem('sa_portail_admin',JSON.stringify({t:r.session,exp:Date.now()+11.5*36e5}));}catch(e){}
+    self.setState({iqPw:'',iqAdminErr:''});self.admLoad();}).catch(function(){self.setState({iqAdminErr:'Service injoignable — réessayez.'});});};
+Comp.prototype.admLoad=function(){var self=this,t=this.admTok();if(!t){this.adm=null;this.update();return Promise.resolve();}
+  return pfn('admin_lire',{},t).then(function(r){if(!r.ok){if(r.session===false){try{localStorage.removeItem('sa_portail_admin');}catch(e){}}self.adm=null;self.update();return;}self.adm=r;self.update();})
+    .catch(function(){self.adm=null;self.update();});};
+Comp.prototype.admWrite=function(table,row,del){var self=this,t=this.admTok();if(!t){this.flash('Session de gestion expirée — rouvrez-la dans « Accès client »');return Promise.resolve(false);}
+  return pfn('admin_ecrire',del?{table:table,supprimer:true,id:row.id}:{table:table,row:row},t).then(function(r){if(!r.ok){self.flash('Refusé : '+(r.message||'erreur'));return false;}return self.admLoad().then(function(){return true;});});};
+Comp.prototype.admUpload=function(file,dossier){var self=this,t=this.admTok();if(!t){this.flash('Ouvrez d’abord la gestion sécurisée (onglet « Accès client »)');return Promise.resolve(null);}
+  if(file.size>15*1024*1024){this.flash('Fichier trop lourd (15 Mo maximum)');return Promise.resolve(null);}
+  return pfn('admin_televerser',{nom:file.name,dossier:dossier},t).then(function(r){if(!r.ok||!r.url)throw new Error(r.message||'téléversement refusé');
+    return fetch(r.url,{method:'PUT',headers:{'Content-Type':file.type||'application/octet-stream','x-upsert':'false'},body:file}).then(function(x){if(!x.ok)throw new Error('HTTP '+x.status);return r.path;});})
+    .catch(function(e){self.flash('Téléversement impossible : '+e.message);return null;});};
+Comp.prototype.compteOf=function(site){return((this.adm&&this.adm.comptes)||[]).filter(function(c){return(c.sites||[]).map(String).indexOf(site.id)>=0;})[0]||null;};
+Comp.prototype.voirClient=function(site,niveau){var t=this.admTok();if(!t){this.setState({inspView:'acces'});this.flash('Ouvrez la gestion sécurisée pour l’aperçu client');return;}
+  var c=this.compteOf(site),u='portail/?apercu=1&site='+encodeURIComponent(site.id)+(c?'&compte='+encodeURIComponent(c.id):'')+'&niveau='+(niveau||'gestionnaire');
+  var w=window.open(u,'_blank');if(!w)this.flash('Fenêtre bloquée — autorisez les fenêtres');};
+
+/* ---------- saisie bureau (5a-2) ---------- */
+Comp.prototype.isfNew=function(site,draft){var r=draft||null,b=(site.bassins||[])[0],me=this.user.id;
+  var f={id:r?r.id:null,date:r?r.date:iso(new Date()),heure:r?r.heure||'':pad(new Date().getHours())+':'+pad(new Date().getMinutes()),tech:r?r.tech||me:me,src:r?r.source_detail||'telephone':'telephone',
+    bassin:r?(r.bassin||(b&&b.nom)||''):(b?b.nom:''),vals:{},pts:{},note:r?r.note||'':'',envoyer:false};
+  if(r){Object.keys(r.vals||{}).forEach(function(k){if(!r.touched||r.touched[k])f.vals[k]=String(r.vals[k]).replace('.',',');});Object.keys(r.points||{}).forEach(function(k){f.pts[k]=Object.assign({},r.points[k]);});}
+  return f;};
+Comp.prototype.isfSave=function(site,statut){var self=this,I=window.SAInsp,f=this.state.isf,D=this.D;if(!f||this.state.isfBusy)return;
+  var b=(site.bassins||[]).filter(function(x){return x.nom===f.bassin;})[0]||null,code=b&&b.type_code&&D.types[b.type_code]?b.type_code:site.type,T=this.T(code);
+  var PTS=I.pointsDuType(code,D.cat||[],T.checks),vals={},tch={},pts={},ch={};
+  (T.fields||[]).forEach(function(x){var v=num(f.vals[x.key]);if(v!=null){vals[x.key]=v;tch[x.key]=true;}});
+  PTS.forEach(function(p){var x=f.pts[p.id];ch[p.libelle]=!!(x&&x.etat==='ok');if(x&&x.etat){pts[p.id]={etat:x.etat};if(x.note)pts[p.id].note=x.note;}});
+  if(statut==='publiee'){var miss=PTS.filter(function(p){return p.obligatoire&&!pts[p.id];});if(miss.length){this.flash(miss.length+' point(s) obligatoire(s) à répondre : '+miss.map(function(p){return p.libelle;}).join(', '));return;}
+    var sn=PTS.filter(function(p){return p.mode==='ouinon'&&pts[p.id]&&pts[p.id].etat==='action'&&!pts[p.id].note;});if(sn.length){this.flash('« Non » exige une note : '+sn[0].libelle);return;}
+    if(!Object.keys(vals).length&&!Object.keys(pts).length){this.flash('Rien à publier — saisissez au moins une mesure ou un point');return;}}
+  var rec={type_code:code,vals:vals,touched:tch,points:pts},items=I.itemsVisite(rec,T,D.cat||[]),tech=(D.comptes.filter(function(c){return c.id===f.tech;})[0])||{},now=new Date().toISOString();
+  var row={id:f.id||rid('bur-'),site_id:site.id,site_nom:site.nom,tech:f.tech,tech_nom:((tech.prenom||'')+' '+(tech.nom||'')).trim()||f.tech,date:f.date,heure:f.heure||null,type_code:code,bassin:(site.bassins||[]).length>1&&b?b.nom:(b?b.nom:null),
+    vals:vals,touched:tch,checks:ch,prods:{},note:f.note||null,hors_zone:items.filter(function(i){return i.systeme==='eau'&&i.etat==='action';}).length,points:pts,actions:{},statut:statut,source:'bureau',
+    source_detail:f.src,saisi_par:this.user.id,resume:I.resume(items),publiee_le:statut==='publiee'?now:null,updated_at:now};
+  this.setState({isfBusy:true});
+  rest('POST','releves',row,'resolution=merge-duplicates,return=minimal').then(function(){auditT(self,f.id?'UPDATE':'INSERT','releves',row.id,{saisie_bureau:true,statut:statut,source:f.src});
+    var env=statut==='publiee'&&f.envoyer;self.setState({isf:null,isfBusy:false,inspView:'visite',inspVisite:row.id});self.flash(statut==='publiee'?'Visite publiée':'Brouillon enregistré');
+    return self.reloadAll().then(function(){if(env)self.envoyerClient(site,row.id);});})
+    .catch(function(e){self.setState({isfBusy:false});self.flash('Échec — rien n’a été enregistré : '+e.message);});};
+Comp.prototype.envoyerClient=function(site,relId){var self=this,t=this.admTok(),c=this.compteOf(site);
+  if(!t){this.setState({inspView:'acces'});this.flash('Ouvrez la gestion sécurisée pour envoyer au client');return;}
+  if(!c){this.setState({inspView:'acces'});this.flash('Créez d’abord le compte client et ses contacts');return;}
+  var cts=(this.adm.contacts||[]).filter(function(x){return x.compte_id===c.id&&x.actif!==false&&(x.niveau!=='operateur');}),r=this.D.rel.filter(function(x){return x.id===relId;})[0];
+  var txt='Bonjour,\n\nLe rapport de la visite du '+fdateL(r&&r.date)+' à '+site.nom+' est disponible sur votre portail.\n\n'+(r?window.SAInsp.resume(this.inspItems(r),true):'');
+  pfn('admin_envoyer',{releves:[relId],contacts:cts.map(function(x){return x.id;}),sujet:'Rapport de visite — '+site.nom,texte:txt},t).then(function(x){if(!x.ok){self.flash('Envoi refusé : '+(x.message||'erreur'));return;}
+    if(r)r.envoyee_le=new Date().toISOString();
+    if(x.aEnvoyer&&x.aEnvoyer.length)location.href='mailto:'+x.aEnvoyer.join(',')+'?subject='+encodeURIComponent('Rapport de visite — '+site.nom)+'&body='+encodeURIComponent(txt+'\n\nConsulter le rapport : '+x.portail);
+    self.flash(x.envoyes&&x.envoyes.length?'Rapport publié et envoyé à '+x.envoyes.length+' contact(s)':(x.aEnvoyer&&x.aEnvoyer.length?'Rapport publié — courriel préparé dans votre logiciel':'Rapport publié sur le portail (aucun contact gestionnaire à aviser)'));self.update();});};
+Comp.prototype.printVisite=function(site,v){var I=window.SAInsp,E=escH,se=I.etatsSystemes(v.items),r=v.r;
+  var sec=I.SYSTEMES.filter(function(s){return se[s.code]!=='na';}).map(function(s){var its=v.items.filter(function(i){return i.systeme===s.code;});
+    return'<h3>'+E(s.nom)+' — '+E(I.LIB_CLIENT[se[s.code]])+'</h3><table>'+its.map(function(i){return'<tr><td>'+E(i.libelle)+'</td><td>'+E([i.valeur,i.detail].filter(Boolean).join(' — '))+'</td><td><b>'+E(I.LIB_CLIENT[i.etat])+'</b></td></tr>';}).join('')+'</table>';}).join('');
+  var h='<!doctype html><meta charset="utf-8"><title>Rapport de visite — '+E(site.nom)+'</title><style>body{font:14px/1.45 Barlow,Arial,sans-serif;margin:28px;color:#1d1f20}h1{font-size:26px;margin:0}h3{margin:18px 0 6px;font-size:17px;border-bottom:2px solid #749dc4}table{width:100%;border-collapse:collapse}td{border-bottom:1px solid #ddd;padding:5px 4px;vertical-align:top}</style>'
+    +'<img src="'+window.SA_LOGO+'" alt="" style="height:48px;float:right"><h1>'+E(site.nom)+'</h1><div>Visite du '+E(fdateL(r.date))+(r.heure?', '+E(r.heure):'')+' · '+E(v.bassin)+' · '+E(r.tech_nom||'')+'</div><p style="font-size:16px">'+E(I.resume(v.items,true))+'</p>'+sec+'<p style="font-size:12px;margin-top:24px">Soucy Aquatik · rapport généré par sa-admin</p>';
+  var w=window.open('','_blank');if(!w){this.flash('Fenêtre bloquée — autorisez les fenêtres pour imprimer');return;}w.document.write(h+'<script>setTimeout(function(){print();},300)<\/script>');w.document.close();auditT(this,'EXPORT','releves',r.id,{format:'rapport_visite'});};
+Comp.prototype.printAffiche=function(site,q,nom,img){var E=escH;
+  var h='<!doctype html><meta charset="utf-8"><title>Affiche QR — '+E(site.nom)+'</title><style>@page{size:letter;margin:18mm}body{font:16px Barlow,Arial,sans-serif;text-align:center;color:#1d1f20}h1{font:600 30px "Barlow Condensed",Arial;margin:8px 0}img.qr{width:5.5cm;height:5.5cm}</style>'
+    +'<img src="'+window.SA_LOGO+'" alt="Soucy Aquatik" style="height:64px"><div style="margin-top:18px">Relevés et rapports de cette installation</div><h1>'+E(site.nom)+'</h1><div>'+E(nom)+'</div>'
+    +'<p><img class="qr" src="'+img+'" alt="Code QR"></p><p>Scannez avec l’appareil photo de votre téléphone.</p><p style="font-size:13px">Accès réservé aux personnes autorisées par le gestionnaire de l’installation.</p>'
+    +'<p style="margin-top:40px;font-size:14px;border-top:1px solid #999;padding-top:8px">Urgence 24/7 · Soucy Aquatik · '+E(q.code_affiche)+'</p>';
+  var w=window.open('','_blank');if(!w){this.flash('Fenêtre bloquée — autorisez les fenêtres pour imprimer');return;}w.document.write(h+'<script>setTimeout(function(){print();},300)<\/script>');w.document.close();};
+Comp.prototype.saveBassins=function(site,list,msg){var self=this,now=new Date().toISOString();
+  return rest('PATCH','sites?id=eq.'+encodeURIComponent(site.id),{bassins:list,updated_at:now}).then(function(){site.bassins=list;auditT(self,'UPDATE','sites',site.id,{bassins:true});if(msg)self.flash(msg);self.update();})
+    .catch(function(e){self.flash('Échec — rien n’a été modifié : '+e.message);});};
+Comp.prototype.savePoint=function(p){var self=this;return rest('POST','inspection_points',Object.assign({},p,{updated_at:new Date().toISOString()}),'resolution=merge-duplicates,return=minimal')
+  .then(function(){return get('inspection_points?select=*');}).then(function(c){self.D.cat=c;self.update();}).catch(function(e){self.flash('Échec — point non enregistré : '+e.message);});};
+
+Comp.prototype.inspVals=function(){
+  var self=this,st=this.state,D=this.D,I=window.SAInsp;
+  if(!D||st.mod!=='inspections'||!I)return{isInspNew:false,iq:{h:{},f:{},v:{},cp:{},nc:{},nb:{},pc:{}},iqTabs:[]};
+  var view=st.inspView||'bilan',sites=D.sites.filter(function(s){return!s.interne;});
+  if(view==='acces'&&this.adm===undefined&&this.admTok()){this.adm=null;this.admLoad();}
+  var sum={};sites.forEach(function(s){sum[s.id]=self.inspSummary(s);});
+  var site=D.byId[st.inspSite]&&!D.byId[st.inspSite].interne?D.byId[st.inspSite]:sites[0];
+  if(!site)return{isInspNew:view!=='tendances',isInspections:view==='tendances',iq:{h:{},f:{},v:{},cp:{},nc:{},nb:{},pc:{},sites:[],tabs:[]},iqTabs:[]};
+  var S=sum[site.id],T=this.T(site.type),qq=norm(st.iqQ||'');
+  var PZT={eau:'Eau',meca:'Mécanique',secu:'Sécurité',struct:'Structure'};
+  var list=sites.filter(function(s){return!qq||norm(s.nom+' '+s.ville).indexOf(qq)>=0;}).sort(function(a,b){var x=sum[a.id],y=sum[b.id];return y.score-x.score||String(x.lastV?x.lastV.date:'0').localeCompare(String(y.lastV?y.lastV.date:'0'))||a.nom.localeCompare(b.nom,'fr');})
+    .map(function(s){var x=sum[s.id],on=s.id===site.id;return{nom:s.nom,sub:[s.ville,self.T(s.type).court,x.lastV?fdate(x.lastV.date):'aucune visite'].filter(Boolean).join(' · '),bg:on?'var(--color-accent-100)':'transparent',bar:on?'inset 3px 0 0 var(--color-accent-700)':'none',
+      pz:['eau','meca','secu','struct'].map(function(k){return{t:PZT[k]+' : '+I.LIB[x.pz[k]],st:pzSt(x.pz[k])};}),go:function(){self.setState({inspSite:s.id,inspVisite:null,isf:null,inspBassin:null});}};});
+  var TABS=[['bilan','Bilan par système'],['visite','Visites'],['tendances','Tendances de l’eau'],['saisie','Nouvelle inspection'],['bassins','Bassins et plan'],['acces','Accès client'],['points','Points de contrôle']];
+  var go=function(v){return function(){var p={inspView:v};if(v==='saisie'&&!st.isf)p.isf=self.isfNew(site);self.setState(p);if(v==='acces'||v==='bassins'){if(self.admTok()&&!self.adm)self.admLoad();}};};
+  var tabs=TABS.map(function(t){return{label:t[1],on:view===t[0],bd:view===t[0]?'var(--color-accent-700)':'transparent',go:go(t[0])};});
+  var cp=this.compteOf(site),lv=S.lastV,nb=(site.bassins||[]).length;
+  var iq={q:st.iqQ||'',onQ:function(e){self.setState({iqQ:e.target.value});},sites:list,tabs:tabs,isBilan:view==='bilan',isVisite:view==='visite',isSaisie:view==='saisie',isBassins:view==='bassins',isAcces:view==='acces',isPoints:view==='points',
+    h:{nom:site.nom,type:T.label,contrat:site.contrat||'—',logo:cp&&cp.logo_url?cp.logo_url:'',sub:[cp?cp.nom:site.ville,nb>1?nb+' bassins':(nb?site.bassins[0].nom:'1 bassin'),lv?'dernière visite le '+fdateL(lv.date)+' par '+(lv.r.tech_nom||lv.r.tech):'aucune visite publiée'].filter(Boolean).join(' · ')},
+    goRapport:go('visite'),goTend:go('tendances'),goSaisie:function(){self.setState({inspView:'saisie',isf:self.isfNew(site)});},voirClient:function(){self.voirClient(site);},
+    hasVisit:!!(view==='visite'?S.vis.length:lv),noVisit:!(view==='visite'?S.vis.length:lv)};
+  /* ----- 2a Bilan ----- */
+  if(view==='bilan'){var c=I.compteurs(S.items);iq.verdict=I.verdict(S.items);
+    iq.cpt=[{n:c.action,l:'actions requises',st:pzSt('action',14)},{n:c.watch,l:'à surveiller',st:pzSt('watch',14)},{n:c.ok,l:'conformes',st:pzSt('ok',14)}];
+    var R={action:3,watch:2,ok:1,na:0};
+    iq.cards=I.SYSTEMES.map(function(s){var its=S.items.filter(function(i){return i.systeme===s.code;}),e=S.se[s.code],bad=its.filter(function(i){return i.etat==='action'||i.etat==='watch';}).sort(function(a,b){return R[b.etat]-R[a.etat];});
+      return{nom:s.nom,icone:s.icone,lib:I.LIB[e],pz:pzSt(e,13)+(e==='action'?';border-color:#ffffff;background:#ffffff':''),hbg:e==='action'?'var(--color-accent-900)':e==='watch'?'var(--color-accent-100)':'transparent',hfg:e==='action'?'#ffffff':'var(--color-text)',
+        top:bad.slice(0,2).map(function(i){return{libelle:i.libelle,valeur:i.valeur,detail:[i.detail,nb>1?i.bassin:''].filter(Boolean).join(' · ')};}),rien:!bad.length,
+        pied:its.length?(function(n){return n+(n>1?' points conformes':' point conforme')+' sur '+its.length;})(its.filter(function(i){return i.etat==='ok';}).length):'Aucun point relevé',go:go('visite')};});
+    iq.todo=S.items.filter(function(i){return i.etat==='action'||i.etat==='watch';}).sort(function(a,b){return R[b.etat]-R[a.etat];}).map(function(i){
+      return{pz:pzSt(i.etat),lib:I.LIB[i.etat],libelle:i.libelle,valeur:i.valeur,note:i.note||i.detail||'',sys:I.NOM[i.systeme],bassin:nb>1?i.bassin:'',hasWo:!!i.wo_id,noWo:!i.wo_id,
+        mkWo:function(){var v=i._v,now=new Date().toISOString(),id='wo-insp-'+v.r.id+'-'+String(i.id).replace(/[^\w-]/g,'_');
+          rest('POST','workorders',{id:id,client:site.nom,site:site.addr||site.nom,type:'réparation',priorite:i.etat==='action'?'urgent':'normal',status:'ouvert',date:iso(new Date()),assigne:'',descr:'Inspection '+(nb>1?v.bassin+' · ':'')+I.NOM[i.systeme]+' : '+i.libelle+(i.valeur?' '+i.valeur:'')+(i.note?' — '+i.note:''),created_by:self.user.id,created_at:now,updated_at:now},'resolution=ignore-duplicates,return=minimal')
+            .then(function(){if(!String(i.id).indexOf('eau:'))return;var pts=Object.assign({},v.r.points||{});pts[i.id]=Object.assign({},pts[i.id]||{},{wo_id:id});v.r.points=pts;return rest('PATCH','releves?id=eq.'+encodeURIComponent(v.r.id),{points:pts,updated_at:now});})
+            .then(function(){auditT(self,'INSERT','workorders',id,{depuis:'inspection'});self.flash('Bon de travail créé');return self.reloadAll();}).catch(function(e){self.flash('Échec : '+e.message);});}};});
+    iq.noTodo=!iq.todo.length;}
+  /* ----- 2b Visites ----- */
+  if(view==='visite'){var cur=S.vis.filter(function(v){return v.r.id===st.inspVisite;})[0]||S.vis[0];
+    var idx=list.map(function(x){return x.nom;}),sl=sites.slice().sort(function(a,b){return a.nom.localeCompare(b.nom,'fr');}),si=sl.indexOf(site);
+    iq.prevSite=function(){var s=sl[(si-1+sl.length)%sl.length];self.setState({inspSite:s.id,inspVisite:null});};iq.nextSite=function(){var s=sl[(si+1)%sl.length];self.setState({inspSite:s.id,inspVisite:null});};
+    iq.visites=S.vis.map(function(v){var on=v===cur,c=I.compteurs(v.items);return{date:fdate(v.date)+' '+(v.r.heure||''),txt:(c.action||c.watch?[c.action?c.action+' action'+(c.action>1?'s':''):'',c.watch?c.watch+' à surveiller':''].filter(Boolean).join(' · '):'Tout conforme')+(nb>1?' · '+v.bassin:''),
+      tech:(v.r.tech_nom||v.r.tech||'')+(v.r.source==='bureau'?' · saisie bureau':''),brouillon:!v.pub,pz:pzSt(I.pire(v.items.map(function(i){return i.etat;}))),bg:on?'var(--color-accent-100)':'transparent',bar:on?'inset 3px 0 0 var(--color-accent-700)':'none',go:function(){self.setState({inspVisite:v.r.id});}};});
+    if(cur){var prev=S.vis.filter(function(v){return v.bassin===cur.bassin&&v.pub&&(v.date+(v.r.heure||''))<(cur.date+(cur.r.heure||''));}),se=I.etatsSystemes(cur.items),R2={action:3,watch:2,ok:1,na:0},r=cur.r;
+      var saisi=r.source==='bureau'?' · saisie bureau par '+(r.saisi_par||'?')+(r.source_detail?' ('+((SRCS.filter(function(x){return x[0]===r.source_detail;})[0]||[0,r.source_detail])[1])+')':''):'';
+      var photos=[];if(r.photo)photos.push({src:r.photo,leg:'Vue d’ensemble'});cur.items.forEach(function(i){(i.photos||[]).forEach(function(p){photos.push({src:p,leg:i.libelle});});});
+      iq.v={titre:'Visite du '+fdateL(r.date)+(r.heure?', '+r.heure:''),sub:(r.tech_nom||r.tech||'')+(r.publiee_le?' · validée à '+String(r.publiee_le).slice(11,16):'')+(nb>1?' · '+cur.bassin:'')+saisi+(cur.pub?'':' · BROUILLON'),
+        resume:I.resume(cur.items)+(r.note?' Note : '+r.note:''),photos:photos,noPhoto:!photos.length,prods:Object.keys(r.prods||{}).map(function(k){return{nom:k,q:fr(r.prods[k],0.01)};}),noProd:!Object.keys(r.prods||{}).length,
+        envoye:r.envoyee_le?'Envoyé au client le '+fdateL(r.envoyee_le)+' à '+String(r.envoyee_le).slice(11,16)+' (UTC)':'',brouillon:!cur.pub,
+        envoyer:function(){self.envoyerClient(site,r.id);},pdf:function(){self.printVisite(site,cur);},editer:function(){self.setState({inspView:'saisie',isf:self.isfNew(site,r)});},
+        sections:I.SYSTEMES.filter(function(s){return se[s.code]!=='na';}).sort(function(a,b){return R2[se[b.code]]-R2[se[a.code]];}).map(function(s){var its=cur.items.filter(function(i){return i.systeme===s.code;}),bad=its.filter(function(i){return i.etat!=='ok';}),e=se[s.code];
+          var nOk=its.length-bad.length;
+          return{nom:s.nom,icone:s.icone,lib:I.LIB[e],pz:pzSt(e),open:e!=='ok',closed:e==='ok',liste:its.map(function(i){return i.libelle;}).join(' · '),
+            more:s.code==='eau'&&nOk?nOk+' autre'+(nOk>1?'s':'')+' paramètre'+(nOk>1?'s':'')+' dans la zone · afficher le tableau complet et les tendances →':'',
+            rows:bad.map(function(i){return{libelle:i.libelle,valeur:i.valeur,detail:[i.detail!==i.note?i.detail:'',i.note].filter(Boolean).join(' — '),lib:I.LIB[i.etat],pz:pzSt(i.etat),tag:I.depuis(i.id,i.etat,prev,fdateL)+(i.wo_id?' · bon de travail':'')};})};})};}
+    else iq.v={sections:[],photos:[],prods:[]};}
+  /* ----- 5a-2 Saisie bureau ----- */
+  var f=st.isf;
+  if(view==='saisie'&&f){var b=(site.bassins||[]).filter(function(x){return x.nom===f.bassin;})[0]||null,code=b&&b.type_code&&D.types[b.type_code]?b.type_code:site.type,TT=this.T(code),PTS=I.pointsDuType(code,D.cat||[],TT.checks);
+    var setF=function(p){self.setState(function(s2){return{isf:Object.assign({},s2.isf,p)};});},setP=function(id,p){var o=Object.assign({},f.pts);o[id]=Object.assign({},o[id]||{},p);setF({pts:o});};
+    var vals={},tch={};(TT.fields||[]).forEach(function(x){var v=num(f.vals[x.key]);if(v!=null){vals[x.key]=v;tch[x.key]=true;}});
+    var items=I.itemsVisite({type_code:code,vals:vals,touched:tch,points:f.pts},TT,D.cat||[]),se2=I.etatsSystemes(items);
+    var techs=D.comptes.filter(function(c){return c.role!=='admin'||c.id===self.user.id;}).map(function(c){return{v:c.id,l:(c.prenom+' '+c.nom).trim(),sel:c.id===f.tech};});
+    iq.f={date:f.date,heure:f.heure,onDate:function(e){setF({date:e.target.value});},onHeure:function(e){setF({heure:e.target.value});},techs:techs,onTech:function(e){setF({tech:e.target.value});},
+      srcs:SRCS.map(function(x){return{v:x[0],l:x[1],sel:x[0]===f.src};}),onSrc:function(e){setF({src:e.target.value});},hasB:nb>1,bassins:(site.bassins||[]).map(function(x){return{v:x.nom,l:x.nom,sel:x.nom===f.bassin};}),onB:function(e){setF({bassin:e.target.value,pts:{}});},
+      eau:(TT.fields||[]).map(function(x){var v=num(f.vals[x.key]),e=v==null?'na':I.etatEau(x,v);return{label:x.label+' · '+fr(x.lo,x.step)+'–'+fr(x.hi,x.step)+(x.unit?' '+x.unit:''),aria:x.label,v:f.vals[x.key]||'',bg:e==='action'?'var(--color-accent-900)':'transparent',fg:e==='action'?'#ffffff':'var(--color-text)',
+        on:function(ev){var o=Object.assign({},f.vals);o[x.key]=ev.target.value;setF({vals:o});}};}),
+      sys:I.SYSTEMES.filter(function(s){return s.code!=='eau'&&PTS.some(function(p){return p.systeme_code===s.code;});}).map(function(s){var ps=PTS.filter(function(p){return p.systeme_code===s.code;}),fait=ps.filter(function(p){return f.pts[p.id]&&f.pts[p.id].etat;}).length;
+        return{nom:s.nom,icone:s.icone,open:fait<ps.length,txt:fait+'/'+ps.length+' · '+I.LIB[se2[s.code]],canAll:s.code!=='securite',allOk:function(){var o=Object.assign({},f.pts);ps.forEach(function(p){if(p.mode!=='ouinon')o[p.id]=Object.assign({},o[p.id]||{},{etat:'ok'});});setF({pts:o});},
+          pts:ps.map(function(p){var x=f.pts[p.id]||{},yn=p.mode==='ouinon',O=yn?[['ok','Oui'],['action','Non']]:[['ok','Conforme'],['watch','À surveiller'],['action','Action']];
+            return{libelle:p.libelle,req:!!p.obligatoire,bad:x.etat==='watch'||x.etat==='action',note:x.note||'',onNote:function(e){setP(p.id,{note:e.target.value});},
+              opts:O.map(function(o){var on=x.etat===o[0];return{label:o[1],on:on,bg:on?(o[0]==='action'?'var(--color-accent-900)':'var(--color-text)'):'transparent',fg:on?'#ffffff':'var(--color-text)',go:function(){setP(p.id,{etat:on?null:o[0]});}};})};})};}),
+      note:f.note,onNote:function(e){setF({note:e.target.value});},resume:I.resume(items),envoyer:!!f.envoyer,onEnvoyer:function(e){setF({envoyer:e.target.checked});},par:this.user.id,
+      brouillon:function(){self.isfSave(site,'brouillon');},publier:function(){self.isfSave(site,'publiee');},publierLbl:st.isfBusy?'Enregistrement…':'Valider et publier'};
+    iq.grille=I.DROITS.map(function(k){var g=function(n){return I.droits(n,cp&&cp.niveaux)[k]?'✓':'—';};return{l:DROIT_LIB[k],o:g('operateur'),g:g('gestionnaire'),d:g('direction')};});}
+  else iq.f={};
+  /* ----- 5a-1 Bassins et plan ----- */
+  var adm=this.adm,docs=adm?(adm.documents||[]).filter(function(d){return d.site_id===site.id||(cp&&d.portee==='client'&&d.compte_id===cp.id);}):[];
+  iq.needAdmin=!adm;iq.hasAdmin=!!adm;
+  if(view==='bassins'){var plans=docs.filter(function(d){return d.type==='plan'&&/^image\//.test(d.mime||'');}),pl=plans.filter(function(d){return d.id===st.iqPlan;})[0]||plans[0]||null,drag=this._drag;
+    iq.plans=plans.map(function(d){var on=d===pl;return{label:d.niveau_plan||d.titre,bg:on?'var(--color-text)':'transparent',fg:on?'var(--color-bg)':'var(--color-text)',go:function(){self.setState({iqPlan:d.id});}};});
+    iq.planSrc=pl?pl.url:'';iq.noPlan=!pl;
+    var bl=site.bassins||[],eB=function(b){var v=S.last[b.nom];return v?I.pire(v.items.map(function(i){return i.etat;})):'na';};
+    iq.markers=pl?bl.map(function(b,i){var d=drag&&drag.id===String(b.id||b.nom)?drag:null,x=d?d.x:b.plan_doc===pl.id?b.plan_x:null,y=d?d.y:b.plan_doc===pl.id?b.plan_y:null;
+      if(x==null){x=6+i*8;y=8;}return{id:String(b.id||b.nom),nom:b.nom,n:String(b.numero||i+1),x:x,y:y,st:MK[eB(b)]+(b.plan_doc===pl.id||d?'':';opacity:.55')};}):[];
+    iq.planDown=function(e){var m=e.target.closest&&e.target.closest('[data-bassin]');if(!m||!pl)return;self._drag={id:m.getAttribute('data-bassin'),x:null,y:null,box:e.currentTarget.getBoundingClientRect()};try{e.currentTarget.setPointerCapture(e.pointerId);}catch(x){}};
+    iq.planMove=function(e){var d=self._drag;if(!d)return;var r=d.box;d.x=Math.max(0,Math.min(100,Math.round((e.clientX-r.left)/r.width*1000)/10));d.y=Math.max(0,Math.min(100,Math.round((e.clientY-r.top)/r.height*1000)/10));self.update();};
+    iq.planUp=function(){var d=self._drag;self._drag=null;if(!d||d.x==null){self.update();return;}
+      self.saveBassins(site,bl.map(function(b){return String(b.id||b.nom)===d.id?Object.assign({},b,{plan_doc:pl.id,plan_x:d.x,plan_y:d.y}):b;}),'Position enregistrée');};
+    iq.upPlan=function(e){var file=e.target.files&&e.target.files[0];e.target.value='';if(!file)return;var nv=window.prompt('Niveau du plan (ex. Niveau des bassins, Salle mécanique, Extérieur)','Niveau des bassins');if(nv===null)return;
+      self.admUpload(file,'plans').then(function(path){if(!path)return;return self.admWrite('documents',{id:rid('doc-'),portee:'site',site_id:site.id,compte_id:cp?cp.id:null,titre:file.name,type:'plan',niveau_plan:nv,storage_path:path,mime:file.type,taille:file.size,visibilite:'operateur'}).then(function(ok){if(ok)self.flash('Plan ajouté');});});};
+    iq.upDoc=function(e){var file=e.target.files&&e.target.files[0];e.target.value='';if(!file)return;
+      self.admUpload(file,'docs').then(function(path){if(!path)return;return self.admWrite('documents',{id:rid('doc-'),portee:'site',site_id:site.id,compte_id:cp?cp.id:null,titre:file.name,type:/contrat/i.test(file.name)?'contrat':'autre',storage_path:path,mime:file.type,taille:file.size,visibilite:'interne'}).then(function(ok){if(ok)self.flash('Document ajouté — visible à l’interne seulement');});});};
+    var VIS=[['interne','Interne'],['operateur','Opérateur et +'],['gestionnaire','Gestionnaire et +'],['direction','Direction']];
+    iq.docs=docs.map(function(d){return{titre:d.titre,url:d.url||'',noUrl:!d.url,icon:d.type==='plan'?'layers':'file',sub:[d.type,d.niveau_plan,d.taille?Math.round(d.taille/1024)+' Ko':''].filter(Boolean).join(' · '),
+      vis:VIS.map(function(v){return{v:v[0],l:v[1],sel:v[0]===d.visibilite};}),onVis:function(e){self.admWrite('documents',Object.assign({},d,{visibilite:e.target.value}));},
+      del:function(){if(window.confirm('Retirer « '+d.titre+' » ?'))self.admWrite('documents',{id:d.id},true);}};});
+    iq.nB=bl.length;
+    iq.bassins=bl.map(function(b,i){var v=S.last[b.nom],e=eB(b);return{n:String(b.numero||i+1),nom:b.nom,st:MK[e],etat:I.LIB[e],resume:v?I.verdict(v.items):'aucune visite',meta:[b.volume?b.volume+' m³':'',self.T(b.type_code||site.type).court,v?'visite du '+fdate(v.date):''].filter(Boolean).join(' · ')};});
+    var nbf=st.iqNb||{nom:'',type:'',vol:''},setNb=function(p){self.setState({iqNb:Object.assign({},nbf,p)});};
+    iq.nb={nom:nbf.nom,vol:nbf.vol,types:[{v:'',l:'Même type que le site'}].concat(Object.keys(D.types).map(function(k){return{v:k,l:D.types[k].label};})).map(function(o){return Object.assign(o,{sel:o.v===nbf.type});}),
+      onNom:function(e){setNb({nom:e.target.value});},onType:function(e){setNb({type:e.target.value});},onVol:function(e){setNb({vol:e.target.value});},
+      add:function(){var n=String(nbf.nom||'').trim();if(!n){self.flash('Nommez le bassin');return;}if(bl.some(function(b){return norm(b.nom)===norm(n);})){self.flash('Ce bassin existe déjà');return;}
+        self.setState({iqNb:null});self.saveBassins(site,bl.concat([{id:rid('b'),nom:n,type:'',type_code:nbf.type||'',volume:nbf.vol||'',numero:bl.length+1,notes:''}]),'Bassin ajouté');}};}
+  else{iq.plans=[];iq.markers=[];iq.docs=[];iq.bassins=[];iq.nb={types:[]};}
+  /* ----- 4a-5 Accès client et QR ----- */
+  iq.pw=st.iqPw||'';iq.onPw=function(e){self.setState({iqPw:e.target.value});};iq.ouvrir=function(e){if(e&&e.preventDefault)e.preventDefault();self.admOpen();};iq.adminErr=st.iqAdminErr||'';
+  if(view==='acces'&&adm){var cpn=st.iqCp&&st.iqCp.site===site.id?st.iqCp.nom:(cp?cp.nom:'');
+    iq.cp={nom:cpn,exists:!!cp,onNom:function(e){self.setState({iqCp:{site:site.id,nom:e.target.value}});},saveLbl:cp?'Enregistrer le nom':'Créer le compte client',
+      save:function(){var n=String(cpn||'').trim()||site.nom;self.admWrite('client_comptes',cp?Object.assign({},cp,{nom:n}):{id:rid('cl-'),nom:n,sites:[site.id],niveaux:{}}).then(function(ok){if(ok){self.setState({iqCp:null});self.flash(cp?'Compte enregistré':'Compte client créé');}});},
+      upLogo:function(e){var file=e.target.files&&e.target.files[0];e.target.value='';if(!file)return;if(!cp){self.flash('Créez d’abord le compte client');return;}
+        self.admUpload(file,'logos').then(function(path){if(path)self.admWrite('client_comptes',Object.assign({},cp,{logo_path:path})).then(function(ok){if(ok)self.flash('Logo enregistré');});});}};
+    var bls=(site.bassins||[]).length>1?site.bassins:[null],qrs=adm.qr||[];
+    iq.qrs=bls.map(function(b,i){var bid=b?String(b.id||b.nom):null,q=qrs.filter(function(x){return x.site_id===site.id&&(x.bassin_id||null)===bid&&x.actif;})[0],url=q?(adm.portail||'')+'?q='+q.jeton:'',img=q?(self._qrc=self._qrc||{},self._qrc[url]=self._qrc[url]||qrData(url)):'';
+      var code='SA-'+String(site.id).slice(-4).toUpperCase()+(b?'-B'+(b.numero||i+1):'');
+      return{nom:b?b.nom:'Installation',code:q?q.code_affiche:code,etat:q?'actif depuis le '+fdate(q.cree_le):'aucun code',img:img,regenLbl:q?'Régénérer le code':'Créer le code',
+        print:function(){self.printAffiche(site,q,b?b.nom:'',img);},
+        regen:function(){if(q&&!window.confirm('L’ancien code cessera immédiatement de fonctionner. Continuer ?'))return;var t=self.admTok();
+          pfn('admin_qr',{site_id:site.id,bassin_id:bid,code_affiche:code},t).then(function(r){if(!r.ok){self.flash('Refusé : '+(r.message||'erreur'));return;}self.flash(q?'Nouveau code créé — l’ancien est désactivé':'Code créé');self.admLoad();});}};});
+    iq.droits=I.DROITS.map(function(k){return{l:DROIT_LIB[k],c:['operateur','gestionnaire','direction'].map(function(n){var on=I.droits(n,cp&&cp.niveaux)[k];
+      return{on:on,aria:DROIT_LIB[k]+' — '+I.NIVEAU_NOM[n],go:function(e){if(!cp)return;var nv=JSON.parse(JSON.stringify(cp.niveaux||{}));nv[n]=Object.assign({},nv[n]||{});nv[n][k]=e.target.checked;self.admWrite('client_comptes',Object.assign({},cp,{niveaux:nv}));}};})};});
+    var cts=cp?(adm.contacts||[]).filter(function(x){return x.compte_id===cp.id;}):[];
+    iq.contacts=cts.map(function(c){return{nom:c.nom,niveau:I.NIVEAU_NOM[c.niveau]||c.niveau,courriel:c.courriel||'—',cel:c.cellulaire||'—',acces:c.dernier_acces?fdate(c.dernier_acces):'jamais',del:function(){if(window.confirm('Retirer l’accès de '+c.nom+' ?'))self.admWrite('client_contacts',{id:c.id},true);}};});
+    var ncf=st.iqNc||{nom:'',niveau:'gestionnaire',courriel:'',cel:''},setNc=function(p){self.setState({iqNc:Object.assign({},ncf,p)});};
+    iq.nc={nom:ncf.nom,courriel:ncf.courriel,cel:ncf.cel,nivs:['operateur','gestionnaire','direction'].map(function(n){return{v:n,l:I.NIVEAU_NOM[n],sel:n===ncf.niveau};}),
+      onNom:function(e){setNc({nom:e.target.value});},onNiv:function(e){setNc({niveau:e.target.value});},onMail:function(e){setNc({courriel:e.target.value});},onCel:function(e){setNc({cel:e.target.value});},
+      add:function(){if(!cp){self.flash('Créez d’abord le compte client');return;}if(!String(ncf.nom).trim()||(!String(ncf.courriel).trim()&&!String(ncf.cel).trim())){self.flash('Nom et courriel (ou cellulaire) requis');return;}
+        self.admWrite('client_contacts',{id:rid('ct-'),compte_id:cp.id,nom:String(ncf.nom).trim(),courriel:String(ncf.courriel).trim()||null,cellulaire:String(ncf.cel).trim()||null,niveau:ncf.niveau,actif:true}).then(function(ok){if(ok){self.setState({iqNc:null});self.flash('Contact autorisé');}});}};
+    var ids={};cts.forEach(function(c){ids[c.id]=c.nom;});var qids={};qrs.forEach(function(q){if(q.site_id===site.id)qids[q.id]=1;});
+    var RES={ok:'Accès',refuse:'Refusé',otp_echoue:'Code erroné',otp_envoye:'Code envoyé',envoi_impossible:'Envoi impossible',revoque:'Code QR révoqué'};
+    iq.journal=(adm.journal||[]).filter(function(j){return(cp&&j.compte_id===cp.id)||ids[j.contact_id]||qids[j.qr_id];}).slice(0,60).map(function(j){return{quand:fdate(j.quand)+' '+String(j.quand).slice(11,16),qui:ids[j.contact_id]||j.identifiant||'—',action:j.action||'',res:RES[j.resultat]||j.resultat,fw:j.resultat==='ok'?400:600};});
+    iq.noJournal=!iq.journal.length;
+    iq.envoiTxt=(adm.envoi?'Envoi des codes par courriel : actif.':'Envoi des codes : aucun fournisseur de courriel configuré sur le serveur (RESEND_API_KEY) — les contacts ne peuvent pas encore recevoir leur code.')+(adm.role!=='admin'?' Rôle superviseur : lecture seule.':'');}
+  else{iq.cp={};iq.qrs=[];iq.droits=[];iq.contacts=[];iq.nc={nivs:[]};iq.journal=[];}
+  /* ----- Catalogue des points de contrôle ----- */
+  if(view==='points'){var tc=st.pcType||site.type,TP=this.T(tc),cat=(D.cat||[]).filter(function(p){return p.type_code===tc||!p.type_code;}),derive=!(D.cat||[]).some(function(p){return p.type_code===tc;});
+    var rows=derive?I.pointsDuType(tc,[],TP.checks):cat.slice().sort(function(a,b){return(a.ordre||0)-(b.ordre||0);});
+    var put=function(p,patch){var all=derive?rows:[p];Promise.all(all.map(function(x){return self.savePoint(Object.assign({id:x.id,systeme_code:x.systeme_code,type_code:x.type_code,libelle:x.libelle,mode:x.mode,obligatoire:!!x.obligatoire,ordre:x.ordre||0,actif:x.actif!==false},x===p?patch:{}));})).then(function(){self.flash('Point enregistré');});};
+    iq.pc={types:Object.keys(D.types).map(function(k){return{v:k,l:D.types[k].label,sel:k===tc};}),onType:function(e){self.setState({pcType:e.target.value});},
+      src:derive?'Points actuels du type (pas encore dans le catalogue) : la première modification les y enregistre.':rows.length+' point(s) au catalogue',
+      rows:rows.map(function(p){return{libelle:p.libelle,obl:!!p.obligatoire,actif:p.actif!==false,
+        sys:I.SYSTEMES.filter(function(s){return s.code!=='eau';}).map(function(s){return{v:s.code,l:s.nom,sel:s.code===p.systeme_code};}),
+        modes:[['etat','Conforme / À surveiller / Action'],['ouinon','Oui / Non'],['mesure','Mesure + état']].map(function(m){return{v:m[0],l:m[1],sel:m[0]===p.mode};}),
+        onSys:function(e){put(p,{systeme_code:e.target.value});},onLib:function(e){put(p,{libelle:e.target.value});},onMode:function(e){put(p,{mode:e.target.value});},
+        onObl:function(e){put(p,{obligatoire:e.target.checked});},onActif:function(e){put(p,{actif:e.target.checked});}};}),
+      nouveau:st.pcNew||'',onNouveau:function(e){self.setState({pcNew:e.target.value});},
+      add:function(){var l=String(st.pcNew||'').trim();if(!l)return;var sy=I.systemeDe(l),np={id:tc+'-'+Date.now().toString(36),systeme_code:sy,type_code:tc,libelle:l,mode:sy==='securite'?'ouinon':'etat',obligatoire:false,ordre:rows.length+1,actif:true};
+        (derive?Promise.all(rows.map(function(x){return self.savePoint(x);})):Promise.resolve()).then(function(){return self.savePoint(np);}).then(function(){self.setState({pcNew:''});self.flash('Point ajouté dans « '+I.NOM[sy]+' » — modifiable ci-dessus');});}};}
+  else iq.pc={types:[],rows:[]};
+  return{isInspNew:view!=='tendances',isInspections:view==='tendances',iq:iq,iqTabs:tabs};
+};
+
 })();
 </script>
 </body></html>

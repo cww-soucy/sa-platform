@@ -21,7 +21,7 @@ function tables() {
 }
 async function open(page) {
   await page.waitForFunction(() => window.__admin && window.__admin.D);
-  await page.evaluate(() => window.__admin.go('inspections', { inspSite: '1', inspKey: null }));
+  await page.evaluate(() => window.__admin.go('inspections', { inspSite: '1', inspKey: null, inspView: 'tendances' }));
 }
 
 test('inspections : un onglet par bassin, relevés et paramètres propres au bassin', async () => {
