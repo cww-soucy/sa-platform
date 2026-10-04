@@ -162,3 +162,43 @@ test('accès client : session de gestion, compte client, contact, code QR, journ
   assert.deepEqual(errors, []);
   await page.close();
 });
+
+test('accès client : code QR créé sans compte client, rôle superviseur', async () => {
+  const { page, errors } = await openApp(browser, srv.url, { app: 'admin', user: { ...USER, role: 'superviseur' }, tables: tables() });
+  const S = { comptes: [], contacts: [], qr: [], journal: [], documents: [] };
+  await page.route(FN, async (route) => {
+    const b = JSON.parse(route.request().postData()), ok = (o) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(o) });
+    if (b.action === 'admin_ouvrir') return ok({ ok: true, session: 'ADM-TOKEN-xxxxxxxxxxxxxxxx', role: 'superviseur' });
+    if (b.action === 'admin_lire') return ok({ ok: true, role: 'superviseur', ...S, portail: 'https://sa-platform.pages.dev/portail/', envoi: true });
+    if (b.action === 'admin_qr') { const q = { id: 'qr1', site_id: b.site_id, bassin_id: b.bassin_id, jeton: 'JETON-ALEATOIRE', code_affiche: b.code_affiche, actif: true, cree_le: new Date().toISOString() }; S.qr.push(q); return ok({ ok: true, qr: q }); }
+    return ok({ ok: false });
+  });
+  await open(page, 'acces');
+  await page.getByLabel('Mot de passe').fill('bon');
+  await page.getByRole('button', { name: 'Ouvrir la gestion' }).click();
+  await page.getByText('Envoi des codes par courriel : actif.').waitFor();
+  assert.doesNotMatch(await page.textContent('main'), /lecture seule/i);
+  await page.getByRole('button', { name: 'Créer le code' }).click();
+  await page.getByRole('img', { name: /Code QR SA-/ }).waitFor();
+  assert.equal(S.comptes.length, 0, 'aucun compte client requis pour le code QR');
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+test('onglets personnalisables : masquer et réordonner, gardé sur le navigateur', async () => {
+  const { page, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: tables() });
+  await open(page, 'bilan');
+  const onglets = () => page.getByRole('tablist').first().getByRole('tab').allTextContents();
+  assert.deepEqual((await onglets()).slice(0, 2), ['Bilan par système', 'Visites']);
+  await page.getByRole('button', { name: 'Personnaliser' }).click();
+  await page.getByLabel('Afficher l’onglet Points de contrôle').uncheck();
+  await page.getByRole('button', { name: 'Monter Nouvelle inspection' }).click();
+  await page.getByRole('button', { name: 'Terminé' }).click();
+  const t = await onglets();
+  assert.ok(!t.includes('Points de contrôle'));
+  assert.ok(t.indexOf('Nouvelle inspection') < t.indexOf('Tendances de l’eau'));
+  const pref = await page.evaluate(() => JSON.parse(localStorage.getItem('sa_admin_insp_onglets')));
+  assert.deepEqual(pref.cache, ['points']);
+  assert.deepEqual(errors, []);
+  await page.close();
+});

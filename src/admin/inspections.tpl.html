@@ -30,9 +30,21 @@
         <button class="btn btn-secondary" onClick="{{ iq.voirClient }}"><sa-i n="eye" s="16"></sa-i>Voir comme le client</button>
       </div>
     </div>
-    <div role="tablist" style="display:flex;gap:2px;padding:0 22px;border-bottom:1px solid var(--color-divider);overflow-x:auto">
-      <sc-for list="{{ iq.tabs }}" as="t"><button role="tab" aria-selected="{{ t.on }}" onClick="{{ t.go }}" style="all:unset;cursor:pointer;white-space:nowrap;padding:10px 12px;font:600 16px var(--font-heading);border-bottom:3px solid {{ t.bd }}">{{ t.label }}</button></sc-for>
+    <div style="display:flex;align-items:center;gap:8px;padding:0 22px;border-bottom:1px solid var(--color-divider)">
+      <div role="tablist" style="display:flex;flex-wrap:wrap;gap:2px;flex:1;min-width:0">
+        <sc-for list="{{ iq.tabs }}" as="t"><button role="tab" aria-selected="{{ t.on }}" onClick="{{ t.go }}" style="all:unset;cursor:pointer;white-space:nowrap;padding:10px 12px;font:600 16px var(--font-heading);border-bottom:3px solid {{ t.bd }}">{{ t.label }}</button></sc-for>
+      </div>
+      <button class="btn btn-ghost" onClick="{{ iq.togglePerso }}" aria-expanded="{{ iq.perso }}"><sa-i n="settings" s="16"></sa-i>{{ iq.persoLbl }}</button>
     </div>
+    <sc-if value="{{ iq.perso }}"><div style="padding:12px 22px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:6px;max-width:520px">
+      <b>Onglets affichés</b><span style="font-size:13px">Cochez les onglets à afficher et choisissez leur ordre. Le réglage est gardé sur cet ordinateur.</span>
+      <sc-for list="{{ iq.persoRows }}" as="r"><div style="display:flex;align-items:center;gap:8px;border-top:1px solid var(--color-divider);padding-top:6px">
+        <label style="flex:1;display:flex;gap:8px;align-items:center"><input type="checkbox" aria-label="{{ r.aria }}" checked="{{ r.on }}" onChange="{{ r.toggle }}">{{ r.label }}</label>
+        <button class="btn btn-ghost" aria-label="Monter {{ r.label }}" disabled="{{ r.upDis }}" onClick="{{ r.up }}">↑</button>
+        <button class="btn btn-ghost" aria-label="Descendre {{ r.label }}" disabled="{{ r.downDis }}" onClick="{{ r.down }}">↓</button>
+      </div></sc-for>
+      <div><button class="btn btn-secondary" onClick="{{ iq.persoReset }}">Réinitialiser</button></div>
+    </div></sc-if>
 
     <!-- ═ Bilan par système (2a) ═ -->
     <sc-if value="{{ iq.isBilan }}"><div style="padding:18px 22px;display:flex;flex-direction:column;gap:16px">
@@ -188,9 +200,7 @@
           <label class="btn btn-secondary" style="cursor:pointer">Logo du client<input type="file" accept="image/*" onChange="{{ iq.cp.upLogo }}" style="display:none"></label>
           <button class="btn btn-primary" onClick="{{ iq.cp.save }}">{{ iq.cp.saveLbl }}</button>
         </div>
-        <sc-if value="{{ iq.cp.exists }}">
-        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px">
-          <section style="display:flex;flex-direction:column;gap:8px"><h3 style="margin:0;font-size:20px">Codes QR</h3>
+          <section style="display:flex;flex-direction:column;gap:8px"><h3 style="margin:0;font-size:20px">Codes QR</h3><span style="font-size:13px">Le code QR ouvre le portail de cette installation. Il n’ouvre aucune donnée sans un contact autorisé.</span>
             <sc-for list="{{ iq.qrs }}" as="q"><div style="display:flex;gap:12px;align-items:center;border-top:1px solid var(--color-divider);padding-top:8px">
               <sc-if value="{{ q.img }}"><img src="{{ q.img }}" alt="Code QR {{ q.code }}" style="width:96px;height:96px"></sc-if>
               <div style="flex:1;display:flex;flex-direction:column;gap:4px"><b>{{ q.nom }}</b><span style="font-size:13px">{{ q.code }} · {{ q.etat }}</span>
@@ -198,6 +208,8 @@
             </div></sc-for>
             <span style="font-size:13px">« Régénérer » désactive immédiatement l’ancien code.</span>
           </section>
+        <sc-if value="{{ iq.cp.exists }}">
+        <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:18px">
           <section style="display:flex;flex-direction:column;gap:8px"><h3 style="margin:0;font-size:20px">Ce que le client voit</h3>
             <table class="table" style="font-size:13px"><thead><tr><th></th><th>Opérateur</th><th>Gestionnaire</th><th>Direction</th></tr></thead><tbody><sc-for list="{{ iq.droits }}" as="g"><tr><td>{{ g.l }}</td><sc-for list="{{ g.c }}" as="c"><td><input type="checkbox" aria-label="{{ c.aria }}" checked="{{ c.on }}" onChange="{{ c.go }}"></td></sc-for></tr></sc-for></tbody></table>
           </section>

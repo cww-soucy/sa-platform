@@ -5,7 +5,7 @@
 //    ou au cellulaire inscrit ; réponse identique que l'identifiant soit autorisé ou non.
 //  * Toutes les lectures passent ici (clé service) ; les tables client_* / documents n'ont aucune politique pour anon.
 //  * Fichiers en bucket privé « portail », servis par URL signées de 10 minutes. Lecture seule. Chaque accès est journalisé.
-//  * sa-admin : session administrateur ouverte avec identifiant + mot de passe (verifier_connexion), rôle admin/superviseur.
+//  * sa-admin : session de gestion ouverte avec identifiant + mot de passe (verifier_connexion), rôle admin ou superviseur (mêmes droits).
 // Envoi des codes : RESEND_API_KEY (+ PORTAIL_FROM) pour le courriel, TWILIO_SID/TWILIO_TOKEN/TWILIO_FROM pour le texto.
 // Déploiement : verify_jwt = false (le portail n'a pas de compte Supabase ; l'accès est contrôlé ci-dessous).
 import { createClient } from "jsr:@supabase/supabase-js@2";
@@ -45,6 +45,7 @@ async function envoyerCode(contact: { courriel?: string; cellulaire?: string }, 
       headers: { Authorization: `Bearer ${Deno.env.get("RESEND_API_KEY")}`, "Content-Type": "application/json" },
       body: JSON.stringify({ from: Deno.env.get("PORTAIL_FROM") || "Soucy Aquatik <portail@soucyaquatik.com>", to: [contact.courriel], subject: `Code d'accès : ${code}`, text: txt }),
     });
+    if (!r.ok) console.error("resend", r.status, (await r.text()).slice(0, 300));
     return r.ok;
   }
   if (contact.cellulaire && Deno.env.get("TWILIO_SID")) {
@@ -54,8 +55,10 @@ async function envoyerCode(contact: { courriel?: string; cellulaire?: string }, 
       headers: { Authorization: "Basic " + btoa(`${sid}:${tok}`), "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({ To: "+1" + contact.cellulaire, From: Deno.env.get("TWILIO_FROM") || "", Body: txt }),
     });
+    if (!r.ok) console.error("twilio", r.status, (await r.text()).slice(0, 300));
     return r.ok;
   }
+  console.error("envoi : aucun fournisseur configuré (RESEND_API_KEY / TWILIO_SID)");
   return false;
 }
 async function envoyerCourriel(to: string, sujet: string, texte: string) {
@@ -65,6 +68,7 @@ async function envoyerCourriel(to: string, sujet: string, texte: string) {
     headers: { Authorization: `Bearer ${Deno.env.get("RESEND_API_KEY")}`, "Content-Type": "application/json" },
     body: JSON.stringify({ from: Deno.env.get("PORTAIL_FROM") || "Soucy Aquatik <portail@soucyaquatik.com>", to: [to], subject: sujet, text: texte }),
   });
+  if (!r.ok) console.error("resend", r.status, (await r.text()).slice(0, 300));
   return r.ok;
 }
 
@@ -197,7 +201,6 @@ const actions: Record<string, (req: Request, b: any) => Promise<Response>> = {
   async admin_ecrire(req, b) {
     const s = await session(req, "admin");
     if (!s) return json(req, { ok: false, session: false }, 401);
-    if (s.role !== "admin") return json(req, { ok: false, message: "Lecture seule pour le rôle superviseur." }, 403);
     const table = String(b.table || "");
     if (!L.ECRITURE[table]) return json(req, { ok: false, message: "Table non permise" }, 400);
     if (b.supprimer) {
@@ -212,7 +215,7 @@ const actions: Record<string, (req: Request, b: any) => Promise<Response>> = {
   },
   async admin_qr(req, b) {
     const s = await session(req, "admin");
-    if (!s || s.role !== "admin") return json(req, { ok: false, session: !!s }, s ? 403 : 401);
+    if (!s) return json(req, { ok: false, session: false }, 401);
     const site = String(b.site_id || ""), bassin = b.bassin_id ? String(b.bassin_id) : null;
     if (!site) return json(req, { ok: false, message: "Site manquant" }, 400);
     let old = sb.from("client_qr").update({ actif: false, revoque_le: new Date().toISOString() }).eq("site_id", site).eq("actif", true);
@@ -225,7 +228,7 @@ const actions: Record<string, (req: Request, b: any) => Promise<Response>> = {
   },
   async admin_televerser(req, b) {
     const s = await session(req, "admin");
-    if (!s || s.role !== "admin") return json(req, { ok: false, session: !!s }, s ? 403 : 401);
+    if (!s) return json(req, { ok: false, session: false }, 401);
     const path = `${String(b.dossier || "docs").replace(/[^a-z]/g, "") || "docs"}/${Date.now().toString(36)}-${L.nomFichier(b.nom)}`;
     const { data, error } = await sb.storage.from(BUCKET).createSignedUploadUrl(path);
     return json(req, { ok: !error, path, url: data?.signedUrl, token: data?.token, message: error?.message });
@@ -241,7 +244,7 @@ const actions: Record<string, (req: Request, b: any) => Promise<Response>> = {
   },
   async admin_envoyer(req, b) {
     const s = await session(req, "admin");
-    if (!s || s.role !== "admin") return json(req, { ok: false, session: !!s }, s ? 403 : 401);
+    if (!s) return json(req, { ok: false, session: false }, 401);
     const ids: string[] = (b.releves || []).map(String);
     await sb.from("releves").update({ envoyee_le: new Date().toISOString(), statut: "publiee" }).in("id", ids.length ? ids : ["__"]);
     const { data: cts } = await sb.from("client_contacts").select("id, nom, courriel").in("id", (b.contacts || []).map(String).concat("__")).eq("actif", true);
