@@ -45,6 +45,20 @@
   X-Robots-Tag: noindex, nofollow
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
 
+# Portail client (QR + lien « Envoyer au client ») : lecture seule, tout passe par la fonction serveur « portail ».
+# Même cloisonnement que le carnet : seulement ses fichiers, la fonction Supabase et les URL signées du stockage privé.
+/portail/*
+  Cache-Control: no-cache, must-revalidate
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://ldqvdiaewvhnukuaxdmc.supabase.co; connect-src https://ldqvdiaewvhnukuaxdmc.supabase.co; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  X-Robots-Tag: noindex, nofollow
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+
+/src/inspection/*
+  Cache-Control: no-cache, must-revalidate
+
 /src/services/*
   Cache-Control: no-cache, must-revalidate
 

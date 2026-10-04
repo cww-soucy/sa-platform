@@ -8,7 +8,7 @@ const path = require('path');
 const { execSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 
-const RACINE = ['.github', '.gitignore', '_headers', 'admin.html', 'docs', 'index.html', 'package-lock.json', 'package.json', 'qr-carnet', 'README.md',
+const RACINE = ['.github', '.gitignore', '_headers', 'admin.html', 'docs', 'index.html', 'package-lock.json', 'package.json', 'portail', 'qr-carnet', 'README.md',
   'recuperation.html', 'sa-admin', 'sa-terrain', 'sondage-hivernement-levis.html', 'src', 'stats-sondages.html', 'supabase', 'sw.js', 'terrain.html', 'tests'];
 
 test('racine du dépôt : seulement les fichiers en service (pas de copies, d’archives ni de fichiers Excel)', () => {
