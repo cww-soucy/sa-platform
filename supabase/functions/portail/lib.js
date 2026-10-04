@@ -75,7 +75,7 @@ export function sitesAutorises(compte, contact) {
 export function tropDeCodes(nContact15, nIpHeure) {
   return nContact15 >= OTP_PAR_CONTACT_15MIN || nIpHeure >= OTP_PAR_IP_HEURE;
 }
-const norm = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+const norm = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 const FAIT = /^(complete|complété|termine|terminé|facture|facturé|fait|ferme|fermé)$/i;
 
 /**
@@ -142,5 +142,5 @@ export function filtrerLigne(table, row) {
   return o;
 }
 export function nomFichier(nom) {
-  return String(nom || "fichier").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Za-z0-9._-]+/g, "_").slice(-80);
+  return String(nom || "fichier").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9._-]+/g, "_").slice(-80);
 }
