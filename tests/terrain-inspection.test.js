@@ -50,7 +50,7 @@ test('visite : systèmes, mesure prise hors zone, point obligatoire, « Non » a
   await page.getByRole('button', { name: 'Suivant : Résumé' }).click();
   await page.getByText(/^2 actions requises : pH .*, Registre RQEP signé\. À surveiller : Parois et fond brossés\. Circulation et filtration est conforme\.$/).waitFor();
   await page.getByRole('button', { name: 'Valider et envoyer' }).click();
-  await page.waitForFunction(() => JSON.parse(localStorage.getItem('sa_terrain_queue') || '[]').length === 0);
+  await page.waitForFunction(() => !window.__terrain._pend && JSON.parse(localStorage.getItem('sa_terrain_queue') || '[]').length === 0);
   const r = db.rows('releves').find((x) => x.id !== 'r1');
   assert.equal(r.statut, 'publiee');
   assert.equal(r.source, 'terrain');

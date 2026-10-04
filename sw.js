@@ -163,15 +163,29 @@ self.addEventListener('activate', function(event) {
   );
 });
 
-// Réseau d'abord pour le HTML (évite d'afficher une vieille version en cache),
-// cache en secours si hors-ligne.
+// Réseau d'abord pour le HTML (évite d'afficher une vieille version en cache), cache en secours si hors-ligne.
+// (03/10/2026) Chaque page reçue est maintenant GARDÉE dans le cache : avant, rien n'y était jamais mis, donc
+// une page rouverte sans réseau (salle mécanique au sous-sol) ne s'affichait pas. Si le réseau ne répond pas
+// après 8 s alors qu'une copie existe, on affiche la copie.
 self.addEventListener('fetch', function(event) {
   var req = event.request;
   if (req.method !== 'GET') return;
   if (req.mode === 'navigate' || (req.headers.get('accept')||'').indexOf('text/html') >= 0) {
-    event.respondWith(
-      fetch(req).catch(function(){ return caches.match(req).then(function(r){ return r || caches.match('/'); }); })
-    );
+    var copie = caches.match(req, {ignoreSearch: true});
+    var reseau = fetch(req).then(function(res) {
+      if (res && res.ok && res.type === 'basic') {
+        var c = res.clone();
+        caches.open(CACHE_NAME).then(function(cache){ return cache.put(req.url.split('?')[0], c); });
+      }
+      return res;
+    });
+    event.waitUntil(reseau.catch(function(){}));
+    event.respondWith(new Promise(function(resolve, reject) {
+      var fini = false;
+      var t = setTimeout(function(){ copie.then(function(r){ if (r && !fini) { fini = true; resolve(r); } }); }, 8000);
+      reseau.then(function(res){ clearTimeout(t); if (!fini) { fini = true; resolve(res); } })
+        .catch(function(){ clearTimeout(t); copie.then(function(r){ return r || caches.match('/'); }).then(function(r){ if (!fini) { fini = true; r ? resolve(r) : reject(new TypeError('hors-ligne')); } }); });
+    }));
     return;
   }
 });

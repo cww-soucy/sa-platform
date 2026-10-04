@@ -126,7 +126,7 @@ test('site à plusieurs bassins : choix du bassin, paramètres propres au bassin
   assert.equal(v.sid, '1#b2');
   await page.evaluate(() => { const f = window.__terrain.vals().fields.find((x) => x.key === 'cl'); f.plus(); f.plus(); });
   await page.evaluate(() => window.__terrain.vals().validate());
-  await page.waitForFunction(() => JSON.parse(localStorage.getItem('sa_terrain_queue') || '[]').length === 0);
+  await page.waitForFunction(() => !window.__terrain._pend && JSON.parse(localStorage.getItem('sa_terrain_queue') || '[]').length === 0);
   const rows = db.rows('releves').filter((r) => r.id !== 'r1').map((r) => [r.bassin, r.type_code, r.id.endsWith('-b2')]);
   assert.deepEqual(rows.sort(), [['Bassin principal', 'MI', false], ['Pataugeoire', 'GEN', true]]);
   // les mesures du BON bassin partent avec sa fiche (avant : fiche vide sur un site à plusieurs bassins)

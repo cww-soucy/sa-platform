@@ -138,12 +138,12 @@
     var lv = vis[0];
 
     var head = h('header', { class: 'head' },
-      D.compte && D.compte.logo ? h('img', { class: 'logo', src: D.compte.logo, alt: D.compte.nom }) : h('img', { class: 'logo', src: LOGO, alt: 'Soucy Aquatik' }),
+      D.compte && D.compte.logo ? h('img', { class: 'logo', src: D.compte.logo, alt: D.compte.nom }) : h('b', { class: 'nomclient', text: (D.compte && D.compte.nom) || site.nom }),
       h('div', { class: 'grow' },
         D.sites.length > 1 ? h('select', { class: 'input', style: 'max-width:340px', 'aria-label': 'Mes installations', onchange: function (e) { S.site = e.target.value; S.bassin = null; rendre(); } },
           D.sites.map(function (s) { return h('option', { value: s.id, selected: s.id === site.id }, s.nom); })) : null,
         h('h1', { text: site.nom }), h('div', { class: 'muted', text: lv ? 'Dernière visite : ' + fdate(lv.date) + (lv.r.heure ? ', ' + lv.r.heure : '') : 'Aucune visite publiée' })),
-      h('div', { style: 'text-align:right' }, h('div', { text: D.contact.nom }), h('span', { class: 'badge', text: I.NIVEAU_NOM[D.contact.niveau] || '' }), h('div', { class: 'muted', text: 'Entretenu par Soucy Aquatik' })));
+      h('div', { style: 'text-align:right' }, h('div', { text: D.contact.nom }), h('span', { class: 'badge', text: I.NIVEAU_NOM[D.contact.niveau] || '' }), h('div', { class: 'opere' }, h('span', { text: 'Opéré par' }), h('img', { src: LOGO, alt: '' }), h('b', { text: 'Soucy Aquatik' }))));
 
     var nInt = act.length + inter.length;
     var bandeau = nInt ? h('div', { class: 'box' }, h('b', { text: nInt + (nInt > 1 ? ' interventions en cours' : ' intervention en cours') }),

@@ -1054,7 +1054,7 @@ window.SARender=function(tpl,host,scope){
 var SB='https://ldqvdiaewvhnukuaxdmc.supabase.co',KEY='sb_publishable_qVd_6eoAvwrDGs9u81woAg_RrMpTJxn';
 var H={apikey:KEY,Authorization:'Bearer '+KEY};
 function get(p){return fetch(SB+'/rest/v1/'+p,{headers:H}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();});}
-function post(p,b,pref){return fetch(SB+'/rest/v1/'+p,{method:'POST',headers:Object.assign({'Content-Type':'application/json',Prefer:pref||'return=minimal'},H),body:JSON.stringify(b)});}
+function post(p,b,pref,sig){return fetch(SB+'/rest/v1/'+p,{method:'POST',headers:Object.assign({'Content-Type':'application/json',Prefer:pref||'return=minimal'},H),body:JSON.stringify(b),signal:sig});}
 function netMsg(e){var m=String(e&&e.message||e);return /Failed to fetch|NetworkError|Load failed/i.test(m)?'réseau injoignable':m;}
 /* Un identifiant figure-t-il EXACTEMENT dans une liste « a, b, c » ? (le filtre serveur ilike.*id* accepte aussi les sous-chaînes) */
 function hasId(list,id){return String(list||'').split(/,\s*/).indexOf(String(id))>=0;}
@@ -1079,6 +1079,28 @@ function clone(x){return JSON.parse(JSON.stringify(x));}
 function emptyDay(){return{status:'idle',tasks:[],saved:false,kmArr:'',stopFiles:[],del:[]};}
 function isBureau(l){var n=String(l||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();return /\b(entrepot|bureau|shop|garage)\b/.test(n);}
 var LSK_OPS='sa_terrain_ftops',LSK_FT='sa_terrain_ft_';
+/* ---------- Photos hors réseau : gardées dans IndexedDB ----------
+   localStorage plafonne à ~5 Mo : quelques photos de salle mécanique suffisaient à le remplir, et la fiche
+   (ou ses photos) était alors perdue. Les fiches et l'état du jour gardent seulement une référence « idb:… »,
+   la photo elle-même est remise en place au moment de l'envoi, quand le réseau revient. */
+var PH={mem:{},keys:{},
+  open:function(){if(!PH._p)PH._p=new Promise(function(ok){try{var r=indexedDB.open('sa_terrain_photos',1);r.onupgradeneeded=function(){r.result.createObjectStore('p');};r.onsuccess=function(){ok(r.result);};r.onerror=function(){ok(null);};}catch(e){ok(null);}});return PH._p;},
+  tx:function(mode,fn){return PH.open().then(function(db){if(!db)return null;return new Promise(function(ok){try{var t=db.transaction('p',mode),res=fn(t.objectStore('p'));t.oncomplete=function(){ok(res&&res.result!==undefined?res.result:true);};t.onerror=t.onabort=function(){ok(null);};}catch(e){ok(null);}});});},
+  put:function(k,v){PH.mem[k]=v;return PH.tx('readwrite',function(st){return st.put({v:v,t:Date.now()},k);});},
+  get:function(k){if(PH.mem[k]!=null)return Promise.resolve(PH.mem[k]);return PH.tx('readonly',function(st){return st.get(k);}).then(function(r){var v=r&&r.v||null;if(v)PH.mem[k]=v;return v;});},
+  /* Efface les photos de plus de 21 jours qui ne sont plus référencées nulle part */
+  purge:function(keep){var lim=Date.now()-21*864e5;return PH.tx('readwrite',function(st){var c=st.openCursor();c.onsuccess=function(){var cur=c.result;if(!cur)return;if(!keep[cur.key]&&(cur.value&&cur.value.t||0)<lim)cur.delete();cur.continue();};});}};
+function isPh(x){return typeof x==='string'&&x.slice(0,11)==='data:image/'&&x.length>1000;}
+function isRef(x){return typeof x==='string'&&x.slice(0,4)==='idb:';}
+function phWalk(o,fn){if(Array.isArray(o)){var a=[];o.forEach(function(x){var y=phWalk(x,fn);if(y!==undefined)a.push(y);});return a;}
+  if(o&&typeof o==='object'){var r={};Object.keys(o).forEach(function(k){var y=phWalk(o[k],fn);r[k]=y===undefined?null:y;});return r;}return fn(o);}
+function phRefs(o,acc){acc=acc||{};phWalk(o,function(x){if(isRef(x))acc[x.slice(4)]=1;return x;});return acc;}
+/* data:image → idb:clé (une fois la photo écrite) ; si IndexedDB est indisponible, l'objet reste tel quel */
+function phOut(o){var w=[],r=phWalk(o,function(x){if(!isPh(x))return x;var k=PH.keys[x];if(!k){k=PH.keys[x]='p'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);w.push(PH.put(k,x).then(function(ok){if(!ok)throw 0;}));}return'idb:'+k;});
+  return Promise.all(w).then(function(){return r;},function(){return o;});}
+/* idb:clé → data:image (une photo introuvable est retirée plutôt que d'envoyer une référence) */
+function phFill(o){return phWalk(o,function(x){if(!isRef(x))return x;var v=PH.mem[x.slice(4)];return v?v:undefined;});}
+function phIn(o){var ks=Object.keys(phRefs(o));return Promise.all(ks.map(PH.get)).then(function(){return phFill(o);});}
 /* Applique UNE opération de punch à la liste des 7 jours — même format que SA Platform. Idempotent. */
 function applyOp(days,op){
   days=clone(days||[]);while(days.length<7)days.push(emptyDay());
@@ -1157,7 +1179,8 @@ function Comp(user){
   this.state.toast=null;this.state.screen='today';this.state.pf={q:'',lieu:'',siteId:null,odt:'',detail:'',km:'',src:null};this.state.sf={km:''};
 }
 Comp.prototype.persist=function(){var s=this.state,keep={vals:s.vals,touched:s.touched,checks:s.checks,prods:s.prods,photo:s.photo,notes:s.notes,validated:s.validated,sync:s.sync,photoData:s.photoData,pts:s.pts,acts:s.acts,step:s.step,hivChecks:s.hivChecks,hivAntigel:s.hivAntigel,hivEtat:s.hivEtat,hivNote:s.hivNote,hivSent:s.hivSent};
-  if(!jset('sa_terrain_state_'+this.user.id+'_'+this.today,keep)){keep.photoData={};jset('sa_terrain_state_'+this.user.id+'_'+this.today,keep);}};
+  var self=this,n=this._pseq=(this._pseq||0)+1,key='sa_terrain_state_'+this.user.id+'_'+this.today;
+  phOut(keep).then(function(k2){if(n!==self._pseq)return;if(!jset(key,k2)){k2.photoData={};jset(key,k2);}});};
 Comp.prototype.setState=function(p){var n=typeof p==='function'?p(this.state):p;this.state=Object.assign({},this.state,n);this.persist();this.update();};
 Comp.prototype.flash=function(t){var s=this;clearTimeout(this._tt);this.state.toast=t;this.update();this._tt=setTimeout(function(){s.state.toast=null;s.update();},2600);};
 Comp.prototype.go=function(s){this.setState({screen:s});var c=this.contentRef.current;if(c)c.scrollTop=0;if(s==='logistique')this.loadLog();if(s==='hivernage')this.loadHiv();if(s==='comm')this.loadComm();};
@@ -1187,8 +1210,11 @@ Comp.prototype.loadJobs=function(){var self=this,uid=encodeURIComponent(this.use
   var q=[get('workorders?select=id,client,site,type,date,assigne,status,descr,groupe_id&date=gte.'+d0+'&date=lte.'+d6+'&assigne=ilike.*'+uid+'*'),
     get('planning_tasks?select=id,titre,emp,site_id,site_nom,date_debut,date_fin,heure_debut,heure_fin,statut,recurrence,wo_id,plan_id&date_debut=lte.'+d6+'&date_fin=gte.'+d0+'&emp=ilike.*'+uid+'*'),
     get('plan?select=id,client,addr,date,heure,emp,site_id,descr,type,status&date=gte.'+d0+'&date=lte.'+d6+'&emp=ilike.*'+uid+'*')];
-  var me=this.user.id;
-  return Promise.all(q).then(function(r){var wo=r[0].filter(function(w){return hasId(w.assigne,me);}),pt=r[1].filter(function(t){return hasId(t.emp,me);}),pl=r[2].filter(function(p){return hasId(p.emp,me);});var all=[];
+  var me=this.user.id,ck='sa_terrain_jobs_'+me,cached=jget(ck,null);
+  /* Tournée gardée sur le téléphone : la page rouverte sans réseau (salle mécanique) affiche quand même les visites du jour */
+  if(cached&&cached.d===this.today&&!this.jobs.length){this.jobsFromRows(cached.r);this.update();}
+  return Promise.all(q).then(function(r){jset(ck,{d:self.today,r:r});self.jobsFromRows(r);self.syncAt=new Date();self.okLoad('jobs');}).catch(function(e){self.failLoad('jobs','tournée du jour',e);});};
+Comp.prototype.jobsFromRows=function(r){var self=this,me=this.user.id;{var wo=r[0].filter(function(w){return hasId(w.assigne,me);}),pt=r[1].filter(function(t){return hasId(t.emp,me);}),pl=r[2].filter(function(p){return hasId(p.emp,me);});var all=[];
     var woIds={},plIds={};wo.forEach(function(w){woIds[w.id]=1;});pl.forEach(function(p){plIds[p.id]=1;});
     wo.forEach(function(w){var s=matchSite(w.client,w.site)||pseudoSite(w.client,w.site);
       all.push({id:'wo:'+w.id,date:w.date,site:s.id,h:'',fin:'',statut:(w.status==='termine'||w.status==='complete'||w.status==='facture')?'fait':'à venir',tache:(String(w.descr||'').split('\n')[0].slice(0,90))||cap(w.type||'Visite'),rec:w.groupe_id?'Visite récurrente':''});});
@@ -1201,7 +1227,7 @@ Comp.prototype.loadJobs=function(){var self=this,uid=encodeURIComponent(this.use
     self.days=[];for(var i=0;i<7;i++){var dt=addDays(new Date(),i),ds=iso(dt);
       self.days.push({dow:JOURS[dt.getDay()].slice(0,3),num:dnum(dt),title:(i===0?'Aujourd’hui · ':'')+JOURS[dt.getDay()].toLowerCase()+' '+dnum(dt)+' '+MOIS[dt.getMonth()],
         items:all.filter(function(j){return j.date===ds;}).sort(function(a,b){return(a.h||'99').localeCompare(b.h||'99');}).map(function(j){return[j.h,j.site,j.tache,j.rec];})});}
-    self.syncAt=new Date();self.okLoad('jobs');}).catch(function(e){self.failLoad('jobs','tournée du jour',e);});};
+  }};
 Comp.prototype.weekKey=function(){return iso(mondayOf(new Date()));};
 Comp.prototype.ftSet=function(row){this.ft={days:row.days,updated_at:row.updated_at,total_h:row.total_h};jset(LSK_FT+this.user.id+'_'+this.weekKey(),this.ft);};
 Comp.prototype.ops=function(){return jget(LSK_OPS,[]);};
@@ -1295,17 +1321,22 @@ Comp.prototype.loadBureau=function(){var self=this;return get('comptes_publics?i
 Comp.prototype.refresh=function(){var self=this;this.loadComm();return Promise.all([this.loadRef(),this.loadBureau(),this.loadDem()]).then(function(){return Promise.all([self.loadJobs(),self.loadPunch()]);}).then(function(){var c=self.curJob();if(c)self.loadLast(c.site);self.flush();self.flushOps();self.update();});};
 
 /* ---------- File d'attente : rien n'est perdu si le réseau tombe ---------- */
-Comp.prototype.flush=function(){var self=this,q=jget('sa_terrain_queue',[]);if(!q.length||!navigator.onLine){self.queueN=q.length;return;}
-  var item=q[0],tbl=item._t||'releves',body=Object.assign({},item);delete body._t;delete body._sk;
+Comp.prototype.flush=function(){var self=this,q=jget('sa_terrain_queue',[]);if(!q.length||!navigator.onLine||this._fq){self.queueN=q.length;return;}
+  var item=q[0],tbl=item._t||'releves',body0=Object.assign({},item);delete body0._t;delete body0._sk;this._fq=true;
+  /* Sous-sol : le réseau peut sembler présent sans rien laisser passer ; on abandonne après 45 s et on réessaie plus tard */
+  var ac=window.AbortController?new AbortController():null,to=setTimeout(function(){if(ac)ac.abort();},45000);
+  phIn(item._m==='PATCH'?item.body:body0).then(function(body){
   /* _m:'PATCH' → mise à jour partielle (ex. bon de livraison validé) : on ne réécrit jamais toute la ligne,
      pour ne pas écraser ce que le bureau a modifié entre-temps. */
-  var req=item._m==='PATCH'?fetch(SB+'/rest/v1/'+tbl+'?'+item._q,{method:'PATCH',headers:Object.assign({'Content-Type':'application/json',Prefer:'return=minimal'},H),body:JSON.stringify(item.body)}):post(tbl,body,'resolution=merge-duplicates,return=minimal');
-  req.then(function(r){
+  var req=item._m==='PATCH'?fetch(SB+'/rest/v1/'+tbl+'?'+item._q,{method:'PATCH',headers:Object.assign({'Content-Type':'application/json',Prefer:'return=minimal'},H),body:JSON.stringify(body),signal:ac&&ac.signal}):post(tbl,body,'resolution=merge-duplicates,return=minimal',ac&&ac.signal);
+  return req.then(function(r){clearTimeout(to);self._fq=false;
     if(r.ok){var cur=jget('sa_terrain_queue',[]).filter(function(x){return x.id!==item.id;});jset('sa_terrain_queue',cur);self.queueN=cur.length;
       self.sendErr='';if(tbl==='releves'){var s=Object.assign({},self.state.sync);s[item._sk||item.site_id]='ok';self.state=Object.assign({},self.state,{sync:s});self.persist();}else if(tbl==='demandes'){self.loadDem();}else if(tbl==='rapports_hivernage'){self.loadHiv();}else if(tbl==='bons_livraison'){self.loadLog();}self.update();if(cur.length)self.flush();}
-    else{self.queueN=q.length;self.sendErr=(tbl==='demandes'?'demande':'fiche')+' refusée par le serveur (HTTP '+r.status+') — gardée sur le téléphone, prévenez le bureau';self.update();}}).catch(function(){self.queueN=q.length;self.update();});};
-Comp.prototype.enqueue=function(rec){var q=jget('sa_terrain_queue',[]).filter(function(x){return x.id!==rec.id;});q.push(rec);
-  if(!jset('sa_terrain_queue',q)){rec.photo=null;q[q.length-1]=rec;jset('sa_terrain_queue',q);}this.queueN=q.length;this.flush();};
+    else{self.queueN=q.length;self.sendErr=(tbl==='demandes'?'demande':'fiche')+' refusée par le serveur (HTTP '+r.status+') — gardée sur le téléphone, prévenez le bureau';self.update();}});}).catch(function(){clearTimeout(to);self._fq=false;self.queueN=q.length;self.update();});};
+Comp.prototype.enqueue=function(rec0){var self=this;this.queueN++;this._pend=(this._pend||0)+1;this.update();
+  phOut(rec0).then(function(rec){self._pend--;var q=jget('sa_terrain_queue',[]).filter(function(x){return x.id!==rec.id;});q.push(rec);
+    if(!jset('sa_terrain_queue',q)){rec=Object.assign({},rec,{photo:null});q[q.length-1]=rec;if(!jset('sa_terrain_queue',q))self.sendErr='mémoire du téléphone pleine — fiche non gardée, prévenez le bureau';}
+    self.queueN=q.length;self.update();self.flush();});};
 
 /* ---------- Photo compressée (max 900 px, JPEG) ---------- */
 Comp.prototype.pickImage=function(cb){var inp=document.getElementById('photoInput');inp.value='';inp.onchange=function(){var f=inp.files&&inp.files[0];if(!f)return;
@@ -1580,6 +1611,10 @@ function bienvenue(u){var f=false;try{f=localStorage.getItem('sa_terrain_bienven
   el.querySelector('h1').textContent='Bienvenue'+(u.prenom?', '+u.prenom:'')+'\u00a0!';el.querySelector('h1+div').textContent=JOURS[d.getDay()]+' '+d.getDate()+' '+MOIS[d.getMonth()];
   var bye=function(){el.style.opacity='0';setTimeout(function(){if(el.parentNode)el.parentNode.removeChild(el);},500);};el.addEventListener('click',bye);document.body.appendChild(el);setTimeout(bye,2600);}
 Comp.prototype.mount=function(host){var self=this;this._host=host;this.update();bienvenue(this.user);
+  /* Photos de la journée : remises en place depuis IndexedDB ; ménage des vieilles photos déjà envoyées */
+  var st0={photoData:this.state.photoData,pts:this.state.pts};
+  phIn(st0).then(function(){self.state=Object.assign({},self.state,{photoData:phFill(self.state.photoData||{}),pts:phFill(self.state.pts||{})});self.update();
+    PH.purge(phRefs(jget('sa_terrain_queue',[]),phRefs(st0)));});
   window.addEventListener('online',function(){self.online=true;self.refresh();});window.addEventListener('offline',function(){self.online=false;self.update();});
   document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')self.refresh();});
   setInterval(function(){if(document.visibilityState==='visible'){self.flush();self.flushOps();self.loadPunch().then(function(){self.update();});}},60000);
@@ -1594,6 +1629,8 @@ function showLogin(){var el=document.getElementById('login');el.style.display='f
       localStorage.setItem('sa_terrain_user',JSON.stringify({id:c.id,prenom:c.prenom,nom:c.nom,role:c.role,dept:c.dept,tel:c.tel,email:c.email||''}));try{localStorage.setItem('sa_terrain_bienvenue','1');}catch(x){}location.reload();
     }).catch(function(){err.textContent='Réseau indisponible — réessayez.';});};}
 window.addEventListener('DOMContentLoaded',function(){
+  /* Garde une copie de la page sur le téléphone : elle se rouvre même sans réseau (voir sw.js) */
+  try{if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js',{updateViaCache:'none'}).catch(function(){});}catch(e){}
   var user=jget('sa_terrain_user',null);
   if(!user){showLogin();return;}
   document.getElementById('login').style.display='none';
