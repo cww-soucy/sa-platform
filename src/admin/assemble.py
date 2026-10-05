@@ -790,6 +790,13 @@ assert _i>0, 'ancre isInspections'
 ITABS=('<div role="tablist" style="display:flex;gap:2px;margin:0 0 12px;border-bottom:1px solid var(--color-divider);overflow-x:auto"><template data-sc="for" list="{{ iqTabs }}" as="t"><button role="tab" aria-selected="{{ t.on }}" onClick="{{ t.go }}" style="all:unset;cursor:pointer;white-space:nowrap;padding:10px 12px;font:600 16px var(--font-heading);border-bottom:3px solid {{ t.bd }}">{{ t.label }}</button></template></div>')
 _o=M[_i:M.index('>',_i)+1]
 M=M[:_i]+ITPL+_o+ITABS+M[_i+len(_o):]
+# ---------- SITES & CLIENTS (onglets Clients / Lieux à classer / Répertoire : clients.tpl.html + clients.js) ----------
+CTPL=open(os.path.join(HERE,'clients.tpl.html'),encoding='utf-8').read()
+CTPL=CTPL[CTPL.index('-->')+3:].strip()
+CTPL=re.sub(r'<sc-(for|if)\b',r'<template data-sc="\1"',CTPL); CTPL=CTPL.replace('</sc-for>','</template>').replace('</sc-if>','</template>')
+_m=re.search(r'(<template data-sc="if" value="\{\{ isSites \}\}"[^>]*>)(\s*<template data-sc="if" value="\{\{ noNouveaux \}\}">.*?</template>)?\s*<div style="display:flex;flex-direction:column;gap:26px">',M,re.S)
+assert _m, 'ancre isSites'
+M=M[:_m.start()]+_m.group(1)+CTPL+'<div style="display:{{ sitesRepDisp }};flex-direction:column;gap:26px">'+(_m.group(2) or '')+M[_m.end():]
 open(os.path.join(OUT,'admin.markup.html'),'w',encoding='utf-8').write(M)
 M=re.sub(r'(<template data-sc="if" value="\{\{ isCarte \}\}"[^>]*>\s*<div style="display:flex;flex-direction:column;gap:16px;height:100%">)',r'\1<div style="font-size:13px">{{ carteInfo }}</div>',M,count=1)
 ds=re.sub(r"@import url\([^)]*\);\s*",'',open(os.path.join(SRC,'design')+'/ds/styles.css',encoding='utf-8').read())
@@ -803,6 +810,7 @@ qjs=open(os.path.join(SRC,'vendor','qrcodejs','qrcode.min.js'),encoding='utf-8')
 insp=open(os.path.join(SRC,'inspection','model.js'),encoding='utf-8').read(); assert '</script' not in insp.lower()
 rt=open(os.path.join(HERE,'runtime.js'),encoding='utf-8').read(); app=open(os.path.join(HERE,'app.js'),encoding='utf-8').read()
 _k=app.rindex('})();'); app=app[:_k]+open(os.path.join(HERE,'inspections.js'),encoding='utf-8').read()+'\n'+app[_k:]
+_k=app.rindex('})();'); app=app[:_k]+open(os.path.join(HERE,'clients.js'),encoding='utf-8').read()+'\n'+app[_k:]
 import base64
 LOGO='data:image/png;base64,'+base64.b64encode(open(os.path.join(SRC,'design','logo-soucy-aquatik.png'),'rb').read()).decode()
 html='''<!DOCTYPE html>

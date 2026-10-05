@@ -1,0 +1,89 @@
+<!-- sa-admin › Sites & Clients : onglets Clients (client → sites → installations) et Lieux à classer — inséré par assemble.py ; logique : clients.js -->
+<div role="tablist" style="display:flex;gap:2px;margin:0 0 16px;border-bottom:1px solid var(--color-divider);overflow-x:auto">
+  <sc-for list="{{ sitesTabs }}" as="t"><button role="tab" aria-selected="{{ t.on }}" onClick="{{ t.go }}" style="all:unset;cursor:pointer;white-space:nowrap;padding:10px 12px;font:600 16px var(--font-heading);border-bottom:3px solid {{ t.bd }}">{{ t.label }}</button></sc-for>
+</div>
+<sc-if value="{{ cl.noDb }}"><div style="border:1px dashed var(--color-text);padding:12px 14px;margin-bottom:16px;font-size:14px">La base n’a pas encore les fiches clients : cet écran sera actif dès que la mise à jour sera appliquée.</div></sc-if>
+
+<sc-if value="{{ isClTab }}">
+<div style="display:flex;flex-direction:column;gap:18px">
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <input class="input" type="search" placeholder="Rechercher un client ou un site…" aria-label="Rechercher un client ou un site" value="{{ cl.q }}" onInput="{{ cl.onQ }}" style="max-width:320px">
+    <span style="flex:1;font-size:13px">{{ cl.resume }}</span>
+    <button class="btn btn-primary" onClick="{{ cl.nouveau }}" style="white-space:nowrap">Nouveau client</button>
+  </div>
+  <sc-for list="{{ cl.groupes }}" as="g">
+    <section class="blueprint" data-client="{{ g.nom }}" style="display:flex;flex-direction:column">
+      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      <div style="padding:12px 18px;border-bottom:1px solid var(--color-divider);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <h3 style="margin:0;font-size:22px;flex:1;min-width:0">{{ g.nom }}</h3>
+        <sc-if value="{{ g.interne }}"><span style="font-size:12px;padding:2px 8px;border:1px solid var(--color-text)">Soucy Aquatik · interne</span></sc-if>
+        <span style="font-size:13px">{{ g.sous }}</span>
+        <sc-if value="{{ g.edit }}"><button class="btn btn-ghost" onClick="{{ g.edit }}" style="white-space:nowrap">Modifier</button></sc-if>
+      </div>
+      <sc-if value="{{ g.vide }}"><div style="padding:12px 18px;font-size:14px">Aucun site rattaché. Choisissez ce client dans la colonne « Client » d’un site.</div></sc-if>
+      <div style="overflow-x:auto">
+      <table class="table" style="font-size:14px">
+        <thead><tr><th style="text-transform:none;letter-spacing:0;font-size:12px;padding-left:18px">Site</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Bassins et installations</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Punchs</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Client</th><th style="text-transform:none;letter-spacing:0;font-size:12px;padding-right:18px">Fusionner dans…</th></tr></thead>
+        <tbody>
+          <sc-for list="{{ g.sites }}" as="s">
+            <tr data-site="{{ s.nom }}">
+              <td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px"><button onClick="{{ s.go }}" style="all:unset;cursor:pointer;display:flex;flex-direction:column;line-height:1.25"><span style="font-weight:500;text-decoration:underline">{{ s.nom }}</span><span style="font-size:12px">{{ s.addr }}</span></button></td>
+              <td style="padding:var(--sa-row,10px) 8px;font-size:13px">{{ s.inst }}</td>
+              <td style="padding:var(--sa-row,10px) 8px;font-variant-numeric:tabular-nums">{{ s.n }}</td>
+              <td style="padding:var(--sa-row,10px) 8px"><select class="input" aria-label="Client du site" onChange="{{ s.onClient }}" style="min-width:180px"><sc-for list="{{ s.clientOpts }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></sc-for></select></td>
+              <td style="padding:var(--sa-row,10px) 18px var(--sa-row,10px) 8px"><select class="input" aria-label="Fusionner dans" onChange="{{ s.onMerge }}" style="min-width:200px"><sc-for list="{{ s.mergeOpts }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></sc-for></select></td>
+            </tr>
+          </sc-for>
+        </tbody>
+      </table>
+      </div>
+    </section>
+  </sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ isLxTab }}">
+<div style="display:flex;flex-direction:column;gap:14px">
+  <div style="font-size:14px;max-width:820px">Lieux tapés à la main dans les punchs sans être reliés à un site. Choisissez le bon site puis « Classer » : tous les punchs passés de ce lieu y sont rattachés, et les prochains punchs portant ce nom le seront automatiquement. Entrepôt, bureau et shop se classent dans les sites de Soucy Aquatik.</div>
+  <sc-if value="{{ cl.lxLoading }}"><div>Lecture de tous les punchs…</div></sc-if>
+  <sc-if value="{{ cl.lxVide }}"><div style="border:1px solid var(--color-text);padding:12px 14px;display:flex;gap:8px;align-items:center"><sa-i n="check" s="16" w="2"></sa-i><span>Tous les lieux des punchs sont classés.</span></div></sc-if>
+  <section class="blueprint" style="display:flex;flex-direction:column;overflow-x:auto">
+    <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+    <table class="table" style="font-size:14px">
+      <thead><tr><th style="text-transform:none;letter-spacing:0;font-size:12px;padding-left:18px">Lieu saisi</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Punchs</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Dernier</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Site</th><th style="padding-right:18px"></th></tr></thead>
+      <tbody>
+        <sc-for list="{{ cl.lieux }}" as="l">
+          <tr data-lieu="{{ l.lieu }}">
+            <td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px"><div style="display:flex;flex-direction:column;line-height:1.25"><span style="font-weight:500">{{ l.lieu }}</span><span style="font-size:12px">{{ l.variantes }}</span></div></td>
+            <td style="padding:var(--sa-row,10px) 8px;font-variant-numeric:tabular-nums">{{ l.n }}</td>
+            <td style="padding:var(--sa-row,10px) 8px;white-space:nowrap">{{ l.dernier }}</td>
+            <td style="padding:var(--sa-row,10px) 8px"><select class="input" aria-label="Site pour {{ l.lieu }}" onChange="{{ l.onSite }}" style="min-width:240px"><sc-for list="{{ l.opts }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></sc-for></select><sc-if value="{{ l.sugg }}"><div style="font-size:12px;margin-top:3px">{{ l.sugg }}</div></sc-if></td>
+            <td style="padding:var(--sa-row,10px) 18px var(--sa-row,10px) 8px"><button class="btn btn-primary" onClick="{{ l.classer }}" disabled="{{ l.off }}" style="white-space:nowrap">Classer</button></td>
+          </tr>
+        </sc-for>
+      </tbody>
+    </table>
+  </section>
+</div>
+</sc-if>
+
+<sc-if value="{{ cl.dlgClient }}">
+<div class="dialog-backdrop" onClick="{{ cl.closeBg }}" style="z-index:60"><div class="dialog" onClick="{{ stop }}" style="width:min(480px,100%);background:var(--color-bg);gap:16px;padding:22px 24px;border:1px solid var(--color-text)">
+  <div style="display:flex;align-items:center;justify-content:space-between"><span class="dialog-title" style="font-size:24px">{{ cl.ceTitre }}</span><button class="btn btn-ghost btn-icon" onClick="{{ cl.close }}" aria-label="Fermer"><sa-i n="x" s="20"></sa-i></button></div>
+  <div class="field"><label>Nom du client</label><input class="input" aria-label="Nom du client" value="{{ cl.ceNom }}" onInput="{{ cl.onCeNom }}" placeholder="Ex. Ville de Lévis"></div>
+  <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" checked="{{ cl.ceInterne }}" onChange="{{ cl.onCeInterne }}"><span>Lieu interne de Soucy Aquatik (entrepôt, bureau, shop)</span></label>
+  <div class="dialog-actions" style="margin-top:0"><button class="btn btn-secondary" onClick="{{ cl.close }}" style="white-space:nowrap">Annuler</button><button class="btn btn-primary" onClick="{{ cl.ceSave }}" style="white-space:nowrap">Enregistrer</button></div>
+</div></div>
+</sc-if>
+
+<sc-if value="{{ cl.dlgMerge }}">
+<div class="dialog-backdrop" onClick="{{ cl.closeBg }}" style="z-index:60"><div class="dialog" onClick="{{ stop }}" style="width:min(560px,100%);background:var(--color-bg);gap:16px;padding:22px 24px;border:1px solid var(--color-text)">
+  <div style="display:flex;align-items:center;justify-content:space-between"><span class="dialog-title" style="font-size:24px">Fusionner deux sites</span><button class="btn btn-ghost btn-icon" onClick="{{ cl.close }}" aria-label="Fermer"><sa-i n="x" s="20"></sa-i></button></div>
+  <div style="font-size:15px">« <b>{{ cl.mSrc }}</b> » sera fusionné dans « <b>{{ cl.mDst }}</b> ». Punchs, relevés, photos, demandes, contrats et accès client suivent le site conservé. Rien n’est effacé : l’ancienne fiche reste dans l’historique.</div>
+  <sc-if value="{{ cl.mSansBassin }}">
+    <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" checked="{{ cl.mGarde }}" onChange="{{ cl.onMGarde }}"><span>Garder comme installation du site (salle mécanique, fontainiers…)</span></label>
+    <sc-if value="{{ cl.mGarde }}"><div class="field"><label>Nom de l’installation</label><input class="input" aria-label="Nom de l’installation" value="{{ cl.mInst }}" onInput="{{ cl.onMInst }}"></div></sc-if>
+  </sc-if>
+  <div class="dialog-actions" style="margin-top:0"><button class="btn btn-secondary" onClick="{{ cl.close }}" style="white-space:nowrap">Annuler</button><button class="btn btn-primary" onClick="{{ cl.mGo }}" style="white-space:nowrap">{{ cl.mLabel }}</button></div>
+</div></div>
+</sc-if>
