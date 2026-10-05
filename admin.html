@@ -960,8 +960,94 @@ html.nav-repli .sa-shell{grid-template-columns:72px minmax(0,1fr)!important}html
       </template>
 
       <!-- ═════ SITES ═════ -->
-      <template data-sc="if" value="{{ isSites }}"><template data-sc="if" value="{{ noNouveaux }}"><div style="margin:12px 28px 0;padding:12px 14px;border:1px dashed var(--color-text);font-size:15px">Aucun site détecté automatiquement en attente.</div></template>
-        <div style="display:flex;flex-direction:column;gap:26px">
+      <template data-sc="if" value="{{ isSites }}"><div role="tablist" style="display:flex;gap:2px;margin:0 0 16px;border-bottom:1px solid var(--color-divider);overflow-x:auto">
+  <template data-sc="for" list="{{ sitesTabs }}" as="t"><button role="tab" aria-selected="{{ t.on }}" onClick="{{ t.go }}" style="all:unset;cursor:pointer;white-space:nowrap;padding:10px 12px;font:600 16px var(--font-heading);border-bottom:3px solid {{ t.bd }}">{{ t.label }}</button></template>
+</div>
+<template data-sc="if" value="{{ cl.noDb }}"><div style="border:1px dashed var(--color-text);padding:12px 14px;margin-bottom:16px;font-size:14px">La base n’a pas encore les fiches clients : cet écran sera actif dès que la mise à jour sera appliquée.</div></template>
+
+<template data-sc="if" value="{{ isClTab }}">
+<div style="display:flex;flex-direction:column;gap:18px">
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <input class="input" type="search" placeholder="Rechercher un client ou un site…" aria-label="Rechercher un client ou un site" value="{{ cl.q }}" onInput="{{ cl.onQ }}" style="max-width:320px">
+    <span style="flex:1;font-size:13px">{{ cl.resume }}</span>
+    <button class="btn btn-primary" onClick="{{ cl.nouveau }}" style="white-space:nowrap">Nouveau client</button>
+  </div>
+  <template data-sc="for" list="{{ cl.groupes }}" as="g">
+    <section class="blueprint" data-client="{{ g.nom }}" style="display:flex;flex-direction:column">
+      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      <div style="padding:12px 18px;border-bottom:1px solid var(--color-divider);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <h3 style="margin:0;font-size:22px;flex:1;min-width:0">{{ g.nom }}</h3>
+        <template data-sc="if" value="{{ g.interne }}"><span style="font-size:12px;padding:2px 8px;border:1px solid var(--color-text)">Soucy Aquatik · interne</span></template>
+        <span style="font-size:13px">{{ g.sous }}</span>
+        <template data-sc="if" value="{{ g.edit }}"><button class="btn btn-ghost" onClick="{{ g.edit }}" style="white-space:nowrap">Modifier</button></template>
+      </div>
+      <template data-sc="if" value="{{ g.vide }}"><div style="padding:12px 18px;font-size:14px">Aucun site rattaché. Choisissez ce client dans la colonne « Client » d’un site.</div></template>
+      <div style="overflow-x:auto">
+      <table class="table" style="font-size:14px">
+        <thead><tr><th style="text-transform:none;letter-spacing:0;font-size:12px;padding-left:18px">Site</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Bassins et installations</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Punchs</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Client</th><th style="text-transform:none;letter-spacing:0;font-size:12px;padding-right:18px">Fusionner dans…</th></tr></thead>
+        <tbody>
+          <template data-sc="for" list="{{ g.sites }}" as="s">
+            <tr data-site="{{ s.nom }}">
+              <td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px"><button onClick="{{ s.go }}" style="all:unset;cursor:pointer;display:flex;flex-direction:column;line-height:1.25"><span style="font-weight:500;text-decoration:underline">{{ s.nom }}</span><span style="font-size:12px">{{ s.addr }}</span></button></td>
+              <td style="padding:var(--sa-row,10px) 8px;font-size:13px">{{ s.inst }}</td>
+              <td style="padding:var(--sa-row,10px) 8px;font-variant-numeric:tabular-nums">{{ s.n }}</td>
+              <td style="padding:var(--sa-row,10px) 8px"><select class="input" aria-label="Client du site" onChange="{{ s.onClient }}" style="min-width:180px"><template data-sc="for" list="{{ s.clientOpts }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select></td>
+              <td style="padding:var(--sa-row,10px) 18px var(--sa-row,10px) 8px"><select class="input" aria-label="Fusionner dans" onChange="{{ s.onMerge }}" style="min-width:200px"><template data-sc="for" list="{{ s.mergeOpts }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+      </div>
+    </section>
+  </template>
+</div>
+</template>
+
+<template data-sc="if" value="{{ isLxTab }}">
+<div style="display:flex;flex-direction:column;gap:14px">
+  <div style="font-size:14px;max-width:820px">Lieux tapés à la main dans les punchs sans être reliés à un site. Choisissez le bon site puis « Classer » : tous les punchs passés de ce lieu y sont rattachés, et les prochains punchs portant ce nom le seront automatiquement. Entrepôt, bureau et shop se classent dans les sites de Soucy Aquatik.</div>
+  <template data-sc="if" value="{{ cl.lxLoading }}"><div>Lecture de tous les punchs…</div></template>
+  <template data-sc="if" value="{{ cl.lxVide }}"><div style="border:1px solid var(--color-text);padding:12px 14px;display:flex;gap:8px;align-items:center"><sa-i n="check" s="16" w="2"></sa-i><span>Tous les lieux des punchs sont classés.</span></div></template>
+  <section class="blueprint" style="display:flex;flex-direction:column;overflow-x:auto">
+    <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+    <table class="table" style="font-size:14px">
+      <thead><tr><th style="text-transform:none;letter-spacing:0;font-size:12px;padding-left:18px">Lieu saisi</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Punchs</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Dernier</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Site</th><th style="padding-right:18px"></th></tr></thead>
+      <tbody>
+        <template data-sc="for" list="{{ cl.lieux }}" as="l">
+          <tr data-lieu="{{ l.lieu }}">
+            <td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px"><div style="display:flex;flex-direction:column;line-height:1.25"><span style="font-weight:500">{{ l.lieu }}</span><span style="font-size:12px">{{ l.variantes }}</span></div></td>
+            <td style="padding:var(--sa-row,10px) 8px;font-variant-numeric:tabular-nums">{{ l.n }}</td>
+            <td style="padding:var(--sa-row,10px) 8px;white-space:nowrap">{{ l.dernier }}</td>
+            <td style="padding:var(--sa-row,10px) 8px"><select class="input" aria-label="Site pour {{ l.lieu }}" onChange="{{ l.onSite }}" style="min-width:240px"><template data-sc="for" list="{{ l.opts }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select><template data-sc="if" value="{{ l.sugg }}"><div style="font-size:12px;margin-top:3px">{{ l.sugg }}</div></template></td>
+            <td style="padding:var(--sa-row,10px) 18px var(--sa-row,10px) 8px"><button class="btn btn-primary" onClick="{{ l.classer }}" disabled="{{ l.off }}" style="white-space:nowrap">Classer</button></td>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+  </section>
+</div>
+</template>
+
+<template data-sc="if" value="{{ cl.dlgClient }}">
+<div class="dialog-backdrop" onClick="{{ cl.closeBg }}" style="z-index:60"><div class="dialog" onClick="{{ stop }}" style="width:min(480px,100%);background:var(--color-bg);gap:16px;padding:22px 24px;border:1px solid var(--color-text)">
+  <div style="display:flex;align-items:center;justify-content:space-between"><span class="dialog-title" style="font-size:24px">{{ cl.ceTitre }}</span><button class="btn btn-ghost btn-icon" onClick="{{ cl.close }}" aria-label="Fermer"><sa-i n="x" s="20"></sa-i></button></div>
+  <div class="field"><label>Nom du client</label><input class="input" aria-label="Nom du client" value="{{ cl.ceNom }}" onInput="{{ cl.onCeNom }}" placeholder="Ex. Ville de Lévis"></div>
+  <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" checked="{{ cl.ceInterne }}" onChange="{{ cl.onCeInterne }}"><span>Lieu interne de Soucy Aquatik (entrepôt, bureau, shop)</span></label>
+  <div class="dialog-actions" style="margin-top:0"><button class="btn btn-secondary" onClick="{{ cl.close }}" style="white-space:nowrap">Annuler</button><button class="btn btn-primary" onClick="{{ cl.ceSave }}" style="white-space:nowrap">Enregistrer</button></div>
+</div></div>
+</template>
+
+<template data-sc="if" value="{{ cl.dlgMerge }}">
+<div class="dialog-backdrop" onClick="{{ cl.closeBg }}" style="z-index:60"><div class="dialog" onClick="{{ stop }}" style="width:min(560px,100%);background:var(--color-bg);gap:16px;padding:22px 24px;border:1px solid var(--color-text)">
+  <div style="display:flex;align-items:center;justify-content:space-between"><span class="dialog-title" style="font-size:24px">Fusionner deux sites</span><button class="btn btn-ghost btn-icon" onClick="{{ cl.close }}" aria-label="Fermer"><sa-i n="x" s="20"></sa-i></button></div>
+  <div style="font-size:15px">« <b>{{ cl.mSrc }}</b> » sera fusionné dans « <b>{{ cl.mDst }}</b> ». Punchs, relevés, photos, demandes, contrats et accès client suivent le site conservé. Rien n’est effacé : l’ancienne fiche reste dans l’historique.</div>
+  <template data-sc="if" value="{{ cl.mSansBassin }}">
+    <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" checked="{{ cl.mGarde }}" onChange="{{ cl.onMGarde }}"><span>Garder comme installation du site (salle mécanique, fontainiers…)</span></label>
+    <template data-sc="if" value="{{ cl.mGarde }}"><div class="field"><label>Nom de l’installation</label><input class="input" aria-label="Nom de l’installation" value="{{ cl.mInst }}" onInput="{{ cl.onMInst }}"></div></template>
+  </template>
+  <div class="dialog-actions" style="margin-top:0"><button class="btn btn-secondary" onClick="{{ cl.close }}" style="white-space:nowrap">Annuler</button><button class="btn btn-primary" onClick="{{ cl.mGo }}" style="white-space:nowrap">{{ cl.mLabel }}</button></div>
+</div></div>
+</template><div style="display:{{ sitesRepDisp }};flex-direction:column;gap:26px"><template data-sc="if" value="{{ noNouveaux }}"><div style="margin:12px 28px 0;padding:12px 14px;border:1px dashed var(--color-text);font-size:15px">Aucun site détecté automatiquement en attente.</div></template>
           <section style="display:flex;flex-direction:column;gap:12px">
             <div style="display:flex;align-items:baseline;justify-content:space-between"><h3 style="margin:0;font-size:22px">Détectés automatiquement · à valider</h3><span style="font-size:13px">À partir des punchs GPS et des bons de livraison</span></div>
             <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:24px">
@@ -2193,17 +2279,20 @@ Comp.prototype.load=function(){
     ftAll:soft('feuilles_temps?select=uid,week,total_h',[]),fact:soft('facturation?select=*',[]),proj:soft('projets_excel?select=*',[]),
     statut:soft('comptes?select=id,statut,email',[]),sond:soft('sondages?select=id,slug,titre,client,actif,created_at&order=created_at.desc',[]),
     geo:soft('punch_gps_log?select=site_id,emp,lat,lng,acc,date,heure,lieu&lat=not.is.null&order=date.desc,heure.desc&limit=800',[]),
-    inv:soft('inventaire?select=id,nom,qte,seuil',[]),flotte:soft('flotte?select=id,nom,plaque',[])};
+    inv:soft('inventaire?select=id,nom,qte,seuil',[]),flotte:soft('flotte?select=id,nom,plaque',[]),
+    /* clients et lieux classés : absents tant que la migration 2026-10-05 n'est pas appliquée (null = pas encore disponible) */
+    cli:get('clients?select=id,nom,interne,notes&order=nom.asc').catch(function(){return null;}),scl:get('sites?select=id,client_id').catch(function(){return[];}),ali:get('lieux_alias?select=lieu,site_id').catch(function(){return[];})};
   var K=Object.keys(Q);
   return Promise.all(K.map(function(k){return Q[k];})).then(function(arr){
     var r={};K.forEach(function(k,i){r[k]=arr[i];});
     var T={};r.types.forEach(function(t){T[t.code]=t;});var ct={};r.contrats.forEach(function(c){ct[c.site_id]=c;});
     var sites=r.sites.map(function(s){var c=ct[s.id],code=(c&&c.type_code&&T[c.type_code])?c.type_code:'GEN';return{id:String(s.id),interne:isInterne(s.type,s.nom),nom:s.nom||'(sans nom)',addr:s.addr||'',ville:villeOf(s.addr),type:code,contrat:(c&&c.code)||'',notes:s.notes||'',tel:s.tel||'',bassins:Array.isArray(s.bassins)?s.bassins:[],gps:s.gps&&s.gps.lat!=null?s.gps:null};})
       .sort(function(a,b){return a.nom.localeCompare(b.nom,'fr');});
-    var byId={};sites.forEach(function(s){byId[s.id]=s;s.merged=/^Fusionné →/.test(s.notes);});var sitesAll=sites;sites=sites.filter(function(s){return!s.merged;});
+    var cli=r.cli||[],cint={},scl={},alias={};cli.forEach(function(c){if(c.interne)cint[c.id]=1;});(r.scl||[]).forEach(function(x){scl[x.id]=x.client_id||null;});(r.ali||[]).forEach(function(a){alias[a.lieu]=String(a.site_id);});
+    var byId={};sites.forEach(function(s){byId[s.id]=s;s.merged=/^Fusionné →/.test(s.notes);s.client_id=scl[s.id]||null;if(cint[s.client_id])s.interne=true;});var sitesAll=sites;sites=sites.filter(function(s){return!s.merged;});
     var statut={},email={};(r.statut||[]).forEach(function(c){statut[c.id]=c.statut;if(c.email)email[c.id]=c.email;});
     (r.comptes||[]).forEach(function(c){if(c.email==null&&email[c.id])c.email=email[c.id];});
-    self.D={sites:sites,sitesAll:sitesAll,byId:byId,types:T,comptes:r.comptes,ft:r.ft,wo:r.wo,rel:r.rel.map(function(x){x.site_id=String(x.site_id);return x;}).filter(function(x){var s=byId[x.site_id];return!(s?s.interne:isInterne('',x.site_nom));}),gps:r.gps,nPlan:r.plan.length,nPt:r.pt.length,dem:r.dem||[],ftAll:r.ftAll||[],fact:r.fact||[],proj:r.proj||[],sond:r.sond||[],geo:r.geo||[],inv:r.inv||[],flotte:r.flotte||[],cat:r.cat||[],statut:statut,today:today};
+    self.D={sites:sites,sitesAll:sitesAll,byId:byId,types:T,comptes:r.comptes,ft:r.ft,wo:r.wo,rel:r.rel.map(function(x){x.site_id=String(x.site_id);return x;}).filter(function(x){var s=byId[x.site_id];return!(s?s.interne:isInterne('',x.site_nom));}),gps:r.gps,nPlan:r.plan.length,nPt:r.pt.length,dem:r.dem||[],ftAll:r.ftAll||[],fact:r.fact||[],proj:r.proj||[],sond:r.sond||[],geo:r.geo||[],inv:r.inv||[],flotte:r.flotte||[],cat:r.cat||[],statut:statut,today:today,clients:cli,hasClients:!!r.cli,alias:alias};
     self.loadedAt=new Date();self.err='';self.softErr=SOFT_ERR.slice();
     if(!self.state.inspSite){var w=self.D.rel.length?String(self.D.rel[self.D.rel.length-1].site_id):(sites[0]&&sites[0].id);self.state.inspSite=w||null;}
   }).catch(function(e){self.err='Chargement impossible : '+netMsg(e);});
@@ -2262,7 +2351,8 @@ Comp.prototype.saveSite=function(){var self=this,e=this.state.sed;if(!e||e.busy)
   rest('PATCH','sites?id=eq.'+encodeURIComponent(e.id),{nom:String(e.nom).trim(),addr:String(e.addr||'').trim(),updated_at:now}).then(function(){return rest('POST','contrats',{site_id:e.id,type_code:e.type,code:e.code||null,actif:true,updated_at:now},'resolution=merge-duplicates,return=minimal');})
    .then(function(){self.setState({sed:null});self.flash('Site enregistré');return self.reloadAll();}).catch(function(err){self.setState({sed:Object.assign({},e,{busy:false})});self.flash('Échec — rien n’a été modifié : '+err.message);});};
 Comp.prototype.siteAction=function(id,mode,canonId){var self=this,D=this.D,s=D.byId[id],c=canonId&&D.byId[canonId],now=new Date().toISOString(),d=iso(new Date()),orig=String(s.notes||'').replace(/Ajouté automatiquement depuis un punch\.?\s*/i,'').trim(),notes,p;
-  if(mode==='merge'&&c){notes=('Fusionné → '+c.nom+' ['+c.id+'] le '+d+'. '+orig).trim();
+  if(mode==='merge'&&c&&D.hasClients){p=rpc('site_fusionner',{p_src:id,p_dst:c.id,p_par:this.user.id,p_installation:null});}
+  else if(mode==='merge'&&c){notes=('Fusionné → '+c.nom+' ['+c.id+'] le '+d+'. '+orig).trim();
     p=rest('PATCH','sites?id=eq.'+encodeURIComponent(id),{notes:notes,updated_at:now})
      .then(function(){return rest('PATCH','planning_tasks?site_id=eq.'+encodeURIComponent(id),{site_id:c.id,site_nom:c.nom,updated_at:now});})
      .then(function(){return rest('PATCH','plan?site_id=eq.'+encodeURIComponent(id),{site_id:c.id,updated_at:now});})
@@ -3182,7 +3272,7 @@ Comp.prototype.monVals=function(){var self=this,st=this.state,D=this.D;if(!D)ret
   // Salles mécaniques : une tuile par site ayant au moins un relevé (dernier relevé, valeurs colorées, qui est sur place)
   var last={};D.rel.forEach(function(r){var k=String(r.site_id),p=last[k];if(!p||(r.date+(r.heure||''))>(p.date+(p.heure||'')))last[k]=r;});
   var onSite={};var wk=iso(mondayOf(now)),di=(now.getDay()+6)%7,nm=this.names();
-  D.ft.forEach(function(f){if(f.week!==wk)return;var d=f.days&&f.days[di];((d&&d.tasks)||[]).forEach(function(t){if(!t.active)return;var s=D.sites.filter(function(x){return String(x.id)===String(t.siteId)||norm(x.nom)===norm(t.lieu);})[0];if(s)(onSite[s.id]=onSite[s.id]||[]).push({nom:nm[f.uid]||f.emp||f.uid,depuis:t.start});});});
+  D.ft.forEach(function(f){if(f.week!==wk)return;var d=f.days&&f.days[di];((d&&d.tasks)||[]).forEach(function(t){if(!t.active)return;var s=self.siteOfTask(t);if(s)(onSite[s.id]=onSite[s.id]||[]).push({nom:nm[f.uid]||f.emp||f.uid,depuis:t.start});});});
   var salles=Object.keys(last).map(function(sid){var r=last[sid],s=D.byId[sid],T=self.T(s?s.type:r.type_code),out=self.outOf(r),nv=nVals(r),age=Math.round((new Date(today+'T12:00:00')-new Date(r.date+'T12:00:00'))/864e5);
     var lvl=out.length?3:(age>7?2:(nv?0:1)),who=onSite[sid]||[];
     return{_lvl:lvl,_age:age,id:sid,nom:s?s.nom:(r.site_nom||'—'),ville:s?s.ville:'',debit:T.court||'',
@@ -3742,7 +3832,7 @@ Comp.prototype.vals=function(){
   D.comptes.forEach(function(c){if(c.role!=='admin')team[c.id]={c:c,seen:false,task:null,running:false};});
   D.ft.forEach(function(f){var t=team[f.uid];if(!t)return;t.seen=true;if(f.week===wk){var d=f.days&&f.days[di];var ts=(d&&d.tasks)||[];t.n=ts.length;t.task=ts.length?ts[ts.length-1]:null;t.running=ts.some(function(x){return x.active;});var run=ts.filter(function(x){return x.active;})[0];if(run)t.task=run;}});
   var techRows=Object.keys(team).map(function(k){return team[k];}).filter(function(t){return t.seen;}).map(function(t){
-    var nom=(t.c.prenom+' '+t.c.nom).trim(),tk=t.task,s=tk&&(D.byId[String(tk.siteId)]),run=t.running;
+    var nom=(t.c.prenom+' '+t.c.nom).trim(),tk=t.task,s=tk&&self.siteOfTask(tk),run=t.running;
     return{ini:((t.c.prenom||'?')[0]+(t.c.nom||'?')[0]).toUpperCase(),nom:nom,statut:run?'Punché':(tk?'Hors punch':'Aucun punch'),site:tk?(s?s.nom:(tk.lieu||'—')):'—',ville:s?s.ville:'',depuis:run&&tk?tk.start:'—',
       last:tk?((tk.end||tk.start||'')+' · '+(tk.lieu||'')):'—',stBg:run?'var(--color-accent-700)':'transparent',stFg:run?'#ffffff':'var(--color-text)',stBd:run?'var(--color-accent-700)':'var(--color-text)',op:tk?1:0.55,
       go:function(){if(s)self.go('inspections',{inspSite:s.id,inspKey:null});},_run:run};});
@@ -3810,7 +3900,7 @@ Comp.prototype.vals=function(){
   var siteTypeOptions=[{v:'all',l:'Tous les types de bassin'}].concat(typesArr.map(function(k){return{v:k,l:D.types[k].label};})).map(function(o){return Object.assign({},o,{sel:o.v===stype});});
   var sq=norm(st.siteQ||''),lastBy=this.latest();
   var siteRows=D.sites.filter(function(s){return(stype==='all'||s.type===stype)&&(!sq||norm(s.nom+' '+s.addr+' '+s.contrat).indexOf(sq)>=0);}).map(function(s){var r=lastBy[s.id],nb=s.bassins.length,wo=D.wo.filter(function(w){return norm(w.client)===norm(s.nom)&&!woDone(w.status);}).length;
-    return{nom:s.nom,client:nb?nb+' bassin'+(nb>1?'s':''):'1 (par défaut)',ville:s.ville||'—',court:self.T(s.type).court,freq:r?fdate(r.date):'—',tech:wo?wo+' ouvert(s)':'—',gps:s.gps?'Défini':(s.addr?'Adresse':'—'),bassin:s.addr||'sans adresse',contrat:s.contrat||'—',go:function(){self.openSiteEdit(s.id);}};});
+    var cli_=self.clientById(s.client_id);return{nom:s.nom,client:cli_?cli_.nom:'—',ville:(s.ville||'—')+' · '+(nb?nb+' bassin'+(nb>1?'s':''):'1 bassin'),court:self.T(s.type).court,freq:r?fdate(r.date):'—',tech:wo?wo+' ouvert(s)':'—',gps:s.gps?'Défini':(s.addr?'Adresse':'—'),bassin:s.addr||'sans adresse',contrat:s.contrat||'—',go:function(){self.openSiteEdit(s.id);}};});
 
   // ---- TEMPS · SUIVI · CUMUL (lecture seule des feuilles de temps existantes)
   var tMon=addDays(mondayOf(now),7*st.tOff),tWk=iso(tMon),allTeam=D.comptes.filter(function(c){return c.role!=='admin';}),actif=function(id){return D.statut[id]!=='inactif';},team=allTeam.filter(function(c){return actif(c.id);}),cn={};D.comptes.forEach(function(c){cn[c.id]=(c.prenom+' '+c.nom).trim();});
@@ -3830,7 +3920,9 @@ Comp.prototype.vals=function(){
   var planRows=[],pDays=[];
   for(var pi=0;pi<5;pi++){var pdt=addDays(pMon,pi),isT=iso(pdt)===D.today;pDays.push({label:DJ[pi]+' '+pdt.getDate(),bg:isT?'var(--color-text)':'transparent',fg:isT?'var(--color-bg)':'var(--color-text)'});}
   if(PL){var rowsP={},order=[];
-    var addSlot=function(emp,di,slot){if(di<0||di>4)return;var k=emp||'_none';if(!rowsP[k]){rowsP[k]={nom:emp?(cn[emp]||emp):'Non assigné',cells:[[],[],[],[],[]],n:0,min:0};order.push(k);}rowsP[k].cells[di].push(slot);rowsP[k].n++;if(slot._min)rowsP[k].min+=slot._min;};
+    /* Un employé saisi par son nom (« Cheikh Ndiaye ») au lieu de son identifiant (cndiaye) : même ligne, pas une 2e ligne en double */
+    var byNom={};D.comptes.forEach(function(c){byNom[norm((c.prenom+' '+c.nom).trim())]=c.id;byNom[norm(c.id)]=c.id;});
+    var addSlot=function(emp,di,slot){if(di<0||di>4)return;emp=emp&&(byNom[norm(emp)]||emp);var k=emp||'_none';if(!rowsP[k]){rowsP[k]={nom:emp?(cn[emp]||emp):'Non assigné',cells:[[],[],[],[],[]],n:0,min:0};order.push(k);}rowsP[k].cells[di].push(slot);rowsP[k].n++;if(slot._min)rowsP[k].min+=slot._min;};
     team.forEach(function(c){rowsP[c.id]={nom:(c.prenom+' '+c.nom).trim(),cells:[[],[],[],[],[]],n:0,min:0};order.push(c.id);});
     var idx=function(dt){return Math.round((new Date(dt+'T12:00:00')-pMon)/86400000);};
     var mk=function(h,nom,tache,rec,done,mn,kind,id){return{h:h||'—',nom:nom||'—',tache:tache||'',rec:!!rec,bg:done?'var(--color-accent-700)':'var(--color-bg)',fg:done?'#ffffff':'var(--color-text)',_min:mn||0,open:function(e){if(e&&e.stopPropagation)e.stopPropagation();self.openEdit({kind:kind,id:id});}};};
@@ -3937,7 +4029,7 @@ Comp.prototype.vals=function(){
     exportMsg:function(){self.printInsp(is.id);},
     opsFilters:opsFilters,dossiers:dossiers,newDossier:function(){self.openDlg({type:'Bon de travail'});},noDossier:dossiers.length===0,
     nouveaux:nouveaux,siteTypeOptions:siteTypeOptions,siteType:stype,onSiteType:function(e){self.setState({siteType:e.target.value});},siteRows:siteRows,siteCount:siteRows.length,noNouveaux:nouveaux.length===0},
-    this.tempsVals(punchRows),this.empVals(),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals(),this.stockVals(),this.outilsVals(),this.monVals(),this.siteFicheVals(),this.typesVals(),this.carteCtlVals(),this.plan2Vals(),this.calVals(),this.seriesVals(),this.globVals(),this.commVals(),this.inspVals());
+    this.tempsVals(punchRows),this.empVals(),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals(),this.stockVals(),this.outilsVals(),this.monVals(),this.siteFicheVals(),this.typesVals(),this.carteCtlVals(),this.plan2Vals(),this.calVals(),this.seriesVals(),this.globVals(),this.commVals(),this.inspVals(),this.clientsVals());
 };
 Comp.prototype.update=function(){if(!this._host)return;SARender(document.getElementById('tpl'),this._host,this.vals());this.syncMap();var el=this.rootRef.current;if(el)el.style.setProperty('--sa-row','10px');};
 Comp.prototype.mount=function(host){var self=this;this._host=host;var hm=hashMod();if(hm&&TITLES_OK(hm))this.state.mod=hm;this.update();
@@ -4219,6 +4311,105 @@ Comp.prototype.inspVals=function(){
   else iq.pc={types:[],rows:[]};
   return{isInspNew:view!=='tendances',isInspections:view==='tendances',iq:iq,iqTabs:tabs};
 };
+
+/* ---------- sa-admin › Sites & Clients : un client regroupe plusieurs sites ; un site garde ses bassins et installations ----------
+   Inséré dans app.js par assemble.py (même portée : get, rest, rpc, Comp, fdate, iso, norm, auditT…).
+   Base : tables clients, lieux_alias, sites_fusions et fonctions site_fusionner / lieu_classer (docs/sql/MIGRATION_2026-10-05_clients_sites.sql). */
+var CL_TABS=[['clients','Clients'],['lieux','Lieux à classer'],['rep','Répertoire']];
+function lieuKey(s){return String(s||'').trim().toLowerCase();}
+var CL_VIDES=/^(ccnq|ville|de|des|du|la|le|les|l|d|piscine|residence|complexe|locatif|groupe|quai|place|station|et|a|au)$/;
+function clMots(s){return norm(s).split(' ').filter(function(w){return w.length>1&&!CL_VIDES.test(w);});}
+
+/* Site conservé d'un identifiant : suit les fusions (« Fusionné → Nom [id] ») */
+Comp.prototype.siteCanon=function(id){var D=this.D,s=D&&D.byId[String(id)],n=0;
+  while(s&&s.merged&&n++<5){var m=/\[([^\]]+)\]/.exec(s.notes);if(!m||!D.byId[m[1]])break;s=D.byId[m[1]];}return s||null;};
+/* Site d'un punch : identifiant (suivi des fusions), sinon lieu déjà classé, sinon nom identique */
+Comp.prototype.siteOfTask=function(t){var D=this.D;if(!D||!t)return null;
+  var s=t.siteId?this.siteCanon(t.siteId):null;if(s)return s;
+  var a=D.alias&&D.alias[lieuKey(t.lieu)];if(a){s=this.siteCanon(a);if(s)return s;}
+  var k=norm(t.lieu);if(!k)return null;return D.sites.filter(function(x){return norm(x.nom)===k;})[0]||null;};
+
+/* Tous les punchs (lecture à la demande, pour « Lieux à classer » et le nombre de punchs par site) */
+Comp.prototype.clLoadFt=function(force){var self=this;if(this._clFt&&!force)return;this._clFt=1;
+  get('feuilles_temps?select=uid,week,days').then(function(rows){self.clFt=rows||[];self.update();}).catch(function(e){self._clFt=0;self.flash('Lecture des punchs impossible : '+netMsg(e));});};
+Comp.prototype.clStats=function(){var self=this,parSite={},lieux={};
+  (this.clFt||[]).forEach(function(f){(f.days||[]).forEach(function(d,i){((d&&d.tasks)||[]).forEach(function(t){
+    var s=self.siteOfTask(t);if(s){parSite[s.id]=(parSite[s.id]||0)+1;return;}
+    var k=norm(t.lieu);if(!k)return;var date=iso(addDays(new Date(f.week+'T12:00:00'),i)),L=lieux[k]||(lieux[k]={k:k,brut:{},n:0,last:''});
+    L.brut[String(t.lieu)]=(L.brut[String(t.lieu)]||0)+1;L.n++;if(date>L.last)L.last=date;});});});
+  return{parSite:parSite,lieux:Object.keys(lieux).map(function(k){return lieux[k];}).sort(function(a,b){return b.n-a.n;})};};
+/* Site le plus probable pour un lieu saisi à la main : mots en commun avec le nom du site et de son client */
+Comp.prototype.clSuggest=function(lieu){var D=this.D,cn={},m=clMots(lieu),k=norm(lieu),best=null,bs=0;(D.clients||[]).forEach(function(c){cn[c.id]=c.nom;});
+  if(!m.length&&!k)return null;
+  D.sites.forEach(function(s){var nom=norm(s.nom),cli=norm(cn[s.client_id]||''),sm=clMots(s.nom+' '+(cn[s.client_id]||'')),sc=0;
+    m.forEach(function(w){if(sm.indexOf(w)>=0)sc+=2;else if(sm.some(function(x){return x.length>3&&(x.indexOf(w)===0||w.indexOf(x)===0);}))sc+=1;});
+    if(k&&(nom.indexOf(k)>=0||k.indexOf(nom)>=0))sc+=1;if(k&&cli&&k.indexOf(cli)>=0)sc+=0.5;
+    if(s.interne&&/\b(entrepot|bureau|shop|garage)\b/.test(k)&&nom.indexOf(k.split(' ')[0])>=0)sc+=3;
+    if(sc>bs){bs=sc;best=s;}});
+  return bs>=2?best:null;};
+
+Comp.prototype.clSetClient=function(siteId,clientId){var self=this,s=this.D.byId[siteId];
+  rest('PATCH','sites?id=eq.'+encodeURIComponent(siteId),{client_id:clientId||null,updated_at:nowIso()})
+   .then(function(){s.client_id=clientId||null;auditT(self,'MODIFICATION','sites',siteId,{client_id:clientId||null});var c=self.clientById(clientId);self.flash(c?'« '+s.nom+' » rattaché à '+c.nom:'« '+s.nom+' » n’a plus de client');self.update();})
+   .catch(function(e){self.flash('Échec — rien n’a été modifié : '+netMsg(e));});};
+Comp.prototype.clientById=function(id){return(this.D.clients||[]).filter(function(c){return c.id===id;})[0]||null;};
+Comp.prototype.clSaveClient=function(){var self=this,e=this.state.cle;if(!e||e.busy)return;var nom=String(e.nom||'').trim();
+  if(!nom){this.flash('Le nom du client ne peut pas être vide');return;}
+  if((this.D.clients||[]).some(function(c){return c.id!==e.id&&norm(c.nom)===norm(nom);})){this.flash('Un client porte déjà ce nom');return;}
+  var id=e.id||('cl-'+norm(nom).replace(/ /g,'-').slice(0,40)+'-'+Date.now().toString(36).slice(-4)),body={nom:nom,interne:!!e.interne,updated_at:nowIso()};
+  this.setState({cle:Object.assign({},e,{busy:true})});
+  (e.id?rest('PATCH','clients?id=eq.'+encodeURIComponent(id),body):rest('POST','clients',Object.assign({id:id},body)))
+   .then(function(){auditT(self,e.id?'MODIFICATION':'CREATION','clients',id);var site=e.siteId;self.setState({cle:null});self.flash(e.id?'Client enregistré':'Client « '+nom+' » créé');
+     return self.reloadAll().then(function(){if(site)self.clSetClient(site,id);});})
+   .catch(function(err){self.setState({cle:Object.assign({},e,{busy:false})});self.flash('Échec — rien n’a été modifié : '+netMsg(err));});};
+/* Fusion : la base déplace toutes les données liées en une seule opération (site_fusionner) */
+Comp.prototype.clFusionner=function(){var self=this,m=this.state.clm;if(!m||m.busy)return;var s=this.D.byId[m.src],d=this.D.byId[m.dst];
+  this.setState({clm:Object.assign({},m,{busy:true})});
+  rpc('site_fusionner',{p_src:m.src,p_dst:m.dst,p_par:this.user.id,p_installation:m.garde&&!(s.bassins||[]).length?String(m.inst||'').trim()||null:null})
+   .then(function(){auditT(self,'FUSION','sites',m.src,{dans:m.dst});self.setState({clm:null});self.flash('« '+s.nom+' » fusionné dans « '+d.nom+' » — tout l’historique a suivi');self._clFt=0;return self.reloadAll();})
+   .catch(function(e){self.setState({clm:Object.assign({},m,{busy:false})});self.flash('Échec — rien n’a été fusionné : '+netMsg(e));});};
+Comp.prototype.clClasser=function(L,siteId){var self=this,s=this.D.byId[siteId];if(!s)return;
+  rpc('lieu_classer',{p_lieux:Object.keys(L.brut),p_site:siteId,p_par:this.user.id})
+   .then(function(n){auditT(self,'CLASSEMENT','lieux_alias',L.k,{site:siteId});Object.keys(L.brut).forEach(function(b){self.D.alias[lieuKey(b)]=siteId;});
+     self.flash('« '+Object.keys(L.brut)[0]+' » classé dans « '+s.nom+' » ('+L.n+' punch'+(L.n>1?'s':'')+')');var ls=Object.assign({},self.state.lieuSel);delete ls[L.k];self.setState({lieuSel:ls});})
+   .catch(function(e){self.flash('Échec — rien n’a été classé : '+netMsg(e));});};
+
+Comp.prototype.clientsVals=function(){var self=this,st=this.state,D=this.D;
+  var off={sitesTabs:[],isClTab:false,isLxTab:false,sitesRepDisp:'flex',cl:{}};
+  if(!D||st.mod!=='sites')return off;
+  var tab=st.sitesTab||'clients',noDb=!D.hasClients;
+  if(tab!=='rep'&&!noDb)this.clLoadFt();
+  var S=this.clStats(),clients=(D.clients||[]).slice().sort(function(a,b){return(a.interne-b.interne)||a.nom.localeCompare(b.nom,'fr');});
+  var nLieux=S.lieux.length;
+  var tabs=CL_TABS.map(function(t){var on=t[0]===tab;return{label:t[1]+(t[0]==='lieux'&&self.clFt&&nLieux?' ('+nLieux+')':''),on:on,bd:on?'var(--color-text)':'transparent',go:function(){self.setState({sitesTab:t[0]});}};});
+  var cl={noDb:noDb&&tab!=='rep',q:st.clQ||'',onQ:function(e){self.setState({clQ:e.target.value});},nouveau:function(){self.setState({cle:{id:null,nom:'',interne:false}});},
+    close:function(){self.setState({cle:null,clm:null});},closeBg:function(e){if(e.target===e.currentTarget)self.setState({cle:null,clm:null});}};
+  if(tab==='clients'&&!noDb){var q=norm(st.clQ||''),cOpts=function(cur){return[{v:'',l:'— Aucun client —',sel:!cur}].concat(clients.map(function(c){return{v:c.id,l:c.nom+(c.interne?' (interne)':''),sel:c.id===cur};})).concat([{v:'__new',l:'+ Nouveau client…',sel:false}]);};
+    var row=function(s){var others=D.sites.filter(function(x){return x.id!==s.id;});
+      return{nom:s.nom,addr:s.addr||'sans adresse',inst:(s.bassins||[]).map(function(b){return b.nom;}).filter(Boolean).join(' · ')||'—',n:self.clFt?(S.parSite[s.id]||0):'…',go:function(){self.openSiteFiche(s.id);},
+        clientOpts:cOpts(s.client_id),onClient:function(e){var v=e.target.value;if(v==='__new'){e.target.value=s.client_id||'';self.setState({cle:{id:null,nom:'',interne:false,siteId:s.id}});return;}self.clSetClient(s.id,v);},
+        mergeOpts:[{v:'',l:'—',sel:true}].concat(others.map(function(x){return{v:x.id,l:x.nom,sel:false};})),
+        onMerge:function(e){var v=e.target.value;e.target.value='';if(!v)return;var d=D.byId[v],rest_=norm(s.nom).replace(norm(d.nom),'').trim();
+          self.setState({clm:{src:s.id,dst:v,garde:!(s.bassins||[]).length&&!!rest_,inst:rest_?s.nom.split(/\s+-\s+/).pop():''}});}};};
+    var match=function(s,c){return!q||norm(s.nom+' '+s.addr+' '+(c?c.nom:'')).indexOf(q)>=0;};
+    var groupes=clients.map(function(c){var ss=D.sites.filter(function(s){return s.client_id===c.id&&match(s,c);});
+      return{nom:c.nom,interne:!!c.interne,sous:ss.length+' site'+(ss.length>1?'s':''),vide:!ss.length,sites:ss.map(row),_ok:!q||ss.length||norm(c.nom).indexOf(q)>=0,
+        edit:function(){self.setState({cle:{id:c.id,nom:c.nom,interne:!!c.interne}});}};}).filter(function(g){return g._ok;});
+    var sans=D.sites.filter(function(s){return!self.clientById(s.client_id)&&match(s,null);});
+    if(sans.length)groupes.push({nom:'Sites sans client',interne:false,sous:sans.length+' à rattacher',vide:false,sites:sans.map(row),edit:null});
+    cl.groupes=groupes;cl.resume=clients.length+' client'+(clients.length>1?'s':'')+' · '+D.sites.length+' sites · '+D.sites.filter(function(s){return!self.clientById(s.client_id);}).length+' sans client';}
+  if(tab==='lieux'&&!noDb){var sel=st.lieuSel||{},sOpts=D.sites.slice().sort(function(a,b){var ca=(self.clientById(a.client_id)||{}).nom||'~',cb=(self.clientById(b.client_id)||{}).nom||'~';return ca.localeCompare(cb,'fr')||a.nom.localeCompare(b.nom,'fr');});
+    cl.lxLoading=!this.clFt;cl.lxVide=!!this.clFt&&!nLieux;
+    cl.lieux=S.lieux.slice(0,150).map(function(L){var sg=self.clSuggest(Object.keys(L.brut)[0]),v=sel[L.k]!=null?sel[L.k]:(sg?sg.id:''),br=Object.keys(L.brut);
+      return{lieu:br.sort(function(a,b){return L.brut[b]-L.brut[a];})[0],variantes:br.length>1?br.length+' écritures : '+br.slice(0,4).join(' · '):'',n:L.n,dernier:fdate(L.last),sugg:sg&&!sel[L.k]?'Suggestion d’après le nom':'',off:!v,
+        opts:[{v:'',l:'— Choisir un site —',sel:!v}].concat(sOpts.map(function(s){var c=self.clientById(s.client_id);return{v:s.id,l:(c?c.nom+' › ':'')+s.nom,sel:s.id===v};})),
+        onSite:function(e){var o=Object.assign({},self.state.lieuSel);o[L.k]=e.target.value;self.setState({lieuSel:o});},classer:function(){if(v)self.clClasser(L,v);}};});}
+  var ce=st.cle,cm=st.clm,ms=cm&&D.byId[cm.src],md=cm&&D.byId[cm.dst];
+  Object.assign(cl,{dlgClient:!!ce,ceTitre:ce&&ce.id?'Modifier le client':'Nouveau client',ceNom:ce?ce.nom:'',ceInterne:!!(ce&&ce.interne),
+    onCeNom:function(e){self.setState({cle:Object.assign({},self.state.cle,{nom:e.target.value})});},onCeInterne:function(e){self.setState({cle:Object.assign({},self.state.cle,{interne:e.target.checked})});},ceSave:function(){self.clSaveClient();},
+    dlgMerge:!!(ms&&md),mSrc:ms?ms.nom:'',mDst:md?md.nom:'',mSansBassin:!!ms&&!(ms.bassins||[]).length,mGarde:!!(cm&&cm.garde),mInst:cm?cm.inst:'',mLabel:cm&&cm.busy?'Fusion…':'Fusionner',
+    onMGarde:function(e){self.setState({clm:Object.assign({},self.state.clm,{garde:e.target.checked})});},onMInst:function(e){self.setState({clm:Object.assign({},self.state.clm,{inst:e.target.value})});},mGo:function(){self.clFusionner();}});
+  return{sitesTabs:tabs,isClTab:tab==='clients'&&!noDb,isLxTab:tab==='lieux'&&!noDb,sitesRepDisp:tab==='rep'?'flex':'none',cl:cl};};
 
 })();
 </script>

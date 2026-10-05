@@ -55,17 +55,20 @@ Comp.prototype.load=function(){
     ftAll:soft('feuilles_temps?select=uid,week,total_h',[]),fact:soft('facturation?select=*',[]),proj:soft('projets_excel?select=*',[]),
     statut:soft('comptes?select=id,statut,email',[]),sond:soft('sondages?select=id,slug,titre,client,actif,created_at&order=created_at.desc',[]),
     geo:soft('punch_gps_log?select=site_id,emp,lat,lng,acc,date,heure,lieu&lat=not.is.null&order=date.desc,heure.desc&limit=800',[]),
-    inv:soft('inventaire?select=id,nom,qte,seuil',[]),flotte:soft('flotte?select=id,nom,plaque',[])};
+    inv:soft('inventaire?select=id,nom,qte,seuil',[]),flotte:soft('flotte?select=id,nom,plaque',[]),
+    /* clients et lieux classés : absents tant que la migration 2026-10-05 n'est pas appliquée (null = pas encore disponible) */
+    cli:get('clients?select=id,nom,interne,notes&order=nom.asc').catch(function(){return null;}),scl:get('sites?select=id,client_id').catch(function(){return[];}),ali:get('lieux_alias?select=lieu,site_id').catch(function(){return[];})};
   var K=Object.keys(Q);
   return Promise.all(K.map(function(k){return Q[k];})).then(function(arr){
     var r={};K.forEach(function(k,i){r[k]=arr[i];});
     var T={};r.types.forEach(function(t){T[t.code]=t;});var ct={};r.contrats.forEach(function(c){ct[c.site_id]=c;});
     var sites=r.sites.map(function(s){var c=ct[s.id],code=(c&&c.type_code&&T[c.type_code])?c.type_code:'GEN';return{id:String(s.id),interne:isInterne(s.type,s.nom),nom:s.nom||'(sans nom)',addr:s.addr||'',ville:villeOf(s.addr),type:code,contrat:(c&&c.code)||'',notes:s.notes||'',tel:s.tel||'',bassins:Array.isArray(s.bassins)?s.bassins:[],gps:s.gps&&s.gps.lat!=null?s.gps:null};})
       .sort(function(a,b){return a.nom.localeCompare(b.nom,'fr');});
-    var byId={};sites.forEach(function(s){byId[s.id]=s;s.merged=/^Fusionné →/.test(s.notes);});var sitesAll=sites;sites=sites.filter(function(s){return!s.merged;});
+    var cli=r.cli||[],cint={},scl={},alias={};cli.forEach(function(c){if(c.interne)cint[c.id]=1;});(r.scl||[]).forEach(function(x){scl[x.id]=x.client_id||null;});(r.ali||[]).forEach(function(a){alias[a.lieu]=String(a.site_id);});
+    var byId={};sites.forEach(function(s){byId[s.id]=s;s.merged=/^Fusionné →/.test(s.notes);s.client_id=scl[s.id]||null;if(cint[s.client_id])s.interne=true;});var sitesAll=sites;sites=sites.filter(function(s){return!s.merged;});
     var statut={},email={};(r.statut||[]).forEach(function(c){statut[c.id]=c.statut;if(c.email)email[c.id]=c.email;});
     (r.comptes||[]).forEach(function(c){if(c.email==null&&email[c.id])c.email=email[c.id];});
-    self.D={sites:sites,sitesAll:sitesAll,byId:byId,types:T,comptes:r.comptes,ft:r.ft,wo:r.wo,rel:r.rel.map(function(x){x.site_id=String(x.site_id);return x;}).filter(function(x){var s=byId[x.site_id];return!(s?s.interne:isInterne('',x.site_nom));}),gps:r.gps,nPlan:r.plan.length,nPt:r.pt.length,dem:r.dem||[],ftAll:r.ftAll||[],fact:r.fact||[],proj:r.proj||[],sond:r.sond||[],geo:r.geo||[],inv:r.inv||[],flotte:r.flotte||[],cat:r.cat||[],statut:statut,today:today};
+    self.D={sites:sites,sitesAll:sitesAll,byId:byId,types:T,comptes:r.comptes,ft:r.ft,wo:r.wo,rel:r.rel.map(function(x){x.site_id=String(x.site_id);return x;}).filter(function(x){var s=byId[x.site_id];return!(s?s.interne:isInterne('',x.site_nom));}),gps:r.gps,nPlan:r.plan.length,nPt:r.pt.length,dem:r.dem||[],ftAll:r.ftAll||[],fact:r.fact||[],proj:r.proj||[],sond:r.sond||[],geo:r.geo||[],inv:r.inv||[],flotte:r.flotte||[],cat:r.cat||[],statut:statut,today:today,clients:cli,hasClients:!!r.cli,alias:alias};
     self.loadedAt=new Date();self.err='';self.softErr=SOFT_ERR.slice();
     if(!self.state.inspSite){var w=self.D.rel.length?String(self.D.rel[self.D.rel.length-1].site_id):(sites[0]&&sites[0].id);self.state.inspSite=w||null;}
   }).catch(function(e){self.err='Chargement impossible : '+netMsg(e);});
@@ -124,7 +127,8 @@ Comp.prototype.saveSite=function(){var self=this,e=this.state.sed;if(!e||e.busy)
   rest('PATCH','sites?id=eq.'+encodeURIComponent(e.id),{nom:String(e.nom).trim(),addr:String(e.addr||'').trim(),updated_at:now}).then(function(){return rest('POST','contrats',{site_id:e.id,type_code:e.type,code:e.code||null,actif:true,updated_at:now},'resolution=merge-duplicates,return=minimal');})
    .then(function(){self.setState({sed:null});self.flash('Site enregistré');return self.reloadAll();}).catch(function(err){self.setState({sed:Object.assign({},e,{busy:false})});self.flash('Échec — rien n’a été modifié : '+err.message);});};
 Comp.prototype.siteAction=function(id,mode,canonId){var self=this,D=this.D,s=D.byId[id],c=canonId&&D.byId[canonId],now=new Date().toISOString(),d=iso(new Date()),orig=String(s.notes||'').replace(/Ajouté automatiquement depuis un punch\.?\s*/i,'').trim(),notes,p;
-  if(mode==='merge'&&c){notes=('Fusionné → '+c.nom+' ['+c.id+'] le '+d+'. '+orig).trim();
+  if(mode==='merge'&&c&&D.hasClients){p=rpc('site_fusionner',{p_src:id,p_dst:c.id,p_par:this.user.id,p_installation:null});}
+  else if(mode==='merge'&&c){notes=('Fusionné → '+c.nom+' ['+c.id+'] le '+d+'. '+orig).trim();
     p=rest('PATCH','sites?id=eq.'+encodeURIComponent(id),{notes:notes,updated_at:now})
      .then(function(){return rest('PATCH','planning_tasks?site_id=eq.'+encodeURIComponent(id),{site_id:c.id,site_nom:c.nom,updated_at:now});})
      .then(function(){return rest('PATCH','plan?site_id=eq.'+encodeURIComponent(id),{site_id:c.id,updated_at:now});})
@@ -1044,7 +1048,7 @@ Comp.prototype.monVals=function(){var self=this,st=this.state,D=this.D;if(!D)ret
   // Salles mécaniques : une tuile par site ayant au moins un relevé (dernier relevé, valeurs colorées, qui est sur place)
   var last={};D.rel.forEach(function(r){var k=String(r.site_id),p=last[k];if(!p||(r.date+(r.heure||''))>(p.date+(p.heure||'')))last[k]=r;});
   var onSite={};var wk=iso(mondayOf(now)),di=(now.getDay()+6)%7,nm=this.names();
-  D.ft.forEach(function(f){if(f.week!==wk)return;var d=f.days&&f.days[di];((d&&d.tasks)||[]).forEach(function(t){if(!t.active)return;var s=D.sites.filter(function(x){return String(x.id)===String(t.siteId)||norm(x.nom)===norm(t.lieu);})[0];if(s)(onSite[s.id]=onSite[s.id]||[]).push({nom:nm[f.uid]||f.emp||f.uid,depuis:t.start});});});
+  D.ft.forEach(function(f){if(f.week!==wk)return;var d=f.days&&f.days[di];((d&&d.tasks)||[]).forEach(function(t){if(!t.active)return;var s=self.siteOfTask(t);if(s)(onSite[s.id]=onSite[s.id]||[]).push({nom:nm[f.uid]||f.emp||f.uid,depuis:t.start});});});
   var salles=Object.keys(last).map(function(sid){var r=last[sid],s=D.byId[sid],T=self.T(s?s.type:r.type_code),out=self.outOf(r),nv=nVals(r),age=Math.round((new Date(today+'T12:00:00')-new Date(r.date+'T12:00:00'))/864e5);
     var lvl=out.length?3:(age>7?2:(nv?0:1)),who=onSite[sid]||[];
     return{_lvl:lvl,_age:age,id:sid,nom:s?s.nom:(r.site_nom||'—'),ville:s?s.ville:'',debit:T.court||'',
@@ -1604,7 +1608,7 @@ Comp.prototype.vals=function(){
   D.comptes.forEach(function(c){if(c.role!=='admin')team[c.id]={c:c,seen:false,task:null,running:false};});
   D.ft.forEach(function(f){var t=team[f.uid];if(!t)return;t.seen=true;if(f.week===wk){var d=f.days&&f.days[di];var ts=(d&&d.tasks)||[];t.n=ts.length;t.task=ts.length?ts[ts.length-1]:null;t.running=ts.some(function(x){return x.active;});var run=ts.filter(function(x){return x.active;})[0];if(run)t.task=run;}});
   var techRows=Object.keys(team).map(function(k){return team[k];}).filter(function(t){return t.seen;}).map(function(t){
-    var nom=(t.c.prenom+' '+t.c.nom).trim(),tk=t.task,s=tk&&(D.byId[String(tk.siteId)]),run=t.running;
+    var nom=(t.c.prenom+' '+t.c.nom).trim(),tk=t.task,s=tk&&self.siteOfTask(tk),run=t.running;
     return{ini:((t.c.prenom||'?')[0]+(t.c.nom||'?')[0]).toUpperCase(),nom:nom,statut:run?'Punché':(tk?'Hors punch':'Aucun punch'),site:tk?(s?s.nom:(tk.lieu||'—')):'—',ville:s?s.ville:'',depuis:run&&tk?tk.start:'—',
       last:tk?((tk.end||tk.start||'')+' · '+(tk.lieu||'')):'—',stBg:run?'var(--color-accent-700)':'transparent',stFg:run?'#ffffff':'var(--color-text)',stBd:run?'var(--color-accent-700)':'var(--color-text)',op:tk?1:0.55,
       go:function(){if(s)self.go('inspections',{inspSite:s.id,inspKey:null});},_run:run};});
@@ -1672,7 +1676,7 @@ Comp.prototype.vals=function(){
   var siteTypeOptions=[{v:'all',l:'Tous les types de bassin'}].concat(typesArr.map(function(k){return{v:k,l:D.types[k].label};})).map(function(o){return Object.assign({},o,{sel:o.v===stype});});
   var sq=norm(st.siteQ||''),lastBy=this.latest();
   var siteRows=D.sites.filter(function(s){return(stype==='all'||s.type===stype)&&(!sq||norm(s.nom+' '+s.addr+' '+s.contrat).indexOf(sq)>=0);}).map(function(s){var r=lastBy[s.id],nb=s.bassins.length,wo=D.wo.filter(function(w){return norm(w.client)===norm(s.nom)&&!woDone(w.status);}).length;
-    return{nom:s.nom,client:nb?nb+' bassin'+(nb>1?'s':''):'1 (par défaut)',ville:s.ville||'—',court:self.T(s.type).court,freq:r?fdate(r.date):'—',tech:wo?wo+' ouvert(s)':'—',gps:s.gps?'Défini':(s.addr?'Adresse':'—'),bassin:s.addr||'sans adresse',contrat:s.contrat||'—',go:function(){self.openSiteEdit(s.id);}};});
+    var cli_=self.clientById(s.client_id);return{nom:s.nom,client:cli_?cli_.nom:'—',ville:(s.ville||'—')+' · '+(nb?nb+' bassin'+(nb>1?'s':''):'1 bassin'),court:self.T(s.type).court,freq:r?fdate(r.date):'—',tech:wo?wo+' ouvert(s)':'—',gps:s.gps?'Défini':(s.addr?'Adresse':'—'),bassin:s.addr||'sans adresse',contrat:s.contrat||'—',go:function(){self.openSiteEdit(s.id);}};});
 
   // ---- TEMPS · SUIVI · CUMUL (lecture seule des feuilles de temps existantes)
   var tMon=addDays(mondayOf(now),7*st.tOff),tWk=iso(tMon),allTeam=D.comptes.filter(function(c){return c.role!=='admin';}),actif=function(id){return D.statut[id]!=='inactif';},team=allTeam.filter(function(c){return actif(c.id);}),cn={};D.comptes.forEach(function(c){cn[c.id]=(c.prenom+' '+c.nom).trim();});
@@ -1692,7 +1696,9 @@ Comp.prototype.vals=function(){
   var planRows=[],pDays=[];
   for(var pi=0;pi<5;pi++){var pdt=addDays(pMon,pi),isT=iso(pdt)===D.today;pDays.push({label:DJ[pi]+' '+pdt.getDate(),bg:isT?'var(--color-text)':'transparent',fg:isT?'var(--color-bg)':'var(--color-text)'});}
   if(PL){var rowsP={},order=[];
-    var addSlot=function(emp,di,slot){if(di<0||di>4)return;var k=emp||'_none';if(!rowsP[k]){rowsP[k]={nom:emp?(cn[emp]||emp):'Non assigné',cells:[[],[],[],[],[]],n:0,min:0};order.push(k);}rowsP[k].cells[di].push(slot);rowsP[k].n++;if(slot._min)rowsP[k].min+=slot._min;};
+    /* Un employé saisi par son nom (« Cheikh Ndiaye ») au lieu de son identifiant (cndiaye) : même ligne, pas une 2e ligne en double */
+    var byNom={};D.comptes.forEach(function(c){byNom[norm((c.prenom+' '+c.nom).trim())]=c.id;byNom[norm(c.id)]=c.id;});
+    var addSlot=function(emp,di,slot){if(di<0||di>4)return;emp=emp&&(byNom[norm(emp)]||emp);var k=emp||'_none';if(!rowsP[k]){rowsP[k]={nom:emp?(cn[emp]||emp):'Non assigné',cells:[[],[],[],[],[]],n:0,min:0};order.push(k);}rowsP[k].cells[di].push(slot);rowsP[k].n++;if(slot._min)rowsP[k].min+=slot._min;};
     team.forEach(function(c){rowsP[c.id]={nom:(c.prenom+' '+c.nom).trim(),cells:[[],[],[],[],[]],n:0,min:0};order.push(c.id);});
     var idx=function(dt){return Math.round((new Date(dt+'T12:00:00')-pMon)/86400000);};
     var mk=function(h,nom,tache,rec,done,mn,kind,id){return{h:h||'—',nom:nom||'—',tache:tache||'',rec:!!rec,bg:done?'var(--color-accent-700)':'var(--color-bg)',fg:done?'#ffffff':'var(--color-text)',_min:mn||0,open:function(e){if(e&&e.stopPropagation)e.stopPropagation();self.openEdit({kind:kind,id:id});}};};
@@ -1799,7 +1805,7 @@ Comp.prototype.vals=function(){
     exportMsg:function(){self.printInsp(is.id);},
     opsFilters:opsFilters,dossiers:dossiers,newDossier:function(){self.openDlg({type:'Bon de travail'});},noDossier:dossiers.length===0,
     nouveaux:nouveaux,siteTypeOptions:siteTypeOptions,siteType:stype,onSiteType:function(e){self.setState({siteType:e.target.value});},siteRows:siteRows,siteCount:siteRows.length,noNouveaux:nouveaux.length===0},
-    this.tempsVals(punchRows),this.empVals(),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals(),this.stockVals(),this.outilsVals(),this.monVals(),this.siteFicheVals(),this.typesVals(),this.carteCtlVals(),this.plan2Vals(),this.calVals(),this.seriesVals(),this.globVals(),this.commVals(),this.inspVals());
+    this.tempsVals(punchRows),this.empVals(),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals(),this.stockVals(),this.outilsVals(),this.monVals(),this.siteFicheVals(),this.typesVals(),this.carteCtlVals(),this.plan2Vals(),this.calVals(),this.seriesVals(),this.globVals(),this.commVals(),this.inspVals(),this.clientsVals());
 };
 Comp.prototype.update=function(){if(!this._host)return;SARender(document.getElementById('tpl'),this._host,this.vals());this.syncMap();var el=this.rootRef.current;if(el)el.style.setProperty('--sa-row','10px');};
 Comp.prototype.mount=function(host){var self=this;this._host=host;var hm=hashMod();if(hm&&TITLES_OK(hm))this.state.mod=hm;this.update();

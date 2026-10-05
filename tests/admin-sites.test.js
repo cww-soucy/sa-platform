@@ -25,7 +25,7 @@ function tables() {
 test('sites : fiche complète — coordonnées, bassins (paramètres de relevé), équipements, journal', async () => {
   const { page, db, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: tables() });
   await page.waitForFunction(() => window.__admin && window.__admin.D);
-  await page.evaluate(() => window.__admin.go('sites'));
+  await page.evaluate(() => window.__admin.go('sites', { sitesTab: 'rep' }));
   await page.getByPlaceholder('Rechercher un site…').fill('alpha');
   await page.getByRole('row', { name: /Piscine Alpha.*C-001/ }).click();
   await dlg(page).getByText('Skimmer fissuré').waitFor();
@@ -64,7 +64,7 @@ test('sites : modification faite ailleurs pendant l’édition → refusée, rie
 test('sites : nouveau site (nom unique) avec contrat et GPS', async () => {
   const { page, db } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: tables() });
   await page.waitForFunction(() => window.__admin && window.__admin.D);
-  await page.evaluate(() => window.__admin.go('sites'));
+  await page.evaluate(() => window.__admin.go('sites', { sitesTab: 'rep' }));
   await page.getByRole('button', { name: 'Nouveau site' }).click();
   await field(page, 'Nom du site').fill('Piscine Beta');
   await dlg(page).getByRole('button', { name: 'Créer le site' }).click();

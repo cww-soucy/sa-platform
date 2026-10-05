@@ -208,7 +208,8 @@
     "gps",
     "a_valider",
     "cree_par",
-    "cree_le"
+    "cree_le",
+    "client_id"
   ],
   "sorties_inventaire": [
     "id",
@@ -468,5 +469,19 @@
     "ordre",
     "actif",
     "updated_at"
+  ],
+  "clients": [
+    "id",
+    "nom",
+    "interne",
+    "notes",
+    "created_at",
+    "updated_at"
+  ],
+  "lieux_alias": [
+    "lieu",
+    "site_id",
+    "cree_par",
+    "cree_le"
   ]
 }
