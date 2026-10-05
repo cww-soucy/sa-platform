@@ -1,4 +1,7 @@
 -- 2026-10-05 — Premier rangement clients / sites / lieux, validé par Charles dans le fil « Clients, sites et lieux à classer ».
+-- APPLIQUÉ en production le 2026-10-05. Six sites étaient déjà marqués « Fusionné → » par l'ancien bouton (Quai des Flots,
+-- les Fontainiers de Quai des Flots et de Station de la Plage → « CCNQ », Ville de Lévis - Quai Paquet, Complexe L'Aventura, Entrepot) :
+-- ils ne sont pas refusionnés ici ; sa-admin suit déjà leur renvoi.
 -- À lancer UNE fois, après MIGRATION_2026-10-05_clients_sites.sql. Tout passe par site_fusionner / lieu_classer : rien n'est effacé,
 -- chaque fusion est tracée dans sites_fusions et l'historique des feuilles de temps garde l'ancienne version.
 begin;
@@ -25,20 +28,14 @@ select public.site_fusionner('mqttf71do90m', 'mqttfx39nkcn', 'claude');
 select public.site_fusionner('mqttei25ulhm', 'mqttfx39nkcn', 'claude');
 select public.site_fusionner('mt79zzynui1k', 'mszypvyzq6cs', 'claude', 'Fontainiers');
 select public.site_fusionner('msxlpxhfmmpz', 'mszyr9e6acoe', 'claude');
-select public.site_fusionner('msqhu9s88s77', 'mszyr9e6acoe', 'claude');
-select public.site_fusionner('mtd2jn5uc00a', 'mszyr9e6acoe', 'claude', 'Fontainiers');
 select public.site_fusionner('mszzz4c6rlop', 'mszyoh2mv2pb', 'claude');
-select public.site_fusionner('mtbeitdvw5il', 'mszyoh2mv2pb', 'claude', 'Fontainiers');
 -- Ville de Lévis : Quai Paquet (le « Contrat 2026 » n'est pas un site à part)
-select public.site_fusionner('mtsn4cvr563b', 'mqqnofkm0404', 'claude');
 select public.site_fusionner('mtms5p2dy0k7', 'mqqnofkm0404', 'claude');
 select public.site_fusionner('mt1dszb3a1ro', 'mqqnofkm0404', 'claude', 'Fontainiers');
 -- Doublons simples
 select public.site_fusionner('msrkiqpwpv5u', 'msrd8b8hv28e', 'claude');   -- Piscine desjardin → Résidence Desjardins
-select public.site_fusionner('mt1dowrxbva3', 'mr22b1d4ni1v', 'claude');   -- Complexe L'Aventura → L'Aventura
 select public.site_fusionner('mtbe2iu0dtj3', 'mr21xk5tnvjg', 'claude');   -- Résidence Robert Lepage (2 orthographes)
 update public.sites set nom = 'Résidence Robert Lepage', updated_at = now() where id = 'mr21xk5tnvjg';
-select public.site_fusionner('mszzczm7zkdy', 'msqeo8g472n9', 'claude');   -- Entrepot → Soucy Aquatik - Entrepôt
 
 -- Lieux tapés à la main dont le site ne fait aucun doute ; les autres se classent dans sa-admin › Sites › Lieux à classer
 select public.lieu_classer(array['ccnq'], 'mqttfx39nkcn', 'claude');

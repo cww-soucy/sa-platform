@@ -2,7 +2,7 @@
 -- Un client regroupe plusieurs sites ; un site garde ses bassins / installations (salle mécanique, fontainiers…).
 -- Fusion de sites en une seule opération (toutes les données suivent, rien n'est effacé) et classement des
 -- « lieux » saisis en texte libre dans les punchs.
--- Idempotente : peut être relancée sans risque. Même niveau d'accès que les autres tables partagées (clé publique).
+-- APPLIQUÉE en production le 2026-10-05 (projet ldqvdiaewvhnukuaxdmc). Idempotente : peut être relancée sans risque. Même niveau d'accès que les autres tables partagées (clé publique).
 
 create table if not exists public.clients (
   id text primary key,
@@ -158,8 +158,7 @@ end $$;
 do $$ declare t text; begin
   foreach t in array array['demandes','photos_chantier','punch_gps_log','releves','site_journal','water_logs','client_qr'] loop
     if to_regclass('public.' || t) is not null then
-      execute format('drop trigger if exists site_canon on public.%I', t);
-      execute format('create trigger site_canon before insert on public.%I for each row execute function public.site_canon_fn()', t);
+      execute format('create or replace trigger site_canon before insert on public.%I for each row execute function public.site_canon_fn()', t);
     end if;
   end loop;
 end $$;
