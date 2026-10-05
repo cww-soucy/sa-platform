@@ -1,5 +1,10 @@
 (function(){
 'use strict';
+/* Menu de gauche rétractable : replié par défaut sous 1280 px (portable 15 po, iPad), choix gardé sur l'appareil */
+(function(){var H=document.documentElement,K='sa_admin_nav';function pref(){try{return localStorage.getItem(K);}catch(e){return null;}}
+  function set(r){H.classList.toggle('nav-repli',!!r);}function auto(){var p=pref();set(p?p==='repli':window.innerWidth<1280);}auto();
+  window.addEventListener('resize',function(){if(!pref())auto();});
+  document.addEventListener('click',function(e){var b=e.target&&e.target.closest&&e.target.closest('[data-navtog]');if(!b)return;var r=!H.classList.contains('nav-repli');set(r);try{localStorage.setItem(K,r?'repli':'ouvert');}catch(x){}});})();
 var SB='https://ldqvdiaewvhnukuaxdmc.supabase.co',KEY='sb_publishable_qVd_6eoAvwrDGs9u81woAg_RrMpTJxn';
 var H={apikey:KEY,Authorization:'Bearer '+KEY};
 function get(p){return fetch(SB+'/rest/v1/'+p,{headers:H}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status+' '+p.split('?')[0]);return r.json();});}

@@ -37,7 +37,8 @@ test('hors réseau : 30 photos gardées hors de localStorage, puis envoyées au 
 
 test('hors réseau : photos d’un point et tournée du jour retrouvées après réouverture de la page', async () => {
   const { page, errors } = await openApp(browser, srv.url, { app: 'terrain', user: USER, tables: base() });
-  await page.waitForFunction(() => window.__terrain && window.__terrain.syncAt);
+  // syncAt est posé dès le référentiel chargé : attendre aussi la tournée
+  await page.waitForFunction(() => window.__terrain && window.__terrain.syncAt && window.__terrain.jobs.length > 0);
   const nJobs = await page.evaluate(() => window.__terrain.jobs.length);
   assert.ok(nJobs > 0);
   const ph = 'data:image/jpeg;base64,' + 'Z'.repeat(50000);
