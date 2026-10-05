@@ -70,4 +70,13 @@ select public.lieu_classer(array['bonne entente'], 'mtlvh67fi1he', 'claude');
 select public.lieu_classer(array['l’entourage sur le lac'], 'mu1es95ym0a8', 'claude');
 select public.lieu_classer(array['labo mag'], 'msxk2x9ksadq', 'claude');
 
+-- Ajouté le 2026-10-05 avec l'accord de Charles : les 6 anciennes fusions complétées (toutes les données suivent),
+-- les Fontainiers de Quai des Flots et de Station de la Plage remis sur leur site au lieu de « CCNQ ».
+select public.site_fusionner('msqhu9s88s77', 'mszyr9e6acoe', 'claude');
+select public.site_fusionner('mtd2jn5uc00a', 'mszyr9e6acoe', 'claude', 'Fontainiers');
+select public.site_fusionner('mtbeitdvw5il', 'mszyoh2mv2pb', 'claude', 'Fontainiers');
+select public.site_fusionner('mtsn4cvr563b', 'mqqnofkm0404', 'claude');
+select public.site_fusionner('mt1dowrxbva3', 'mr22b1d4ni1v', 'claude');
+select public.site_fusionner('mszzczm7zkdy', 'msqeo8g472n9', 'claude');
+
 commit;
