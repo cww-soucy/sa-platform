@@ -74,7 +74,7 @@ begin
   select * into d from public.sites where id = p_dst for update;
   if s.id is null or d.id is null then raise exception 'Site introuvable'; end if;
   if coalesce(d.notes, '') ~ '^Fusionné →' then raise exception 'Le site « % » a déjà été fusionné ailleurs', d.nom; end if;
-  if coalesce(s.notes, '') ~ '^Fusionné →' then raise exception 'Le site « % » est déjà fusionné', s.nom; end if;
+  -- une fusion faite avant le 2026-10-05 (seuls plan et planning_tasks suivaient) peut être complétée ou redirigée
 
   foreach t in array array['client_qr','demandes','documents','outils_mouvements','photos_chantier','plan','planning_tasks',
                            'punch_gps_log','rapports_hivernage','releves','site_journal','water_logs'] loop
