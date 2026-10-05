@@ -3830,7 +3830,9 @@ Comp.prototype.vals=function(){
   var planRows=[],pDays=[];
   for(var pi=0;pi<5;pi++){var pdt=addDays(pMon,pi),isT=iso(pdt)===D.today;pDays.push({label:DJ[pi]+' '+pdt.getDate(),bg:isT?'var(--color-text)':'transparent',fg:isT?'var(--color-bg)':'var(--color-text)'});}
   if(PL){var rowsP={},order=[];
-    var addSlot=function(emp,di,slot){if(di<0||di>4)return;var k=emp||'_none';if(!rowsP[k]){rowsP[k]={nom:emp?(cn[emp]||emp):'Non assigné',cells:[[],[],[],[],[]],n:0,min:0};order.push(k);}rowsP[k].cells[di].push(slot);rowsP[k].n++;if(slot._min)rowsP[k].min+=slot._min;};
+    /* Un employé saisi par son nom (« Cheikh Ndiaye ») au lieu de son identifiant (cndiaye) : même ligne, pas une 2e ligne en double */
+    var byNom={};D.comptes.forEach(function(c){byNom[norm((c.prenom+' '+c.nom).trim())]=c.id;byNom[norm(c.id)]=c.id;});
+    var addSlot=function(emp,di,slot){if(di<0||di>4)return;emp=emp&&(byNom[norm(emp)]||emp);var k=emp||'_none';if(!rowsP[k]){rowsP[k]={nom:emp?(cn[emp]||emp):'Non assigné',cells:[[],[],[],[],[]],n:0,min:0};order.push(k);}rowsP[k].cells[di].push(slot);rowsP[k].n++;if(slot._min)rowsP[k].min+=slot._min;};
     team.forEach(function(c){rowsP[c.id]={nom:(c.prenom+' '+c.nom).trim(),cells:[[],[],[],[],[]],n:0,min:0};order.push(c.id);});
     var idx=function(dt){return Math.round((new Date(dt+'T12:00:00')-pMon)/86400000);};
     var mk=function(h,nom,tache,rec,done,mn,kind,id){return{h:h||'—',nom:nom||'—',tache:tache||'',rec:!!rec,bg:done?'var(--color-accent-700)':'var(--color-bg)',fg:done?'#ffffff':'var(--color-text)',_min:mn||0,open:function(e){if(e&&e.stopPropagation)e.stopPropagation();self.openEdit({kind:kind,id:id});}};};

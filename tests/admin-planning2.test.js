@@ -47,3 +47,17 @@ test('diagramme des travaux : une ligne par chantier, barres sur 8 semaines, imp
   await pop.close();
   await page.close();
 });
+
+test('planning équipe : un employé saisi par son nom au lieu de son identifiant n’apparaît qu’une fois', async () => {
+  const t = tables();
+  const mon = new Date(); mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7));
+  t.plan.push({ id: 'p2', client: 'Piscine Beta', date: iso(mon), heure: '09:00', emp: 'Autre Tech', descr: 'Saisi par nom', status: 'assigned' });
+  const { page, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: t });
+  await page.waitForFunction(() => window.__admin && window.__admin.D);
+  await page.evaluate(() => window.__admin.go('planning'));
+  await page.waitForFunction(() => (window.__admin.vals().planRows || []).length > 0);
+  const noms = await page.evaluate(() => window.__admin.vals().planRows.map((r) => r.nom));
+  assert.equal(noms.filter((n) => n === 'Autre Tech').length, 1, noms.join(', '));
+  assert.deepEqual(errors, []);
+  await page.close();
+});
