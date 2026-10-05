@@ -743,8 +743,30 @@ _boite='<div style="width:44px;height:44px;flex:none;background:#004987;color:#f
 if M.count(_boite)==1: M=M.replace(_boite,'<img src="/src/design/logo-soucy-aquatik.png" alt="Soucy Aquatik" style="width:44px;height:44px;flex:none;object-fit:contain">',1)
 else: print('!! boite logo sa-admin introuvable',M.count(_boite))
 _logo='<div style="display:flex;flex-direction:column;line-height:1.15"><span style="font:600 20px var(--font-heading)">sa-admin</span><span style="font-size:12px;color:var(--color-accent-700)">Centre des opérations</span></div>\n    </div>'
-if M.count(_logo)==1: M=M.replace(_logo,_logo+'<button onClick="{{ openPortail }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;height:38px;padding:0 14px 0 16px;border-bottom:1px solid var(--color-divider);font-weight:600" data-hv="1"><sa-i n="home" s="18"></sa-i>Accueil · toutes les applications</button>',1)
+if M.count(_logo)==1: M=M.replace(_logo,_logo+'<button onClick="{{ openPortail }}" title="Accueil · toutes les applications" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;height:38px;padding:0 14px 0 16px;border-bottom:1px solid var(--color-divider);font-weight:600" data-hv="1"><sa-i n="home" s="18"></sa-i><span class="sa-nl">Accueil · toutes les applications</span></button>',1)
 else: print('!! logo sa-admin introuvable',M.count(_logo))
+# Menu de gauche rétractable (portable 15 po, iPad, télé de salle de conférence) : icônes seules, libellés en infobulle.
+# Replié par défaut sous 1280 px de large ; le choix de l'utilisateur est gardé (localStorage sa_admin_nav).
+def _r(a,b,n=1):
+    global M
+    if M.count(a)<1: print('!! menu rétractable : ancre introuvable',a[:60]); return
+    M=M.replace(a,b,n)
+_r('<div ref="{{ rootRef }}" style="height:100vh;display:grid;grid-template-columns:236px','<div ref="{{ rootRef }}" class="sa-shell" style="height:100vh;display:grid;grid-template-columns:236px')
+_r('<nav style="border-right:1px solid var(--color-divider);display:flex;flex-direction:column;min-height:0;overflow-y:auto">',
+   '<nav class="sa-nav" style="border-right:1px solid var(--color-divider);display:flex;flex-direction:column;min-height:0;overflow-y:auto">'
+   '<button data-navtog="1" class="sa-navtog" aria-label="Replier ou déplier le menu" title="Replier / déplier le menu" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:8px;height:34px;padding:0 14px 0 16px;border-bottom:1px solid var(--color-divider);font-size:13px" data-hv="1"><span class="sa-navtog-i" aria-hidden="true">«</span><span class="sa-nl">Replier le menu</span></button>')
+_r('<div style="display:flex;flex-direction:column;line-height:1.15"><span style="font:600 20px var(--font-heading)">sa-admin</span>','<div class="sa-nl" style="display:flex;flex-direction:column;line-height:1.15"><span style="font:600 20px var(--font-heading)">sa-admin</span>')
+_r('<div style="padding:0 16px 6px;font-size:12px;color:var(--color-neutral-700)">{{ g.label }}</div>','<div class="sa-nl" style="padding:0 16px 6px;font-size:12px;color:var(--color-neutral-700)">{{ g.label }}</div>')
+_r('<button onClick="{{ n.go }}" style="all:unset;','<button onClick="{{ n.go }}" title="{{ n.label }}" style="all:unset;')
+_r('<sa-i n="{{ n.icon }}" s="18"></sa-i><span style="flex:1">{{ n.label }}</span>','<sa-i n="{{ n.icon }}" s="18"></sa-i><span class="sa-nl" style="flex:1">{{ n.label }}</span>')
+_r('<div style="display:flex;flex-direction:column;line-height:1.2"><span style="font-weight:500">{{ meNom }}</span>','<div class="sa-nl" style="display:flex;flex-direction:column;line-height:1.2"><span style="font-weight:500">{{ meNom }}</span>')
+css.append('html.nav-repli .sa-shell{grid-template-columns:72px minmax(0,1fr)!important}'
+  'html.nav-repli .sa-nav .sa-nl{display:none!important}'
+  'html.nav-repli .sa-nav button{justify-content:center!important;padding:0!important;gap:0!important}'
+  'html.nav-repli .sa-nav>div{justify-content:center;padding-left:0!important;padding-right:0!important}'
+  'html.nav-repli .sa-navtog-i{transform:scaleX(-1)}'
+  'html.nav-repli .sa-nav button>span:not(.sa-nl):not(.sa-navtog-i){position:absolute;margin:-22px 0 0 26px;transform:scale(.8)}'
+  '.sa-nav button{position:relative}')
 
 
 # Monitoring : lien vers la photo jointe à une demande du terrain (chargée seulement au clic)
