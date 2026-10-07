@@ -108,7 +108,10 @@
     show(h('p', { class: 'muted', text: 'Chargement…' }));
     p.then(function (r) {
       if (!r.ok) { if (S.apercu) return erreur('Aperçu impossible : ouvrez-le depuis sa-admin (session administrateur expirée ?).'); clearTok(); return P.get('q') ? ecranQr() : ecranIdent(); }
-      S.data = r; if (!S.site || !r.sites.some(function (s) { return s.id === S.site; })) S.site = (r.sites[0] || {}).id || null; rendre();
+      S.data = r; var qs = S.qr && S.qr.site_id;
+      S.horsQr = !!qs && !r.sites.some(function (s) { return s.id === qs; });
+      if (qs && !S.horsQr) S.site = qs;
+      if (!S.site || !r.sites.some(function (s) { return s.id === S.site; })) S.site = (r.sites[0] || {}).id || null; rendre();
     }).catch(function () { erreur(); });
   }
   function visitesDe(site) {
@@ -175,7 +178,10 @@
       : cur[0] === 'releves' ? ongletReleves(site, vis) : cur[0] === 'historique' ? ongletHistorique(vis) : cur[0] === 'rapports' ? ongletRapport(vis)
       : cur[0] === 'documents' ? ongletDocs(site) : cur[0] === 'interventions' ? ongletInterventions(site, vis) : h('div', { class: 'dash', text: 'Les factures seront disponibles ici prochainement. Pour une copie, écrivez à Soucy Aquatik.' });
 
-    show(head, h('div', { class: 'cols' },
+    var horsQr = S.horsQr ? h('div', { class: 'box', role: 'alert' }, h('b', { text: 'Votre adresse n’a pas accès à ' + S.qr.site + '.' }),
+      h('div', { text: 'Vous voyez les installations de votre propre accès. Pour cette installation, connectez-vous avec l’adresse inscrite par son gestionnaire.' }),
+      h('button', { class: 'btn', onclick: function () { call('deconnexion'); clearTok(); S.horsQr = false; S.data = null; S.site = null; ecranIdent(); } }, 'Changer d’adresse')) : null;
+    show(head, horsQr, h('div', { class: 'cols' },
       h('div', { class: 'stack' }, bandeau, sys, attention, plan, tabs, corps),
       h('aside', { class: 'stack' }, bassins, lv && dr.rapports ? h('button', { class: 'btn big', onclick: function () { S.tab = 'rapports'; S.visite = lv.r.id; rendre(); } }, 'Rapport de la dernière visite') : null)),
       h('div', { class: 'foot' }, D.urgence ? h('a', { href: 'tel:' + D.urgence.replace(/[^\d+]/g, '') }, 'Urgence 24/7 · ' + D.urgence) : null,
@@ -258,6 +264,7 @@
 
   /* ---------- démarrage ---------- */
   if (S.apercu) charger();
+  else if (getTok() && P.get('q')) call('qr', { jeton: P.get('q') }).then(function (r) { if (r.ok) S.qr = r; charger(); }).catch(function () { charger(); });
   else if (getTok()) charger();
   else if (P.get('q')) ecranQr();
   else ecranIdent();

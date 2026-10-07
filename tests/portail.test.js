@@ -19,10 +19,11 @@ const HEADERS = (() => {
 const PH = { key: 'ph', label: 'pH', unit: '', kind: 'range', min: 6.8, max: 8.2, lo: 7.2, hi: 7.6, step: 0.1 };
 const CL = { key: 'cl', label: 'Chlore libre', unit: 'mg/L', kind: 'range', min: 0, max: 5, lo: 1, hi: 3, step: 0.1 };
 
-function serveur(niveau) {
+function serveur(niveau, sitesOk = ['1']) {
   const hier = iso(addDays(new Date(), -1));
   const src = {
-    sites: [{ id: '1', nom: 'Piscine Alpha', addr: '1 rue A', bassins: [{ id: 'b1', nom: 'Grand bassin' }, { id: 'b2', nom: 'Pataugeoire' }] }],
+    sites: [{ id: '1', nom: 'Piscine Alpha', addr: '1 rue A', bassins: [{ id: 'b1', nom: 'Grand bassin' }, { id: 'b2', nom: 'Pataugeoire' }] },
+      { id: '2', nom: 'Piscine Beta', addr: '2 rue B', bassins: [{ id: 'b3', nom: 'Bassin Beta' }] }],
     types: { MI: { label: 'Piscine municipale intérieure', fields: [PH, CL], checks: ['Registre RQEP signé', 'Parois et fond brossés'] } },
     catalogue: [],
     releves: [{ id: 'r1', site_id: '1', bassin: 'Grand bassin', date: hier, heure: '10:00', type_code: 'MI', vals: { ph: 7.9, cl: 2 }, touched: { ph: true, cl: true }, statut: 'publiee',
@@ -35,13 +36,15 @@ function serveur(niveau) {
     const b = JSON.parse(route.request().postData() || '{}'), tok = route.request().headers()['x-portail-session'];
     st.calls.push(b.action);
     const ok = (o) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(o) });
-    if (b.action === 'qr') return ok(b.jeton === 'BON' ? { ok: true, site: 'Piscine Alpha', bassin: 'Grand bassin', code: 'SA-S01-B1', carnet: '../qr-carnet/?site=1' } : { ok: false, desactive: true });
+    const QR = { BETA: ['2', 'Piscine Beta'], AUTRE: ['9', 'Piscine Gamma'] };
+    if (b.action === 'qr' && QR[b.jeton]) return ok({ ok: true, site_id: QR[b.jeton][0], site: QR[b.jeton][1], bassin: '', code: 'SA', carnet: '../qr-carnet/?site=' + QR[b.jeton][0] });
+    if (b.action === 'qr') return ok(b.jeton === 'BON' ? { ok: true, site_id: '1', site: 'Piscine Alpha', bassin: 'Grand bassin', code: 'SA-S01-B1', carnet: '../qr-carnet/?site=1' } : { ok: false, desactive: true });
     if (b.action === 'demander_code') { st.codes.push(b.identifiant); return ok({ ok: true, masque: L.masquer(b.identifiant), minutes: 10 }); }
     if (b.action === 'verifier_code') { if (b.code !== '123456') return ok({ ok: false, message: 'Code incorrect ou expiré.' }); st.sessions.add('S-' + st.sessions.size + '-xxxxxxxxxxxxxxxxxxxx'); return ok({ ok: true, session: [...st.sessions].pop(), jours: b.souvenir ? 90 : 0 }); }
     if (b.action === 'donnees') {
       if (!st.sessions.has(tok)) return route.fulfill({ status: 401, contentType: 'application/json', body: '{"ok":false}' });
       return ok({ ok: true, contact: { nom: 'Jeanne Gestion', niveau }, compte: { nom: 'Ville de Test', logo: null }, urgence: '418-555-0100', contrats: { 1: 'MI' },
-        ...L.donneesClient(src, { niveau, sitesOk: ['1'] }) });
+        ...L.donneesClient({ ...src, sites: src.sites.filter((x) => sitesOk.includes(x.id)) }, { niveau, sitesOk }) });
     }
     if (b.action === 'deconnexion') return ok({ ok: true });
     return ok({ ok: false });
@@ -49,9 +52,9 @@ function serveur(niveau) {
   return { st, handler };
 }
 
-async function open(query, niveau = 'gestionnaire') {
+async function open(query, niveau = 'gestionnaire', sitesOk) {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
-  const errors = [], { st, handler } = serveur(niveau);
+  const errors = [], { st, handler } = serveur(niveau, sitesOk);
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   await page.exposeFunction('__csp', (v) => errors.push('csp: ' + v));
   await page.addInitScript(() => document.addEventListener('securitypolicyviolation', (e) => window.__csp(e.violatedDirective + ' ' + e.blockedURI)));
@@ -112,5 +115,36 @@ test('portail : QR révoqué → « Lien désactivé »', async () => {
   const { page, errors } = await open('?q=VIEUX');
   await page.getByText('Lien désactivé').waitFor();
   assert.deepEqual(errors, []);
+  await page.close();
+});
+
+async function connexion(page) {
+  await page.getByRole('button', { name: 'Accès client' }).click();
+  await page.fill('#ident', 'jeanne@ville.qc.ca');
+  await page.getByRole('button', { name: 'Recevoir un code' }).click();
+  for (const [i, d] of [...'123456'].entries()) await page.getByLabel('Chiffre ' + (i + 1)).fill(d);
+  await page.getByRole('button', { name: 'Accéder' }).click();
+  await page.locator('.opere').getByText('Opéré par').waitFor();
+}
+
+test('portail : le QR scanné ouvre son installation, pas la première du compte', async () => {
+  const { page } = await open('?q=BETA', 'gestionnaire', ['1', '2']);
+  await connexion(page);
+  assert.equal(await page.textContent('h1'), 'Piscine Beta');
+  assert.equal(await page.getByRole('alert').count(), 0);
+  // déjà connecté : un autre QR du même compte ouvre aussi le bon site
+  await page.goto(srv.url + '/portail/?q=BON');
+  await page.locator('.opere').getByText('Opéré par').waitFor();
+  assert.equal(await page.textContent('h1'), 'Piscine Alpha');
+  await page.close();
+});
+
+test('portail : QR d’une installation hors de l’accès — avertissement clair', async () => {
+  const { page } = await open('?q=AUTRE');
+  await connexion(page);
+  await page.getByText('Votre adresse n’a pas accès à Piscine Gamma.').waitFor();
+  assert.equal(await page.textContent('h1'), 'Piscine Alpha');
+  await page.getByRole('button', { name: 'Changer d’adresse' }).click();
+  await page.locator('#ident').waitFor();
   await page.close();
 });
