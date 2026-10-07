@@ -185,6 +185,36 @@ test('accès client : code QR créé sans compte client, rôle superviseur', asy
   await page.close();
 });
 
+test('accès client : le code QR du site reste fixe — réimpression sans changement, « Remplacer » seulement sur confirmation', async () => {
+  const { page, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: tables() });
+  const q0 = { id: 'qr0', site_id: '1', bassin_id: null, jeton: 'JETON-FIXE', code_affiche: 'SA-0001', actif: true, cree_le: '2026-10-01T12:00:00Z' };
+  const S = { comptes: [], contacts: [], qr: [q0], journal: [], documents: [] }, appels = [];
+  await page.route(FN, async (route) => {
+    const b = JSON.parse(route.request().postData()), ok = (o) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(o) });
+    if (b.action === 'admin_ouvrir') return ok({ ok: true, session: 'ADM-TOKEN-xxxxxxxxxxxxxxxx', role: 'admin' });
+    if (b.action === 'admin_lire') return ok({ ok: true, role: 'admin', ...S, portail: 'https://sa-platform.pages.dev/portail/', envoi: true });
+    if (b.action === 'admin_qr') { appels.push(b); return ok({ ok: true }); }
+    return ok({ ok: false });
+  });
+  await open(page, 'acces');
+  await page.getByLabel('Mot de passe').fill('bon');
+  await page.getByRole('button', { name: 'Ouvrir la gestion' }).click();
+  await page.getByRole('img', { name: 'Code QR SA-0001' }).waitFor();
+  assert.equal(await page.getByRole('button', { name: 'Créer le code' }).count(), 0, 'le code du site existant est affiché, quel que soit le nombre de bassins');
+  page.once('dialog', (d) => d.dismiss());
+  await page.getByRole('button', { name: 'Remplacer (code perdu)' }).click();
+  await page.waitForTimeout(200);
+  assert.deepEqual(appels, [], 'annuler la confirmation ne change rien');
+  page.once('dialog', (d) => d.accept());
+  await page.getByRole('button', { name: 'Remplacer (code perdu)' }).click();
+  await page.waitForTimeout(200);
+  assert.equal(appels.length, 1);
+  assert.equal(appels[0].remplacer, true);
+  assert.equal(appels[0].bassin_id, null);
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
 test('onglets personnalisables : masquer et réordonner, gardé sur le navigateur', async () => {
   const { page, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: tables() });
   await open(page, 'bilan');
