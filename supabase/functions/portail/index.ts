@@ -218,6 +218,13 @@ const actions: Record<string, (req: Request, b: any) => Promise<Response>> = {
     if (!s) return json(req, { ok: false, session: false }, 401);
     const site = String(b.site_id || ""), bassin = b.bassin_id ? String(b.bassin_id) : null;
     if (!site) return json(req, { ok: false, message: "Site manquant" }, 400);
+    if (!b.remplacer) {
+      // Code QR fixe : on renvoie le code actif s'il existe (affiches imprimées et plastifiées).
+      let q = sb.from("client_qr").select("*").eq("site_id", site).eq("actif", true);
+      q = bassin ? q.eq("bassin_id", bassin) : q.is("bassin_id", null);
+      const { data: ex } = await q.limit(1).maybeSingle();
+      if (ex) return json(req, { ok: true, qr: ex, url: PORTAIL_URL + "?q=" + ex.jeton, existant: true });
+    }
     let old = sb.from("client_qr").update({ actif: false, revoque_le: new Date().toISOString() }).eq("site_id", site).eq("actif", true);
     old = bassin ? old.eq("bassin_id", bassin) : old.is("bassin_id", null);
     await old;

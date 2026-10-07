@@ -206,7 +206,7 @@
               <div style="flex:1;display:flex;flex-direction:column;gap:4px"><b>{{ q.nom }}</b><span style="font-size:13px">{{ q.code }} · {{ q.etat }}</span>
                 <div style="display:flex;gap:6px;flex-wrap:wrap"><sc-if value="{{ q.img }}"><button class="btn btn-secondary" onClick="{{ q.print }}">Imprimer l’affiche</button></sc-if><button class="btn btn-secondary" onClick="{{ q.regen }}">{{ q.regenLbl }}</button></div></div>
             </div></sc-for>
-            <span style="font-size:13px">« Régénérer » désactive immédiatement l’ancien code.</span>
+            <span style="font-size:13px">Le code ne change jamais tout seul : réimprimez-le autant que nécessaire. « Remplacer » désactive l’ancien code (affiche perdue ou volée).</span>
           </section>
         <sc-if value="{{ iq.cp.exists }}">
         <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:18px">

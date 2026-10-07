@@ -220,13 +220,16 @@ Comp.prototype.inspVals=function(){
       save:function(){var n=String(cpn||'').trim()||site.nom;self.admWrite('client_comptes',cp?Object.assign({},cp,{nom:n}):{id:rid('cl-'),nom:n,sites:[site.id],niveaux:{}}).then(function(ok){if(ok){self.setState({iqCp:null});self.flash(cp?'Compte enregistré':'Compte client créé');}});},
       upLogo:function(e){var file=e.target.files&&e.target.files[0];e.target.value='';if(!file)return;if(!cp){self.flash('Créez d’abord le compte client');return;}
         self.admUpload(file,'logos').then(function(path){if(path)self.admWrite('client_comptes',Object.assign({},cp,{logo_path:path})).then(function(ok){if(ok)self.flash('Logo enregistré');});});}};
-    var bls=(site.bassins||[]).length>1?site.bassins:[null],qrs=adm.qr||[];
-    iq.qrs=bls.map(function(b,i){var bid=b?String(b.id||b.nom):null,q=qrs.filter(function(x){return x.site_id===site.id&&(x.bassin_id||null)===bid&&x.actif;})[0],url=q?(adm.portail||'')+'?q='+q.jeton:'',img=q?(self._qrc=self._qrc||{},self._qrc[url]=self._qrc[url]||qrData(url)):'';
-      var code='SA-'+String(site.id).slice(-4).toUpperCase()+(b?'-B'+(b.numero||i+1):'');
-      return{nom:b?b.nom:'Installation',code:q?q.code_affiche:code,etat:q?'actif depuis le '+fdate(q.cree_le):'aucun code',img:img,regenLbl:q?'Régénérer le code':'Créer le code',
-        print:function(){self.printAffiche(site,q,b?b.nom:'',img);},
-        regen:function(){if(q&&!window.confirm('L’ancien code cessera immédiatement de fonctionner. Continuer ?'))return;var t=self.admTok();
-          pfn('admin_qr',{site_id:site.id,bassin_id:bid,code_affiche:code},t).then(function(r){if(!r.ok){self.flash('Refusé : '+(r.message||'erreur'));return;}self.flash(q?'Nouveau code créé — l’ancien est désactivé':'Code créé');self.admLoad();});}};});
+    /* Un code QR fixe par site : il reste le même quoi qu’on change au site (bassins, nom…), pour garder les affiches plastifiées.
+       Les codes par bassin déjà créés restent affichés. Seul « Remplacer » (code perdu ou affiche volée) en crée un nouveau. */
+    var qrs=(adm.qr||[]).filter(function(x){return x.site_id===site.id&&x.actif;}),bns={};(site.bassins||[]).forEach(function(b,i){bns[String(b.id||b.nom)]={b:b,i:i};});
+    var lignes=[{bid:null,q:qrs.filter(function(x){return !x.bassin_id;})[0]}].concat(qrs.filter(function(x){return x.bassin_id;}).map(function(x){return{bid:x.bassin_id,q:x};}));
+    iq.qrs=lignes.map(function(l){var bid=l.bid,q=l.q,bi=bid&&bns[bid],nom=bid?(bi?bi.b.nom:'Bassin retiré'):site.nom,url=q?(adm.portail||'')+'?q='+q.jeton:'',img=q?(self._qrc=self._qrc||{},self._qrc[url]=self._qrc[url]||qrData(url)):'';
+      var code='SA-'+String(site.id).slice(-4).toUpperCase()+(bi?'-B'+(bi.b.numero||bi.i+1):'');
+      return{nom:nom,code:q?q.code_affiche:code,etat:q?'actif depuis le '+fdate(q.cree_le):'aucun code',img:img,regenLbl:q?'Remplacer (code perdu)':'Créer le code',
+        print:function(){self.printAffiche(site,q,bid?nom:'',img);},
+        regen:function(){if(q&&!window.confirm('Remplacer ce code QR ?\n\nLes affiches déjà imprimées cesseront de fonctionner et devront être réimprimées. Pour réimprimer le même code, utilisez plutôt « Imprimer l’affiche ».'))return;var t=self.admTok();
+          pfn('admin_qr',{site_id:site.id,bassin_id:bid,code_affiche:code,remplacer:!!q},t).then(function(r){if(!r.ok){self.flash('Refusé : '+(r.message||'erreur'));return;}self.flash(q?'Nouveau code créé — l’ancien est désactivé':'Code créé');self.admLoad();});}};});
     iq.droits=I.DROITS.map(function(k){return{l:DROIT_LIB[k],c:['operateur','gestionnaire','direction'].map(function(n){var on=I.droits(n,cp&&cp.niveaux)[k];
       return{on:on,aria:DROIT_LIB[k]+' — '+I.NIVEAU_NOM[n],go:function(e){if(!cp)return;var nv=JSON.parse(JSON.stringify(cp.niveaux||{}));nv[n]=Object.assign({},nv[n]||{});nv[n][k]=e.target.checked;self.admWrite('client_comptes',Object.assign({},cp,{niveaux:nv}));}};})};});
     var cts=cp?(adm.contacts||[]).filter(function(x){return x.compte_id===cp.id;}):[];
