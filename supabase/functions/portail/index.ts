@@ -120,7 +120,7 @@ const actions: Record<string, (req: Request, b: any) => Promise<Response>> = {
     if (!q || !q.actif) { await journal(req, { qr_id: q?.id || null, action: "qr", resultat: "revoque" }); return json(req, { ok: false, desactive: true }); }
     const { data: s } = await sb.from("sites").select("nom, bassins").eq("id", q.site_id).maybeSingle();
     const b0 = (s?.bassins || []).find((x: any) => String(x.id) === String(q.bassin_id));
-    return json(req, { ok: true, site: s?.nom || "", bassin: b0?.nom || "", code: q.code_affiche, carnet: `../qr-carnet/?site=${encodeURIComponent(q.site_id)}` });
+    return json(req, { ok: true, site_id: q.site_id, site: s?.nom || "", bassin: b0?.nom || "", code: q.code_affiche, carnet: `../qr-carnet/?site=${encodeURIComponent(q.site_id)}` });
   },
   async demander_code(req, b) {
     const idt = L.identifiant(b.identifiant);
