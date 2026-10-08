@@ -180,8 +180,39 @@ rep(r'<span style="display:flex;align-items:center;gap:6px"><span style="width:1
 rep('>À planifier</span>','>À faire</span>',1)
 # nom lu à chaque frappe (onChange n'arrive qu'à la sortie du champ : « Confirmer » touché juste après aurait lu un nom vide)
 rep('value="{{ signer }}" onChange="{{ onSigner }}"','value="{{ signer }}" onInput="{{ onSigner }}"',1)
-# Hivernage : remarques réellement enregistrées
-rep('<textarea class="input" placeholder="Bris, pièces à commander, remarques"','<textarea class="input" value="{{ hivNoteTxt }}" onInput="{{ onHivNote }}" placeholder="Bris, pièces à commander, remarques"',1)
+# Hivernage : la liste de contrôle « Hivernement » (src/hivernage/checklist.js) remplace la liste de pré-hivernage de la maquette
+HVTOG=lambda lst,lab,extra='':('<sc-for list="{{ %s }}" as="c"><button onClick="{{ c.toggle }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:14px;padding:10px 20px;min-height:58px;box-sizing:border-box;border-bottom:1px solid var(--color-divider)%s">'
+  '<span style="width:30px;height:30px;flex:none;box-sizing:border-box;border:1.5px solid var(--color-text);background:{{ c.box }};color:var(--color-bg);display:flex;align-items:center;justify-content:center"><sc-if value="{{ c.on }}"><sa-i n="check" s="20" w="2.5"></sa-i></sc-if></span>'
+  '<span style="font-size:16px;line-height:1.3;font-weight:{{ c.fw }}">{{ c.%s }}</span></button></sc-for>')%(lst,extra,lab)
+HVH='<div style="display:flex;align-items:center;gap:10px;padding:16px 20px 8px;border-bottom:1px solid var(--color-divider)"><h2 style="margin:0;flex:1;font-size:21px;line-height:1.1">{{ s.titre }}</h2><button onClick="{{ s.all }}" style="all:unset;cursor:pointer;font-size:15px;color:var(--color-accent-700)">{{ s.allLbl }}</button></div>'
+HIVF=('<sc-if value="{{ isHivForm }}"><div style="padding:12px 0 0;display:flex;flex-direction:column">'
+  '<button onClick="{{ goHiv }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:4px;height:44px;padding:0 20px;font-size:16px;color:var(--color-accent-700)"><sa-i n="left" s="22"></sa-i>Hivernage</button>'
+  '<div style="padding:6px 20px 12px;display:flex;flex-direction:column;gap:4px;border-bottom:1px solid var(--color-divider)"><div style="font-size:14px">Hivernement · fermeture avec formation</div>'
+  '<h1 style="margin:0;font-size:32px;line-height:1.02">{{ hivSite.nom }}</h1><div style="font-size:15px">{{ hivSite.ville }} · {{ hivProgress }} cases sur {{ hivTotal }}</div>'
+  '<div style="height:8px;background:var(--color-divider);margin-top:6px"><div style="height:100%;width:{{ hivPct }};background:var(--color-accent-700)"></div></div></div>'
+  '<sc-if value="{{ hivCrit }}"><div role="alert" style="margin:12px 20px 0;padding:10px 12px;border:2px solid var(--color-text);font-size:15px;font-weight:600">{{ hivCrit }}</div></sc-if>'
+  '<div style="padding:16px 20px 4px"><h2 style="margin:0;font-size:21px">1. Informations générales</h2></div>'
+  '<div style="padding:4px 20px 8px;display:flex;flex-direction:column;gap:10px"><sc-for list="{{ hivInfo }}" as="f"><div class="field"><label style="font-size:15px">{{ f.l }}</label><input class="input" type="{{ f.type }}" value="{{ f.v }}" onInput="{{ f.on }}" style="min-height:48px;font-size:17px"></div></sc-for></div>'
+  '<sc-for list="{{ hivSecs }}" as="s"><div style="display:flex;flex-direction:column">'+HVH
+  +HVTOG('s.items','label')
+  +'<sc-if value="{{ s.tips }}"><div style="margin:12px 20px 0;padding:10px 12px;border-left:4px solid var(--color-accent-700);font-size:15px;line-height:1.4"><b>Bon à savoir :</b><sc-for list="{{ hivTips }}" as="t"><div style="margin-top:4px">• {{ t.t }}</div></sc-for></div>'
+  '<div style="margin:10px 20px 0;padding:10px 12px;border:2px solid var(--color-text);font-weight:700;font-size:15px">{{ hivAlerte }}</div></sc-if>'
+  '<sc-if value="{{ s.isForm }}"><div style="padding:12px 20px 0;display:flex;flex-direction:column;gap:10px"><b style="font-size:17px">Employés formés</b>'
+  '<sc-for list="{{ hivEmp }}" as="e"><div style="border:1px solid var(--color-divider);display:flex;flex-direction:column"><div style="display:flex;gap:6px;align-items:center;padding:8px">'
+  '<input class="input" value="{{ e.nom }}" onInput="{{ e.onNom }}" placeholder="Employé (nom)" aria-label="Employé (nom)" style="flex:1;min-height:46px;font-size:17px">'
+  '<button onClick="{{ e.del }}" aria-label="Retirer l’employé" style="all:unset;cursor:pointer;width:44px;height:44px;display:flex;align-items:center;justify-content:center"><sa-i n="x" s="20"></sa-i></button></div>'
+  +HVTOG('e.tg','lbl')
+  +'</div></sc-for><button class="btn btn-secondary" onClick="{{ addEmp }}" style="min-height:50px;font-size:17px;gap:8px"><sa-i n="plus" s="20"></sa-i>Ajouter un employé</button></div></sc-if>'
+  '</div></sc-for>'
+  '<div style="padding:18px 20px;display:flex;flex-direction:column;gap:10px"><h2 style="margin:0;font-size:21px">10. Remarques et anomalies</h2>'
+  '<textarea class="input" value="{{ hivNoteTxt }}" onInput="{{ onHivNote }}" placeholder="Bris, pièces à commander, remarques" style="min-height:90px;font-size:17px"></textarea>'
+  '<button class="btn btn-secondary" onClick="{{ hivPhoto }}" style="min-height:52px;font-size:18px;gap:10px"><sa-i n="camera" s="20"></sa-i>{{ hivPhotoLbl }}</button>'
+  '<button class="btn btn-primary" onClick="{{ sendHiv }}" style="min-height:60px;font-size:21px;margin-top:6px">Envoyer au bureau</button>'
+  '<div style="font-size:14px;line-height:1.4">Le bureau la vérifie, l’imprime ou l’envoie au client depuis sa-admin.</div></div>'
+  '</div></sc-if>')
+_hb=sc_block(M,'<sc-if value="{{ isHivForm }}">')
+if _hb: M=M.replace(_hb,HIVF,1)
+else: print('!! bloc isHivForm')
 # Demande : photo jointe ; plus de promesse de rappel automatique (aucun répartiteur n'est avisé automatiquement)
 rep('Le répartiteur est avisé immédiatement et vous rappelle.','La demande part au bureau tout de suite. Pour une urgence, appelez aussi le bureau.',1)
 rep('<button class="btn btn-primary" onClick="{{ sendDemande }}"','<button class="btn btn-secondary" onClick="{{ demPhotoBtn }}" style="min-height:52px;font-size:18px;gap:10px"><sa-i n="camera" s="20"></sa-i>{{ demPhotoLbl }}</button><button class="btn btn-primary" onClick="{{ sendDemande }}"',1)
@@ -239,6 +270,7 @@ ds=open(os.path.join(SRC,'design')+'/ds/styles.css',encoding='utf-8').read()
 ds=re.sub(r"@import url\([^)]*\);\s*",'',ds)
 icons=open(os.path.join(SRC,'design')+'/sa-icons.js',encoding='utf-8').read()
 insp=open(os.path.join(SRC,'inspection','model.js'),encoding='utf-8').read(); assert '</script' not in insp.lower()
+hiv=open(os.path.join(SRC,'hivernage','checklist.js'),encoding='utf-8').read(); assert '</script' not in hiv.lower()
 rt=open(os.path.join(HERE,'runtime.js'),encoding='utf-8').read(); app=open(os.path.join(HERE,'app.js'),encoding='utf-8').read()
 # ---------- FICHE : Bureau / Entrepôt = travail interne, aucun bassin → pas de relevé ----------
 _a='<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-bottom:1px solid var(--color-divider)">'
@@ -288,7 +320,7 @@ button{font-family:inherit}
 <input id="photoInput" type="file" accept="image/*" capture="environment" style="display:none">
 <template id="tpl">'''+M+'''</template>
 <script>'''+icons+'''</script>
-<script>'''+insp+'''</script><script>'''+rt+'''</script>
+<script>'''+insp+'''</script><script>'''+hiv+'''</script><script>'''+rt+'''</script>
 <script>'''+app+'''</script>
 </body></html>'''
 open(os.path.join(OUT,'terrain.html'),'w',encoding='utf-8').write(html)
