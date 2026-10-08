@@ -124,10 +124,10 @@ function Comp(user){
   var prefs=jget('sa_terrain_prefs',{});this.prefs={sun:!!prefs.sun,big:!!prefs.big};
   var saved=jget('sa_terrain_state_'+user.id+'_'+this.today,{});
   this.inv=[];this.bons=[];this.hivRep={};this.lastSortie=null;this._sig={strokes:[],w:0};
-  this.dem=[];this.ft=jget(LSK_FT+user.id+'_'+iso(mondayOf(new Date())),null);this.state=Object.assign({pf:{q:'',lieu:'',siteId:null,odt:'',detail:'',km:'',src:null},sf:{km:''},demande:null,demChip:null,demandeTxt:'',screen:'today',logTab:'sortie',sortie:{},invQ:'',bonSel:null,signer:'',hivFilter:'todo',hivSel:null,hivChecks:{},hivAntigel:{},hivEtat:{},hivNote:{},hivSent:{},demPhoto:null,pe:null,openJob:null,vals:{},touched:{},checks:{},prods:{},photo:{},photoData:{},notes:{},validated:{},sync:{},pts:{},acts:{},step:{},planDay:0,toast:null,soon:''},saved);
+  this.dem=[];this.ft=jget(LSK_FT+user.id+'_'+iso(mondayOf(new Date())),null);this.state=Object.assign({pf:{q:'',lieu:'',siteId:null,odt:'',detail:'',km:'',src:null},sf:{km:''},demande:null,demChip:null,demandeTxt:'',screen:'today',logTab:'sortie',sortie:{},invQ:'',bonSel:null,signer:'',hivFilter:'todo',hivSel:null,hivData:{},hivPh:{},hivSent:{},demPhoto:null,pe:null,openJob:null,vals:{},touched:{},checks:{},prods:{},photo:{},photoData:{},notes:{},validated:{},sync:{},pts:{},acts:{},step:{},planDay:0,toast:null,soon:''},saved);
   this.state.toast=null;this.state.screen='today';this.state.pf={q:'',lieu:'',siteId:null,odt:'',detail:'',km:'',src:null};this.state.sf={km:''};
 }
-Comp.prototype.persist=function(){var s=this.state,keep={vals:s.vals,touched:s.touched,checks:s.checks,prods:s.prods,photo:s.photo,notes:s.notes,validated:s.validated,sync:s.sync,photoData:s.photoData,pts:s.pts,acts:s.acts,step:s.step,hivChecks:s.hivChecks,hivAntigel:s.hivAntigel,hivEtat:s.hivEtat,hivNote:s.hivNote,hivSent:s.hivSent};
+Comp.prototype.persist=function(){var s=this.state,keep={vals:s.vals,touched:s.touched,checks:s.checks,prods:s.prods,photo:s.photo,notes:s.notes,validated:s.validated,sync:s.sync,photoData:s.photoData,pts:s.pts,acts:s.acts,step:s.step,hivData:s.hivData,hivPh:s.hivPh,hivSent:s.hivSent};
   var self=this,n=this._pseq=(this._pseq||0)+1,key='sa_terrain_state_'+this.user.id+'_'+this.today;
   phOut(keep).then(function(k2){if(n!==self._pseq)return;if(!jset(key,k2)){k2.photoData={};jset(key,k2);}});};
 Comp.prototype.setState=function(p){var n=typeof p==='function'?p(this.state):p;this.state=Object.assign({},this.state,n);this.persist();this.update();};
@@ -342,17 +342,17 @@ Comp.prototype.confirmSig=function(){var b=this.curBon();if(!b)return;var nom=St
   else this.enqueue({_t:'bons_livraison',_m:'PATCH',_q:'id=eq.'+encodeURIComponent(b.id)+'&status=neq.livre',id:'bl-'+b.id,body:patch});
   Object.assign(b,patch,{_signedBy:nom,_signedAt:hhmm(now)});delete b._new;this.update();this.flash('Bon '+b.no_bon+' marqué livré');};
 
-/* ---------- Hivernage : liste de contrôle du pré-hivernage → rapport (brouillon) que le bureau complète dans SA Platform ---------- */
-var HIV_CHECKS=['Niveau d’eau abaissé sous les retours','Conduites purgées à l’air comprimé','Bouchons d’hivernage installés','Antigel versé dans les conduites','Pompe et filtre vidangés','Équipements amovibles rentrés','Couverture d’hiver installée et tendue'];
-var HIV_ETATS=[['Bon',''],['À surveiller','modere'],['Réparation requise','urgent']];
+/* ---------- Hivernage : liste de contrôle « Hivernement » (src/hivernage/checklist.js, la même que sa-admin) → rapport (brouillon)
+   que le bureau complète, imprime ou envoie au client depuis sa-admin ---------- */
 Comp.prototype.hivSites=function(){return REF.list.filter(function(s){return s.type!=='SP'&&s.type!=='MI';});};
-Comp.prototype.sendHiv=function(){var st=this.state,sid=st.hivSel,s=sid&&siteById(sid);if(!s)return;var ck=st.hivChecks[sid]||{},now=new Date(),y=now.getFullYear();
-  var etat=st.hivEtat[sid]||'Bon',tag=(HIV_ETATS.filter(function(e){return e[0]===etat;})[0]||['',''])[1],ant=st.hivAntigel[sid]||0,note=String(st.hivNote[sid]||'').trim();
-  this.enqueue({_t:'rapports_hivernage',id:rid('hv'),site_id:s.id,site_nom:s.nom,client:'',objet:'Pré-hivernage '+y,titre:'Rapport de pré-hivernage',sous_titre:'',date_rapport:iso(now),date_inspection:iso(now),
-    prepare_par:this.me.nom,technicien:this.me.nom,sections:[{id:rid('s'),title:'Pré-hivernage — liste de contrôle',tag:tag,items:HIV_CHECKS.map(function(l,i){return(ck[i]?'Fait — ':'Non fait — ')+l;}),photos:[]}],
-    plan:[],suivi:[],timeline:{q1:'',q2:'',q3:'',q4:''},callout:'État général : '+etat+'. Antigel ajouté : '+ant+' L.'+(note?' '+note:''),signataire_sa:this.me.nom,signataire_client:'',
-    status:'brouillon',created_by:this.user.id,created_at:now.toISOString(),updated_at:now.toISOString()});
-  var o={};o[sid]=iso(now);this.setState(function(s2){return{hivSent:Object.assign({},s2.hivSent,o),screen:'hivernage'};});this.flash('Rapport envoyé au bureau — '+s.nom);};
+Comp.prototype.hivCur=function(sid){var s=siteById(sid),d=this.state.hivData[sid];return window.SAHiv.norm(d||window.SAHiv.blank({site:s?s.nom:'',chef:this.me.nom,date:iso(new Date())}));};
+Comp.prototype.hivSet=function(sid,fn){var d=this.hivCur(sid);fn(d);var o={};o[sid]=d;this.setState(function(s2){return{hivData:Object.assign({},s2.hivData,o)};});this.persist();};
+Comp.prototype.sendHiv=function(){var st=this.state,sid=st.hivSel,s=sid&&siteById(sid);if(!s)return;var now=new Date(),d=this.hivCur(sid);
+  d.info.site=s.nom;if(!d.info.date)d.info.date=iso(now);if(!String(d.info.chef||'').trim())d.info.chef=this.me.nom;
+  var row=window.SAHiv.toReport(d,{site_id:s.id,site_nom:s.nom,prepare_par:this.me.nom},st.hivPh[sid]||[]);
+  this.enqueue(Object.assign({_t:'rapports_hivernage',id:rid('hv')},row,{status:'brouillon',created_by:this.user.id,created_at:now.toISOString(),updated_at:now.toISOString()}));
+  var o={};o[sid]=iso(now);this.setState(function(s2){var hd=Object.assign({},s2.hivData),hp=Object.assign({},s2.hivPh);delete hd[sid];delete hp[sid];return{hivData:hd,hivPh:hp,hivSent:Object.assign({},s2.hivSent,o),screen:'hivernage'};});
+  this.persist();this.flash('Liste envoyée au bureau — '+s.nom);};
 
 /* ---------- Valeurs dérivées pour le gabarit ---------- */
 Comp.prototype.vals=function(){
@@ -470,18 +470,27 @@ Comp.prototype.vals=function(){
   var hivDone=function(s){var r=rep[s.id];return r?(r.date_inspection||''):(sent[s.id]&&String(sent[s.id]).slice(0,4)===y?sent[s.id]:'');};
   var hivDoneCount=hs.filter(function(s){return!!hivDone(s);}).length,hf=st.hivFilter;
   var HF=[['todo','À faire'],['done','Faits'],['all','Tous']];
-  var hivSel=st.hivSel&&siteById(st.hivSel),hck=hivSel?(st.hivChecks[hivSel.id]||{}):{};
-  var setH=function(key,val){var o={};o[hivSel.id]=val;self.setState(function(s2){var r={};r[key]=Object.assign({},s2[key],o);return r;});};
+  var hivSel=st.hivSel&&siteById(st.hivSel),H=window.SAHiv,hd=hivSel?this.hivCur(hivSel.id):null,hpg=hd?H.progress(hd):{done:0,total:0,pct:0};
+  var hset=function(fn){return function(e){var v=e&&e.target?(e.target.type==='checkbox'?e.target.checked:e.target.value):e;self.hivSet(hivSel.id,function(d){fn(d,v);});};};
   var hivV={isHiv:scr==='hivernage',isHivForm:scr==='hivForm'&&!!hivSel,hivDoneCount:hivDoneCount,hivTotalSites:hs.length,
     hivCells:hs.map(function(s){return{bg:hivDone(s)?'var(--color-accent-700)':'transparent'};}),
     hivFilters:HF.map(function(f,i){var on=hf===f[0];return{label:f[1],go:function(){self.setState({hivFilter:f[0]});},bl:i?'1px solid var(--color-divider)':'none',bg:segStyle(on).bg,fg:segStyle(on).fg};}),
     hivList:hs.filter(function(s){var d=!!hivDone(s);return hf==='all'||(hf==='done'?d:!d);}).map(function(s){var d=hivDone(s);return{nom:s.nom,ville:s.ville||'—',statutTxt:d?'Fait le '+d:'À faire',icon:d?'check':'right',open:function(){self.setState({hivSel:s.id,screen:'hivForm'});}};}),
-    hivSite:hivSel?{nom:hivSel.nom,ville:hivSel.ville||'—'}:{},
-    hivChecks:HIV_CHECKS.map(function(l,i){return{label:l,on:!!hck[i],box:hck[i]?'var(--color-text)':'transparent',toggle:function(){var o=Object.assign({},hck);o[i]=!hck[i];setH('hivChecks',o);}};}),
-    hivProgress:HIV_CHECKS.filter(function(l,i){return hck[i];}).length,hivTotal:HIV_CHECKS.length,hivAntigel:hivSel?(st.hivAntigel[hivSel.id]||0):0,
-    antigelMinus:function(){setH('hivAntigel',Math.max(0,(st.hivAntigel[hivSel.id]||0)-1));},antigelPlus:function(){setH('hivAntigel',(st.hivAntigel[hivSel.id]||0)+1);},
-    hivEtats:HIV_ETATS.map(function(e){var on=hivSel&&(st.hivEtat[hivSel.id]||'Bon')===e[0];return{label:e[0],go:function(){setH('hivEtat',e[0]);},bg:segStyle(on).bg,fg:segStyle(on).fg,dot:on?'var(--color-bg)':'transparent'};}),
-    hivNoteTxt:hivSel?(st.hivNote[hivSel.id]||''):'',onHivNote:function(e){setH('hivNote',e.target.value);},sendHiv:function(){self.sendHiv();}};
+    hivSite:hivSel?{nom:hivSel.nom,ville:hivSel.ville||'—'}:{},hivProgress:hpg.done,hivTotal:hpg.total,hivPct:hpg.pct+'%',
+    hivCrit:hd&&H.critiquesManquants(hd).length?'Étape(s) critique(s) non cochée(s) : '+H.critiquesManquants(hd).map(function(x){return x.split('.')[0];}).join(', '):'',
+    hivInfo:hd?H.INFO.filter(function(f){return f[0]!=='site'&&f[0]!=='date';}).map(function(f){return{l:f[1],type:f[2],v:hd.info[f[0]]||'',on:hset(function(d,v){d.info[f[0]]=v;})};}):[],
+    hivSecs:hd?H.SECTIONS.map(function(sc){var all=sc.items.every(function(it){return hd.c[it.k];});
+      return{titre:sc.no+'. '+sc.titre,allLbl:all?'Tout décocher':'Tout cocher',all:function(){self.hivSet(hivSel.id,function(d){sc.items.forEach(function(it){d.c[it.k]=!all;});});},
+        tips:sc.id==='p5',isForm:sc.id==='form',items:sc.items.map(function(it){var on=!!hd.c[it.k];return{label:(sc.num&&it.n!=='—'?it.n+'. ':'')+it.t+(it.b?' '+it.b:'')+(sc.col2?(it.g===2?' (pièce)':''):''),on:on,fw:it.crit?'600':'400',
+          box:on?'var(--color-text)':'transparent',toggle:function(){self.hivSet(hivSel.id,function(d){d.c[it.k]=!d.c[it.k];});}};})};}):[],
+    hivTips:H.TIPS.map(function(t){return{t:t};}),hivAlerte:H.ALERTE,
+    hivEmp:hd?hd.employes.map(function(e,i){var tg=function(key,lbl){return{lbl:lbl,fw:'400',on:!!e[key],box:e[key]?'var(--color-text)':'transparent',toggle:function(){self.hivSet(hivSel.id,function(d){d.employes[i][key]=!d.employes[i][key];});}};};
+      return{nom:e.nom,onNom:hset(function(d,v){d.employes[i].nom=v;}),tg:[tg('formation','Formation complétée'),tg('demo','Démonstration réussie')],del:function(){self.hivSet(hivSel.id,function(d){d.employes.splice(i,1);});}};}):[],
+    addEmp:function(){self.hivSet(hivSel.id,function(d){d.employes.push({nom:'',formation:false,demo:false});});},
+    hivNoteTxt:hd?hd.remarques:'',onHivNote:hset(function(d,v){d.remarques=v;}),
+    hivPhotoLbl:hivSel&&(st.hivPh[hivSel.id]||[]).length?'Photo · '+(st.hivPh[hivSel.id]||[]).length+' jointe(s) — en ajouter':'Ajouter une photo',
+    hivPhoto:function(){var sid=hivSel.id;self.pickImage(function(data){var o={};o[sid]=(self.state.hivPh[sid]||[]).concat([{data:data,name:'Photo '+((self.state.hivPh[sid]||[]).length+1),addedBy:self.user.id,addedAt:new Date().toISOString()}]);self.setState(function(s2){return{hivPh:Object.assign({},s2.hivPh,o)};});self.persist();});},
+    sendHiv:function(){self.sendHiv();}};
   // ---- Correction de punch
   var pe=st.pe,setPe=function(k){return function(e){var o={};o[k]=e.target.value;self.setState({pe:Object.assign({},st.pe,o,{confirm:false})});};};
   var peV={isPunchEdit:scr==='punchedit'&&!!pe,pe:pe?{lieu:pe.lieu,start:pe.start,end:pe.end,active:pe.active,onLieu:setPe('lieu'),onStart:setPe('start'),onEnd:setPe('end'),

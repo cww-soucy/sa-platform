@@ -155,7 +155,7 @@ test('logistique : nouveau bon créé à partir de la sortie, signé et livré',
   await page.close();
 });
 
-test('hivernage : liste réelle des sites, rapport envoyé au format de SA Platform', async () => {
+test('hivernage : liste réelle des sites, liste de contrôle « Hivernement » envoyée au bureau', async () => {
   const { page, db, errors } = await openApp(browser, srv.url, { app: 'terrain', user: USER, tables: base() });
   await ready(page);
   await T(page, () => window.__terrain.vals().goHiv());
@@ -164,22 +164,32 @@ test('hivernage : liste réelle des sites, rapport envoyé au format de SA Platf
   // site 1 = piscine intérieure (MI) exclue, site 3 fusionné exclu, site 2 déjà fait cette année
   assert.deepEqual(v, { done: 1, tot: 2, list: ['Piscine Alpha Sud'] });
   await page.getByRole('button', { name: /Piscine Alpha Sud/ }).click();
-  await page.getByRole('button', { name: /Conduites purgées/ }).click();
-  await page.getByRole('button', { name: /Bouchons d’hivernage installés/ }).click();
-  await page.getByRole('button', { name: 'Plus' }).click();
-  await page.getByRole('button', { name: 'Plus' }).click();
-  await page.getByRole('button', { name: 'À surveiller' }).click();
+  assert.match(await text(page), /0 cases sur 58/);
+  await page.getByRole('button', { name: /^1\. Vidanger le bassin au complet/ }).click();
+  await page.getByRole('button', { name: /^7\. Installer les bouchons expansibles/ }).click();
+  await page.getByRole('button', { name: 'Tout cocher' }).first().click();
+  await page.locator('.field').filter({ hasText: 'Température' }).locator('input').fill('6 °C');
+  await page.getByRole('button', { name: /Ajouter un employé/ }).click();
+  await page.getByLabel('Employé (nom)').fill('Jean Recrue');
+  await page.getByRole('button', { name: 'Démonstration réussie' }).click();
   await page.getByPlaceholder('Bris, pièces à commander, remarques').fill('Skimmer fissuré');
-  assert.match(await text(page), /2 étapes sur 7/);
-  await page.getByRole('button', { name: 'Envoyer le rapport' }).click();
+  assert.match(await text(page), /9 cases sur 60/);
+  await page.getByRole('button', { name: 'Envoyer au bureau' }).click();
   await noQueue(page);
   const r = db.rows('rapports_hivernage').find((x) => x.id !== 'hv-old');
   assert.ok(r, 'rapport reçu (colonnes valides)');
   assert.equal(r.site_nom, 'Piscine Alpha Sud');
+  assert.equal(r.site_id, '4');
   assert.equal(r.status, 'brouillon');
-  assert.equal(r.sections[0].tag, 'modere');
-  assert.equal(r.sections[0].items.filter((i) => i.startsWith('Fait — ')).length, 2);
-  assert.match(r.callout, /À surveiller.*2 L.*Skimmer fissuré/);
+  assert.equal(r.technicien, 'Kaël Test');
+  assert.equal(r.callout, 'Skimmer fissuré');
+  const h = r.sections[0].hivernement;
+  assert.equal(h.info.temperature, '6 °C');
+  assert.equal(h.c['p1-0'], true);
+  assert.equal(h.c['p3-2'], true);
+  assert.deepEqual(h.employes, [{ nom: 'Jean Recrue', formation: false, demo: true }]);
+  assert.equal(r.sections[0].tag, 'urgent', 'étapes critiques non cochées');
+  assert.ok(r.sections.some((x) => x.title === '3. Phase 1 — Vidange' && x.items[0].startsWith('✔ ')), 'lisible par SA Platform');
   await page.waitForFunction(() => window.__terrain.vals().hivDoneCount === 2);
   assert.deepEqual(errors, []);
   await page.close();

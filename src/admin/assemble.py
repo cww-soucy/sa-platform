@@ -357,7 +357,7 @@ DOCLIST=lambda flag,head:('<sc-if value="{{ %s }}"><div style="display:flex;flex
   '<sc-if value="{{ docLoading }}"><div>Chargement…</div></sc-if><sc-if value="{{ docErr }}"><div role="alert" style="padding:10px 14px;border:2px solid var(--color-accent-900)">{{ docErr }}</div></sc-if>'
   '<sc-if value="{{ docNone }}"><div style="font-size:15px;border:1px dashed var(--color-text);padding:14px">Aucun document pour ce filtre.</div></sc-if>'
   +CARD('<table class="table" style="font-size:14px"><tbody><sc-for list="{{ docRows }}" as="r"><tr><td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px;font-weight:600">{{ r.a }}</td>'+TD%('','{{ r.b }}')+TD%('','{{ r.c }}')+TD%('','{{ r.d }}')+TD%('font-weight:600','{{ r.etat }}')
-  +'<td style="padding:4px 18px 4px 8px;text-align:right"><button class="btn btn-secondary" onClick="{{ r.open }}">Ouvrir</button></td></tr></sc-for></tbody></table>','overflow-x:auto')
+  +'<td style="padding:4px 18px 4px 8px;text-align:right;white-space:nowrap"><sc-for list="{{ r.acts }}" as="x"><button class="btn btn-ghost" onClick="{{ x.go }}" style="margin-right:4px">{{ x.l }}</button></sc-for><button class="btn btn-secondary" onClick="{{ r.open }}">Ouvrir</button></td></tr></sc-for></tbody></table>','overflow-x:auto')
   +'</div></sc-if>\n')
 LOGI=DOCLIST('isLogi',SEG('logTabs'))
 HIVB=DOCLIST('isHivB','')
@@ -381,7 +381,7 @@ DE_SO=IF('isSO',G2(FL('Client / projet',INP('dClient.v','dClient.on','text',' li
   +G2(FL('Employé',TECHSEL),G2(FL('N° employé',INP('dNoEmp.v','dNoEmp.on')),FL('Département',INP('dDept.v','dDept.on'))))
   +ROWED('rLig','Articles sortis','addLig','Ajouter une ligne'))
 PRIO='<select class="input" onChange="{{ r.onPrio }}" aria-label="Priorité" style="flex:1.2;padding:6px 8px"><template data-sc="for" list="{{ r.prio }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select>'
-DE_HV=IF('isHV',G2(FL('Site',INP('dSite.v','dSite.on','text',' list="deSites"')),FL('Client',INP('dClient.v','dClient.on')))
+DE_HV=IF('isHVold',G2(FL('Site',INP('dSite.v','dSite.on','text',' list="deSites"')),FL('Client',INP('dClient.v','dClient.on')))
   +G2(FL('Titre',INP('dTitre.v','dTitre.on')),FL('Objet',INP('dObjet.v','dObjet.on')))
   +G2(G2(FL('Date d’inspection',INP('dDI.v','dDI.on','date')),FL('Date du rapport',INP('dDR.v','dDR.on','date'))),G2(FL('Préparé par',INP('dPrep.v','dPrep.on')),FL('Technicien',TECHSEL)))
   +'<div style="display:flex;flex-direction:column;gap:10px"><b>Constats par section</b><sc-for list="{{ dSecs }}" as="s"><div style="border:1px solid var(--color-divider);padding:10px;display:flex;flex-direction:column;gap:8px">'
@@ -397,11 +397,39 @@ DE_HV=IF('isHV',G2(FL('Site',INP('dSite.v','dSite.on','text',' list="deSites"'))
   +FL('Calendrier prévisionnel','<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px"><sc-for list="{{ dQ }}" as="q"><input class="input" value="{{ q.v }}" onInput="{{ q.on }}" placeholder="{{ q.l }}" aria-label="{{ q.l }}"></sc-for></div>')
   +FL('Recommandation générale',TXT('dCall.v','dCall.on','Texte mis en évidence dans le rapport'))
   +G2(FL('Signataire Soucy Aquatik',INP('dSSA.v','dSSA.on')),FL('Signataire client',INP('dSCl.v','dSCl.on'))))
+# Hivernage : liste de contrôle « Hivernement » (src/hivernage/checklist.js) — même contenu que le formulaire papier
+HVH=lambda t:'<h3 style="margin:0;padding:6px 10px;background:var(--color-text);color:var(--color-bg);font:600 15px var(--font-heading);text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:10px">%s</h3>'%t
+HVBOX=('<label style="display:flex;gap:10px;align-items:flex-start;padding:7px 4px;border-bottom:1px solid var(--color-divider);cursor:pointer;font-size:14px;line-height:1.35;opacity:{{ it.op }}">'
+  '<input type="checkbox" checked="{{ it.on }}" onChange="{{ it.go }}" style="width:18px;height:18px;flex:none;margin:1px 0 0">'
+  '<span style="width:{{ it.nw }};flex:none;font-weight:600;text-align:center;overflow:hidden">{{ it.n }}</span><span style="flex:1;font-weight:{{ it.fw }}">{{ it.t }}</span></label>')
+DE_HV2=IF('isHV2','<datalist id="deTechs"><sc-for list="{{ hvTechs }}" as="o"><option value="{{ o.v }}"></option></sc-for></datalist>'
+  '<div role="status" style="position:sticky;top:-22px;z-index:2;background:var(--color-bg);display:flex;align-items:center;gap:12px;padding:8px 12px;border:1px solid var(--color-text);font-weight:600">'
+  '<span>{{ hvProg }}</span><div style="flex:1;height:10px;background:var(--color-divider)"><div style="height:100%;width:{{ hvPct }};background:var(--color-accent-700)"></div></div></div>'
+  '<sc-if value="{{ hvCrit }}"><div role="alert" style="padding:8px 12px;border:2px solid var(--color-accent-900);font-size:14px;font-weight:600">{{ hvCrit }}</div></sc-if>'
+  +HVH('1. Informations générales')
+  +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 14px"><sc-for list="{{ hvInfo }}" as="f"><div class="field" style="grid-column:{{ f.span }}"><label>{{ f.l }}</label>'
+  '<input class="input" type="{{ f.type }}" value="{{ f.v }}" onInput="{{ f.on }}" list="{{ f.list }}"></div></sc-for></div>'
+  +'<sc-for list="{{ hvSecs }}" as="s"><div style="display:flex;flex-direction:column;gap:4px">'
+  +HVH('<span style="flex:1">{{ s.titre }}</span><button onClick="{{ s.all }}" style="all:unset;cursor:pointer;font:500 13px var(--font-body);text-transform:none;letter-spacing:0;text-decoration:underline">{{ s.allLbl }}</button>')
+  +'<div style="display:grid;grid-template-columns:{{ s.cols }};gap:0 18px"><sc-for list="{{ s.groups }}" as="g"><div style="display:flex;flex-direction:column"><sc-if value="{{ g.head }}"><b style="font-size:13px;padding:6px 4px 2px">{{ g.head }}</b></sc-if>'
+  '<sc-for list="{{ g.items }}" as="it">'+HVBOX+'</sc-for></div></sc-for></div>'
+  '<sc-if value="{{ s.tips }}"><div style="border-left:4px solid var(--color-accent-700);padding:8px 12px;margin-top:8px;font-size:14px"><b>Bon à savoir :</b><ul style="margin:4px 0 0 18px;padding:0"><sc-for list="{{ hvTips }}" as="t"><li>{{ t.t }}</li></sc-for></ul></div>'
+  '<div style="border:2px solid var(--color-accent-900);padding:10px 12px;font-weight:700;font-size:14px;margin-top:6px">{{ hvAlerte }}</div></sc-if>'
+  '<sc-if value="{{ s.isForm }}"><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px"><b>Employés formés</b><sc-for list="{{ hvEmp }}" as="e"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
+  '<input class="input" value="{{ e.nom }}" onInput="{{ e.onNom }}" placeholder="Employé (nom)" aria-label="Employé (nom)" style="flex:1;min-width:160px;padding:6px 8px">'
+  '<label style="display:flex;gap:6px;align-items:center;font-size:14px"><input type="checkbox" checked="{{ e.formation }}" onChange="{{ e.onForm }}">Formation complétée</label>'
+  '<label style="display:flex;gap:6px;align-items:center;font-size:14px"><input type="checkbox" checked="{{ e.demo }}" onChange="{{ e.onDemo }}">Démonstration réussie</label>'+DELB('e.del')+'</div></sc-for>'
+  '<button class="btn btn-ghost" onClick="{{ addEmp }}" style="align-self:flex-start">+ Ajouter un employé</button></div></sc-if>'
+  '</div></sc-for>'
+  +HVH('10. Remarques et anomalies')+FL('Remarques et anomalies',TXT('hvRem.v','hvRem.on','Bris, pièces à commander, anomalies constatées'))+FL('Photos',PHOTOS('hvPhotos','addHvPhoto'))
+  +HVH('11. Validation')+G2(FL('Responsable',INP('hvResp.v','hvResp.on')),FL('Client',INP('dClient.v','dClient.on')))
+  +FL('Courriel du client',INP('hvMail.v','hvMail.on','text',' placeholder="courriel@client.ca (plusieurs : séparer par des virgules)"'))
+  +'<sc-if value="{{ hvEnvoisTxt }}"><div style="font-size:14px">{{ hvEnvoisTxt }}</div></sc-if>')
 DEDLG=('<template data-sc="if" value="{{ deOpen }}"><div class="dialog-backdrop" onClick="{{ deCloseBg }}" style="z-index:60"><div class="dialog" onClick="{{ stop }}" style="width:min(860px,100%);background:var(--color-bg);max-height:calc(100vh - 40px);overflow-y:auto;gap:14px;padding:22px 24px;border:1px solid var(--color-text)">'
   +DLGHEAD('deTitle','deClose')+'<datalist id="deSites"><sc-for list="{{ sitesList2 }}" as="o"><option value="{{ o.v }}"></option></sc-for></datalist>'
   +'<sc-if value="{{ deDone }}"><div style="padding:8px 12px;border:1px solid var(--color-text);font-weight:600;display:flex;align-items:center;gap:10px">{{ deDoneTxt }}<span style="flex:1"></span><button class="btn btn-ghost" onClick="{{ deReopen }}">Remettre en brouillon</button></div></sc-if>'
-  +DE_BL+DE_SO+DE_HV
-  +'<div class="dialog-actions" style="margin-top:0;flex-wrap:wrap">'+IF('deCanDel',BTNX('btn-secondary','deDel','{{ deDelLbl }}'))+BTNX('btn-secondary','dePrint','Imprimer')+'<span style="flex:1"></span>'+BTNX('btn-secondary','deClose','Fermer')
+  +DE_BL+DE_SO+DE_HV+DE_HV2
+  +'<div class="dialog-actions" style="margin-top:0;flex-wrap:wrap">'+IF('deCanDel',BTNX('btn-secondary','deDel','{{ deDelLbl }}'))+BTNX('btn-secondary','dePrint','Imprimer')+IF('deCanSend',BTNX('btn-secondary','deSend','Envoyer au client'))+'<span style="flex:1"></span>'+BTNX('btn-secondary','deClose','Fermer')
   +IF('deNotDone',BTNX('btn-secondary','deFinal','{{ deFinalLbl }}'))+BTNX('btn-primary','deSave','{{ deSaveLbl }}')+'</div></div></div></template>\n')
 M=M.rstrip()+'\n'+DEDLG
 
@@ -808,6 +836,7 @@ assert '</script' not in ljs.lower() and '</style' not in lcss.lower()
 # Générateur QR (qrcodejs, MIT — la même bibliothèque que SA Platform) pour les étiquettes d'outils et d'emplacements
 qjs=open(os.path.join(SRC,'vendor','qrcodejs','qrcode.min.js'),encoding='utf-8').read(); assert '</script' not in qjs.lower()
 insp=open(os.path.join(SRC,'inspection','model.js'),encoding='utf-8').read(); assert '</script' not in insp.lower()
+hiv=open(os.path.join(SRC,'hivernage','checklist.js'),encoding='utf-8').read(); assert '</script' not in hiv.lower()
 rt=open(os.path.join(HERE,'runtime.js'),encoding='utf-8').read(); app=open(os.path.join(HERE,'app.js'),encoding='utf-8').read()
 _k=app.rindex('})();'); app=app[:_k]+open(os.path.join(HERE,'inspections.js'),encoding='utf-8').read()+'\n'+app[_k:]
 _k=app.rindex('})();'); app=app[:_k]+open(os.path.join(HERE,'clients.js'),encoding='utf-8').read()+'\n'+app[_k:]
@@ -838,7 +867,7 @@ button{font-family:inherit}a{color:var(--color-accent-700)}
 <style>'''+lcss+'''</style>
 <script>'''+ljs+'''</script>
 <script>'''+qjs+'''</script>
-<script>'''+icons+'''</script><script>window.SA_LOGO='''+repr(LOGO)+''';</script><script>'''+insp+'''</script><script>'''+rt+'''</script><script>'''+app+'''</script>
+<script>'''+icons+'''</script><script>window.SA_LOGO='''+repr(LOGO)+''';</script><script>'''+insp+'''</script><script>'''+hiv+'''</script><script>'''+rt+'''</script><script>'''+app+'''</script>
 </body></html>'''
 open(os.path.join(OUT,'admin.html'),'w',encoding='utf-8').write(html)
 print('taille',len(html),'| règles',len(css))
