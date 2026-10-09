@@ -93,7 +93,16 @@ rep('gap:3px;position:relative;color:{{ t.fg }};box-shadow:{{ t.bar }}','gap:3px
 rep('<sa-i n="{{ t.icon }}" s="26"></sa-i><span style="font-size:12px;font-weight:{{ t.fw }}">','<sa-i n="{{ t.icon }}" s="24"></sa-i><span style="font-size:11px;font-weight:{{ t.fw }}">')
 # bouton déconnexion
 m=re.search(r'<button([^>]*)>((?:(?!</button>).)*?Se déconnecter)',M,re.S)
-if m: M=M.replace(m.group(0),'<button onClick="{{ logout }}"'+m.group(1)+'>'+m.group(2),1); print('logout lié')
+# changer son mot de passe (profil), juste au-dessus de « Se déconnecter »
+PWI=lambda k,ac: '<input class="input" type="password" autocomplete="%s" value="{{ mdp.%s }}" onInput="{{ mdp.on_%s }}" style="min-height:52px;font-size:18px">'%(ac,k,k)
+MDP=('<sc-if value="{{ mdp.closed }}">'+BTN('btn-secondary','mdp.open','pen','Changer mon mot de passe','54px;font-size:18px')+'</sc-if>'
+ '<sc-if value="{{ mdp.isOpen }}"><div class="blueprint" style="padding:18px;display:flex;flex-direction:column;gap:12px">'+CORN
+ +'<div style="font:600 22px var(--font-heading)">Changer mon mot de passe</div>'
+ '<sc-if value="{{ mdp.offline }}"><div style="font-size:15px;line-height:1.4">Hors ligne : le changement de mot de passe demande le réseau.</div></sc-if>'
+ +FIELD('Mot de passe actuel',PWI('a','current-password'))+FIELD('Nouveau mot de passe (8 caractères min.)',PWI('n','new-password'))+FIELD('Confirmer le nouveau',PWI('c','new-password'))
+ +'<sc-if value="{{ mdp.hasErr }}"><div role="alert" style="font-size:15px;font-weight:600">{{ mdp.err }}</div></sc-if>'
+ +BTN('btn-primary','mdp.submit','check','{{ mdp.label }}','54px;font-size:18px')+BTN('btn-secondary','mdp.cancel','left','Annuler','52px;font-size:18px')+'</div></sc-if>\n')
+if m: M=M.replace(m.group(0),MDP+'<button onClick="{{ logout }}"'+m.group(1)+'>'+m.group(2),1); print('logout lié')
 else: print('!! bouton déconnexion introuvable')
 # blocs ajoutés : écran « Bientôt » et journée vide
 SOON='''<sc-if value="{{ isSoon }}"><div style="padding:24px 20px;display:flex;flex-direction:column;gap:16px">
