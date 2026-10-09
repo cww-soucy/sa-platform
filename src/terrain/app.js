@@ -557,9 +557,24 @@ Comp.prototype.vals=function(){
     planDays:days.map(function(d,i){return Object.assign({dow:d.dow,num:d.num,go:function(){self.setState({planDay:i});}},segStyle(st.planDay===i));}),
     planTitle:dsel.title,planItems:dsel.items.map(function(it){var s=siteById(it[1])||pseudoSite(it[1],'');return{h:it[0]||'—',nom:s.nom,ville:s.ville,tache:it[2],rec:it[3]};}),recurrences:Object.keys(recMap).map(function(k){return recMap[k];}),
     myWeek:this.hours==null?'—':fr(Math.round(this.hours*100)/100),me:this.me,queueLbl:this.queueN?this.queueN+' fiche(s) à envoyer':'Rien en attente',
-    bureauTel:String(this.bureau||'').replace(/[^\d+]/g,''),logout:function(){localStorage.removeItem('sa_terrain_user');location.reload();},
+    bureauTel:String(this.bureau||'').replace(/[^\d+]/g,''),logout:function(){localStorage.removeItem('sa_terrain_user');location.reload();},mdp:this.mdpVals(),
     tabs:TABS.map(function(t){return{label:t[1],icon:t[2],go:function(){self.go(t[0]);},fg:tabOf===t[0]?'var(--color-text)':'var(--color-neutral-600)',fw:tabOf===t[0]?600:400,bar:tabOf===t[0]?'inset 0 3px 0 var(--color-text)':'none',dot:t[0]==='fiche'&&!!cj};})
   },stepV||{});};
+/* Profil : l'employé change son propre mot de passe (RPC changer_mdp, demande le réseau). Champs gardés hors de state : jamais persistés. */
+Comp.prototype.mdpVals=function(){var self=this,m=this.mdp||{},on=navigator.onLine,set=function(k){return function(e){m[k]=e.target.value;self.mdp=m;};};
+  return{closed:!m.open,isOpen:!!m.open,offline:!on,a:m.a||'',n:m.n||'',c:m.c||'',on_a:set('a'),on_n:set('n'),on_c:set('c'),hasErr:!!m.err,err:m.err||'',label:m.busy?'Enregistrement…':'Enregistrer',
+    open:function(){self.mdp={open:true};self.update();},cancel:function(){self.mdp=null;self.update();},submit:function(){self.changerMdp();}};};
+Comp.prototype.changerMdp=function(){var self=this,m=this.mdp||{},fail=function(t){m.err=t;m.busy=false;self.mdp=m;self.update();};if(m.busy)return;
+  if(!navigator.onLine)return fail('Hors ligne : reconnectez-vous au réseau pour changer le mot de passe.');
+  if(!m.a)return fail('Entrez votre mot de passe actuel.');if((m.n||'').length<8)return fail('Le nouveau mot de passe doit contenir au moins 8 caractères.');
+  if(m.n!==m.c)return fail('La confirmation ne correspond pas.');if(m.n===m.a)return fail('Le nouveau mot de passe doit être différent de l’actuel.');
+  m.busy=true;m.err='';this.update();
+  fetch(SB+'/rest/v1/rpc/changer_mdp',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},H),body:JSON.stringify({p_id:this.user.id,p_ancien:m.a,p_nouveau:m.n})})
+    .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j};});}).then(function(x){
+      if(!x.ok)return fail((x.j&&x.j.message)||'Changement refusé par le serveur.');
+      if(x.j!==true)return fail('Mot de passe actuel incorrect.');
+      self.mdp=null;self.flash('Mot de passe changé');})
+    .catch(function(){fail('Réseau indisponible — réessayez.');});};
 Comp.prototype.update=function(){if(!this._host)return;SARender(document.getElementById('tpl'),this._host,this.vals());this.applyTheme();this.bindSig();};
 /* Mot de bienvenue : « Bonjour Kaël » en tête de la tournée ; écran d'accueil au logo juste après la connexion */
 function bonjour(p){var h=new Date().getHours();return(h<12?'Bonjour':h<18?'Bon après-midi':'Bonsoir')+(p?' '+p:'');}
