@@ -100,13 +100,10 @@ else: print('!! visite')
 
 
 # ---------- Sondages : saisie de clé, résultats masqués tant qu'elle n'est pas fournie ----------
-KEYBOX=('<div style="display:flex;flex-direction:column;gap:14px;max-width:420px"><h3 style="margin:0;font-size:22px">Clé d’accès requise</h3>'
- '<p style="margin:0;font-size:14px;line-height:1.4">Les réponses des sondages sont protégées par une clé, gardée uniquement dans ce navigateur — jamais dans le fichier de l’app.</p>'
- '<div class="field"><label>Clé d’accès</label><input class="input" type="password" value="{{ keyVal }}" onChange="{{ onKey }}"></div>'
- '<button class="btn btn-primary" onClick="{{ saveKey }}" style="align-self:flex-start">Valider</button></div>')
-mm=re.search(r'(<sc-if value="\{\{ isSondages \}\}"[^>]*>\s*<div style="display:grid;grid-template-columns:300px minmax\(0,1fr\);gap:24px;align-items:start">)',M)
-if mm: M=M.replace(mm.group(0),mm.group(0)+'<template data-sc="if" value="{{ needKey }}">'+KEYBOX+'</template><template data-sc="if" value="{{ noSurvey }}"><div style="padding:20px">Aucun sondage pour l’instant.</div></template>',1)
-else: print('!! intro Sondages')
+# remplacé en entier par sondages.tpl.html (création, réutilisation, modification, résultats ; logique : sondages.js)
+_b=block(M,'isSondages'); assert _b, 'ancre isSondages'
+STPL=open(os.path.join(HERE,'sondages.tpl.html'),encoding='utf-8').read(); STPL=STPL[STPL.index('-->')+3:].strip()
+M=M.replace(_b,STPL,1)
 rep("this.setState({ dlg: true })","self.openDlg({})") if False else None
 
 
@@ -840,6 +837,7 @@ hiv=open(os.path.join(SRC,'hivernage','checklist.js'),encoding='utf-8').read(); 
 rt=open(os.path.join(HERE,'runtime.js'),encoding='utf-8').read(); app=open(os.path.join(HERE,'app.js'),encoding='utf-8').read()
 _k=app.rindex('})();'); app=app[:_k]+open(os.path.join(HERE,'inspections.js'),encoding='utf-8').read()+'\n'+app[_k:]
 _k=app.rindex('})();'); app=app[:_k]+open(os.path.join(HERE,'clients.js'),encoding='utf-8').read()+'\n'+app[_k:]
+_k=app.rindex('})();'); app=app[:_k]+open(os.path.join(HERE,'sondages.js'),encoding='utf-8').read()+'\n'+app[_k:]
 import base64
 LOGO='data:image/png;base64,'+base64.b64encode(open(os.path.join(SRC,'design','logo-soucy-aquatik.png'),'rb').read()).decode()
 html='''<!DOCTYPE html>
