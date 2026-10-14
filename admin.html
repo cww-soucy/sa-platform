@@ -1136,77 +1136,98 @@ html.nav-repli .sa-shell{grid-template-columns:72px minmax(0,1fr)!important}html
 
       <!-- ═════ SONDAGES ═════ -->
       <template data-sc="if" value="{{ isSondages }}">
-        <div style="display:grid;grid-template-columns:300px minmax(0,1fr);gap:24px;align-items:start"><template data-sc="if" value="{{ needKey }}"><div style="display:flex;flex-direction:column;gap:14px;max-width:420px"><h3 style="margin:0;font-size:22px">Clé d’accès requise</h3><p style="margin:0;font-size:14px;line-height:1.4">Les réponses des sondages sont protégées par une clé, gardée uniquement dans ce navigateur — jamais dans le fichier de l’app.</p><div class="field"><label>Clé d’accès</label><input class="input" type="password" value="{{ keyVal }}" onChange="{{ onKey }}"></div><button class="btn btn-primary" onClick="{{ saveKey }}" style="align-self:flex-start">Valider</button></div></template><template data-sc="if" value="{{ noSurvey }}"><div style="padding:20px">Aucun sondage pour l’instant.</div></template>
-          <div style="display:flex;flex-direction:column;gap:12px">
-            <button class="btn btn-primary blueprint" onClick="{{ openBuilder }}" style="white-space:nowrap;padding:10px 16px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><sa-i n="plus" s="16"></sa-i><span>Créer un sondage</span></button>
-            <div style="display:flex;flex-direction:column;border:1px solid var(--color-divider)">
-              <template data-sc="for" list="{{ surveys }}" as="s">
-                <button onClick="{{ s.go }}" style="all:unset;cursor:pointer;padding:12px 14px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:3px;background:{{ s.bg }};color:{{ s.fg }}">
-                  <span style="font:600 17px/1.15 var(--font-heading)">{{ s.titre }}</span>
-                  <span style="font-size:12px">{{ s.statut }} · {{ s.reponses }}/{{ s.envoyes }} réponses · {{ s.scoreTxt }}</span>
-                </button>
-              </template>
-            </div>
-          </div>
-
-          <template data-sc="if" value="{{ showResults }}">
-            <div style="display:flex;flex-direction:column;gap:22px;min-width:0">
-              <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:13px">{{ sv.cible }} · fermeture {{ sv.ferme }}</span><h2 style="margin:0;font-size:32px;line-height:1.05">{{ sv.titre }}</h2></div>
-              <div class="blueprint" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr))">
-                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-                <template data-sc="for" list="{{ sv.kpis }}" as="k"><div style="padding:14px 18px;border-right:1px solid var(--color-divider);display:flex;flex-direction:column"><span style="font-size:13px">{{ k.l }}</span><span style="font:600 34px/1.05 var(--font-heading)">{{ k.v }}</span></div></template>
-              </div>
-              <template data-sc="if" value="{{ sv.hasQ }}">
-                <section class="blueprint" style="display:flex;flex-direction:column">
-                  <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-                  <div style="padding:14px 18px;border-bottom:1px solid var(--color-divider);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap"><h3 style="margin:0;font-size:22px">Résultats par question</h3>
-                    <div style="display:flex;gap:10px;font-size:12px;align-items:center"><span>1</span><template data-sc="for" list="{{ scaleLegend }}" as="c"><span style="width:16px;height:12px;background:{{ c }};border:1px solid var(--color-text)"></span></template><span>5</span></div>
-                  </div>
-                  <template data-sc="for" list="{{ sv.questions }}" as="q">
-                    <div style="display:grid;grid-template-columns:minmax(0,260px) minmax(0,1fr) 60px;gap:18px;align-items:center;padding:14px 18px;border-bottom:1px solid var(--color-divider)">
-                      <span style="font-weight:500;line-height:1.3">{{ q.q }}</span>
-                      <div style="display:flex;height:26px;border:1px solid var(--color-text)">
-                        <template data-sc="for" list="{{ q.segs }}" as="g"><div title="{{ g.tip }}" style="width:{{ g.w }}%;background:{{ g.bg }};color:{{ g.fg }};display:flex;align-items:center;justify-content:center;font:600 12px var(--font-heading);overflow:hidden">{{ g.label }}</div></template>
-                      </div>
-                      <span style="font:600 22px var(--font-heading);text-align:right">{{ q.avg }}</span>
-                    </div>
-                  </template>
-                </section>
-                <section style="display:flex;flex-direction:column;gap:10px">
-                  <h3 style="margin:0;font-size:22px">Commentaires</h3>
-                  <template data-sc="for" list="{{ sv.verbatims }}" as="v"><div style="padding:12px 16px;border-left:2px solid var(--color-text);font-size:15px;line-height:1.45">« {{ v }} »</div></template>
-                </section>
-              </template>
-              <template data-sc="if" value="{{ sv.noQ }}"><div style="padding:18px;border:1px dashed var(--color-divider)">Résultats détaillés archivés — score moyen {{ sv.scoreTxt }} sur {{ sv.reponses }} réponses.</div></template>
-            </div>
-          </template>
-
-          <template data-sc="if" value="{{ builder }}">
-            <div class="blueprint" style="display:flex;flex-direction:column;gap:16px;padding:20px 22px;min-width:0">
-              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <div style="display:flex;align-items:center;justify-content:space-between"><h2 style="margin:0;font-size:28px">Nouveau sondage</h2><button class="btn btn-ghost btn-icon" onClick="{{ closeBuilder }}" aria-label="Fermer" style="white-space:nowrap"><sa-i n="x" s="20"></sa-i></button></div>
-              <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px">
-                <div class="field"><label>Titre</label><input class="input" value="{{ bTitle }}" onChange="{{ onBTitle }}"></div>
-                <div class="field"><label>Destinataires</label><select class="input" value="{{ bAud }}" onChange="{{ onBAud }}"><option>Clients municipaux</option><option>Clients commerciaux</option><option>Clients résidentiels</option><option>Tous les clients actifs</option></select></div>
-              </div>
-              <div style="display:flex;flex-direction:column;border-top:1px solid var(--color-text)">
-                <template data-sc="for" list="{{ bq }}" as="q">
-                  <div style="display:grid;grid-template-columns:32px minmax(0,1fr) 180px 36px;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--color-divider)">
-                    <span style="font:600 18px var(--font-heading)">{{ q.n }}</span>
-                    <input class="input" value="{{ q.q }}" onChange="{{ q.onQ }}">
-                    <select class="input" value="{{ q.t }}" onChange="{{ q.onT }}"><option>Échelle 1 à 5</option><option>Oui / Non</option><option>Choix multiple</option><option>Texte libre</option></select>
-                    <button class="btn btn-ghost btn-icon" onClick="{{ q.del }}" aria-label="Retirer" style="white-space:nowrap"><sa-i n="x" s="18"></sa-i></button>
-                  </div>
-                </template>
-              </div>
-              <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
-                <button class="btn btn-secondary" onClick="{{ addQ }}" style="white-space:nowrap"><sa-i n="plus" s="15"></sa-i><span>Ajouter une question</span></button>
-                <div style="display:flex;gap:8px"><button class="btn btn-secondary" onClick="{{ closeBuilder }}" style="white-space:nowrap">Brouillon</button><button class="btn btn-primary" onClick="{{ sendSurvey }}" style="white-space:nowrap;padding:8px 18px"><sa-i n="send" s="15"></sa-i><span>Envoyer</span></button></div>
-              </div>
-            </div>
-          </template>
-        </div>
+<div data-mod="sondages">
+<template data-sc="if" value="{{ so.needKey }}">
+  <div style="display:flex;flex-direction:column;gap:14px;max-width:420px">
+    <h3 style="margin:0;font-size:22px">Clé d’accès requise</h3>
+    <p style="margin:0;font-size:14px;line-height:1.4">Les sondages et leurs réponses sont protégés par une clé, gardée uniquement dans ce navigateur.</p>
+    <div class="field"><label for="so-cle">Clé d’accès</label><input id="so-cle" class="input" type="password" value="{{ so.keyVal }}" onInput="{{ so.onKey }}"></div>
+    <button class="btn btn-primary" onClick="{{ so.saveKey }}" style="align-self:flex-start">Valider</button>
+  </div>
+</template>
+<template data-sc="if" value="{{ so.ready }}">
+<div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start">
+  <div style="flex:1 1 280px;max-width:340px;display:flex;flex-direction:column;gap:12px;min-width:0">
+    <button class="btn btn-primary" onClick="{{ so.nouveau }}" style="white-space:nowrap"><sa-i n="plus" s="16"></sa-i><span>Créer un sondage</span></button>
+    <template data-sc="if" value="{{ so.vide }}"><div style="padding:14px;border:1px dashed var(--color-divider);font-size:14px">Aucun sondage pour l’instant.</div></template>
+    <div style="display:flex;flex-direction:column;border:1px solid var(--color-divider)">
+      <template data-sc="for" list="{{ so.liste }}" as="s">
+        <button data-sondage="{{ s.slug }}" onClick="{{ s.go }}" style="all:unset;cursor:pointer;padding:12px 14px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:3px;background:{{ s.bg }};color:{{ s.fg }}">
+          <span style="font:600 17px/1.15 var(--font-heading)">{{ s.titre }}</span>
+          <span style="font-size:13px">{{ s.client }}</span>
+          <span style="font-size:12px">{{ s.statut }} · {{ s.reponses }} réponse(s) · créé le {{ s.date }}</span>
+        </button>
       </template>
+    </div>
+  </div>
+
+  <div style="flex:3 1 420px;min-width:0;display:flex;flex-direction:column;gap:22px">
+    <template data-sc="if" value="{{ so.form }}">
+      <section class="blueprint" data-form="sondage" style="display:flex;flex-direction:column;gap:14px;padding:20px 22px">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px"><h2 style="margin:0;font-size:28px">{{ so.f.h }}</h2><button class="btn btn-ghost btn-icon" onClick="{{ so.fermer }}" aria-label="Fermer"><sa-i n="x" s="20"></sa-i></button></div>
+        <p style="margin:0;font-size:14px;line-height:1.4">{{ so.f.aide }}</p>
+        <div class="field"><label for="so-titre">Titre du sondage</label><input id="so-titre" class="input" value="{{ so.f.titre }}" onInput="{{ so.f.onTitre }}"></div>
+        <div class="field"><label for="so-client">Client</label><input id="so-client" class="input" placeholder="Ex. Ville de Lévis" value="{{ so.f.client }}" onInput="{{ so.f.onClient }}"></div>
+        <div class="field"><label for="so-site">Site(s) concerné(s)</label><input id="so-site" class="input" placeholder="Ex. Quai Paquet, Anse Benson" value="{{ so.f.site }}" onInput="{{ so.f.onSite }}"></div>
+        <template data-sc="if" value="{{ so.f.edit }}"><label style="display:flex;gap:8px;align-items:center;font-size:15px"><input type="checkbox" checked="{{ so.f.actif }}" onChange="{{ so.f.onActif }}"> Sondage ouvert (le lien accepte des réponses)</label></template>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary" onClick="{{ so.f.save }}">{{ so.f.btn }}</button><button class="btn btn-secondary" onClick="{{ so.fermer }}">Annuler</button></div>
+      </section>
+    </template>
+
+    <template data-sc="if" value="{{ so.sel }}">
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:13px">{{ so.v.client }} · {{ so.v.statut }}</span><h2 style="margin:0;font-size:32px;line-height:1.05">{{ so.v.titre }}</h2></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input class="input" readonly aria-label="Lien du sondage" value="{{ so.v.url }}" style="flex:1 1 280px;min-width:0;font-size:13px">
+          <button class="btn btn-primary" onClick="{{ so.v.copier }}"><sa-i n="clipboard" s="16"></sa-i>Copier le lien</button>
+          <a class="btn btn-secondary" href="{{ so.v.url }}" target="_blank" rel="noopener" style="text-decoration:none">Ouvrir</a>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-secondary" onClick="{{ so.v.modifier }}"><sa-i n="edit" s="16"></sa-i>Modifier</button>
+          <button class="btn btn-secondary" onClick="{{ so.v.reutiliser }}"><sa-i n="plus" s="16"></sa-i>Réutiliser pour un autre client</button>
+          <button class="btn btn-secondary" onClick="{{ so.v.basculer }}">{{ so.v.basculerLbl }}</button>
+        </div>
+      </div>
+      <div class="blueprint" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <template data-sc="for" list="{{ so.v.kpis }}" as="k"><div style="padding:14px 18px;border-right:1px solid var(--color-divider);display:flex;flex-direction:column"><span style="font-size:13px">{{ k.l }}</span><span style="font:600 30px/1.05 var(--font-heading)">{{ k.v }}</span></div></template>
+      </div>
+      <template data-sc="if" value="{{ so.v.charge }}"><div style="font-size:14px">Chargement des réponses…</div></template>
+      <template data-sc="if" value="{{ so.v.aucune }}"><div style="padding:18px;border:1px dashed var(--color-divider)">Aucune réponse pour ce sondage pour l’instant.</div></template>
+      <template data-sc="if" value="{{ so.v.hasQ }}">
+        <section class="blueprint" style="display:flex;flex-direction:column">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div style="padding:14px 18px;border-bottom:1px solid var(--color-divider);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap"><h3 style="margin:0;font-size:22px">Résultats par question</h3>
+            <div style="display:flex;gap:10px;font-size:12px;align-items:center"><span>1</span><template data-sc="for" list="{{ so.ramp }}" as="c"><span style="width:16px;height:12px;background:{{ c }};border:1px solid var(--color-text)"></span></template><span>5</span></div>
+          </div>
+          <template data-sc="for" list="{{ so.v.questions }}" as="q">
+            <div style="display:grid;grid-template-columns:minmax(0,220px) minmax(0,1fr) 60px;gap:18px;align-items:center;padding:14px 18px;border-bottom:1px solid var(--color-divider)">
+              <span style="font-weight:500;line-height:1.3">{{ q.q }}</span>
+              <div style="display:flex;height:26px;border:1px solid var(--color-text)">
+                <template data-sc="for" list="{{ q.segs }}" as="g"><div title="{{ g.tip }}" style="width:{{ g.w }}%;background:{{ g.bg }};color:{{ g.fg }};display:flex;align-items:center;justify-content:center;font:600 12px var(--font-heading);overflow:hidden">{{ g.label }}</div></template>
+              </div>
+              <span style="font:600 22px var(--font-heading);text-align:right">{{ q.avg }}</span>
+            </div>
+          </template>
+        </section>
+        <template data-sc="for" list="{{ so.v.choix }}" as="c">
+          <section style="display:flex;flex-direction:column;gap:6px">
+            <h3 style="margin:0;font-size:20px">{{ c.h }}</h3>
+            <template data-sc="for" list="{{ c.rows }}" as="r"><div style="display:grid;grid-template-columns:minmax(0,220px) minmax(0,1fr) 40px;gap:12px;align-items:center;font-size:14px"><span>{{ r.l }}</span><div style="height:12px;border:1px solid var(--color-text)"><div style="height:100%;width:{{ r.w }}%;background:var(--color-accent-500)"></div></div><span style="text-align:right">{{ r.n }}</span></div></template>
+          </section>
+        </template>
+        <section style="display:flex;flex-direction:column;gap:10px">
+          <h3 style="margin:0;font-size:22px">Commentaires</h3>
+          <template data-sc="for" list="{{ so.v.verbatims }}" as="v"><div style="padding:12px 16px;border-left:2px solid var(--color-text);font-size:15px;line-height:1.45">« {{ v }} »</div></template>
+        </section>
+      </template>
+    </template>
+  </div>
+</div>
+</template>
+</div>
+</template>
 
       <!-- ═════ COMMUNICATION ═════ -->
       
@@ -4260,7 +4281,7 @@ Comp.prototype.vals=function(){
   var LIVE=['communication','globale','outils','stock','flotte','logistique','hivernage','comptes','planmatch','stats','monitoring','inspections','operations','sites','temps','planning','sondages','carte','facturation'];
   var navGroups=G.map(function(g){return{label:g[0],items:g[1].map(function(i){return{label:i[1],icon:i[2],badge:i[3]||null,badgeBg:i[4]?'var(--color-text)':'transparent',badgeFg:i[4]?'var(--color-bg)':'var(--color-text)',go:function(){self.go(i[0]);},bar:mod===i[0]?'var(--color-text)':'transparent',bg:mod===i[0]?'var(--color-accent-100)':'transparent',fw:mod===i[0]?600:400};})};});
   var TITLES={globale:['Vue globale','Charge de l’équipe sur 4 semaines, alertes, travaux à venir et tâches terminées à valider'],monitoring:['Monitoring en direct','Qui est où, activité terrain et relevés hors zone'],inspections:['Inspections et rapports','Relevés techniques saisis en tournée, par site et dans le temps'],operations:['Opérations','Dossiers clients — les visites d’un même contrat restent regroupées'],sites:['Sites','Répertoire et sites détectés automatiquement'],
-    carte:['Carte des sites','Sites et techniciens, d’après les punchs GPS'],sondages:['Sondages clients','Résultats de satisfaction — lecture seule'],planning:['Planning équipe','Qui fait quoi — la semaine, 4 semaines ou le diagramme des travaux sur 8 semaines'],temps:['Temps · Paie','Feuilles de temps de l’équipe — corriger, ajouter, approuver, sortir la paie'],comptes:['Comptes','Employés, rôles, droits, statut et mots de passe — partagés avec SA Platform et sa-terrain'],planmatch:['Plan de Match','Le plan de la journée de chaque employé — tâches, véhicule, travaux du jour'],stats:['Stats','Heures de l’équipe, bons de travail, stock — par semaine'],facturation:['Facturation','Depuis ton fichier Excel — ODT, prix, écarts. PO manquant sur '+poManquant+' dossier(s).'],communication:['Communication','Infolettre du lundi, informations, lettres et procédures — internes et externes au département'],logistique:['Logistique','Bons de livraison et sorties d’inventaire — les mêmes que SA Platform et sa-terrain'],outils:['Outils · QR','Outils étiquetés, qui les a en main, emplacements de l’entrepôt et du bureau, étiquettes QR'],stock:['Stock','Inventaire de l’entrepôt — quantités, seuils d’alerte, prix, entrées et sorties'],flotte:['Flotte','Véhicules de l’entreprise et à qui ils sont assignés'],hivernage:['Hivernage','Listes de contrôle d’hivernement par site — remplies sur le terrain, complétées ici, imprimées ou envoyées au client']};
+    carte:['Carte des sites','Sites et techniciens, d’après les punchs GPS'],sondages:['Sondages clients','Créer, réutiliser, modifier et suivre les sondages de satisfaction'],planning:['Planning équipe','Qui fait quoi — la semaine, 4 semaines ou le diagramme des travaux sur 8 semaines'],temps:['Temps · Paie','Feuilles de temps de l’équipe — corriger, ajouter, approuver, sortir la paie'],comptes:['Comptes','Employés, rôles, droits, statut et mots de passe — partagés avec SA Platform et sa-terrain'],planmatch:['Plan de Match','Le plan de la journée de chaque employé — tâches, véhicule, travaux du jour'],stats:['Stats','Heures de l’équipe, bons de travail, stock — par semaine'],facturation:['Facturation','Depuis ton fichier Excel — ODT, prix, écarts. PO manquant sur '+poManquant+' dossier(s).'],communication:['Communication','Infolettre du lundi, informations, lettres et procédures — internes et externes au département'],logistique:['Logistique','Bons de livraison et sorties d’inventaire — les mêmes que SA Platform et sa-terrain'],outils:['Outils · QR','Outils étiquetés, qui les a en main, emplacements de l’entrepôt et du bureau, étiquettes QR'],stock:['Stock','Inventaire de l’entrepôt — quantités, seuils d’alerte, prix, entrées et sorties'],flotte:['Flotte','Véhicules de l’entreprise et à qui ils sont assignés'],hivernage:['Hivernage','Listes de contrôle d’hivernement par site — remplies sur le terrain, complétées ici, imprimées ou envoyées au client']};
   var soonName={communication:'Communication d’équipe'};
   var qq=st.q.trim().toLowerCase();
   var results=qq.length<2?[]:D.sites.filter(function(s){return(s.nom+s.ville+s.contrat).toLowerCase().indexOf(qq)>=0;}).slice(0,5).map(function(s){return{label:s.nom,sub:s.ville+' · '+self.T(s.type).court,go:function(){self.go('inspections',{inspSite:s.id,inspKey:null});}};})
@@ -4281,7 +4302,7 @@ Comp.prototype.vals=function(){
     exportMsg:function(){self.printInsp(is.id);},
     opsFilters:opsFilters,dossiers:dossiers,newDossier:function(){self.openDlg({type:'Bon de travail'});},noDossier:dossiers.length===0,
     nouveaux:nouveaux,siteTypeOptions:siteTypeOptions,siteType:stype,onSiteType:function(e){self.setState({siteType:e.target.value});},siteRows:siteRows,siteCount:siteRows.length,noNouveaux:nouveaux.length===0},
-    this.tempsVals(punchRows),this.empVals(),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals(),this.stockVals(),this.outilsVals(),this.monVals(),this.siteFicheVals(),this.typesVals(),this.carteCtlVals(),this.plan2Vals(),this.calVals(),this.seriesVals(),this.globVals(),this.commVals(),this.inspVals(),this.clientsVals());
+    this.tempsVals(punchRows),this.empVals(),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals(),this.stockVals(),this.outilsVals(),this.monVals(),this.siteFicheVals(),this.typesVals(),this.carteCtlVals(),this.plan2Vals(),this.calVals(),this.seriesVals(),this.globVals(),this.commVals(),this.inspVals(),this.clientsVals(),this.sondagesVals());
 };
 Comp.prototype.update=function(){if(!this._host)return;SARender(document.getElementById('tpl'),this._host,this.vals());this.syncMap();var el=this.rootRef.current;if(el)el.style.setProperty('--sa-row','10px');};
 Comp.prototype.mount=function(host){var self=this;this._host=host;var hm=hashMod();if(hm&&TITLES_OK(hm))this.state.mod=hm;this.update();
@@ -4665,6 +4686,82 @@ Comp.prototype.clientsVals=function(){var self=this,st=this.state,D=this.D;
     dlgMerge:!!(ms&&md),mSrc:ms?ms.nom:'',mDst:md?md.nom:'',mSansBassin:!!ms&&!(ms.bassins||[]).length,mGarde:!!(cm&&cm.garde),mInst:cm?cm.inst:'',mLabel:cm&&cm.busy?'Fusion…':'Fusionner',
     onMGarde:function(e){self.setState({clm:Object.assign({},self.state.clm,{garde:e.target.checked})});},onMInst:function(e){self.setState({clm:Object.assign({},self.state.clm,{inst:e.target.value})});},mGo:function(){self.clFusionner();}});
   return{sitesTabs:tabs,isClTab:tab==='clients'&&!noDb,isLxTab:tab==='lieux'&&!noDb,sitesRepDisp:tab==='rep'?'flex':'none',cl:cl};};
+
+/* ---------- sa-admin › Sondages clients : liste (actifs et fermés), création, réutilisation, modification et résultats ----------
+   Inséré dans app.js par assemble.py (même portée : rpc, Comp, fdate, fr, netMsg…).
+   Base : fonctions sondages_liste / sondage_enregistrer / sondage_stats protégées par la clé (docs/sql/MIGRATION_2026-10-14_sondages_admin.sql).
+   Le lien envoyé au client est la page sondage (gabarit de 11 questions) avec ?slug=… */
+var SOND_URL='https://sa-platform.pages.dev/sondage-hivernement-levis.html';
+function sondUrl(slug){return SOND_URL+'?slug='+encodeURIComponent(slug);}
+function sondSlug(t){return String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');}
+/* « Client — Site » est enregistré dans une seule colonne : on le sépare pour le formulaire */
+function sondSplit(c){var s=String(c||''),i=s.indexOf(' — ');return i<0?{client:s,site:''}:{client:s.slice(0,i),site:s.slice(i+3)};}
+
+Comp.prototype.sondLoadListe=function(force){var self=this,k=this.state.sondKey;if(!k||(this._soL&&!force))return;this._soL=1;
+  rpc('sondages_liste',{p_cle:k}).then(function(rows){if(!Array.isArray(rows))throw new Error('cle');self.soListe=rows;self.update();})
+   .catch(function(e){self._soL=0;
+     if(/accès refusé|cle/.test(String(e&&e.message))){try{localStorage.removeItem('sa_admin_sondkey');}catch(x){}self.soListe=null;self.setState({sondKey:''});self.flash('Clé d’accès incorrecte');}
+     else{self.soListe=(self.D.sond||[]).map(function(s){return Object.assign({reponses:null},s);});self.flash('Liste complète indisponible : '+netMsg(e));}});};
+
+Comp.prototype.sondSave=function(){var self=this,st=this.state,f=st.soF||{},titre=String(f.titre||'').trim(),client=String(f.client||'').trim(),site=String(f.site||'').trim();
+  if(!titre||!client){this.flash('Le titre et le client sont requis');return;}
+  var full=site?client+' — '+site:client,slug=f.slug,liste=this.soListe||[];
+  if(!slug){slug=sondSlug(titre+'-'+client+'-'+new Date().getFullYear());var b=slug,n=2;while(liste.some(function(s){return s.slug===slug;}))slug=b+'-'+(n++);}
+  rpc('sondage_enregistrer',{p_cle:st.sondKey,p_slug:slug,p_titre:titre,p_client:full,p_actif:f.slug?f.actif!==false:true})
+   .then(function(){self.flash(f.slug?'Sondage modifié':'Sondage créé — copiez le lien pour l’envoyer au client');self._soL=0;self.setState({soF:null,survey:slug});self.sondLoadListe(true);})
+   .catch(function(e){self.flash('Échec — rien n’a été enregistré : '+netMsg(e));});};
+
+Comp.prototype.sondBasculer=function(s){var self=this;
+  rpc('sondage_enregistrer',{p_cle:this.state.sondKey,p_slug:s.slug,p_titre:s.titre,p_client:s.client,p_actif:!s.actif})
+   .then(function(){self.flash(s.actif?'Sondage fermé : le lien n’accepte plus de réponses':'Sondage rouvert');self._soL=0;self.sondLoadListe(true);})
+   .catch(function(e){self.flash('Échec : '+netMsg(e));});};
+
+Comp.prototype.sondagesVals=function(){var self=this,st=this.state,D=this.D,k=st.sondKey;
+  var RAMP=['var(--color-accent-100)','var(--color-accent-300)','var(--color-accent-500)','var(--color-accent-700)','var(--color-accent-900)'];
+  var so={needKey:!k,ready:false,ramp:RAMP,keyVal:st.keyIn,onKey:function(e){self.state.keyIn=e.target.value;},
+    saveKey:function(){var v=String(self.state.keyIn||'').trim();if(!v)return;try{localStorage.setItem('sa_admin_sondkey',v);}catch(e){}self.sd={};self._sd={};self._soL=0;self.soListe=null;self.setState({sondKey:v,keyIn:''});}};
+  if(!D||st.mod!=='sondages'||!k)return{so:so};
+  this.sondLoadListe();
+  var L=this.soListe;
+  if(!L){so.needKey=false;so.ready=false;return{so:so};}
+  so.ready=true;so.vide=!L.length;
+  var slugS=st.survey&&L.some(function(x){return x.slug===st.survey;})?st.survey:(L[0]&&L[0].slug),S=L.filter(function(x){return x.slug===slugS;})[0];
+  var form=st.soF;
+  so.liste=L.map(function(x){var on=!form&&x.slug===slugS,rs=self.sd[x.slug];return{slug:x.slug,titre:x.titre,client:x.client||'—',statut:x.actif?'Ouvert':'Fermé',
+    reponses:rs?rs.length:(x.reponses==null?'—':x.reponses),date:fdate(x.created_at),bg:on?'var(--color-text)':'transparent',fg:on?'var(--color-bg)':'var(--color-text)',
+    go:function(){self.setState({survey:x.slug,soF:null});}};});
+  var setF=function(key){return function(e){self.state.soF[key]=e.target.type==='checkbox'?e.target.checked:e.target.value;};};
+  so.nouveau=function(){self.setState({soF:{titre:'Formation hivernement',client:'',site:''}});};
+  so.fermer=function(){self.setState({soF:null});};
+  so.form=!!form;
+  if(form){var ed=!!form.slug;so.f={h:ed?'Modifier le sondage':'Nouveau sondage',btn:ed?'Enregistrer':'Créer le lien',edit:ed,
+    aide:ed?'Le lien déjà envoyé reste le même ; les réponses reçues sont conservées.':'Le sondage utilise le questionnaire de satisfaction (11 questions). Le lien sera prêt à copier après la création.',
+    titre:form.titre,client:form.client,site:form.site,actif:form.actif!==false,
+    onTitre:setF('titre'),onClient:setF('client'),onSite:setF('site'),onActif:function(e){self.state.soF.actif=e.target.checked;},save:function(){self.sondSave();}};}
+  so.sel=!form&&!!S;
+  if(S&&!form){
+    var rows=this.sd[S.slug];
+    if(rows===undefined&&!this._sd[S.slug]){this._sd[S.slug]=1;this.loadSond(S.slug);}
+    var rs=rows||[];
+    var avg=function(c){var v=rs.map(function(r){return Number(r[c]);}).filter(function(x){return x>0;});return v.length?v.reduce(function(a,b){return a+b;},0)/v.length:0;};
+    var dist=function(c){var d=[0,0,0,0,0];rs.forEach(function(r){var v=Number(r[c]);if(v>=1&&v<=5)d[v-1]++;});return d;};
+    var nps=(function(){var v=rs.map(function(r){return r.q10_nps;}).filter(function(x){return x!=null;});if(!v.length)return null;return Math.round((v.filter(function(x){return x>=9;}).length-v.filter(function(x){return x<=6;}).length)/v.length*100);})();
+    var compte=function(c){var o={};rs.forEach(function(r){(r[c]||[]).forEach(function(x){o[x]=(o[x]||0)+1;});});var n=rs.length||1;
+      return Object.keys(o).sort(function(a,b){return o[b]-o[a];}).map(function(x){return{l:x,n:o[x],w:Math.round(o[x]/n*100)};});};
+    var qs=[['q2_qualite','Qualité générale'],['q3_clarte','Clarté des explications']].map(function(q){var d=dist(q[0]),tot=d.reduce(function(a,b){return a+b;},0)||1,a=avg(q[0]);
+      return{q:q[1],avg:a?fr(a,'0.1'):'—',segs:d.map(function(n,i){return{w:n/tot*100,bg:RAMP[i],fg:i>=2?'#ffffff':'var(--color-accent-900)',label:n/tot>0.08?n:'',tip:(i+1)+' : '+n+' réponse(s)'};})};});
+    var verb=[];rs.forEach(function(r){[['q7_utile','Le plus utile'],['q8_ameliorer','À améliorer'],['q11_commentaire','Commentaire']].forEach(function(c){if(r[c[0]]&&String(r[c[0]]).trim().length>2)verb.push(c[1]+' — '+r[c[0]]+'  ('+(r.nom||'anonyme')+(r.fonction?', '+r.fonction:'')+')');});});
+    var choix=[['q6_sujets','Sujets bien couverts'],['q9_besoins','Besoins pour une prochaine formation']].map(function(c){return{h:c[1],rows:compte(c[0])};}).filter(function(c){return c.rows.length;});
+    var url=sondUrl(S.slug),sp=sondSplit(S.client);
+    so.v={titre:S.titre,client:S.client||'—',statut:S.actif?'ouvert aux réponses':'fermé',url:url,
+      copier:function(){(navigator.clipboard?navigator.clipboard.writeText(url):Promise.reject()).then(function(){self.flash('Lien copié');},function(){self.flash('Copie impossible : sélectionnez le lien et copiez-le');});},
+      modifier:function(){self.setState({soF:{slug:S.slug,titre:S.titre,client:sp.client,site:sp.site,actif:S.actif}});},
+      reutiliser:function(){self.setState({soF:{titre:S.titre,client:'',site:''}});},
+      basculer:function(){self.sondBasculer(S);},basculerLbl:S.actif?'Fermer le sondage':'Rouvrir le sondage',
+      charge:rows===undefined,aucune:rows!==undefined&&!rs.length,hasQ:rs.length>0,questions:qs,choix:choix,verbatims:verb,
+      kpis:[{l:'Réponses',v:rows===undefined?'…':rs.length},{l:'Qualité moy.',v:avg('q2_qualite')?fr(avg('q2_qualite'),'0.1')+' / 5':'—'},{l:'Clarté moy.',v:avg('q3_clarte')?fr(avg('q3_clarte'),'0.1')+' / 5':'—'},{l:'NPS',v:nps==null?'—':(nps>0?'+':'')+nps}]};
+  }
+  return{so:so};};
 
 })();
 </script>
