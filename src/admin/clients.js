@@ -60,6 +60,15 @@ Comp.prototype.clClasser=function(L,siteId){var self=this,s=this.D.byId[siteId];
      self.flash('« '+Object.keys(L.brut)[0]+' » classé dans « '+s.nom+' » ('+L.n+' punch'+(L.n>1?'s':'')+')');var ls=Object.assign({},self.state.lieuSel);delete ls[L.k];self.setState({lieuSel:ls});})
    .catch(function(e){self.flash('Échec — rien n’a été classé : '+netMsg(e));});};
 
+/* Sites et inspections : une seule catégorie. Barre d'onglets commune aux deux écrans (mod « inspections » et « sites »). */
+var SC_TABS=[['insp','Inspections et rapports'],['clients','Clients et sites'],['lieux','Lieux à classer'],['rep','Répertoire']];
+Comp.prototype.siteCatVals=function(){var self=this,st=this.state,D=this.D,mod=st.mod;if(!D||(mod!=='sites'&&mod!=='inspections'))return{isSiteCat:false,catTabs:[]};
+  var cur=mod==='inspections'?'insp':(st.sitesTab||'clients'),nL=this.clFt?this.clStats().lieux.length:0;
+  return{isSiteCat:true,catTabs:SC_TABS.map(function(t){var on=t[0]===cur;return{label:t[1]+(t[0]==='lieux'&&nL?' ('+nL+')':''),on:on,bd:on?'var(--color-text)':'transparent',
+    go:function(){if(t[0]==='insp')self.go('inspections');else self.go('sites',{sitesTab:t[0]});}};})};};
+/* État d'inspection d'un site, pour la liste des clients et sites : pastilles par système + dernière visite */
+Comp.prototype.clInsp=function(s){var I=window.SAInsp;if(!I||s.interne)return{pz:[],txt:'—'};var x=this.inspSummary(s),PZT={eau:'Eau',meca:'Mécanique',secu:'Sécurité',struct:'Structure'};
+  return{pz:['eau','meca','secu','struct'].map(function(k){return{t:PZT[k]+' : '+I.LIB[x.pz[k]],st:pzSt(x.pz[k])};}),txt:x.lastV?'Visite du '+fdate(x.lastV.date):'Aucune visite'};};
 Comp.prototype.clientsVals=function(){var self=this,st=this.state,D=this.D;
   var off={sitesTabs:[],isClTab:false,isLxTab:false,sitesRepDisp:'flex',cl:{}};
   if(!D||st.mod!=='sites')return off;
@@ -72,7 +81,8 @@ Comp.prototype.clientsVals=function(){var self=this,st=this.state,D=this.D;
     close:function(){self.setState({cle:null,clm:null});},closeBg:function(e){if(e.target===e.currentTarget)self.setState({cle:null,clm:null});}};
   if(tab==='clients'&&!noDb){var q=norm(st.clQ||''),cOpts=function(cur){return[{v:'',l:'— Aucun client —',sel:!cur}].concat(clients.map(function(c){return{v:c.id,l:c.nom+(c.interne?' (interne)':''),sel:c.id===cur};})).concat([{v:'__new',l:'+ Nouveau client…',sel:false}]);};
     var row=function(s){var others=D.sites.filter(function(x){return x.id!==s.id;});
-      return{nom:s.nom,addr:s.addr||'sans adresse',inst:(s.bassins||[]).map(function(b){return b.nom;}).filter(Boolean).join(' · ')||'—',n:self.clFt?(S.parSite[s.id]||0):'…',go:function(){self.openSiteFiche(s.id);},
+      var ins=self.clInsp(s);
+      return{insp:ins.pz,inspTxt:ins.txt,hasInsp:!s.interne,goInsp:function(){self.go('inspections',{inspSite:s.id,inspView:'bilan',inspVisite:null,isf:null,inspBassin:null});},nom:s.nom,addr:s.addr||'sans adresse',inst:(s.bassins||[]).map(function(b){return b.nom;}).filter(Boolean).join(' · ')||'—',n:self.clFt?(S.parSite[s.id]||0):'…',go:function(){self.openSiteFiche(s.id);},
         clientOpts:cOpts(s.client_id),onClient:function(e){var v=e.target.value;if(v==='__new'){e.target.value=s.client_id||'';self.setState({cle:{id:null,nom:'',interne:false,siteId:s.id}});return;}self.clSetClient(s.id,v);},
         mergeOpts:[{v:'',l:'—',sel:true}].concat(others.map(function(x){return{v:x.id,l:x.nom,sel:false};})),
         onMerge:function(e){var v=e.target.value;e.target.value='';if(!v)return;var d=D.byId[v],rest_=norm(s.nom).replace(norm(d.nom),'').trim();

@@ -508,7 +508,7 @@ html.nav-repli .sa-shell{grid-template-columns:72px minmax(0,1fr)!important}html
       </template>
 
       <!-- ═════ INSPECTIONS ═════ -->
-      <template data-sc="if" value="{{ isInspNew }}">
+      <template data-sc="if" value="{{ isSiteCat }}"><div role="tablist" aria-label="Sites et inspections" style="display:flex;gap:2px;margin:0 0 16px;border-bottom:2px solid var(--color-divider);overflow-x:auto"><template data-sc="for" list="{{ catTabs }}" as="t"><button role="tab" aria-selected="{{ t.on }}" onClick="{{ t.go }}" style="all:unset;cursor:pointer;white-space:nowrap;padding:10px 14px;font:600 17px var(--font-heading);border-bottom:3px solid {{ t.bd }};margin-bottom:-2px">{{ t.label }}</button></template></div></template><template data-sc="if" value="{{ isInspNew }}">
 <div style="display:grid;grid-template-columns:272px minmax(0,1fr);border:1px solid var(--color-divider);min-height:calc(100vh - 170px)">
   <aside style="border-right:1px solid var(--color-divider);display:flex;flex-direction:column;min-width:0">
     <div style="padding:12px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--color-divider)">
@@ -536,11 +536,11 @@ html.nav-repli .sa-shell{grid-template-columns:72px minmax(0,1fr)!important}html
         <button class="btn btn-primary" onClick="{{ iq.goRapport }}"><sa-i n="file" s="16"></sa-i>Rapport client</button>
         <button class="btn btn-secondary" onClick="{{ iq.goTend }}"><sa-i n="chart" s="16"></sa-i>Tendances de l’eau</button>
         <button class="btn btn-secondary" onClick="{{ iq.goSaisie }}"><sa-i n="plus" s="16"></sa-i>Nouvelle inspection</button>
-        <button class="btn btn-secondary" onClick="{{ iq.voirClient }}"><sa-i n="eye" s="16"></sa-i>Voir comme le client</button>
+        <button class="btn btn-secondary" onClick="{{ iq.ficheSite }}"><sa-i n="building" s="16"></sa-i>Fiche du site</button><button class="btn btn-secondary" onClick="{{ iq.voirClient }}"><sa-i n="eye" s="16"></sa-i>Voir comme le client</button>
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;padding:0 22px;border-bottom:1px solid var(--color-divider)">
-      <div role="tablist" style="display:flex;flex-wrap:wrap;gap:2px;flex:1;min-width:0">
+      <div role="tablist" aria-label="Onglets du site" style="display:flex;flex-wrap:wrap;gap:2px;flex:1;min-width:0">
         <template data-sc="for" list="{{ iq.tabs }}" as="t"><button role="tab" aria-selected="{{ t.on }}" onClick="{{ t.go }}" style="all:unset;cursor:pointer;white-space:nowrap;padding:10px 12px;font:600 16px var(--font-heading);border-bottom:3px solid {{ t.bd }}">{{ t.label }}</button></template>
       </div>
       <button class="btn btn-ghost" onClick="{{ iq.togglePerso }}" aria-expanded="{{ iq.perso }}"><sa-i n="settings" s="16"></sa-i>{{ iq.persoLbl }}</button>
@@ -960,10 +960,7 @@ html.nav-repli .sa-shell{grid-template-columns:72px minmax(0,1fr)!important}html
       </template>
 
       <!-- ═════ SITES ═════ -->
-      <template data-sc="if" value="{{ isSites }}"><div role="tablist" style="display:flex;gap:2px;margin:0 0 16px;border-bottom:1px solid var(--color-divider);overflow-x:auto">
-  <template data-sc="for" list="{{ sitesTabs }}" as="t"><button role="tab" aria-selected="{{ t.on }}" onClick="{{ t.go }}" style="all:unset;cursor:pointer;white-space:nowrap;padding:10px 12px;font:600 16px var(--font-heading);border-bottom:3px solid {{ t.bd }}">{{ t.label }}</button></template>
-</div>
-<template data-sc="if" value="{{ cl.noDb }}"><div style="border:1px dashed var(--color-text);padding:12px 14px;margin-bottom:16px;font-size:14px">La base n’a pas encore les fiches clients : cet écran sera actif dès que la mise à jour sera appliquée.</div></template>
+      <template data-sc="if" value="{{ isSites }}"><template data-sc="if" value="{{ cl.noDb }}"><div style="border:1px dashed var(--color-text);padding:12px 14px;margin-bottom:16px;font-size:14px">La base n’a pas encore les fiches clients : cet écran sera actif dès que la mise à jour sera appliquée.</div></template>
 
 <template data-sc="if" value="{{ isClTab }}">
 <div style="display:flex;flex-direction:column;gap:18px">
@@ -984,12 +981,13 @@ html.nav-repli .sa-shell{grid-template-columns:72px minmax(0,1fr)!important}html
       <template data-sc="if" value="{{ g.vide }}"><div style="padding:12px 18px;font-size:14px">Aucun site rattaché. Choisissez ce client dans la colonne « Client » d’un site.</div></template>
       <div style="overflow-x:auto">
       <table class="table" style="font-size:14px">
-        <thead><tr><th style="text-transform:none;letter-spacing:0;font-size:12px;padding-left:18px">Site</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Bassins et installations</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Punchs</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Client</th><th style="text-transform:none;letter-spacing:0;font-size:12px;padding-right:18px">Fusionner dans…</th></tr></thead>
+        <thead><tr><th style="text-transform:none;letter-spacing:0;font-size:12px;padding-left:18px">Site</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Bassins et installations</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Inspection</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Punchs</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Client</th><th style="text-transform:none;letter-spacing:0;font-size:12px;padding-right:18px">Fusionner dans…</th></tr></thead>
         <tbody>
           <template data-sc="for" list="{{ g.sites }}" as="s">
             <tr data-site="{{ s.nom }}">
               <td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px"><button onClick="{{ s.go }}" style="all:unset;cursor:pointer;display:flex;flex-direction:column;line-height:1.25"><span style="font-weight:500;text-decoration:underline">{{ s.nom }}</span><span style="font-size:12px">{{ s.addr }}</span></button></td>
               <td style="padding:var(--sa-row,10px) 8px;font-size:13px">{{ s.inst }}</td>
+              <td style="padding:var(--sa-row,10px) 8px"><template data-sc="if" value="{{ s.hasInsp }}"><button onClick="{{ s.goInsp }}" aria-label="Inspections de {{ s.nom }}" style="all:unset;cursor:pointer;display:flex;flex-direction:column;gap:3px"><span style="display:flex;gap:3px"><template data-sc="for" list="{{ s.insp }}" as="p"><i title="{{ p.t }}" style="{{ p.st }}"></i></template></span><span style="font-size:12px;text-decoration:underline;white-space:nowrap">{{ s.inspTxt }}</span></button></template></td>
               <td style="padding:var(--sa-row,10px) 8px;font-variant-numeric:tabular-nums">{{ s.n }}</td>
               <td style="padding:var(--sa-row,10px) 8px"><select class="input" aria-label="Client du site" onChange="{{ s.onClient }}" style="min-width:180px"><template data-sc="for" list="{{ s.clientOpts }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select></td>
               <td style="padding:var(--sa-row,10px) 18px var(--sa-row,10px) 8px"><select class="input" aria-label="Fusionner dans" onChange="{{ s.onMerge }}" style="min-width:200px"><template data-sc="for" list="{{ s.mergeOpts }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select></td>
@@ -4357,10 +4355,12 @@ Comp.prototype.vals=function(){
   var poManquant=factAll.filter(function(b){return b.noPo;}).length;
 
   // ---- navigation
-  var G=[['Terrain',[['monitoring','Monitoring','activity',horsZone.length+urgDem.length,true],['carte','Carte des sites','map'],['inspections','Inspections','chart']]],['Gestion',[['globale','Vue globale','grid'],['planmatch','Plan de Match','clipboard'],['operations','Opérations','folder'],['planning','Planning équipe','calendar'],['sites','Sites','building',nouveaux.length],['facturation','Facturation','receipt'],['hivernage','Hivernage','snow']]],['Matériel',[['logistique','Logistique','send'],['stock','Stock','package'],['flotte','Flotte','truck'],['outils','Outils · QR','wrench']]],['Équipe',[['sondages','Sondages clients','star'],['communication','Communication','megaphone'],['temps','Temps · Paie','timer'],['stats','Stats','chart'],['comptes','Comptes','users']]]];
+  var G=[['Terrain',[['monitoring','Monitoring','activity',horsZone.length+urgDem.length,true],['carte','Carte des sites','map'],['sites','Sites et inspections','building',nouveaux.length]]],['Gestion',[['globale','Vue globale','grid'],['planmatch','Plan de Match','clipboard'],['operations','Opérations','folder'],['planning','Planning équipe','calendar'],['facturation','Facturation','receipt'],['hivernage','Hivernage','snow']]],['Matériel',[['logistique','Logistique','send'],['stock','Stock','package'],['flotte','Flotte','truck'],['outils','Outils · QR','wrench']]],['Équipe',[['sondages','Sondages clients','star'],['communication','Communication','megaphone'],['temps','Temps · Paie','timer'],['stats','Stats','chart'],['comptes','Comptes','users']]]];
   var LIVE=['communication','globale','outils','stock','flotte','logistique','hivernage','comptes','planmatch','stats','monitoring','inspections','operations','sites','temps','planning','sondages','carte','facturation'];
-  var navGroups=G.map(function(g){return{label:g[0],items:g[1].map(function(i){return{label:i[1],icon:i[2],badge:i[3]||null,badgeBg:i[4]?'var(--color-text)':'transparent',badgeFg:i[4]?'var(--color-bg)':'var(--color-text)',go:function(){self.go(i[0]);},bar:mod===i[0]?'var(--color-text)':'transparent',bg:mod===i[0]?'var(--color-accent-100)':'transparent',fw:mod===i[0]?600:400};})};});
-  var TITLES={globale:['Vue globale','Charge de l’équipe sur 4 semaines, alertes, travaux à venir et tâches terminées à valider'],monitoring:['Monitoring en direct','Qui est où, activité terrain et relevés hors zone'],inspections:['Inspections et rapports','Relevés techniques saisis en tournée, par site et dans le temps'],operations:['Opérations','Dossiers clients — les visites d’un même contrat restent regroupées'],sites:['Sites','Répertoire et sites détectés automatiquement'],
+  // Sites et inspections : une seule entrée ; elle rouvre le dernier des deux écrans utilisé
+  var cur=function(k){return mod===k||(k==='sites'&&mod==='inspections');};if(mod==='sites'||mod==='inspections')this._lastSiteCat=mod;
+  var navGroups=G.map(function(g){return{label:g[0],items:g[1].map(function(i){return{label:i[1],icon:i[2],badge:i[3]||null,badgeBg:i[4]?'var(--color-text)':'transparent',badgeFg:i[4]?'var(--color-bg)':'var(--color-text)',go:function(){self.go(i[0]==='sites'?(self._lastSiteCat||'inspections'):i[0]);},bar:cur(i[0])?'var(--color-text)':'transparent',bg:cur(i[0])?'var(--color-accent-100)':'transparent',fw:cur(i[0])?600:400};})};});
+  var TITLES={globale:['Vue globale','Charge de l’équipe sur 4 semaines, alertes, travaux à venir et tâches terminées à valider'],monitoring:['Monitoring en direct','Qui est où, activité terrain et relevés hors zone'],inspections:['Sites et inspections','Inspections, rapports, clients, sites et répertoire — tout au même endroit'],operations:['Opérations','Dossiers clients — les visites d’un même contrat restent regroupées'],sites:['Sites et inspections','Inspections, rapports, clients, sites et répertoire — tout au même endroit'],
     carte:['Carte des sites','Sites et techniciens, d’après les punchs GPS'],sondages:['Sondages clients','Créer, réutiliser, modifier et suivre les sondages de satisfaction'],planning:['Planning équipe','Qui fait quoi — la semaine, 4 semaines ou le diagramme des travaux sur 8 semaines'],temps:['Temps · Paie','Feuilles de temps de l’équipe — corriger, ajouter, approuver, sortir la paie'],comptes:['Comptes','Employés, rôles, droits, statut et mots de passe — partagés avec SA Platform et sa-terrain'],planmatch:['Plan de Match','Le plan de la journée de chaque employé — tâches, véhicule, travaux du jour'],stats:['Stats','Heures de l’équipe, bons de travail, stock — par semaine'],facturation:['Facturation','Depuis ton fichier Excel — ODT, prix, écarts. PO manquant sur '+poManquant+' dossier(s).'],communication:['Communication','Infolettre du lundi, informations, lettres et procédures — internes et externes au département'],logistique:['Logistique','Bons de livraison et sorties d’inventaire — les mêmes que SA Platform et sa-terrain'],outils:['Outils · QR','Outils étiquetés, qui les a en main, emplacements de l’entrepôt et du bureau, étiquettes QR'],stock:['Stock','Inventaire de l’entrepôt — quantités, seuils d’alerte, prix, entrées et sorties'],flotte:['Flotte','Véhicules de l’entreprise et à qui ils sont assignés'],hivernage:['Hivernage','Listes de contrôle d’hivernement par site — remplies sur le terrain, complétées ici, imprimées ou envoyées au client']};
   var soonName={communication:'Communication d’équipe'};
   var qq=st.q.trim().toLowerCase();
@@ -4382,7 +4382,7 @@ Comp.prototype.vals=function(){
     exportMsg:function(){self.printInsp(is.id);},
     opsFilters:opsFilters,dossiers:dossiers,newDossier:function(){self.openDlg({type:'Bon de travail'});},noDossier:dossiers.length===0,
     nouveaux:nouveaux,siteTypeOptions:siteTypeOptions,siteType:stype,onSiteType:function(e){self.setState({siteType:e.target.value});},siteRows:siteRows,siteCount:siteRows.length,noNouveaux:nouveaux.length===0},
-    monTeam,this.monModeVals(),this.tempsVals(punchRows),this.empVals(),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals(),this.stockVals(),this.outilsVals(),this.monVals(),this.siteFicheVals(),this.typesVals(),this.carteCtlVals(),this.plan2Vals(),this.calVals(),this.seriesVals(),this.globVals(),this.commVals(),this.inspVals(),this.clientsVals(),this.sondagesVals());
+    monTeam,this.monModeVals(),this.siteCatVals(),this.tempsVals(punchRows),this.empVals(),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals(),this.stockVals(),this.outilsVals(),this.monVals(),this.siteFicheVals(),this.typesVals(),this.carteCtlVals(),this.plan2Vals(),this.calVals(),this.seriesVals(),this.globVals(),this.commVals(),this.inspVals(),this.clientsVals(),this.sondagesVals());
 };
 Comp.prototype.update=function(){if(!this._host)return;SARender(document.getElementById('tpl'),this._host,this.vals());this.syncMap();var el=this.rootRef.current;if(el)el.style.setProperty('--sa-row','10px');};
 Comp.prototype.mount=function(host){var self=this;this._host=host;var hm=hashMod();if(hm&&TITLES_OK(hm))this.state.mod=hm;this.update();
@@ -4531,7 +4531,7 @@ Comp.prototype.inspVals=function(){
       upDis:i===0,downDis:i===ordre.length-1};}),
     persoReset:function(){savePref([],[]);self.flash('Onglets réinitialisés');},isBilan:view==='bilan',isVisite:view==='visite',isSaisie:view==='saisie',isBassins:view==='bassins',isAcces:view==='acces',isPoints:view==='points',
     h:{nom:site.nom,type:T.label,contrat:site.contrat||'—',logo:cp&&cp.logo_url?cp.logo_url:'',sub:[cp?cp.nom:site.ville,nb>1?nb+' bassins':(nb?site.bassins[0].nom:'1 bassin'),lv?'dernière visite le '+fdateL(lv.date)+' par '+(lv.r.tech_nom||lv.r.tech):'aucune visite publiée'].filter(Boolean).join(' · ')},
-    goRapport:go('visite'),goTend:go('tendances'),goSaisie:function(){self.setState({inspView:'saisie',isf:self.isfNew(site)});},voirClient:function(){self.voirClient(site);},
+    goRapport:go('visite'),goTend:go('tendances'),goSaisie:function(){self.setState({inspView:'saisie',isf:self.isfNew(site)});},voirClient:function(){self.voirClient(site);},ficheSite:function(){self.openSiteFiche(site.id);},
     hasVisit:!!(view==='visite'?S.vis.length:lv),noVisit:!(view==='visite'?S.vis.length:lv)};
   /* ----- 2a Bilan ----- */
   if(view==='bilan'){var c=I.compteurs(S.items);iq.verdict=I.verdict(S.items);
@@ -4730,6 +4730,15 @@ Comp.prototype.clClasser=function(L,siteId){var self=this,s=this.D.byId[siteId];
      self.flash('« '+Object.keys(L.brut)[0]+' » classé dans « '+s.nom+' » ('+L.n+' punch'+(L.n>1?'s':'')+')');var ls=Object.assign({},self.state.lieuSel);delete ls[L.k];self.setState({lieuSel:ls});})
    .catch(function(e){self.flash('Échec — rien n’a été classé : '+netMsg(e));});};
 
+/* Sites et inspections : une seule catégorie. Barre d'onglets commune aux deux écrans (mod « inspections » et « sites »). */
+var SC_TABS=[['insp','Inspections et rapports'],['clients','Clients et sites'],['lieux','Lieux à classer'],['rep','Répertoire']];
+Comp.prototype.siteCatVals=function(){var self=this,st=this.state,D=this.D,mod=st.mod;if(!D||(mod!=='sites'&&mod!=='inspections'))return{isSiteCat:false,catTabs:[]};
+  var cur=mod==='inspections'?'insp':(st.sitesTab||'clients'),nL=this.clFt?this.clStats().lieux.length:0;
+  return{isSiteCat:true,catTabs:SC_TABS.map(function(t){var on=t[0]===cur;return{label:t[1]+(t[0]==='lieux'&&nL?' ('+nL+')':''),on:on,bd:on?'var(--color-text)':'transparent',
+    go:function(){if(t[0]==='insp')self.go('inspections');else self.go('sites',{sitesTab:t[0]});}};})};};
+/* État d'inspection d'un site, pour la liste des clients et sites : pastilles par système + dernière visite */
+Comp.prototype.clInsp=function(s){var I=window.SAInsp;if(!I||s.interne)return{pz:[],txt:'—'};var x=this.inspSummary(s),PZT={eau:'Eau',meca:'Mécanique',secu:'Sécurité',struct:'Structure'};
+  return{pz:['eau','meca','secu','struct'].map(function(k){return{t:PZT[k]+' : '+I.LIB[x.pz[k]],st:pzSt(x.pz[k])};}),txt:x.lastV?'Visite du '+fdate(x.lastV.date):'Aucune visite'};};
 Comp.prototype.clientsVals=function(){var self=this,st=this.state,D=this.D;
   var off={sitesTabs:[],isClTab:false,isLxTab:false,sitesRepDisp:'flex',cl:{}};
   if(!D||st.mod!=='sites')return off;
@@ -4742,7 +4751,8 @@ Comp.prototype.clientsVals=function(){var self=this,st=this.state,D=this.D;
     close:function(){self.setState({cle:null,clm:null});},closeBg:function(e){if(e.target===e.currentTarget)self.setState({cle:null,clm:null});}};
   if(tab==='clients'&&!noDb){var q=norm(st.clQ||''),cOpts=function(cur){return[{v:'',l:'— Aucun client —',sel:!cur}].concat(clients.map(function(c){return{v:c.id,l:c.nom+(c.interne?' (interne)':''),sel:c.id===cur};})).concat([{v:'__new',l:'+ Nouveau client…',sel:false}]);};
     var row=function(s){var others=D.sites.filter(function(x){return x.id!==s.id;});
-      return{nom:s.nom,addr:s.addr||'sans adresse',inst:(s.bassins||[]).map(function(b){return b.nom;}).filter(Boolean).join(' · ')||'—',n:self.clFt?(S.parSite[s.id]||0):'…',go:function(){self.openSiteFiche(s.id);},
+      var ins=self.clInsp(s);
+      return{insp:ins.pz,inspTxt:ins.txt,hasInsp:!s.interne,goInsp:function(){self.go('inspections',{inspSite:s.id,inspView:'bilan',inspVisite:null,isf:null,inspBassin:null});},nom:s.nom,addr:s.addr||'sans adresse',inst:(s.bassins||[]).map(function(b){return b.nom;}).filter(Boolean).join(' · ')||'—',n:self.clFt?(S.parSite[s.id]||0):'…',go:function(){self.openSiteFiche(s.id);},
         clientOpts:cOpts(s.client_id),onClient:function(e){var v=e.target.value;if(v==='__new'){e.target.value=s.client_id||'';self.setState({cle:{id:null,nom:'',interne:false,siteId:s.id}});return;}self.clSetClient(s.id,v);},
         mergeOpts:[{v:'',l:'—',sel:true}].concat(others.map(function(x){return{v:x.id,l:x.nom,sel:false};})),
         onMerge:function(e){var v=e.target.value;e.target.value='';if(!v)return;var d=D.byId[v],rest_=norm(s.nom).replace(norm(d.nom),'').trim();
