@@ -56,3 +56,35 @@ test('liens croisés : état d’inspection dans la liste des sites, « Fiche du
   assert.deepEqual(errors, []);
   await page.close();
 });
+
+test('inspection : choix du site compact (recherche, clavier, précédent / suivant), liste à gauche en option', async () => {
+  const { page, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: tables() });
+  await page.waitForFunction(() => window.__admin && window.__admin.D);
+  await page.evaluate(() => window.__admin.go('inspections', { inspSite: '1' }));
+  // par défaut : pas de colonne, un sélecteur au-dessus de la fiche
+  assert.equal(await page.getByRole('button', { name: 'Masquer la liste' }).count(), 0);
+  await page.getByText('1 / 3').waitFor();
+  await page.getByRole('button', { name: 'Changer de site' }).click();
+  const box = page.getByRole('searchbox', { name: 'Chercher un site' });
+  await box.waitFor();
+  assert.equal(await page.evaluate(() => document.activeElement.getAttribute('aria-label')), 'Chercher un site');
+  await box.fill('beta');
+  await page.getByText('1 site(s) trouvé(s)').waitFor();
+  await box.press('Enter');
+  await page.getByRole('heading', { name: 'Piscine Beta' }).waitFor();
+  assert.equal(await page.getByRole('dialog', { name: 'Choisir un site' }).count(), 0);
+  // précédent / suivant dans l'ordre de gravité
+  await page.getByRole('button', { name: 'Site suivant' }).click();
+  await page.getByRole('button', { name: 'Site précédent' }).click();
+  await page.getByRole('heading', { name: 'Piscine Beta' }).waitFor();
+  // Échap ferme
+  await page.getByRole('button', { name: 'Changer de site' }).click();
+  await page.getByRole('searchbox', { name: 'Chercher un site' }).press('Escape');
+  assert.equal(await page.getByRole('dialog', { name: 'Choisir un site' }).count(), 0);
+  // la liste à gauche reste disponible, gardée sur ce poste
+  await page.getByRole('button', { name: 'Afficher la liste à gauche' }).click();
+  await page.getByRole('button', { name: 'Masquer la liste' }).waitFor();
+  assert.equal(await page.evaluate(() => localStorage.getItem('sa_admin_insp_liste')), '1');
+  assert.deepEqual(errors, []);
+  await page.close();
+});

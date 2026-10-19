@@ -40,6 +40,7 @@ Comp.prototype.admUpload=function(file,dossier){var self=this,t=this.admTok();if
     return fetch(r.url,{method:'PUT',headers:{'Content-Type':file.type||'application/octet-stream','x-upsert':'false'},body:file}).then(function(x){if(!x.ok)throw new Error('HTTP '+x.status);return r.path;});})
     .catch(function(e){self.flash('Téléversement impossible : '+e.message);return null;});};
 Comp.prototype.compteOf=function(site){return((this.adm&&this.adm.comptes)||[]).filter(function(c){return(c.sites||[]).map(String).indexOf(site.id)>=0;})[0]||null;};
+Comp.prototype.inspListPref=function(v){var K='sa_admin_insp_liste';if(v===undefined){try{return localStorage.getItem(K)==='1';}catch(e){return false;}}try{localStorage.setItem(K,v?'1':'0');}catch(e){}return v;};
 Comp.prototype.inspTabsPref=function(v){var K='sa_admin_insp_onglets';
   try{if(v){localStorage.setItem(K,JSON.stringify(v));return v;}var p=JSON.parse(localStorage.getItem(K)||'null');if(p&&Array.isArray(p.ordre)&&Array.isArray(p.cache))return p;}catch(e){}
   return{ordre:[],cache:[]};};
@@ -107,8 +108,12 @@ Comp.prototype.inspVals=function(){
   if(!site)return{isInspNew:view!=='tendances',isInspections:view==='tendances',iq:{h:{},f:{},v:{},cp:{},nc:{},nb:{},pc:{},sites:[],tabs:[]},iqTabs:[]};
   var S=sum[site.id],T=this.T(site.type),qq=norm(st.iqQ||'');
   var PZT={eau:'Eau',meca:'Mécanique',secu:'Sécurité',struct:'Structure'};
-  var list=sites.filter(function(s){return!qq||norm(s.nom+' '+s.ville).indexOf(qq)>=0;}).sort(function(a,b){var x=sum[a.id],y=sum[b.id];return y.score-x.score||String(x.lastV?x.lastV.date:'0').localeCompare(String(y.lastV?y.lastV.date:'0'))||a.nom.localeCompare(b.nom,'fr');})
-    .map(function(s){var x=sum[s.id],on=s.id===site.id;return{nom:s.nom,sub:[s.ville,self.T(s.type).court,x.lastV?fdate(x.lastV.date):'aucune visite'].filter(Boolean).join(' · '),bg:on?'var(--color-accent-100)':'transparent',bar:on?'inset 3px 0 0 var(--color-accent-700)':'none',
+  var byGrav=function(a,b){var x=sum[a.id],y=sum[b.id];return y.score-x.score||String(x.lastV?x.lastV.date:'0').localeCompare(String(y.lastV?y.lastV.date:'0'))||a.nom.localeCompare(b.nom,'fr');};
+  var ordre_=sites.slice().sort(byGrav),pos=ordre_.indexOf(site);
+  /* Choix du site : sélecteur compact au-dessus de la fiche (par défaut) ou liste à gauche (réglage gardé sur ce poste) */
+  var listOn=this.inspListPref(),pick=!!st.iqPick,choisir=function(s){self.setState({inspSite:s.id,inspVisite:null,isf:null,inspBassin:null,iqPick:false,iqQ:''});};
+  var list=sites.filter(function(s){return!qq||norm(s.nom+' '+s.ville).indexOf(qq)>=0;}).sort(byGrav)
+    .map(function(s){var x=sum[s.id],on=s.id===site.id;return{on:on,pick:function(){choisir(s);},nom:s.nom,sub:[s.ville,self.T(s.type).court,x.lastV?fdate(x.lastV.date):'aucune visite'].filter(Boolean).join(' · '),bg:on?'var(--color-accent-100)':'transparent',bar:on?'inset 3px 0 0 var(--color-accent-700)':'none',
       pz:['eau','meca','secu','struct'].map(function(k){return{t:PZT[k]+' : '+I.LIB[x.pz[k]],st:pzSt(x.pz[k])};}),go:function(){self.setState({inspSite:s.id,inspVisite:null,isf:null,inspBassin:null});}};});
   var TABS=[['bilan','Bilan par système'],['visite','Visites'],['tendances','Tendances de l’eau'],['saisie','Nouvelle inspection'],['bassins','Bassins et plan'],['acces','Accès client'],['points','Points de contrôle']];
   var go=function(v){return function(){var p={inspView:v};if(v==='saisie'&&!st.isf)p.isf=self.isfNew(site);self.setState(p);if(v==='acces'||v==='bassins'){if(self.admTok()&&!self.adm)self.admLoad();}};};
@@ -120,6 +125,13 @@ Comp.prototype.inspVals=function(){
   var perso=!!st.inspPerso,savePref=function(o,c){self.inspTabsPref({ordre:o,cache:c});self.setState({inspPrefV:(st.inspPrefV||0)+1});};
   var cp=this.compteOf(site),lv=S.lastV,nb=(site.bassins||[]).length;
   var iq={q:st.iqQ||'',onQ:function(e){self.setState({iqQ:e.target.value});},sites:list,tabs:tabs,
+    listOn:listOn,listOff:!listOn,cols:listOn?'272px minmax(0,1fr)':'minmax(0,1fr)',toggleList:function(){self.inspListPref(!listOn);self.setState({iqPick:false});},
+    pick:pick,togglePick:function(){self.setState({iqPick:!pick,iqQ:''});if(!pick)setTimeout(function(){var el=document.querySelector('input[aria-label="Chercher un site"]');if(el)el.focus();},0);},
+    closePick:function(){self.setState({iqPick:false,iqQ:''});},noSite:!list.length,
+    pickInfo:qq?list.length+' site(s) trouvé(s) · Entrée pour ouvrir le premier':sites.length+' sites, triés par gravité · Échap pour fermer',
+    onPickKey:function(e){if(e.key==='Escape')self.setState({iqPick:false,iqQ:''});else if(e.key==='Enter'&&list.length){e.preventDefault();list[0].pick();}},
+    prev:function(){if(ordre_.length)choisir(ordre_[(pos-1+ordre_.length)%ordre_.length]);},next:function(){if(ordre_.length)choisir(ordre_[(pos+1)%ordre_.length]);},
+    pos:(pos+1)+' / '+ordre_.length,curPz:['eau','meca','secu','struct'].map(function(k){return{t:PZT[k]+' : '+I.LIB[S.pz[k]],st:pzSt(S.pz[k])};}),
     perso:perso,persoLbl:perso?'Terminé':'Personnaliser',togglePerso:function(){self.setState({inspPerso:!perso});},
     persoRows:ordre.map(function(k,i){var cache=pref.cache.indexOf(k)>=0;return{label:LIBT[k],on:!cache,aria:'Afficher l’onglet '+LIBT[k],
       toggle:function(e){var c=pref.cache.filter(function(x){return x!==k;});if(!e.target.checked){if(ordre.length-c.length<=1){self.flash('Gardez au moins un onglet');return;}c.push(k);}savePref(ordre,c);},

@@ -509,11 +509,11 @@ html.nav-repli .sa-shell{grid-template-columns:72px minmax(0,1fr)!important}html
 
       <!-- ═════ INSPECTIONS ═════ -->
       <template data-sc="if" value="{{ isSiteCat }}"><div role="tablist" aria-label="Sites et inspections" style="display:flex;gap:2px;margin:0 0 16px;border-bottom:2px solid var(--color-divider);overflow-x:auto"><template data-sc="for" list="{{ catTabs }}" as="t"><button role="tab" aria-selected="{{ t.on }}" onClick="{{ t.go }}" style="all:unset;cursor:pointer;white-space:nowrap;padding:10px 14px;font:600 17px var(--font-heading);border-bottom:3px solid {{ t.bd }};margin-bottom:-2px">{{ t.label }}</button></template></div></template><template data-sc="if" value="{{ isInspNew }}">
-<div style="display:grid;grid-template-columns:272px minmax(0,1fr);border:1px solid var(--color-divider);min-height:calc(100vh - 170px)">
-  <aside style="border-right:1px solid var(--color-divider);display:flex;flex-direction:column;min-width:0">
+<div style="display:grid;grid-template-columns:{{ iq.cols }};border:1px solid var(--color-divider);min-height:calc(100vh - 170px)">
+  <template data-sc="if" value="{{ iq.listOn }}"><aside style="border-right:1px solid var(--color-divider);display:flex;flex-direction:column;min-width:0">
     <div style="padding:12px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--color-divider)">
       <input class="input" type="search" placeholder="Rechercher un site…" aria-label="Rechercher un site" value="{{ iq.q }}" onInput="{{ iq.onQ }}">
-      <div style="display:flex;align-items:center;gap:6px;font-size:13px"><span style="flex:1">Trié par gravité</span><span title="Eau"><sa-i n="droplet" s="15"></sa-i></span><span title="Mécanique"><sa-i n="wrench" s="15"></sa-i></span><span title="Sécurité"><sa-i n="alert" s="15"></sa-i></span><span title="Structure"><sa-i n="building" s="15"></sa-i></span></div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:13px"><button onClick="{{ iq.toggleList }}" style="all:unset;cursor:pointer;text-decoration:underline">Masquer la liste</button><span style="flex:1;text-align:right">Trié par gravité</span><span title="Eau"><sa-i n="droplet" s="15"></sa-i></span><span title="Mécanique"><sa-i n="wrench" s="15"></sa-i></span><span title="Sécurité"><sa-i n="alert" s="15"></sa-i></span><span title="Structure"><sa-i n="building" s="15"></sa-i></span></div>
     </div>
     <div style="overflow-y:auto;flex:1">
       <template data-sc="for" list="{{ iq.sites }}" as="s">
@@ -523,8 +523,28 @@ html.nav-repli .sa-shell{grid-template-columns:72px minmax(0,1fr)!important}html
         </button>
       </template>
     </div>
-  </aside>
+  </aside></template>
   <section style="min-width:0;display:flex;flex-direction:column">
+    <template data-sc="if" value="{{ iq.listOff }}"><div style="position:relative;padding:8px 22px;border-bottom:1px solid var(--color-divider);display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px">
+      <button class="btn btn-ghost btn-icon" onClick="{{ iq.prev }}" aria-label="Site précédent" title="Site précédent (ordre de gravité)"><sa-i n="left" s="16"></sa-i></button>
+      <button onClick="{{ iq.togglePick }}" aria-haspopup="listbox" aria-expanded="{{ iq.pick }}" aria-label="Changer de site" style="all:unset;cursor:pointer;box-sizing:border-box;display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--color-divider);min-width:min(340px,100%);max-width:100%">
+        <sa-i n="search" s="15"></sa-i><span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600">{{ iq.h.nom }}</span>
+        <template data-sc="for" list="{{ iq.curPz }}" as="p"><i title="{{ p.t }}" style="{{ p.st }}"></i></template><sa-i n="down" s="15"></sa-i></button>
+      <button class="btn btn-ghost btn-icon" onClick="{{ iq.next }}" aria-label="Site suivant" title="Site suivant (ordre de gravité)"><sa-i n="right" s="16"></sa-i></button>
+      <span style="font-size:13px">{{ iq.pos }}</span><span style="flex:1"></span>
+      <button onClick="{{ iq.toggleList }}" style="all:unset;cursor:pointer;font-size:13px;text-decoration:underline">Afficher la liste à gauche</button>
+      <template data-sc="if" value="{{ iq.pick }}"><div onClick="{{ iq.closePick }}" style="position:fixed;inset:0;z-index:30"></div>
+        <div role="dialog" aria-label="Choisir un site" style="position:absolute;z-index:31;top:calc(100% - 4px);left:62px;width:min(420px,calc(100% - 84px));background:var(--color-bg);border:1px solid var(--color-text);box-shadow:0 8px 24px rgba(0,0,0,.18);display:flex;flex-direction:column">
+          <div style="padding:10px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:6px">
+            <input class="input" type="search" placeholder="Nom du site ou ville…" aria-label="Chercher un site" value="{{ iq.q }}" onInput="{{ iq.onQ }}" onKeyDown="{{ iq.onPickKey }}">
+            <span style="font-size:12px">{{ iq.pickInfo }}</span></div>
+          <div role="listbox" aria-label="Sites" style="max-height:min(420px,60vh);overflow-y:auto">
+            <template data-sc="for" list="{{ iq.sites }}" as="s"><button role="option" aria-selected="{{ s.on }}" onClick="{{ s.pick }}" style="all:unset;cursor:pointer;box-sizing:border-box;width:100%;display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid var(--color-divider);background:{{ s.bg }};box-shadow:{{ s.bar }}">
+              <span style="flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25"><span style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.nom }}</span><span style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.sub }}</span></span>
+              <template data-sc="for" list="{{ s.pz }}" as="p"><i title="{{ p.t }}" style="{{ p.st }}"></i></template></button></template>
+            <template data-sc="if" value="{{ iq.noSite }}"><div style="padding:12px">Aucun site ne correspond.</div></template>
+          </div></div></template>
+    </div></template>
     <div style="padding:16px 22px 12px;border-bottom:2px solid var(--color-accent-500);display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
       <template data-sc="if" value="{{ iq.h.logo }}"><img src="{{ iq.h.logo }}" alt="Logo du client" style="width:56px;height:56px;object-fit:contain;border:1px solid var(--color-divider)"></template>
       <div style="flex:1;min-width:240px;display:flex;flex-direction:column;gap:2px">
@@ -2376,7 +2396,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 </script><script>/* Mini-rendu maison (vanilla) : <sc-if>, <sc-for>, {{ chemin }}, onClick, ref — sans framework. */
 (function(){
 var NS='http://www.w3.org/1999/xhtml',RE=/\{\{\s*([\w.$]+)\s*\}\}/g,WH=/^\s*\{\{\s*([\w.$]+)\s*\}\}\s*$/;
-var EVS=['onclick','onchange','oninput','onpointerdown','onpointermove','onpointerup'];
+var EVS=['onclick','onchange','oninput','onkeydown','onpointerdown','onpointermove','onpointerup'];
 function look(s,p){var v=s;p.split('.').forEach(function(k){v=v==null?undefined:v[k];});return v;}
 function itp(s,sc){return s.replace(RE,function(m,p){var v=look(sc,p);return(v==null||v===false)?'':String(v);});}
 function kids(n,sc){var o=[],src=(n.localName==='template'&&n.content)?n.content:n;src.childNodes.forEach(function(c){mk(c,sc).forEach(function(x){o.push(x);});});return o;}
@@ -4443,6 +4463,7 @@ Comp.prototype.admUpload=function(file,dossier){var self=this,t=this.admTok();if
     return fetch(r.url,{method:'PUT',headers:{'Content-Type':file.type||'application/octet-stream','x-upsert':'false'},body:file}).then(function(x){if(!x.ok)throw new Error('HTTP '+x.status);return r.path;});})
     .catch(function(e){self.flash('Téléversement impossible : '+e.message);return null;});};
 Comp.prototype.compteOf=function(site){return((this.adm&&this.adm.comptes)||[]).filter(function(c){return(c.sites||[]).map(String).indexOf(site.id)>=0;})[0]||null;};
+Comp.prototype.inspListPref=function(v){var K='sa_admin_insp_liste';if(v===undefined){try{return localStorage.getItem(K)==='1';}catch(e){return false;}}try{localStorage.setItem(K,v?'1':'0');}catch(e){}return v;};
 Comp.prototype.inspTabsPref=function(v){var K='sa_admin_insp_onglets';
   try{if(v){localStorage.setItem(K,JSON.stringify(v));return v;}var p=JSON.parse(localStorage.getItem(K)||'null');if(p&&Array.isArray(p.ordre)&&Array.isArray(p.cache))return p;}catch(e){}
   return{ordre:[],cache:[]};};
@@ -4510,8 +4531,12 @@ Comp.prototype.inspVals=function(){
   if(!site)return{isInspNew:view!=='tendances',isInspections:view==='tendances',iq:{h:{},f:{},v:{},cp:{},nc:{},nb:{},pc:{},sites:[],tabs:[]},iqTabs:[]};
   var S=sum[site.id],T=this.T(site.type),qq=norm(st.iqQ||'');
   var PZT={eau:'Eau',meca:'Mécanique',secu:'Sécurité',struct:'Structure'};
-  var list=sites.filter(function(s){return!qq||norm(s.nom+' '+s.ville).indexOf(qq)>=0;}).sort(function(a,b){var x=sum[a.id],y=sum[b.id];return y.score-x.score||String(x.lastV?x.lastV.date:'0').localeCompare(String(y.lastV?y.lastV.date:'0'))||a.nom.localeCompare(b.nom,'fr');})
-    .map(function(s){var x=sum[s.id],on=s.id===site.id;return{nom:s.nom,sub:[s.ville,self.T(s.type).court,x.lastV?fdate(x.lastV.date):'aucune visite'].filter(Boolean).join(' · '),bg:on?'var(--color-accent-100)':'transparent',bar:on?'inset 3px 0 0 var(--color-accent-700)':'none',
+  var byGrav=function(a,b){var x=sum[a.id],y=sum[b.id];return y.score-x.score||String(x.lastV?x.lastV.date:'0').localeCompare(String(y.lastV?y.lastV.date:'0'))||a.nom.localeCompare(b.nom,'fr');};
+  var ordre_=sites.slice().sort(byGrav),pos=ordre_.indexOf(site);
+  /* Choix du site : sélecteur compact au-dessus de la fiche (par défaut) ou liste à gauche (réglage gardé sur ce poste) */
+  var listOn=this.inspListPref(),pick=!!st.iqPick,choisir=function(s){self.setState({inspSite:s.id,inspVisite:null,isf:null,inspBassin:null,iqPick:false,iqQ:''});};
+  var list=sites.filter(function(s){return!qq||norm(s.nom+' '+s.ville).indexOf(qq)>=0;}).sort(byGrav)
+    .map(function(s){var x=sum[s.id],on=s.id===site.id;return{on:on,pick:function(){choisir(s);},nom:s.nom,sub:[s.ville,self.T(s.type).court,x.lastV?fdate(x.lastV.date):'aucune visite'].filter(Boolean).join(' · '),bg:on?'var(--color-accent-100)':'transparent',bar:on?'inset 3px 0 0 var(--color-accent-700)':'none',
       pz:['eau','meca','secu','struct'].map(function(k){return{t:PZT[k]+' : '+I.LIB[x.pz[k]],st:pzSt(x.pz[k])};}),go:function(){self.setState({inspSite:s.id,inspVisite:null,isf:null,inspBassin:null});}};});
   var TABS=[['bilan','Bilan par système'],['visite','Visites'],['tendances','Tendances de l’eau'],['saisie','Nouvelle inspection'],['bassins','Bassins et plan'],['acces','Accès client'],['points','Points de contrôle']];
   var go=function(v){return function(){var p={inspView:v};if(v==='saisie'&&!st.isf)p.isf=self.isfNew(site);self.setState(p);if(v==='acces'||v==='bassins'){if(self.admTok()&&!self.adm)self.admLoad();}};};
@@ -4523,6 +4548,13 @@ Comp.prototype.inspVals=function(){
   var perso=!!st.inspPerso,savePref=function(o,c){self.inspTabsPref({ordre:o,cache:c});self.setState({inspPrefV:(st.inspPrefV||0)+1});};
   var cp=this.compteOf(site),lv=S.lastV,nb=(site.bassins||[]).length;
   var iq={q:st.iqQ||'',onQ:function(e){self.setState({iqQ:e.target.value});},sites:list,tabs:tabs,
+    listOn:listOn,listOff:!listOn,cols:listOn?'272px minmax(0,1fr)':'minmax(0,1fr)',toggleList:function(){self.inspListPref(!listOn);self.setState({iqPick:false});},
+    pick:pick,togglePick:function(){self.setState({iqPick:!pick,iqQ:''});if(!pick)setTimeout(function(){var el=document.querySelector('input[aria-label="Chercher un site"]');if(el)el.focus();},0);},
+    closePick:function(){self.setState({iqPick:false,iqQ:''});},noSite:!list.length,
+    pickInfo:qq?list.length+' site(s) trouvé(s) · Entrée pour ouvrir le premier':sites.length+' sites, triés par gravité · Échap pour fermer',
+    onPickKey:function(e){if(e.key==='Escape')self.setState({iqPick:false,iqQ:''});else if(e.key==='Enter'&&list.length){e.preventDefault();list[0].pick();}},
+    prev:function(){if(ordre_.length)choisir(ordre_[(pos-1+ordre_.length)%ordre_.length]);},next:function(){if(ordre_.length)choisir(ordre_[(pos+1)%ordre_.length]);},
+    pos:(pos+1)+' / '+ordre_.length,curPz:['eau','meca','secu','struct'].map(function(k){return{t:PZT[k]+' : '+I.LIB[S.pz[k]],st:pzSt(S.pz[k])};}),
     perso:perso,persoLbl:perso?'Terminé':'Personnaliser',togglePerso:function(){self.setState({inspPerso:!perso});},
     persoRows:ordre.map(function(k,i){var cache=pref.cache.indexOf(k)>=0;return{label:LIBT[k],on:!cache,aria:'Afficher l’onglet '+LIBT[k],
       toggle:function(e){var c=pref.cache.filter(function(x){return x!==k;});if(!e.target.checked){if(ordre.length-c.length<=1){self.flash('Gardez au moins un onglet');return;}c.push(k);}savePref(ordre,c);},

@@ -1,10 +1,10 @@
 <!-- sa-admin › Inspections (passation 2a, 2b, 5a-1, 5a-2, 4a-5, 4a-1) — inséré par assemble.py ; logique : inspections.js -->
 <sc-if value="{{ isInspNew }}">
-<div style="display:grid;grid-template-columns:272px minmax(0,1fr);border:1px solid var(--color-divider);min-height:calc(100vh - 170px)">
-  <aside style="border-right:1px solid var(--color-divider);display:flex;flex-direction:column;min-width:0">
+<div style="display:grid;grid-template-columns:{{ iq.cols }};border:1px solid var(--color-divider);min-height:calc(100vh - 170px)">
+  <sc-if value="{{ iq.listOn }}"><aside style="border-right:1px solid var(--color-divider);display:flex;flex-direction:column;min-width:0">
     <div style="padding:12px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--color-divider)">
       <input class="input" type="search" placeholder="Rechercher un site…" aria-label="Rechercher un site" value="{{ iq.q }}" onInput="{{ iq.onQ }}">
-      <div style="display:flex;align-items:center;gap:6px;font-size:13px"><span style="flex:1">Trié par gravité</span><span title="Eau"><sa-i n="droplet" s="15"></sa-i></span><span title="Mécanique"><sa-i n="wrench" s="15"></sa-i></span><span title="Sécurité"><sa-i n="alert" s="15"></sa-i></span><span title="Structure"><sa-i n="building" s="15"></sa-i></span></div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:13px"><button onClick="{{ iq.toggleList }}" style="all:unset;cursor:pointer;text-decoration:underline">Masquer la liste</button><span style="flex:1;text-align:right">Trié par gravité</span><span title="Eau"><sa-i n="droplet" s="15"></sa-i></span><span title="Mécanique"><sa-i n="wrench" s="15"></sa-i></span><span title="Sécurité"><sa-i n="alert" s="15"></sa-i></span><span title="Structure"><sa-i n="building" s="15"></sa-i></span></div>
     </div>
     <div style="overflow-y:auto;flex:1">
       <sc-for list="{{ iq.sites }}" as="s">
@@ -14,8 +14,28 @@
         </button>
       </sc-for>
     </div>
-  </aside>
+  </aside></sc-if>
   <section style="min-width:0;display:flex;flex-direction:column">
+    <sc-if value="{{ iq.listOff }}"><div style="position:relative;padding:8px 22px;border-bottom:1px solid var(--color-divider);display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px">
+      <button class="btn btn-ghost btn-icon" onClick="{{ iq.prev }}" aria-label="Site précédent" title="Site précédent (ordre de gravité)"><sa-i n="left" s="16"></sa-i></button>
+      <button onClick="{{ iq.togglePick }}" aria-haspopup="listbox" aria-expanded="{{ iq.pick }}" aria-label="Changer de site" style="all:unset;cursor:pointer;box-sizing:border-box;display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--color-divider);min-width:min(340px,100%);max-width:100%">
+        <sa-i n="search" s="15"></sa-i><span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600">{{ iq.h.nom }}</span>
+        <sc-for list="{{ iq.curPz }}" as="p"><i title="{{ p.t }}" style="{{ p.st }}"></i></sc-for><sa-i n="down" s="15"></sa-i></button>
+      <button class="btn btn-ghost btn-icon" onClick="{{ iq.next }}" aria-label="Site suivant" title="Site suivant (ordre de gravité)"><sa-i n="right" s="16"></sa-i></button>
+      <span style="font-size:13px">{{ iq.pos }}</span><span style="flex:1"></span>
+      <button onClick="{{ iq.toggleList }}" style="all:unset;cursor:pointer;font-size:13px;text-decoration:underline">Afficher la liste à gauche</button>
+      <sc-if value="{{ iq.pick }}"><div onClick="{{ iq.closePick }}" style="position:fixed;inset:0;z-index:30"></div>
+        <div role="dialog" aria-label="Choisir un site" style="position:absolute;z-index:31;top:calc(100% - 4px);left:62px;width:min(420px,calc(100% - 84px));background:var(--color-bg);border:1px solid var(--color-text);box-shadow:0 8px 24px rgba(0,0,0,.18);display:flex;flex-direction:column">
+          <div style="padding:10px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:6px">
+            <input class="input" type="search" placeholder="Nom du site ou ville…" aria-label="Chercher un site" value="{{ iq.q }}" onInput="{{ iq.onQ }}" onKeyDown="{{ iq.onPickKey }}">
+            <span style="font-size:12px">{{ iq.pickInfo }}</span></div>
+          <div role="listbox" aria-label="Sites" style="max-height:min(420px,60vh);overflow-y:auto">
+            <sc-for list="{{ iq.sites }}" as="s"><button role="option" aria-selected="{{ s.on }}" onClick="{{ s.pick }}" style="all:unset;cursor:pointer;box-sizing:border-box;width:100%;display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid var(--color-divider);background:{{ s.bg }};box-shadow:{{ s.bar }}">
+              <span style="flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25"><span style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.nom }}</span><span style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.sub }}</span></span>
+              <sc-for list="{{ s.pz }}" as="p"><i title="{{ p.t }}" style="{{ p.st }}"></i></sc-for></button></sc-for>
+            <sc-if value="{{ iq.noSite }}"><div style="padding:12px">Aucun site ne correspond.</div></sc-if>
+          </div></div></sc-if>
+    </div></sc-if>
     <div style="padding:16px 22px 12px;border-bottom:2px solid var(--color-accent-500);display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
       <sc-if value="{{ iq.h.logo }}"><img src="{{ iq.h.logo }}" alt="Logo du client" style="width:56px;height:56px;object-fit:contain;border:1px solid var(--color-divider)"></sc-if>
       <div style="flex:1;min-width:240px;display:flex;flex-direction:column;gap:2px">
