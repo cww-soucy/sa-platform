@@ -57,6 +57,7 @@ Comp.prototype.load=function(){
     geo:soft('punch_gps_log?select=site_id,emp,lat,lng,acc,date,heure,lieu&lat=not.is.null&order=date.desc,heure.desc&limit=800',[]),
     inv:soft('inventaire?select=id,nom,qte,seuil',[]),flotte:soft('flotte?select=id,nom,plaque',[]),
     /* clients et lieux classés : absents tant que la migration 2026-10-05 n'est pas appliquée (null = pas encore disponible) */
+    prefs:get('preferences_comptes?select=*&id=eq.'+encodeURIComponent(((self.user&&self.user.id)||'')+':monitoring')).catch(function(){return null;}),
     cli:get('clients?select=id,nom,interne,notes&order=nom.asc').catch(function(){return null;}),scl:get('sites?select=id,client_id').catch(function(){return[];}),ali:get('lieux_alias?select=lieu,site_id').catch(function(){return[];})};
   var K=Object.keys(Q);
   return Promise.all(K.map(function(k){return Q[k];})).then(function(arr){
@@ -69,7 +70,7 @@ Comp.prototype.load=function(){
     var statut={},email={};(r.statut||[]).forEach(function(c){statut[c.id]=c.statut;if(c.email)email[c.id]=c.email;});
     (r.comptes||[]).forEach(function(c){if(c.email==null&&email[c.id])c.email=email[c.id];});
     self.D={sites:sites,sitesAll:sitesAll,byId:byId,types:T,comptes:r.comptes,ft:r.ft,wo:r.wo,rel:r.rel.map(function(x){x.site_id=String(x.site_id);return x;}).filter(function(x){var s=byId[x.site_id];return!(s?s.interne:isInterne('',x.site_nom));}),gps:r.gps,nPlan:r.plan.length,nPt:r.pt.length,planT:r.plan||[],ptT:r.pt||[],dem:r.dem||[],ftAll:r.ftAll||[],fact:r.fact||[],proj:r.proj||[],sond:r.sond||[],geo:r.geo||[],inv:r.inv||[],flotte:r.flotte||[],cat:r.cat||[],statut:statut,today:today,clients:cli,hasClients:!!r.cli,alias:alias};
-    self.loadedAt=new Date();self.err='';self.softErr=SOFT_ERR.slice();
+    self.loadedAt=new Date();self.err='';self.softErr=SOFT_ERR.slice();self.monSync(r.prefs);
     if(!self.state.inspSite){var w=self.D.rel.length?String(self.D.rel[self.D.rel.length-1].site_id):(sites[0]&&sites[0].id);self.state.inspSite=w||null;}
   }).catch(function(e){self.err='Chargement impossible : '+netMsg(e);});
 };
@@ -1106,10 +1107,45 @@ var MON_PER=[['jour','Aujourd’hui'],['hier','Hier'],['7j','7 derniers jours']]
 var MON_DEF={tShow:'tous',tSort:'statut',tSel:{},tCfg:false,sMode:'horaire',sSort:'etat',sPins:{},sCfg:false,sQ:''};
 var MON_TSHOW=[['tous','Tous'],['punch','En punch'],['auj','Actifs aujourd’hui']],MON_TSORT=[['statut','Trier : statut'],['nom','Trier : nom'],['depuis','Trier : heure d’arrivée'],['site','Trier : site']];
 var MON_SMODE=[['horaire','À l’horaire aujourd’hui'],['alertes','Alertes'],['suivies','Mes salles suivies'],['toutes','Toutes']],MON_SSORT=[['etat','Trier : état'],['nom','Trier : nom'],['recent','Trier : dernier relevé']];
+/* Les réglages suivent le compte (table preferences_comptes) : sur chaque appareil, le mode est « compte » (mêmes réglages
+   partout) ou « poste » (réglages propres à cet appareil). Sur un nouvel appareil, la question est posée une fois. */
+var MON_TMP=['tCfg','sCfg','sQ'];
+function devId(){try{var d=localStorage.getItem('sa_admin_appareil');if(!d){d='ap-'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);localStorage.setItem('sa_admin_appareil',d);}return d;}catch(e){return 'ap-inconnu';}}
+function devNom(){var u=navigator.userAgent||'';return(/iPhone|iPad/.test(u)?'iPhone / iPad':/Android/.test(u)?'Android':/Macintosh/.test(u)?'Mac':/Windows/.test(u)?'PC Windows':/Linux/.test(u)?'Linux':'Autre appareil')+' · '+(/Edg\//.test(u)?'Edge':/Chrome\//.test(u)?'Chrome':/Firefox\//.test(u)?'Firefox':/Safari\//.test(u)?'Safari':'navigateur');}
+function tms(t){var n=Date.parse(t||'');return isNaN(n)?0:n;}
 Comp.prototype.monKey=function(){return 'sa_admin_mon_'+((this.user&&this.user.id)||'');};
+Comp.prototype.monMode=function(){try{return localStorage.getItem(this.monKey()+'_mode')||'';}catch(e){return '';}};
+Comp.prototype.monModeSet=function(m){try{localStorage.setItem(this.monKey()+'_mode',m);}catch(e){}};
 Comp.prototype.monPrefs=function(){if(!this._mp){var v=jget(this.monKey(),{});this._mp=Object.assign({},MON_DEF,v&&typeof v==='object'?v:{});}return this._mp;};
-Comp.prototype.monSet=function(k,v){var p=Object.assign({},this.monPrefs());p[k]=v;this._mp=p;var keep={};Object.keys(MON_DEF).forEach(function(x){if(x!=='tCfg'&&x!=='sCfg'&&x!=='sQ')keep[x]=p[x];});
-  try{localStorage.setItem(this.monKey(),JSON.stringify(keep));}catch(e){}this.update();};
+Comp.prototype.monKeep=function(p){var keep={};Object.keys(MON_DEF).forEach(function(x){if(MON_TMP.indexOf(x)<0)keep[x]=p[x];});return keep;};
+Comp.prototype.monSave=function(p){this._mp=p;try{localStorage.setItem(this.monKey(),JSON.stringify(Object.assign(this.monKeep(p),{_ts:p._ts||''})));}catch(e){}};
+Comp.prototype.monSet=function(k,v){var p=Object.assign({},this.monPrefs()),tmp=MON_TMP.indexOf(k)>=0,m=this.monMode();p[k]=v;if(!tmp)p._ts=nowIso();this.monSave(p);
+  // au compte : en mode « compte », ou tant que le compte n'a encore aucun réglage (jamais avant la réponse à la question « nouvel appareil »)
+  if(!tmp&&this.monSrv!==undefined&&(m==='compte'||(!m&&!this.monSrv)))this.monPush();this.update();};
+Comp.prototype.monApply=function(row){var v=row&&row.valeur&&typeof row.valeur==='object'?row.valeur:{},cur=this.monPrefs(),p=Object.assign({},MON_DEF,v,{_ts:row.updated_at});
+  MON_TMP.forEach(function(k){p[k]=cur[k];});this.monSave(p);};
+/* Envoi au compte, regroupé (une écriture au plus toutes les 0,6 s) */
+Comp.prototype.monPush=function(){var self=this;clearTimeout(this._mpT);this._mpT=setTimeout(function(){var p=self.monPrefs(),uid=(self.user&&self.user.id)||'';if(!uid)return;
+  var row={id:uid+':monitoring',uid:uid,cle:'monitoring',valeur:self.monKeep(p),appareil:devId(),appareil_nom:devNom(),updated_at:p._ts||nowIso()};
+  rest('POST','preferences_comptes',row,'resolution=merge-duplicates,return=representation').then(function(r){self.monSrv=r[0]||row;self.monModeSet('compte');})
+    .catch(function(e){self.flash('Réglages gardés sur cet appareil — enregistrement au compte impossible ('+netMsg(e)+')');});},600);};
+/* Après chaque lecture : rows = ligne du compte ([] si aucune), null si la table n'existe pas encore */
+Comp.prototype.monSync=function(rows){if(rows==null){this.monSrv=undefined;return;}var row=rows[0]||null,mode=this.monMode(),P=this.monPrefs();this.monSrv=row;
+  if(!row){if(mode!=='poste'){this.monModeSet('compte');if(P._ts)this.monPush();}return;}
+  if(mode==='poste')return;
+  if(mode==='compte'){if(tms(row.updated_at)>tms(P._ts))this.monApply(row);return;}
+  if(row.appareil===devId()){this.monModeSet('compte');this.monApply(row);return;}
+  this.state.monAsk=true;};
+/* Nouvel appareil : garder les réglages du compte, ou en faire de propres à cet appareil (en partant de ceux du compte) */
+Comp.prototype.monChoose=function(m){var row=this.monSrv;this.monModeSet(m);if(row)this.monApply(row);this.setState({monAsk:false});
+  this.flash(m==='compte'?'Réglages du compte appliqués sur cet appareil':'Réglages propres à cet appareil — modifiez-les sans toucher à vos autres appareils');};
+Comp.prototype.monModeVals=function(){var self=this,st=this.state,row=this.monSrv,mode=this.monMode(),ask=!!st.monAsk&&st.mod==='monitoring'&&!!row;
+  var when=row&&row.updated_at?new Date(row.updated_at):null;
+  return{monAsk:ask,monAskTxt:ask?'Vos réglages du Monitoring (employés affichés, salles suivies, filtres et tris) ont été faits sur un autre appareil'+(row.appareil_nom?' ('+row.appareil_nom+')':'')+(when&&!isNaN(when)?', le '+fdate(iso(when))+' à '+pad(when.getHours())+':'+pad(when.getMinutes()):'')+'. Que voulez-vous faire sur cet appareil ?':'',
+    monKeepAcc:function(){self.monChoose('compte');},monOwnDev:function(){self.monChoose('poste');},
+    monModeTxt:this.monSrv===undefined?'Réglages gardés sur cet appareil seulement':mode==='poste'?'Réglages propres à cet appareil':'Réglages liés à votre compte (tous vos appareils)',
+    monModeBtn:this.monSrv===undefined?'':mode==='poste'?'Reprendre les réglages du compte':'Régler autrement sur cet appareil',hasMonModeBtn:this.monSrv!==undefined,
+    monModeSwap:function(){if(mode==='poste'){self.monModeSet('compte');if(self.monSrv)self.monApply(self.monSrv);else self.monPush();self.flash('Réglages du compte appliqués');}else{self.monModeSet('poste');self.flash('Réglages propres à cet appareil');}self.update();}};};
 Comp.prototype.monTeamVals=function(all){var self=this,P=this.monPrefs(),sel=P.tSel||{};
   var shown=function(t){return sel[t._uid]!=null?!!sel[t._uid]:t._def;};
   var rows=all.filter(shown).filter(function(t){return P.tShow==='punch'?t._run:P.tShow==='auj'?t._tod:true;});
@@ -1911,7 +1947,7 @@ Comp.prototype.vals=function(){
     exportMsg:function(){self.printInsp(is.id);},
     opsFilters:opsFilters,dossiers:dossiers,newDossier:function(){self.openDlg({type:'Bon de travail'});},noDossier:dossiers.length===0,
     nouveaux:nouveaux,siteTypeOptions:siteTypeOptions,siteType:stype,onSiteType:function(e){self.setState({siteType:e.target.value});},siteRows:siteRows,siteCount:siteRows.length,noNouveaux:nouveaux.length===0},
-    monTeam,this.tempsVals(punchRows),this.empVals(),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals(),this.stockVals(),this.outilsVals(),this.monVals(),this.siteFicheVals(),this.typesVals(),this.carteCtlVals(),this.plan2Vals(),this.calVals(),this.seriesVals(),this.globVals(),this.commVals(),this.inspVals(),this.clientsVals(),this.sondagesVals());
+    monTeam,this.monModeVals(),this.tempsVals(punchRows),this.empVals(),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals(),this.stockVals(),this.outilsVals(),this.monVals(),this.siteFicheVals(),this.typesVals(),this.carteCtlVals(),this.plan2Vals(),this.calVals(),this.seriesVals(),this.globVals(),this.commVals(),this.inspVals(),this.clientsVals(),this.sondagesVals());
 };
 Comp.prototype.update=function(){if(!this._host)return;SARender(document.getElementById('tpl'),this._host,this.vals());this.syncMap();var el=this.rootRef.current;if(el)el.style.setProperty('--sa-row','10px');};
 Comp.prototype.mount=function(host){var self=this;this._host=host;var hm=hashMod();if(hm&&TITLES_OK(hm))this.state.mod=hm;this.update();

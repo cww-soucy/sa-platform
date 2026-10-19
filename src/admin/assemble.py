@@ -529,7 +529,16 @@ M=M.rstrip()+'\n'+PORTAIL
 # ---------- MONITORING : période, relevés de la période, salles réelles, mur de contrôle ----------
 _mon='<sc-if value="{{ isMonitoring }}">\n        <div style="display:flex;flex-direction:column;gap:26px">'
 MONBAR=('<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">'+SEG('monPers')+'<span style="font-size:14px">Relevés et flux {{ monPerLbl }}</span><span style="flex:1"></span>'
-  '<button class="btn btn-primary" onClick="{{ openWall }}" style="gap:8px"><sa-i n="grid" s="17"></sa-i>Mur de contrôle (grand écran)</button></div>')
+  '<button class="btn btn-primary" onClick="{{ openWall }}" style="gap:8px"><sa-i n="grid" s="17"></sa-i>Mur de contrôle (grand écran)</button></div>'
+  '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;margin-top:-14px"><sa-i n="users" s="15"></sa-i><span>{{ monModeTxt }}</span>'
+  '<sc-if value="{{ hasMonModeBtn }}"><button onClick="{{ monModeSwap }}" style="all:unset;cursor:pointer;text-decoration:underline">{{ monModeBtn }}</button></sc-if></div>')
+# Nouvel appareil : garder les réglages du compte ou en faire de propres à cet appareil (question posée une fois par appareil)
+MONASK=('<sc-if value="{{ monAsk }}"><div class="dialog-backdrop" style="z-index:60"><div class="dialog" role="dialog" aria-label="Nouvel appareil" style="width:min(520px,100%);background:var(--color-bg);gap:16px;padding:22px 24px;border:1px solid var(--color-text)">'
+  '<span class="dialog-title" style="font-size:24px">Nouvel appareil</span><div style="font-size:15px;line-height:1.45">{{ monAskTxt }}</div>'
+  '<div style="display:flex;flex-direction:column;gap:8px"><button class="btn btn-primary" onClick="{{ monKeepAcc }}">Garder mes réglages</button><span style="font-size:13px">Les mêmes réglages sur tous vos appareils ; un changement fait ici s’applique partout.</span>'
+  '<button class="btn btn-secondary" onClick="{{ monOwnDev }}">Changer pour cet appareil</button><span style="font-size:13px">Cet appareil garde ses propres réglages (au départ, ceux de votre compte) ; vos autres appareils ne changent pas.</span></div>'
+  '</div></div></sc-if>\n')
+M=M.rstrip()+'\n'+MONASK
 if M.count(_mon)==1: M=M.replace(_mon,_mon+MONBAR,1)
 else: print('!! ancre monitoring',M.count(_mon))
 RELP=CARD('<div style="padding:14px 18px;border-bottom:1px solid var(--color-divider);display:flex;align-items:baseline;justify-content:space-between"><h3 style="margin:0;font-size:22px">{{ relTitle }}</h3></div>'
