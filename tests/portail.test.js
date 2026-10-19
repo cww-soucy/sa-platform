@@ -46,6 +46,13 @@ function serveur(niveau, sitesOk = ['1']) {
       return ok({ ok: true, contact: { nom: 'Jeanne Gestion', niveau }, compte: { nom: 'Ville de Test', logo: null }, urgence: '418-555-0100', contrats: { 1: 'MI' },
         ...L.donneesClient({ ...src, sites: src.sites.filter((x) => sitesOk.includes(x.id)) }, { niveau, sitesOk }) });
     }
+    if (b.action === 'admin_ouvrir') return ok(b.id === 'cwweil' && b.mdp === 'bon' ? { ok: true, session: 'ADM-xxxxxxxxxxxxxxxxxxxxxxxx', role: 'admin' } : { ok: false, message: 'Identifiant ou mot de passe incorrect, ou rôle insuffisant.' });
+    if (b.action === 'admin_apercu') {
+      if (tok !== 'ADM-xxxxxxxxxxxxxxxxxxxxxxxx') return route.fulfill({ status: 401, contentType: 'application/json', body: '{"ok":false}' });
+      st.apercu = b;
+      return ok({ ok: true, apercu: true, contact: { nom: 'Aperçu', niveau: b.niveau }, compte: { nom: 'Aperçu', logo: null }, urgence: '', contrats: { 1: 'MI' },
+        ...L.donneesClient({ ...src, sites: src.sites.filter((x) => x.id === b.site_id) }, { niveau: b.niveau, sitesOk: [b.site_id] }) });
+    }
     if (b.action === 'deconnexion') return ok({ ok: true });
     return ok({ ok: false });
   };
@@ -160,6 +167,42 @@ test('portail : QR avec une session client gardée — le choix client / technic
   const tech = page.getByRole('link', { name: 'Je suis technicien' });
   assert.equal(new URL(await tech.getAttribute('href'), page.url()).pathname + new URL(await tech.getAttribute('href'), page.url()).search, '/terrain.html?site=2');
   assert.equal(await page.getByRole('link', { name: /Carnet de bord/ }).getAttribute('href'), '../qr-carnet/?site=2');
+  // « Accès client » : la session gardée ne donne pas accès à Piscine Beta → on demande l'adresse de CETTE installation
+  await page.getByRole('button', { name: 'Accès client' }).click();
+  await page.getByText('Ce téléphone est connecté pour Piscine Alpha. Pour Piscine Beta, entrez le courriel ou cellulaire inscrit pour cette installation.').waitFor();
+  assert.equal(await page.textContent('h1'), 'Piscine Beta');
+  await page.locator('#ident').waitFor();
+  assert.equal(await page.locator('.opere').count(), 0, 'le portail du client déjà connecté ne s’ouvre pas');
+  // ses propres installations restent à un clic
+  await page.getByRole('button', { name: 'Continuer vers Piscine Alpha' }).click();
+  await page.locator('.opere').getByText('Opéré par').waitFor();
+  assert.equal(await page.textContent('h1'), 'Piscine Alpha');
+  assert.equal(await page.getByRole('alert').count(), 0);
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+test('portail : QR → « Personnel Soucy Aquatik » → fiche complète du site scanné, même avec une session client gardée', async () => {
+  const { page, st, errors } = await open('?q=AUTRE');
+  await connexion(page); // session client gardée pour Piscine Alpha seulement
+  await page.goto(srv.url + '/portail/?q=BETA');
+  await page.getByRole('button', { name: 'Personnel Soucy Aquatik' }).click();
+  await page.getByLabel('Identifiant').fill('cwweil');
+  await page.getByLabel('Mot de passe').fill('mauvais');
+  await page.getByRole('button', { name: 'Ouvrir la fiche du site' }).click();
+  await page.getByText('Identifiant ou mot de passe incorrect, ou rôle insuffisant.').waitFor();
+  await page.getByLabel('Mot de passe').fill('bon');
+  await page.getByRole('button', { name: 'Ouvrir la fiche du site' }).click();
+  await page.waitForURL(/apercu=1&site=2&niveau=direction/);
+  await page.locator('.opere').getByText('Opéré par').waitFor();
+  assert.equal(await page.textContent('h1'), 'Piscine Beta');
+  assert.equal(st.apercu.site_id, '2');
+  // session gardée 11 h 30 : un autre QR ouvre directement la fiche, sans redemander le mot de passe
+  await page.goto(srv.url + '/portail/?q=BON');
+  await page.getByRole('button', { name: 'Personnel Soucy Aquatik' }).click();
+  await page.waitForURL(/apercu=1&site=1/);
+  await page.locator('.opere').getByText('Opéré par').waitFor();
+  assert.equal(await page.textContent('h1'), 'Piscine Alpha');
   assert.deepEqual(errors, []);
   await page.close();
 });
