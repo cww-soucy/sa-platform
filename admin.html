@@ -3106,7 +3106,10 @@ Comp.prototype.saveCompte=function(){var self=this,e=this.state.ce;if(!e||e.busy
   var dr=Object.assign({},e.droits);if(e.role==='admin')DROITS.forEach(function(d){dr[d[0]]=true;});
   var body={prenom:String(e.prenom).trim(),nom:String(e.nom).trim(),dept:String(e.dept||'').trim(),email:String(e.email||'').trim(),tel:String(e.tel||'').trim(),role:e.role,droits:dr,statut:e.statut,saisonnier:!!e.saisonnier,updated_at:new Date().toISOString()};
   this.setState({ce:Object.assign({},e,{busy:true})});
-  var w=e.isNew?postRows('comptes',[Object.assign({id:id},body)]):rest('PATCH','comptes?id=eq.'+encodeURIComponent(id),body);
+  /* Un compte supprimé est retenu au serveur (table suppressions) pour qu'une vieille copie de SA Platform ne le recrée pas :
+     une création volontaire du même identifiant efface d'abord cette ligne. */
+  var w=e.isNew?rest('DELETE','suppressions?table_nom=eq.comptes&id=eq.'+encodeURIComponent(id)).catch(function(){}).then(function(){return postRows('comptes',[Object.assign({id:id},body)]);})
+    :rest('PATCH','comptes?id=eq.'+encodeURIComponent(id),body);
   w.then(function(){auditT(self,e.isNew?'CREATION':'MODIFICATION','comptes',id);
       if(!pw)return true;return rpc('admin_definir_mdp',{p_admin_id:self.user.id,p_admin_mdp:e.adminPw,p_cible_id:id,p_nouveau:e.pw1});})
     .then(function(ok){if(ok===false){self.setState({ce:Object.assign({},self.state.ce,{busy:false,isNew:false,adminPw:''})});self.loadComptes(true);self.flash('Compte enregistré, mais mot de passe NON défini : votre mot de passe administrateur est incorrect');return;}

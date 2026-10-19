@@ -34,6 +34,10 @@ test('liste des comptes et création d’un employé avec mot de passe initial',
   await toast(page, /Compte créé/);
   const c = db.rows('comptes').find((x) => x.id === 'jcote');
   assert.ok(c, 'identifiant mis en minuscules');
+  // une création volontaire efface d'abord la suppression retenue (sinon la base ignore le compte)
+  const w = db.log.filter((l) => l.method !== 'GET' && (l.table === 'suppressions' || l.table === 'comptes'));
+  assert.deepEqual(w.slice(0, 2).map((l) => l.method + ' ' + l.table), ['DELETE suppressions', 'POST comptes']);
+  assert.match(w[0].query, /table_nom=eq\.comptes&id=eq\.jcote/);
   assert.equal(c.role, 'employe');
   assert.equal(c.statut, 'actif');
   assert.equal(c.mdp, undefined, 'jamais de mot de passe dans la table');
