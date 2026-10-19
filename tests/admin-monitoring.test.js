@@ -50,3 +50,125 @@ test('mur de contrôle : grand écran avec indicateurs, salles, équipe et flux'
   assert.equal(await page.getByRole('dialog', { name: 'Mur de contrôle' }).count(), 0);
   await page.close();
 });
+
+test('monitoring : préférences par compte — employés affichés, filtre et tri de l’équipe', async () => {
+  const { page, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: tables() });
+  await page.waitForFunction(() => window.__admin && window.__admin.D);
+  const team = () => page.evaluate(() => window.__admin.vals().monTeamRows.map((t) => t.nom));
+  // par défaut : techniciens vus récemment, en punch d'abord (l'admin n'apparaît pas)
+  assert.deepEqual(await team(), ['Kaël Test']);
+  await page.getByRole('button', { name: /Employés affichés \(1 \/ 3\)/ }).click();
+  await page.getByRole('button', { name: 'Bureau SA (bureau)' }).click();
+  await page.getByRole('button', { name: 'Autre Tech', exact: true }).click();
+  assert.deepEqual(await team(), ['Kaël Test', 'Autre Tech', 'Bureau SA']);
+  await page.getByRole('combobox', { name: 'Tri de l’équipe' }).selectOption('nom');
+  assert.deepEqual(await team(), ['Autre Tech', 'Bureau SA', 'Kaël Test']);
+  await page.getByRole('button', { name: 'En punch', exact: true }).click();
+  assert.deepEqual(await team(), ['Kaël Test']);
+  // gardé pour ce compte (et seulement lui)
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('sa_admin_mon_cwweil')));
+  assert.equal(saved.tShow, 'punch'); assert.equal(saved.tSort, 'nom'); assert.deepEqual(saved.tSel, { cwweil: true, kael2: true });
+  await page.reload();
+  await page.waitForFunction(() => window.__admin && window.__admin.D);
+  assert.deepEqual(await team(), ['Kaël Test']);
+  assert.equal(await page.evaluate(() => localStorage.getItem('sa_admin_mon_autre')), null);
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+test('monitoring : salles mécaniques — à l’horaire par défaut, alertes, mes salles suivies, toutes', async () => {
+  const t = tables();
+  t.sites.push({ id: 5, nom: 'Piscine Gamma', addr: '5 rue C, Québec', notes: '' });
+  // Gamma a un relevé mais n'est pas à l'horaire ; Beta n'est plus à l'horaire ; Delta (créneau du jour) n'a aucun relevé
+  t.releves.push({ id: 'r3', site_id: 5, site_nom: 'Piscine Gamma', tech: 'kael', tech_nom: 'Kaël Test', date: iso(addDays(new Date(), -2)), heure: '09:00', type_code: 'GEN', vals: { ph: 7.4 }, touched: { ph: 1 }, checks: {}, prods: {}, note: null });
+  t.sites.push({ id: 6, nom: 'Piscine Delta', addr: '6 rue D, Lévis', notes: '' });
+  t.workorders = t.workorders.filter((w) => w.id !== 'wo-other');
+  t.plan.push({ id: 'p1', client: 'Piscine Delta', addr: '6 rue D, Lévis', date: iso(new Date()), heure: '13:00', emp: 'kael2', descr: '', type: '', status: '' });
+  const { page, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: t });
+  await page.waitForFunction(() => window.__admin && window.__admin.D);
+  const salles = () => page.evaluate(() => window.__admin.vals().salles.map((x) => x.nom));
+  assert.deepEqual(await salles(), ['Piscine Alpha', 'Piscine Delta']);
+  await page.getByText('À l’horaire aujourd’hui : Autre Tech').waitFor();
+  await page.getByRole('button', { name: 'Alertes', exact: true }).click();
+  assert.deepEqual(await salles(), ['Piscine Alpha', 'Piscine Beta']);
+  await page.getByRole('button', { name: 'Toutes', exact: true }).click();
+  assert.deepEqual(await salles(), ['Piscine Alpha', 'Piscine Beta', 'Piscine Delta', 'Piscine Gamma']);
+  await page.getByRole('button', { name: 'Mes salles suivies' }).click();
+  await page.getByText('Aucune salle suivie').waitFor();
+  await page.getByRole('button', { name: /Choisir mes salles \(0\)/ }).click();
+  await page.getByRole('searchbox', { name: 'Rechercher un site' }).fill('gam');
+  await page.getByRole('button', { name: /^Piscine Gamma( — .*)?$/ }).click();
+  assert.deepEqual(await salles(), ['Piscine Gamma']);
+  // le mur de contrôle suit le même choix
+  assert.deepEqual(await page.evaluate(() => window.__admin.vals().wallSalles.map((x) => x.nom)), ['Piscine Gamma']);
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('sa_admin_mon_cwweil')));
+  assert.equal(saved.sMode, 'suivies'); assert.deepEqual(saved.sPins, { 5: true });
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+const AUTRE = (valeur) => ({ id: 'cwweil:monitoring', uid: 'cwweil', cle: 'monitoring', valeur, appareil: 'ap-autre', appareil_nom: 'PC Windows · Chrome', updated_at: new Date(Date.now() - 3600e3).toISOString() });
+
+test('réglages du Monitoring : enregistrés au compte (suivent l’utilisateur)', async () => {
+  const { page, db, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: tables() });
+  await page.waitForFunction(() => window.__admin && window.__admin.D);
+  await page.getByText('Réglages liés à votre compte (tous vos appareils)').waitFor();
+  await page.getByRole('button', { name: 'En punch', exact: true }).click();
+  await page.waitForTimeout(900);
+  const w = db.writes('preferences_comptes');
+  assert.equal(w.length, 1);
+  const dev = await page.evaluate(() => localStorage.getItem('sa_admin_appareil'));
+  assert.equal(w[0].body.id, 'cwweil:monitoring'); assert.equal(w[0].body.valeur.tShow, 'punch'); assert.equal(w[0].body.appareil, dev);
+  assert.equal(w[0].body.valeur.tCfg, undefined);
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+test('nouvel appareil : la question est posée — garder les réglages du compte', async () => {
+  const t = tables(); t.preferences_comptes = [AUTRE({ tShow: 'punch', tSort: 'nom', tSel: {}, sMode: 'toutes', sSort: 'nom', sPins: {} })];
+  const { page, db, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: t });
+  await page.waitForFunction(() => window.__admin && window.__admin.D);
+  const dlg = page.getByRole('dialog', { name: 'Nouvel appareil' });
+  await dlg.getByText(/faits sur un autre appareil \(PC Windows · Chrome/).waitFor();
+  await dlg.getByRole('button', { name: 'Garder mes réglages' }).click();
+  assert.equal(await page.getByRole('dialog', { name: 'Nouvel appareil' }).count(), 0);
+  assert.deepEqual(await page.evaluate(() => window.__admin.vals().salles.map((x) => x.nom)), ['Piscine Alpha', 'Piscine Beta']);
+  assert.equal(await page.evaluate(() => localStorage.getItem('sa_admin_mon_cwweil_mode')), 'compte');
+  // un changement ici part au compte
+  await page.getByRole('button', { name: 'Alertes', exact: true }).click();
+  await page.waitForTimeout(900);
+  assert.equal(db.writes('preferences_comptes').pop().body.valeur.sMode, 'alertes');
+  // la question n'est plus reposée sur cet appareil
+  await page.reload();
+  await page.waitForFunction(() => window.__admin && window.__admin.D);
+  assert.equal(await page.evaluate(() => window.__admin.vals().monAsk), false);
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+test('nouvel appareil : « Changer pour cet appareil » — réglages propres, le compte ne bouge pas', async () => {
+  const t = tables(); t.preferences_comptes = [AUTRE({ tShow: 'tous', tSort: 'statut', tSel: {}, sMode: 'toutes', sSort: 'etat', sPins: {} })];
+  const { page, db, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: t });
+  await page.waitForFunction(() => window.__admin && window.__admin.D);
+  await page.getByRole('dialog', { name: 'Nouvel appareil' }).getByRole('button', { name: 'Changer pour cet appareil' }).click();
+  await page.getByText('Réglages propres à cet appareil', { exact: true }).waitFor();
+  assert.equal(await page.evaluate(() => window.__admin.vals().salles.length), 2); // départ : réglages du compte (« Toutes » : Alpha et Beta)
+  await page.getByRole('button', { name: 'Mes salles suivies' }).click();
+  await page.waitForTimeout(900);
+  assert.equal(db.writes('preferences_comptes').length, 0);
+  // revenir aux réglages du compte
+  await page.getByRole('button', { name: 'Reprendre les réglages du compte' }).click();
+  assert.equal(await page.evaluate(() => window.__admin.monPrefs().sMode), 'toutes');
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+test('réglages : sans la table au serveur, ils restent sur l’appareil sans erreur', async () => {
+  const { page, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: tables(), fail: { preferences_comptes: 404 } });
+  await page.waitForFunction(() => window.__admin && window.__admin.D);
+  await page.getByText('Réglages gardés sur cet appareil seulement').waitFor();
+  await page.getByRole('button', { name: 'Toutes', exact: true }).click();
+  assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('sa_admin_mon_cwweil')).sMode), 'toutes');
+  assert.deepEqual(errors, []);
+  await page.close();
+});
