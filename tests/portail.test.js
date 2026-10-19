@@ -132,8 +132,9 @@ test('portail : le QR scanné ouvre son installation, pas la première du compte
   await connexion(page);
   assert.equal(await page.textContent('h1'), 'Piscine Beta');
   assert.equal(await page.getByRole('alert').count(), 0);
-  // déjà connecté : un autre QR du même compte ouvre aussi le bon site
+  // déjà connecté : un autre QR du même compte montre d'abord le choix, puis ouvre le bon site sans redemander de code
   await page.goto(srv.url + '/portail/?q=BON');
+  await page.getByRole('button', { name: 'Accès client' }).click();
   await page.locator('.opere').getByText('Opéré par').waitFor();
   assert.equal(await page.textContent('h1'), 'Piscine Alpha');
   await page.close();
@@ -146,5 +147,19 @@ test('portail : QR d’une installation hors de l’accès — avertissement cla
   assert.equal(await page.textContent('h1'), 'Piscine Alpha');
   await page.getByRole('button', { name: 'Changer d’adresse' }).click();
   await page.locator('#ident').waitFor();
+  await page.close();
+});
+
+test('portail : QR avec une session client gardée — le choix client / technicien reste proposé', async () => {
+  const { page, errors } = await open('?q=AUTRE');
+  await connexion(page);
+  await page.getByText('Votre adresse n’a pas accès à Piscine Gamma.').waitFor();
+  // le même téléphone scanne le QR d'un autre site : choix d'abord, pas le portail du client déjà connecté
+  await page.goto(srv.url + '/portail/?q=BETA');
+  await page.getByRole('heading', { name: 'Piscine Beta' }).waitFor();
+  const tech = page.getByRole('link', { name: 'Je suis technicien' });
+  assert.equal(new URL(await tech.getAttribute('href'), page.url()).pathname + new URL(await tech.getAttribute('href'), page.url()).search, '/terrain.html?site=2');
+  assert.equal(await page.getByRole('link', { name: /Carnet de bord/ }).getAttribute('href'), '../qr-carnet/?site=2');
+  assert.deepEqual(errors, []);
   await page.close();
 });

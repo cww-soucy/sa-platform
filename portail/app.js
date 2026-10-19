@@ -55,8 +55,9 @@
       show(h('div', { class: 'stack', style: 'max-width:440px;margin:0 auto' }, marque(),
         h('div', { class: 'muted', text: 'Relevés et rapports de cette installation' }),
         h('h1', { text: r.site }), r.bassin ? h('div', { text: r.bassin }) : null,
-        h('button', { class: 'btn primary big', onclick: ecranIdent }, 'Accès client'),
-        h('a', { class: 'btn big', href: r.carnet }, 'Je suis technicien'),
+        h('button', { class: 'btn primary big', onclick: function () { if (getTok()) charger(); else ecranIdent(); } }, 'Accès client'),
+        h('a', { class: 'btn big', href: '../terrain.html?site=' + encodeURIComponent(r.site_id) }, 'Je suis technicien'),
+        r.carnet ? h('a', { class: 'muted', href: r.carnet, style: 'text-align:center' }, 'Carnet de bord de la salle (sans connexion)') : null,
         h('p', { class: 'muted', text: 'Accès réservé aux personnes autorisées par le gestionnaire de l’installation. Code ' + r.code + '.' })));
     }).catch(function () { erreur(); });
   }
@@ -264,8 +265,9 @@
 
   /* ---------- démarrage ---------- */
   if (S.apercu) charger();
-  else if (getTok() && P.get('q')) call('qr', { jeton: P.get('q') }).then(function (r) { if (r.ok) S.qr = r; charger(); }).catch(function () { charger(); });
-  else if (getTok()) charger();
+  /* Code QR : toujours le choix client / technicien d'abord, même si une session client est gardée sur ce téléphone
+     (sinon un technicien qui a déjà ouvert le portail d'un client arrivait toujours sur ce client-là). */
   else if (P.get('q')) ecranQr();
+  else if (getTok()) charger();
   else ecranIdent();
 })();

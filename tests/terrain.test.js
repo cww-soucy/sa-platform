@@ -171,3 +171,22 @@ test('punch au bureau ou à l’entrepôt : aucun relevé de bassin, la fiche ne
   assert.deepEqual(errors, []);
   await page.close();
 });
+
+test('code QR d’un site (terrain.html?site=ID) : la fiche de ce site s’ouvre, même hors tournée', async () => {
+  const { page, errors } = await openApp(browser, srv.url, { app: 'terrain', user: USER, tables: base() });
+  await ready(page);
+  // Piscine Beta n'est pas dans la tournée de Kaël : visite hors tournée
+  await page.goto(srv.url + '/terrain.html?site=2');
+  await ready(page);
+  assert.equal(await page.evaluate(() => window.__terrain.state.screen), 'fiche');
+  assert.equal(await page.evaluate(() => window.__terrain.vals().isFiche), true);
+  assert.equal(await page.evaluate(() => window.__terrain.curJob().site), '2');
+  await page.getByText('Piscine Beta').first().waitFor();
+  assert.equal(new URL(page.url()).search, '', 'le lien est retiré de l’adresse');
+  // Piscine Alpha est dans sa tournée : c'est sa visite du jour qui s'ouvre
+  await page.goto(srv.url + '/terrain.html?site=1');
+  await ready(page);
+  assert.equal(await page.evaluate(() => window.__terrain.curJob().id), 'wo:wo-mine');
+  assert.deepEqual(errors, []);
+  await page.close();
+});
