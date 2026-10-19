@@ -539,7 +539,28 @@ _sal='<section style="display:flex;flex-direction:column;gap:12px">\n           
 if M.count(_sal)==1: M=M.replace(_sal,RELP+_sal,1)
 else: print('!! ancre salles',M.count(_sal))
 rep('<span style="font-size:12px">{{ s.ville }} · {{ s.debit }}</span>','<span style="font-size:12px">{{ s.ville }} · {{ s.debit }}</span><span style="font-size:12px;font-weight:600">{{ s.etat }}</span>')
-rep('<sc-if value="{{ s.note }}">','<sc-if value="{{ s.hasLive }}"><div style="font-size:12px;font-weight:600;margin-top:4px">{{ s.live }}</div></sc-if><sc-if value="{{ s.note }}">')
+rep('<sc-if value="{{ s.note }}">','<sc-if value="{{ s.hasLive }}"><div style="font-size:12px;font-weight:600;margin-top:4px">{{ s.live }}</div></sc-if><sc-if value="{{ s.hasPlan }}"><div style="font-size:12px;margin-top:4px">{{ s.plan }}</div></sc-if><sc-if value="{{ s.note }}">')
+# Préférences d'affichage par compte : équipe (qui, filtre, tri) et salles mécaniques (à l'horaire, alertes, mes salles, toutes)
+_tm='<h3 style="margin:0;font-size:22px">Équipe en ce moment</h3><span style="font-size:13px">Cliquez une ligne pour ouvrir les relevés du site</span></div>'
+if M.count(_tm)==1:
+    M=M.replace(_tm,_tm+'<div style="padding:10px 18px;border-bottom:1px solid var(--color-divider);display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+SEG('monTShows')
+      +SEL('monTSorts','onMonTSort').replace('<select class="input"','<select class="input" aria-label="Tri de l’équipe" style="width:auto"')
+      +'<button class="btn btn-ghost" onClick="{{ toggleMonTCfg }}" style="white-space:nowrap">{{ monTCfgLbl }}</button></div>'
+      +'<sc-if value="{{ monTCfg }}"><div style="padding:10px 18px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:8px"><span style="font-size:13px">Cochez les employés à afficher — choix propre à votre compte.</span>'
+      +CHK('monTPick','l')+'<div style="display:flex;gap:8px;flex-wrap:wrap">'+BTNX('btn-ghost','monTAll','Tout cocher')+BTNX('btn-ghost','monTNone','Tout décocher')+BTNX('btn-ghost','monTReset','Par défaut (techniciens)')+BTNX('btn-secondary','toggleMonTCfg','Terminé')+'</div></div></sc-if>'
+      +'<sc-if value="{{ monTeamNone }}"><div style="padding:12px 18px">{{ monTeamEmpty }}</div></sc-if>',1)
+    M=M.replace('<sc-for list="{{ techRows }}" as="t">','<sc-for list="{{ monTeamRows }}" as="t">',1)
+else: print('!! ancre équipe',M.count(_tm))
+_sh='<h3 style="margin:0;font-size:22px">Salles mécaniques</h3><span style="font-size:13px">{{ sallesSummary }}</span></div>'
+if M.count(_sh)==1:
+    M=M.replace(_sh,_sh+'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+SEG('monSModes')
+      +SEL('monSSorts','onMonSSort').replace('<select class="input"','<select class="input" aria-label="Tri des salles" style="width:auto"')
+      +'<button class="btn btn-ghost" onClick="{{ toggleMonSCfg }}" style="white-space:nowrap">{{ monSCfgLbl }}</button></div>'
+      +'<sc-if value="{{ monSCfg }}"><div style="padding:12px 14px;border:1px solid var(--color-divider);display:flex;flex-direction:column;gap:8px"><span style="font-size:13px">Cochez les salles à suivre dans « Mes salles suivies » — choix propre à votre compte.</span>'
+      +'<input class="input" type="search" placeholder="Rechercher un site…" aria-label="Rechercher un site" value="{{ monSQ }}" onInput="{{ onMonSQ }}" style="max-width:320px">'
+      +CHK('monSPick','l')+BTNX('btn-secondary','toggleMonSCfg','Terminé').replace('style="white-space:nowrap"','style="white-space:nowrap;align-self:flex-start"')+'</div></sc-if>'
+      +'<sc-if value="{{ salNone }}"><div style="padding:12px 14px;border:1px dashed var(--color-text)">{{ salEmpty }}</div></sc-if>',1)
+else: print('!! ancre salles (prefs)',M.count(_sh))
 WALL=('<sc-if value="{{ monWall }}"><div role="dialog" aria-label="Mur de contrôle" style="position:fixed;inset:0;z-index:45;background:#0a1a2b;color:#ffffff;overflow:auto;font-size:16px">'
   '<div style="padding:22px 28px;display:flex;flex-direction:column;gap:20px;min-height:100%;box-sizing:border-box">'
   '<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap"><div style="width:52px;height:52px;background:#004987;display:flex;align-items:flex-end;padding:6px;box-sizing:border-box;font:600 12px/0.95 var(--font-heading)">Soucy<br>Aquatik</div>'

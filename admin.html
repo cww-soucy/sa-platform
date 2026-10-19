@@ -380,11 +380,11 @@ html.nav-repli .sa-shell{grid-template-columns:72px minmax(0,1fr)!important}html
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,500px),1fr));gap:26px">
             <section class="blueprint" style="display:flex;flex-direction:column;min-width:0">
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <div style="padding:14px 18px;border-bottom:1px solid var(--color-divider);display:flex;align-items:baseline;justify-content:space-between"><h3 style="margin:0;font-size:22px">Équipe en ce moment</h3><span style="font-size:13px">Cliquez une ligne pour ouvrir les relevés du site</span></div>
+              <div style="padding:14px 18px;border-bottom:1px solid var(--color-divider);display:flex;align-items:baseline;justify-content:space-between"><h3 style="margin:0;font-size:22px">Équipe en ce moment</h3><span style="font-size:13px">Cliquez une ligne pour ouvrir les relevés du site</span></div><div style="padding:10px 18px;border-bottom:1px solid var(--color-divider);display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div style="display:flex;border:1px solid var(--color-divider);align-self:flex-start"><template data-sc="for" list="{{ monTShows }}" as="t"><button onClick="{{ t.go }}" style="all:unset;cursor:pointer;white-space:nowrap;padding:7px 14px;font:600 15px var(--font-heading);border-right:1px solid var(--color-divider);background:{{ t.bg }};color:{{ t.fg }}">{{ t.label }}</button></template></div><select class="input" aria-label="Tri de l’équipe" style="width:auto" onChange="{{ onMonTSort }}"><template data-sc="for" list="{{ monTSorts }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select><button class="btn btn-ghost" onClick="{{ toggleMonTCfg }}" style="white-space:nowrap">{{ monTCfgLbl }}</button></div><template data-sc="if" value="{{ monTCfg }}"><div style="padding:10px 18px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:8px"><span style="font-size:13px">Cochez les employés à afficher — choix propre à votre compte.</span><div style="display:flex;flex-wrap:wrap;gap:6px"><template data-sc="for" list="{{ monTPick }}" as="c"><button onClick="{{ c.go }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--color-divider)"><span style="width:16px;height:16px;border:1.5px solid var(--color-text);background:{{ c.box }};color:var(--color-bg);display:flex;align-items:center;justify-content:center"><template data-sc="if" value="{{ c.on }}"><sa-i n="check" s="12" w="3"></sa-i></template></span>{{ c.l }}</button></template></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost" onClick="{{ monTAll }}" style="white-space:nowrap">Tout cocher</button><button class="btn btn-ghost" onClick="{{ monTNone }}" style="white-space:nowrap">Tout décocher</button><button class="btn btn-ghost" onClick="{{ monTReset }}" style="white-space:nowrap">Par défaut (techniciens)</button><button class="btn btn-secondary" onClick="{{ toggleMonTCfg }}" style="white-space:nowrap">Terminé</button></div></div></template><template data-sc="if" value="{{ monTeamNone }}"><div style="padding:12px 18px">{{ monTeamEmpty }}</div></template>
               <table class="table" style="font-size:14px">
                 <thead><tr><th style="text-transform:none;letter-spacing:0;font-size:12px;padding-left:18px">Technicien</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Statut</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Site</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Depuis</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Dernière activité</th></tr></thead>
                 <tbody>
-                  <template data-sc="for" list="{{ techRows }}" as="t">
+                  <template data-sc="for" list="{{ monTeamRows }}" as="t">
                     <tr onClick="{{ t.go }}" style="cursor:pointer;opacity:{{ t.op }}">
                       <td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px"><div style="display:flex;align-items:center;gap:10px"><span style="width:28px;height:28px;flex:none;border:1px solid var(--color-text);display:flex;align-items:center;justify-content:center;font:600 12px var(--font-heading)">{{ t.ini }}</span><span style="font-weight:500">{{ t.nom }}</span></div></td>
                       <td style="padding:var(--sa-row,10px) 8px"><span style="display:inline-block;white-space:nowrap;font-size:12px;padding:2px 8px;background:{{ t.stBg }};color:{{ t.stFg }};border:1px solid {{ t.stBd }}">{{ t.statut }}</span></td>
@@ -413,7 +413,7 @@ html.nav-repli .sa-shell{grid-template-columns:72px minmax(0,1fr)!important}html
           </div>
 
           <section class="blueprint" style="display:flex;flex-direction:column;"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><div style="padding:14px 18px;border-bottom:1px solid var(--color-divider);display:flex;align-items:baseline;justify-content:space-between"><h3 style="margin:0;font-size:22px">{{ relTitle }}</h3></div><template data-sc="if" value="{{ relNone }}"><div style="padding:12px 18px">Aucun relevé {{ monPerLbl }}.</div></template><table class="table" style="font-size:14px"><tbody><template data-sc="for" list="{{ relRows }}" as="r"><tr onClick="{{ r.go }}" style="cursor:pointer"><td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px;font:600 15px var(--font-heading);white-space:nowrap">{{ r.d }}</td><td style="padding:var(--sa-row,10px) 8px;font-weight:600">{{ r.site }}</td><td style="padding:var(--sa-row,10px) 8px;">{{ r.tech }}</td><td style="padding:var(--sa-row,10px) 8px;">{{ r.n }}</td><td style="padding:var(--sa-row,10px) 8px;font-weight:{{ r.fw }}">{{ r.hz }}</td><td style="padding:var(--sa-row,10px) 8px;font-size:13px">{{ r.note }}</td></tr></template></tbody></table></section><section style="display:flex;flex-direction:column;gap:12px">
-            <div style="display:flex;align-items:baseline;justify-content:space-between"><h3 style="margin:0;font-size:22px">Salles mécaniques</h3><span style="font-size:13px">{{ sallesSummary }}</span></div>
+            <div style="display:flex;align-items:baseline;justify-content:space-between"><h3 style="margin:0;font-size:22px">Salles mécaniques</h3><span style="font-size:13px">{{ sallesSummary }}</span></div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div style="display:flex;border:1px solid var(--color-divider);align-self:flex-start"><template data-sc="for" list="{{ monSModes }}" as="t"><button onClick="{{ t.go }}" style="all:unset;cursor:pointer;white-space:nowrap;padding:7px 14px;font:600 15px var(--font-heading);border-right:1px solid var(--color-divider);background:{{ t.bg }};color:{{ t.fg }}">{{ t.label }}</button></template></div><select class="input" aria-label="Tri des salles" style="width:auto" onChange="{{ onMonSSort }}"><template data-sc="for" list="{{ monSSorts }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select><button class="btn btn-ghost" onClick="{{ toggleMonSCfg }}" style="white-space:nowrap">{{ monSCfgLbl }}</button></div><template data-sc="if" value="{{ monSCfg }}"><div style="padding:12px 14px;border:1px solid var(--color-divider);display:flex;flex-direction:column;gap:8px"><span style="font-size:13px">Cochez les salles à suivre dans « Mes salles suivies » — choix propre à votre compte.</span><input class="input" type="search" placeholder="Rechercher un site…" aria-label="Rechercher un site" value="{{ monSQ }}" onInput="{{ onMonSQ }}" style="max-width:320px"><div style="display:flex;flex-wrap:wrap;gap:6px"><template data-sc="for" list="{{ monSPick }}" as="c"><button onClick="{{ c.go }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--color-divider)"><span style="width:16px;height:16px;border:1.5px solid var(--color-text);background:{{ c.box }};color:var(--color-bg);display:flex;align-items:center;justify-content:center"><template data-sc="if" value="{{ c.on }}"><sa-i n="check" s="12" w="3"></sa-i></template></span>{{ c.l }}</button></template></div><button class="btn btn-secondary" onClick="{{ toggleMonSCfg }}" style="white-space:nowrap;align-self:flex-start">Terminé</button></div></template><template data-sc="if" value="{{ salNone }}"><div style="padding:12px 14px;border:1px dashed var(--color-text)">{{ salEmpty }}</div></template>
             <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:1px;background:var(--color-divider);border:1px solid var(--color-divider)">
               <template data-sc="for" list="{{ salles }}" as="s">
                 <button onClick="{{ s.go }}" style="all:unset;cursor:pointer;background:var(--color-bg);display:flex;flex-direction:column" data-hv="3">
@@ -422,7 +422,7 @@ html.nav-repli .sa-shell{grid-template-columns:72px minmax(0,1fr)!important}html
                     <template data-sc="for" list="{{ s.rows }}" as="r">
                       <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;font-size:13px"><span>{{ r.l }}</span><span style="display:flex;align-items:center;gap:6px"><span>{{ r.txt }}</span><span style="width:12px;height:12px;box-sizing:border-box;border:1px solid var(--color-text);background:{{ r.bg }}"></span></span></div>
                     </template>
-                    <template data-sc="if" value="{{ s.hasLive }}"><div style="font-size:12px;font-weight:600;margin-top:4px">{{ s.live }}</div></template><template data-sc="if" value="{{ s.note }}"><div style="font-size:12px;margin-top:4px;padding-top:6px;border-top:1px solid var(--color-divider);line-height:1.35">{{ s.note }}</div></template>
+                    <template data-sc="if" value="{{ s.hasLive }}"><div style="font-size:12px;font-weight:600;margin-top:4px">{{ s.live }}</div></template><template data-sc="if" value="{{ s.hasPlan }}"><div style="font-size:12px;margin-top:4px">{{ s.plan }}</div></template><template data-sc="if" value="{{ s.note }}"><div style="font-size:12px;margin-top:4px;padding-top:6px;border-top:1px solid var(--color-divider);line-height:1.35">{{ s.note }}</div></template>
                   </div>
                 </button>
               </template>
@@ -2484,7 +2484,7 @@ Comp.prototype.load=function(){
       .catch(function(){return soft('releves?select=id,site_id,site_nom,tech,tech_nom,date,heure,type_code,vals,touched,checks,prods,note,hors_zone,bassin&date=gte.'+since+'&order=date.asc,heure.asc',[]);}),
     cat:get('inspection_points?select=*').catch(function(){return[];}),
     gps:soft('punch_gps_log?select=emp,heure,lieu,date&date=eq.'+today+'&order=heure.desc&limit=30',[]),
-    plan:soft('plan?select=id&date=eq.'+today,[]),pt:soft('planning_tasks?select=id&date_debut=lte.'+today+'&date_fin=gte.'+today,[]),
+    plan:soft('plan?select=id,client,addr,emp&date=eq.'+today,[]),pt:soft('planning_tasks?select=id,titre,site_nom,emp&date_debut=lte.'+today+'&date_fin=gte.'+today,[]),
     dem:soft('demandes?select=id,tech,tech_nom,site_nom,type,motif,texte,statut,created_at,has_photo&order=created_at.desc&limit=40',[]),
     ftAll:soft('feuilles_temps?select=uid,week,total_h',[]),fact:soft('facturation?select=*',[]),proj:soft('projets_excel?select=*',[]),
     statut:soft('comptes?select=id,statut,email',[]),sond:soft('sondages?select=id,slug,titre,client,actif,created_at&order=created_at.desc',[]),
@@ -2502,7 +2502,7 @@ Comp.prototype.load=function(){
     var byId={};sites.forEach(function(s){byId[s.id]=s;s.merged=/^Fusionné →/.test(s.notes);s.client_id=scl[s.id]||null;if(cint[s.client_id])s.interne=true;});var sitesAll=sites;sites=sites.filter(function(s){return!s.merged;});
     var statut={},email={};(r.statut||[]).forEach(function(c){statut[c.id]=c.statut;if(c.email)email[c.id]=c.email;});
     (r.comptes||[]).forEach(function(c){if(c.email==null&&email[c.id])c.email=email[c.id];});
-    self.D={sites:sites,sitesAll:sitesAll,byId:byId,types:T,comptes:r.comptes,ft:r.ft,wo:r.wo,rel:r.rel.map(function(x){x.site_id=String(x.site_id);return x;}).filter(function(x){var s=byId[x.site_id];return!(s?s.interne:isInterne('',x.site_nom));}),gps:r.gps,nPlan:r.plan.length,nPt:r.pt.length,dem:r.dem||[],ftAll:r.ftAll||[],fact:r.fact||[],proj:r.proj||[],sond:r.sond||[],geo:r.geo||[],inv:r.inv||[],flotte:r.flotte||[],cat:r.cat||[],statut:statut,today:today,clients:cli,hasClients:!!r.cli,alias:alias};
+    self.D={sites:sites,sitesAll:sitesAll,byId:byId,types:T,comptes:r.comptes,ft:r.ft,wo:r.wo,rel:r.rel.map(function(x){x.site_id=String(x.site_id);return x;}).filter(function(x){var s=byId[x.site_id];return!(s?s.interne:isInterne('',x.site_nom));}),gps:r.gps,nPlan:r.plan.length,nPt:r.pt.length,planT:r.plan||[],ptT:r.pt||[],dem:r.dem||[],ftAll:r.ftAll||[],fact:r.fact||[],proj:r.proj||[],sond:r.sond||[],geo:r.geo||[],inv:r.inv||[],flotte:r.flotte||[],cat:r.cat||[],statut:statut,today:today,clients:cli,hasClients:!!r.cli,alias:alias};
     self.loadedAt=new Date();self.err='';self.softErr=SOFT_ERR.slice();
     if(!self.state.inspSite){var w=self.D.rel.length?String(self.D.rel[self.D.rel.length-1].site_id):(sites[0]&&sites[0].id);self.state.inspSite=w||null;}
   }).catch(function(e){self.err='Chargement impossible : '+netMsg(e);});
@@ -3535,6 +3535,37 @@ Comp.prototype.empVals=function(){var self=this,st=this.state,D=this.D;if(!D)ret
 
 /* ═════════════ MONITORING : période (aujourd'hui / hier / 7 jours), salles mécaniques, mur de contrôle grand écran ═════════════ */
 var MON_PER=[['jour','Aujourd’hui'],['hier','Hier'],['7j','7 derniers jours']];
+/* Préférences d'affichage du Monitoring, propres à chaque compte (gardées sur ce poste, par identifiant de compte) :
+   équipe (qui afficher, filtre, tri) et salles mécaniques (à l'horaire, alertes, mes salles, toutes ; tri). */
+var MON_DEF={tShow:'tous',tSort:'statut',tSel:{},tCfg:false,sMode:'horaire',sSort:'etat',sPins:{},sCfg:false,sQ:''};
+var MON_TSHOW=[['tous','Tous'],['punch','En punch'],['auj','Actifs aujourd’hui']],MON_TSORT=[['statut','Trier : statut'],['nom','Trier : nom'],['depuis','Trier : heure d’arrivée'],['site','Trier : site']];
+var MON_SMODE=[['horaire','À l’horaire aujourd’hui'],['alertes','Alertes'],['suivies','Mes salles suivies'],['toutes','Toutes']],MON_SSORT=[['etat','Trier : état'],['nom','Trier : nom'],['recent','Trier : dernier relevé']];
+Comp.prototype.monKey=function(){return 'sa_admin_mon_'+((this.user&&this.user.id)||'');};
+Comp.prototype.monPrefs=function(){if(!this._mp){var v=jget(this.monKey(),{});this._mp=Object.assign({},MON_DEF,v&&typeof v==='object'?v:{});}return this._mp;};
+Comp.prototype.monSet=function(k,v){var p=Object.assign({},this.monPrefs());p[k]=v;this._mp=p;var keep={};Object.keys(MON_DEF).forEach(function(x){if(x!=='tCfg'&&x!=='sCfg'&&x!=='sQ')keep[x]=p[x];});
+  try{localStorage.setItem(this.monKey(),JSON.stringify(keep));}catch(e){}this.update();};
+Comp.prototype.monTeamVals=function(all){var self=this,P=this.monPrefs(),sel=P.tSel||{};
+  var shown=function(t){return sel[t._uid]!=null?!!sel[t._uid]:t._def;};
+  var rows=all.filter(shown).filter(function(t){return P.tShow==='punch'?t._run:P.tShow==='auj'?t._tod:true;});
+  var byNom=function(a,b){return a.nom.localeCompare(b.nom,'fr');};
+  rows.sort(P.tSort==='nom'?byNom:P.tSort==='depuis'?function(a,b){return a._start.localeCompare(b._start)||byNom(a,b);}:P.tSort==='site'?function(a,b){return(a.site==='—'?'~':a.site).localeCompare(b.site==='—'?'~':b.site,'fr')||byNom(a,b);}
+    :function(a,b){return(b._run?1:0)-(a._run?1:0)||(b._tod?1:0)-(a._tod?1:0)||byNom(a,b);});
+  var nSel=all.filter(shown).length;
+  return{monTeamRows:rows,monTeamNone:!rows.length,monTeamEmpty:P.tShow==='punch'?'Aucun employé affiché n’est en punch.':P.tShow==='auj'?'Aucun employé affiché n’a punché aujourd’hui.':'Aucun employé sélectionné — cliquez « Employés affichés ».',
+    monTShows:MON_TSHOW.map(function(o){return Object.assign({label:o[1],go:function(){self.monSet('tShow',o[0]);}},segS(P.tShow===o[0]));}),
+    monTSorts:MON_TSORT.map(function(o){return{v:o[0],l:o[1],sel:P.tSort===o[0]};}),onMonTSort:function(e){self.monSet('tSort',e.target.value);},
+    monTCfgLbl:'Employés affichés ('+nSel+' / '+all.length+')',monTCfg:!!P.tCfg,toggleMonTCfg:function(){self.monSet('tCfg',!P.tCfg);},
+    monTPick:all.slice().sort(byNom).map(function(t){var on=shown(t);return{l:t.nom+(t._adm?' (bureau)':''),on:on,box:on?'var(--color-text)':'transparent',go:function(){var o=Object.assign({},self.monPrefs().tSel);o[t._uid]=!on;self.monSet('tSel',o);}};}),
+    monTAll:function(){var o={};all.forEach(function(t){o[t._uid]=true;});self.monSet('tSel',o);},monTNone:function(){var o={};all.forEach(function(t){o[t._uid]=false;});self.monSet('tSel',o);},monTReset:function(){self.monSet('tSel',{});}};};
+/* Salles à l'horaire aujourd'hui : bons de travail, créneaux et tâches planning du jour → { site_id: [employés prévus] } */
+Comp.prototype.monSched=function(){var self=this,D=this.D,today=D.today,nm=this.names(),out={},byAddr={};
+  D.sites.forEach(function(s){var k=norm(s.addr);if(k&&!byAddr[k])byAddr[k]=s;});
+  var add=function(noms,emp){var s=null;noms.some(function(n){s=n?(self.siteOfTask({lieu:n})||byAddr[norm(n)]||null):null;return!!s;});if(!s)return;
+    var a=out[s.id]=out[s.id]||[];var e=splitIds(emp).map(function(x){return nm[x]||x;});if(e.length)e.forEach(function(x){a.push(x);});else a.push('');};
+  D.wo.forEach(function(w){if(w.date===today)add([w.client,w.site],w.assigne);});
+  (D.planT||[]).forEach(function(p){add([p.client,p.addr],p.emp);});
+  (D.ptT||[]).forEach(function(t){add([t.site_nom,t.titre],t.emp);});
+  return out;};
 function ageTxt(d){var n=Math.round((new Date(iso(new Date())+'T12:00:00')-new Date(d+'T12:00:00'))/864e5);return n<=0?'aujourd’hui':n===1?'hier':'il y a '+n+' j';}
 Comp.prototype.monVals=function(){var self=this,st=this.state,D=this.D;if(!D)return{};var now=new Date(),today=D.today,yest=iso(addDays(now,-1)),per=st.monPer||'jour';
   var inPer=function(d){return per==='jour'?d===today:per==='hier'?d===yest:d>=iso(addDays(now,-6));},perLbl=per==='jour'?'aujourd’hui':per==='hier'?'hier':'sur 7 jours';
@@ -3546,17 +3577,21 @@ Comp.prototype.monVals=function(){var self=this,st=this.state,D=this.D;if(!D)ret
   var last={};D.rel.forEach(function(r){var k=String(r.site_id),p=last[k];if(!p||(r.date+(r.heure||''))>(p.date+(p.heure||'')))last[k]=r;});
   var onSite={};var wk=iso(mondayOf(now)),di=(now.getDay()+6)%7,nm=this.names();
   D.ft.forEach(function(f){if(f.week!==wk)return;var d=f.days&&f.days[di];((d&&d.tasks)||[]).forEach(function(t){if(!t.active)return;var s=self.siteOfTask(t);if(s)(onSite[s.id]=onSite[s.id]||[]).push({nom:nm[f.uid]||f.emp||f.uid,depuis:t.start});});});
-  var salles=Object.keys(last).map(function(sid){var r=last[sid],s=D.byId[sid],T=self.T(s?s.type:r.type_code),out=self.outOf(r),nv=nVals(r),age=Math.round((new Date(today+'T12:00:00')-new Date(r.date+'T12:00:00'))/864e5);
-    var lvl=out.length?3:(age>7?2:(nv?0:1)),who=onSite[sid]||[];
-    return{_lvl:lvl,_age:age,id:sid,nom:s?s.nom:(r.site_nom||'—'),ville:s?s.ville:'',debit:T.court||'',
+  var sched=this.monSched(),P=this.monPrefs(),pins=P.sPins||{},ids={};Object.keys(last).forEach(function(k){ids[k]=1;});Object.keys(sched).forEach(function(k){ids[k]=1;});Object.keys(onSite).forEach(function(k){ids[k]=1;});
+  var allSalles=Object.keys(ids).filter(function(sid){var s=D.byId[sid];return s?!s.interne:!!last[sid];}).map(function(sid){var r=last[sid],s=D.byId[sid],T=self.T(s?s.type:r.type_code),out=r?self.outOf(r):[],nv=r?nVals(r):0,age=r?Math.round((new Date(today+'T12:00:00')-new Date(r.date+'T12:00:00'))/864e5):null;
+    var lvl=out.length?3:(r&&age>7?2:(nv?0:1)),who=onSite[sid]||[],pl=sched[sid]||[];
+    return{_lvl:lvl,_age:age,_last:r?r.date+(r.heure||''):'',_sched:pl.length>0,id:sid,nom:s?s.nom:(r.site_nom||'—'),ville:s?s.ville:'',debit:T.court||'',
       headBg:lvl===3?'var(--color-accent-900)':'var(--color-text)',headFg:'#ffffff',
-      etat:lvl===3?out.length+' valeur(s) hors zone':lvl===2?'Aucun relevé depuis '+age+' j':lvl===1?'Relevé sans valeur':'Dans les normes',
-      rows:(T.fields||[]).map(function(f){var v=r.vals&&r.vals[f.key],has=v!=null&&(!r.touched||r.touched[f.key]),o=has&&(v<f.lo||v>f.hi);return{l:f.label,txt:has?fr(v,f.step)+(f.unit?' '+f.unit:''):'—',bg:!has?'transparent':(o?'var(--color-accent-900)':'var(--color-accent-100)'),o:o,has:has};}),
-      note:'Dernier relevé '+ageTxt(r.date)+(r.heure?' à '+r.heure:'')+' par '+(r.tech_nom||r.tech||'—')+(r.note?' — « '+r.note+' »':''),
+      etat:!r?'Aucun relevé enregistré':lvl===3?out.length+' valeur(s) hors zone':lvl===2?'Aucun relevé depuis '+age+' j':lvl===1?'Relevé sans valeur':'Dans les normes',
+      rows:(T.fields||[]).map(function(f){var v=r&&r.vals&&r.vals[f.key],has=!!r&&v!=null&&(!r.touched||r.touched[f.key]),o=has&&(v<f.lo||v>f.hi);return{l:f.label,txt:has?fr(v,f.step)+(f.unit?' '+f.unit:''):'—',bg:!has?'transparent':(o?'var(--color-accent-900)':'var(--color-accent-100)'),o:o,has:has};}),
+      note:r?'Dernier relevé '+ageTxt(r.date)+(r.heure?' à '+r.heure:'')+' par '+(r.tech_nom||r.tech||'—')+(r.note?' — « '+r.note+' »':''):'',
       live:who.length?'Sur place : '+who.map(function(w){return w.nom+' depuis '+w.depuis;}).join(', '):'',hasLive:who.length>0,
-      go:function(){self.setState({monWall:false});self.go('inspections',{inspSite:sid,inspKey:null});}};})
-    .sort(function(a,b){return b._lvl-a._lvl||(b.hasLive?1:0)-(a.hasLive?1:0)||a.nom.localeCompare(b.nom,'fr');});
-  var nOut=salles.filter(function(s){return s._lvl===3;}).length,nOld=salles.filter(function(s){return s._lvl===2;}).length;
+      plan:pl.length?'À l’horaire aujourd’hui'+(pl.filter(Boolean).length?' : '+pl.filter(function(x,i,a){return x&&a.indexOf(x)===i;}).join(', '):''):'',hasPlan:pl.length>0&&!who.length,pinned:!!pins[sid],
+      go:function(){self.setState({monWall:false});self.go('inspections',{inspSite:sid,inspKey:null});}};});
+  var mode=P.sMode,salles=allSalles.filter(function(s){return mode==='toutes'?!!last[s.id]||s._sched||s.hasLive:mode==='alertes'?s._lvl>=2&&!!last[s.id]:mode==='suivies'?s.pinned:s._sched||s.hasLive;});
+  var byNom=function(a,b){return a.nom.localeCompare(b.nom,'fr');};
+  salles.sort(P.sSort==='nom'?byNom:P.sSort==='recent'?function(a,b){return b._last.localeCompare(a._last)||byNom(a,b);}:function(a,b){return b._lvl-a._lvl||(b.hasLive?1:0)-(a.hasLive?1:0)||byNom(a,b);});
+  var withRel=allSalles.filter(function(s){return!!last[s.id];}),nOut=withRel.filter(function(s){return s._lvl===3;}).length,nOld=withRel.filter(function(s){return s._lvl===2;}).length;
   // Mur de contrôle (grand écran)
   var team=[];D.ft.forEach(function(f){if(f.week!==wk)return;var d=f.days&&f.days[di],ts=(d&&d.tasks)||[],run=ts.filter(function(t){return t.active;})[0],h=ts.reduce(function(s,t){return s+(t.active||!t.end?0:(Number(t.hrs)||0));},0);
     if(ts.length)team.push({nom:nm[f.uid]||f.emp||f.uid,on:!!run,lieu:run?run.lieu:(ts[ts.length-1].lieu||'—'),depuis:run?'depuis '+run.start:'fini à '+(ts[ts.length-1].end||'—'),h:fmtH(h),dot:run?'#3ddc84':'#6b7c93'});});
@@ -3570,7 +3605,14 @@ Comp.prototype.monVals=function(){var self=this,st=this.state,D=this.D;if(!D)ret
   fl.sort(function(a,b){return String(b.t).localeCompare(String(a.t));});
   return{monPers:MON_PER.map(function(p){return Object.assign({label:p[1],go:function(){self.setState({monPer:p[0]});}},segS(per===p[0]));}),monPerLbl:perLbl,
     relRows:relRows,relNone:!relRows.length,relTitle:'Relevés '+perLbl+' ('+relRows.length+')',
-    salles:salles,sallesSummary:salles.length?salles.length+' salle(s) suivie(s) · '+nOut+' hors zone · '+nOld+' sans relevé depuis 7 j':'Aucun relevé enregistré pour l’instant — les salles apparaissent dès le premier relevé saisi dans sa-terrain.',
+    salles:salles,salNone:!salles.length,sallesSummary:salles.length+' salle(s) affichée(s) · '+nOut+' hors zone · '+nOld+' sans relevé depuis 7 j (toutes salles)',
+    salEmpty:mode==='horaire'?'Aucune salle mécanique à l’horaire aujourd’hui.':mode==='alertes'?'Aucune salle en alerte.':mode==='suivies'?'Aucune salle suivie — cliquez « Choisir mes salles » pour en ajouter.':'Aucun relevé enregistré pour l’instant — les salles apparaissent dès le premier relevé saisi dans sa-terrain.',
+    monSModes:MON_SMODE.map(function(o){return Object.assign({label:o[1],go:function(){self.monSet('sMode',o[0]);}},segS(mode===o[0]));}),
+    monSSorts:MON_SSORT.map(function(o){return{v:o[0],l:o[1],sel:P.sSort===o[0]};}),onMonSSort:function(e){self.monSet('sSort',e.target.value);},
+    monSCfg:!!P.sCfg,monSCfgLbl:'Choisir mes salles ('+Object.keys(pins).filter(function(k){return pins[k];}).length+')',toggleMonSCfg:function(){self.monSet('sCfg',!P.sCfg);},
+    monSQ:P.sQ||'',onMonSQ:function(e){self.monSet('sQ',e.target.value);},
+    monSPick:D.sites.filter(function(s){return!s.interne&&(!P.sQ||norm(s.nom+' '+s.ville).indexOf(norm(P.sQ))>=0);}).sort(function(a,b){return(pins[b.id]?1:0)-(pins[a.id]?1:0)||byNom(a,b);}).slice(0,60).map(function(s){var on=!!pins[s.id];
+      return{l:s.nom+(s.ville?' — '+s.ville:''),on:on,box:on?'var(--color-text)':'transparent',go:function(){var o=Object.assign({},self.monPrefs().sPins);if(on)delete o[s.id];else o[s.id]=true;self.monSet('sPins',o);}};}),
     monWall:!!st.monWall,openWall:function(){self.setState({monWall:true});var el=document.documentElement;try{if(el.requestFullscreen&&!document.fullscreenElement)el.requestFullscreen().catch(function(){});}catch(e){}self.startWallTimer();},
     closeWall:function(){self.setState({monWall:false});try{if(document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen();}catch(e){}},
     wallClock:pad(now.getHours())+':'+pad(now.getMinutes()),wallDate:JS[now.getDay()]+' '+now.getDate()+' '+MOIS[now.getMonth()]+' '+now.getFullYear(),
@@ -4102,13 +4144,14 @@ Comp.prototype.vals=function(){
   var now=new Date(),lastRel=this.latest();
   // ---- équipe (feuilles de temps de la semaine : lecture seule)
   var di=(now.getDay()+6)%7,wk=iso(mondayOf(now)),team={};
-  D.comptes.forEach(function(c){if(c.role!=='admin')team[c.id]={c:c,seen:false,task:null,running:false};});
+  D.comptes.forEach(function(c){if(D.statut[c.id]!=='inactif')team[c.id]={c:c,seen:false,task:null,running:false};});
   D.ft.forEach(function(f){var t=team[f.uid];if(!t)return;t.seen=true;if(f.week===wk){var d=f.days&&f.days[di];var ts=(d&&d.tasks)||[];t.n=ts.length;t.task=ts.length?ts[ts.length-1]:null;t.running=ts.some(function(x){return x.active;});var run=ts.filter(function(x){return x.active;})[0];if(run)t.task=run;}});
-  var techRows=Object.keys(team).map(function(k){return team[k];}).filter(function(t){return t.seen;}).map(function(t){
+  var teamAll=Object.keys(team).map(function(k){return team[k];}).map(function(t){
     var nom=(t.c.prenom+' '+t.c.nom).trim(),tk=t.task,s=tk&&self.siteOfTask(tk),run=t.running;
     return{ini:((t.c.prenom||'?')[0]+(t.c.nom||'?')[0]).toUpperCase(),nom:nom,statut:run?'Punché':(tk?'Hors punch':'Aucun punch'),site:tk?(s?s.nom:(tk.lieu||'—')):'—',ville:s?s.ville:'',depuis:run&&tk?tk.start:'—',
       last:tk?((tk.end||tk.start||'')+' · '+(tk.lieu||'')):'—',stBg:run?'var(--color-accent-700)':'transparent',stFg:run?'#ffffff':'var(--color-text)',stBd:run?'var(--color-accent-700)':'var(--color-text)',op:tk?1:0.55,
-      go:function(){if(s)self.go('inspections',{inspSite:s.id,inspKey:null});},_run:run};});
+      go:function(){if(s)self.go('inspections',{inspSite:s.id,inspKey:null});},_run:run,_uid:t.c.id,_def:t.c.role!=='admin'&&t.seen,_adm:t.c.role==='admin',_tod:!!tk,_start:run&&tk?tk.start:'99'};});
+  var techRows=teamAll.filter(function(t){return t._def;}),monTeam=this.monTeamVals(teamAll);
   var nPunched=techRows.filter(function(t){return t._run;}).length;
   // ---- relevés / hors zone
   var horsZone=[];Object.keys(lastRel).forEach(function(sid){var r=lastRel[sid];self.outOf(r).forEach(function(o){var s=D.byId[sid];horsZone.push({site:s?s.nom:r.site_nom,param:o.f.label,val:fr(o.v,o.f.step)+(o.f.unit?' '+o.f.unit:''),dir:o.v<o.f.lo?'bas':'élevé',zone:fr(o.f.lo,o.f.step)+' – '+fr(o.f.hi,o.f.step),tech:r.tech_nom||r.tech,go:function(){self.go('inspections',{inspSite:sid,inspKey:o.f.key});}});});});
@@ -4293,7 +4336,7 @@ Comp.prototype.vals=function(){
     isTemps:mod==='temps',isTempsTab:tt==='temps',isSuiviTab:tt==='suivi',isCumulTab:tt==='cumul',tempsTabs:tempsTabs,weekDays:mod==='planning'?pDays:tDays,tempsRows:tempsRows,punchRows:punchRows,tLabel:wkLabel(tMon),tPrev:function(){self.setState({tOff:Math.max(-7,st.tOff-1)});},tNext:function(){self.setState({tOff:Math.min(0,st.tOff+1)});},
     isPlanning:mod==='planning',planRows:planRows,pPrint:function(){self.printPlanning(planRows,pDays,wkLabel(pMon));},pLabel:wkLabel(pMon),pPrev:function(){self.setState({pOff:st.pOff-1});},pNext:function(){self.setState({pOff:st.pOff+1});},openDlg:function(){self.openDlg({});},pLoading:!PL,
     isMonitoring:mod==='monitoring',isInspections:mod==='inspections',isOperations:mod==='operations',isSites:mod==='sites',isSoon:LIVE.indexOf(mod)<0,soonTitle:soonName[mod]||'',
-    kpis:kpis,techRows:techRows,flux:flux,salles:[],sallesSummary:'Aucune salle mécanique suivie pour l’instant — les fiches de salle arrivent avec la prochaine version de sa-terrain.',horsZone:horsZone,horsZoneCount:horsZone.length,
+    kpis:kpis,techRows:techRows,monTeamRows:monTeam.rows,flux:flux,salles:[],sallesSummary:'Aucune salle mécanique suivie pour l’instant — les fiches de salle arrivent avec la prochaine version de sa-terrain.',horsZone:horsZone,horsZoneCount:horsZone.length,
     typeOptions:typeOptions,inspFilter:fil,onInspFilter:function(e){self.setState({inspFilter:e.target.value});},inspSites:inspSites,
     insp:{nom:is.nom,client:is.ville||'—',bassin:ib?ib.nom+(ibl.length>1?' ('+ibl.length+' bassins)':''):'1 bassin',contrat:is.contrat||'—',typeLabel:IT.label+(is.type==='GEN'?' · valeurs par défaut':''),norme:IT.norme||'',tech:lastR?(lastR.tech_nom||lastR.tech):'—'},
     inspParams:fields.map(function(x){return Object.assign({label:x.label,go:function(){self.setState({inspKey:x.key});}},segS(x.key===f.key));}),chart:chart,inspTable:inspTable,noHist:n===0,histMsg:n===0?'Aucun relevé enregistré pour ce site et ce paramètre. Les relevés apparaissent ici dès que les techniciens valident une fiche dans sa-terrain.':'',
@@ -4302,7 +4345,7 @@ Comp.prototype.vals=function(){
     exportMsg:function(){self.printInsp(is.id);},
     opsFilters:opsFilters,dossiers:dossiers,newDossier:function(){self.openDlg({type:'Bon de travail'});},noDossier:dossiers.length===0,
     nouveaux:nouveaux,siteTypeOptions:siteTypeOptions,siteType:stype,onSiteType:function(e){self.setState({siteType:e.target.value});},siteRows:siteRows,siteCount:siteRows.length,noNouveaux:nouveaux.length===0},
-    this.tempsVals(punchRows),this.empVals(),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals(),this.stockVals(),this.outilsVals(),this.monVals(),this.siteFicheVals(),this.typesVals(),this.carteCtlVals(),this.plan2Vals(),this.calVals(),this.seriesVals(),this.globVals(),this.commVals(),this.inspVals(),this.clientsVals(),this.sondagesVals());
+    monTeam,this.tempsVals(punchRows),this.empVals(),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals(),this.stockVals(),this.outilsVals(),this.monVals(),this.siteFicheVals(),this.typesVals(),this.carteCtlVals(),this.plan2Vals(),this.calVals(),this.seriesVals(),this.globVals(),this.commVals(),this.inspVals(),this.clientsVals(),this.sondagesVals());
 };
 Comp.prototype.update=function(){if(!this._host)return;SARender(document.getElementById('tpl'),this._host,this.vals());this.syncMap();var el=this.rootRef.current;if(el)el.style.setProperty('--sa-row','10px');};
 Comp.prototype.mount=function(host){var self=this;this._host=host;var hm=hashMod();if(hm&&TITLES_OK(hm))this.state.mod=hm;this.update();
