@@ -1349,6 +1349,9 @@ Comp.prototype.applyTheme=function(){var el=this.rootRef.current;if(!el)return;
   el.style.fontWeight=on?'500':'';var c=this.contentRef.current;if(c)c.style.zoom=this.prefs.big?'1.12':'';};
 Comp.prototype.setPref=function(k){this.prefs[k]=!this.prefs[k];jset('sa_terrain_prefs',this.prefs);this.update();};
 Comp.prototype.curJob=function(){var id=this.state.openJob,j=id&&this.jobs.filter(function(x){return x.id===id;})[0];if(j)return j;
+  /* Ouvert par le code QR d'un site (terrain.html?site=ID) : la visite du jour à ce site, sinon une visite hors tournée */
+  if(id&&String(id).indexOf('qr:')===0){var sid=String(id).slice(3);j=this.jobs.filter(function(x){return x.site===sid;})[0];
+    return j||{id:id,date:this.today,site:sid,h:'',fin:'',statut:'à venir',tache:'Visite — code QR du site',rec:''};}
   if(this.punch){var p=this.punch;j=this.jobs.filter(function(x){return x.site===String(p.siteId);})[0];if(j)return j;
     var s=siteById(p.siteId)||matchSite(p.lieu,p.addr)||pseudoSite(p.lieu,p.addr);
     return{id:'punch',site:s.id,h:p.start||'',fin:'',statut:'en cours',tache:'Punch en cours',rec:''};}
@@ -1818,6 +1821,9 @@ window.addEventListener('DOMContentLoaded',function(){
   if(!user){showLogin();return;}
   document.getElementById('login').style.display='none';
   var c=new Comp(user);window.__terrain=c;c.mount(document.getElementById('app'));
+  /* Code QR d'un site → sa fiche directement (le lien est retiré de l'adresse pour ne pas la rouvrir à chaque visite) */
+  var qs=(new URLSearchParams(location.search).get('site')||'').trim();
+  if(qs){try{history.replaceState(null,'',location.pathname+location.hash);}catch(e){}c.setState({openJob:'qr:'+qs});c.go('fiche');c.loadLast(qs);}
 });
 })();
 </script>
