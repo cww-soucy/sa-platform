@@ -27,11 +27,11 @@
         <button class="btn btn-primary" onClick="{{ iq.goRapport }}"><sa-i n="file" s="16"></sa-i>Rapport client</button>
         <button class="btn btn-secondary" onClick="{{ iq.goTend }}"><sa-i n="chart" s="16"></sa-i>Tendances de l’eau</button>
         <button class="btn btn-secondary" onClick="{{ iq.goSaisie }}"><sa-i n="plus" s="16"></sa-i>Nouvelle inspection</button>
-        <button class="btn btn-secondary" onClick="{{ iq.voirClient }}"><sa-i n="eye" s="16"></sa-i>Voir comme le client</button>
+        <button class="btn btn-secondary" onClick="{{ iq.ficheSite }}"><sa-i n="building" s="16"></sa-i>Fiche du site</button><button class="btn btn-secondary" onClick="{{ iq.voirClient }}"><sa-i n="eye" s="16"></sa-i>Voir comme le client</button>
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;padding:0 22px;border-bottom:1px solid var(--color-divider)">
-      <div role="tablist" style="display:flex;flex-wrap:wrap;gap:2px;flex:1;min-width:0">
+      <div role="tablist" aria-label="Onglets du site" style="display:flex;flex-wrap:wrap;gap:2px;flex:1;min-width:0">
         <sc-for list="{{ iq.tabs }}" as="t"><button role="tab" aria-selected="{{ t.on }}" onClick="{{ t.go }}" style="all:unset;cursor:pointer;white-space:nowrap;padding:10px 12px;font:600 16px var(--font-heading);border-bottom:3px solid {{ t.bd }}">{{ t.label }}</button></sc-for>
       </div>
       <button class="btn btn-ghost" onClick="{{ iq.togglePerso }}" aria-expanded="{{ iq.perso }}"><sa-i n="settings" s="16"></sa-i>{{ iq.persoLbl }}</button>

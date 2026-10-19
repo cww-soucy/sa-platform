@@ -128,7 +128,7 @@ Comp.prototype.inspVals=function(){
       upDis:i===0,downDis:i===ordre.length-1};}),
     persoReset:function(){savePref([],[]);self.flash('Onglets réinitialisés');},isBilan:view==='bilan',isVisite:view==='visite',isSaisie:view==='saisie',isBassins:view==='bassins',isAcces:view==='acces',isPoints:view==='points',
     h:{nom:site.nom,type:T.label,contrat:site.contrat||'—',logo:cp&&cp.logo_url?cp.logo_url:'',sub:[cp?cp.nom:site.ville,nb>1?nb+' bassins':(nb?site.bassins[0].nom:'1 bassin'),lv?'dernière visite le '+fdateL(lv.date)+' par '+(lv.r.tech_nom||lv.r.tech):'aucune visite publiée'].filter(Boolean).join(' · ')},
-    goRapport:go('visite'),goTend:go('tendances'),goSaisie:function(){self.setState({inspView:'saisie',isf:self.isfNew(site)});},voirClient:function(){self.voirClient(site);},
+    goRapport:go('visite'),goTend:go('tendances'),goSaisie:function(){self.setState({inspView:'saisie',isf:self.isfNew(site)});},voirClient:function(){self.voirClient(site);},ficheSite:function(){self.openSiteFiche(site.id);},
     hasVisit:!!(view==='visite'?S.vis.length:lv),noVisit:!(view==='visite'?S.vis.length:lv)};
   /* ----- 2a Bilan ----- */
   if(view==='bilan'){var c=I.compteurs(S.items);iq.verdict=I.verdict(S.items);

@@ -852,6 +852,12 @@ CTPL=re.sub(r'<sc-(for|if)\b',r'<template data-sc="\1"',CTPL); CTPL=CTPL.replace
 _m=re.search(r'(<template data-sc="if" value="\{\{ isSites \}\}"[^>]*>)(\s*<template data-sc="if" value="\{\{ noNouveaux \}\}">.*?</template>)?\s*<div style="display:flex;flex-direction:column;gap:26px">',M,re.S)
 assert _m, 'ancre isSites'
 M=M[:_m.start()]+_m.group(1)+CTPL+'<div style="display:{{ sitesRepDisp }};flex-direction:column;gap:26px">'+(_m.group(2) or '')+M[_m.end():]
+# ---------- SITES ET INSPECTIONS : une seule catégorie, barre d'onglets commune aux deux écrans ----------
+CATBAR=('<template data-sc="if" value="{{ isSiteCat }}"><div role="tablist" aria-label="Sites et inspections" style="display:flex;gap:2px;margin:0 0 16px;border-bottom:2px solid var(--color-divider);overflow-x:auto">'
+  '<template data-sc="for" list="{{ catTabs }}" as="t"><button role="tab" aria-selected="{{ t.on }}" onClick="{{ t.go }}" style="all:unset;cursor:pointer;white-space:nowrap;padding:10px 14px;font:600 17px var(--font-heading);border-bottom:3px solid {{ t.bd }};margin-bottom:-2px">{{ t.label }}</button></template></div></template>')
+_ps=[M.find(x) for x in ('<template data-sc="if" value="{{ isInspNew }}">','<template data-sc="if" value="{{ isInspections }}">','<template data-sc="if" value="{{ isSites }}">')]
+assert all(p>0 for p in _ps), ('ancres sites/inspections',_ps)
+_p=min(_ps); M=M[:_p]+CATBAR+M[_p:]
 open(os.path.join(OUT,'admin.markup.html'),'w',encoding='utf-8').write(M)
 M=re.sub(r'(<template data-sc="if" value="\{\{ isCarte \}\}"[^>]*>\s*<div style="display:flex;flex-direction:column;gap:16px;height:100%">)',r'\1<div style="font-size:13px">{{ carteInfo }}</div>',M,count=1)
 ds=re.sub(r"@import url\([^)]*\);\s*",'',open(os.path.join(SRC,'design')+'/ds/styles.css',encoding='utf-8').read())

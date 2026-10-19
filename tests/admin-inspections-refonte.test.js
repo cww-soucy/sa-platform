@@ -218,7 +218,7 @@ test('accès client : le code QR du site reste fixe — réimpression sans chang
 test('onglets personnalisables : masquer et réordonner, gardé sur le navigateur', async () => {
   const { page, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: tables() });
   await open(page, 'bilan');
-  const onglets = () => page.getByRole('tablist').first().getByRole('tab').allTextContents();
+  const onglets = () => page.getByRole('tablist', { name: 'Onglets du site' }).getByRole('tab').allTextContents();
   assert.deepEqual((await onglets()).slice(0, 2), ['Bilan par système', 'Visites']);
   await page.getByRole('button', { name: 'Personnaliser' }).click();
   await page.getByLabel('Afficher l’onglet Points de contrôle').uncheck();

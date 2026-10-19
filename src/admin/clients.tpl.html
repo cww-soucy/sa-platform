@@ -1,7 +1,4 @@
 <!-- sa-admin › Sites & Clients : onglets Clients (client → sites → installations) et Lieux à classer — inséré par assemble.py ; logique : clients.js -->
-<div role="tablist" style="display:flex;gap:2px;margin:0 0 16px;border-bottom:1px solid var(--color-divider);overflow-x:auto">
-  <sc-for list="{{ sitesTabs }}" as="t"><button role="tab" aria-selected="{{ t.on }}" onClick="{{ t.go }}" style="all:unset;cursor:pointer;white-space:nowrap;padding:10px 12px;font:600 16px var(--font-heading);border-bottom:3px solid {{ t.bd }}">{{ t.label }}</button></sc-for>
-</div>
 <sc-if value="{{ cl.noDb }}"><div style="border:1px dashed var(--color-text);padding:12px 14px;margin-bottom:16px;font-size:14px">La base n’a pas encore les fiches clients : cet écran sera actif dès que la mise à jour sera appliquée.</div></sc-if>
 
 <sc-if value="{{ isClTab }}">
@@ -23,12 +20,13 @@
       <sc-if value="{{ g.vide }}"><div style="padding:12px 18px;font-size:14px">Aucun site rattaché. Choisissez ce client dans la colonne « Client » d’un site.</div></sc-if>
       <div style="overflow-x:auto">
       <table class="table" style="font-size:14px">
-        <thead><tr><th style="text-transform:none;letter-spacing:0;font-size:12px;padding-left:18px">Site</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Bassins et installations</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Punchs</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Client</th><th style="text-transform:none;letter-spacing:0;font-size:12px;padding-right:18px">Fusionner dans…</th></tr></thead>
+        <thead><tr><th style="text-transform:none;letter-spacing:0;font-size:12px;padding-left:18px">Site</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Bassins et installations</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Inspection</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Punchs</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Client</th><th style="text-transform:none;letter-spacing:0;font-size:12px;padding-right:18px">Fusionner dans…</th></tr></thead>
         <tbody>
           <sc-for list="{{ g.sites }}" as="s">
             <tr data-site="{{ s.nom }}">
               <td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px"><button onClick="{{ s.go }}" style="all:unset;cursor:pointer;display:flex;flex-direction:column;line-height:1.25"><span style="font-weight:500;text-decoration:underline">{{ s.nom }}</span><span style="font-size:12px">{{ s.addr }}</span></button></td>
               <td style="padding:var(--sa-row,10px) 8px;font-size:13px">{{ s.inst }}</td>
+              <td style="padding:var(--sa-row,10px) 8px"><sc-if value="{{ s.hasInsp }}"><button onClick="{{ s.goInsp }}" aria-label="Inspections de {{ s.nom }}" style="all:unset;cursor:pointer;display:flex;flex-direction:column;gap:3px"><span style="display:flex;gap:3px"><sc-for list="{{ s.insp }}" as="p"><i title="{{ p.t }}" style="{{ p.st }}"></i></sc-for></span><span style="font-size:12px;text-decoration:underline;white-space:nowrap">{{ s.inspTxt }}</span></button></sc-if></td>
               <td style="padding:var(--sa-row,10px) 8px;font-variant-numeric:tabular-nums">{{ s.n }}</td>
               <td style="padding:var(--sa-row,10px) 8px"><select class="input" aria-label="Client du site" onChange="{{ s.onClient }}" style="min-width:180px"><sc-for list="{{ s.clientOpts }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></sc-for></select></td>
               <td style="padding:var(--sa-row,10px) 18px var(--sa-row,10px) 8px"><select class="input" aria-label="Fusionner dans" onChange="{{ s.onMerge }}" style="min-width:200px"><sc-for list="{{ s.mergeOpts }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></sc-for></select></td>
