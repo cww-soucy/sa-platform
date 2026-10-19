@@ -160,6 +160,17 @@ test('portail : QR avec une session client gardée — le choix client / technic
   const tech = page.getByRole('link', { name: 'Je suis technicien' });
   assert.equal(new URL(await tech.getAttribute('href'), page.url()).pathname + new URL(await tech.getAttribute('href'), page.url()).search, '/terrain.html?site=2');
   assert.equal(await page.getByRole('link', { name: /Carnet de bord/ }).getAttribute('href'), '../qr-carnet/?site=2');
+  // « Accès client » : la session gardée ne donne pas accès à Piscine Beta → on demande l'adresse de CETTE installation
+  await page.getByRole('button', { name: 'Accès client' }).click();
+  await page.getByText('Ce téléphone est connecté pour Piscine Alpha. Pour Piscine Beta, entrez le courriel ou cellulaire inscrit pour cette installation.').waitFor();
+  assert.equal(await page.textContent('h1'), 'Piscine Beta');
+  await page.locator('#ident').waitFor();
+  assert.equal(await page.locator('.opere').count(), 0, 'le portail du client déjà connecté ne s’ouvre pas');
+  // ses propres installations restent à un clic
+  await page.getByRole('button', { name: 'Continuer vers Piscine Alpha' }).click();
+  await page.locator('.opere').getByText('Opéré par').waitFor();
+  assert.equal(await page.textContent('h1'), 'Piscine Alpha');
+  assert.equal(await page.getByRole('alert').count(), 0);
   assert.deepEqual(errors, []);
   await page.close();
 });

@@ -55,13 +55,21 @@
       show(h('div', { class: 'stack', style: 'max-width:440px;margin:0 auto' }, marque(),
         h('div', { class: 'muted', text: 'Relevés et rapports de cette installation' }),
         h('h1', { text: r.site }), r.bassin ? h('div', { text: r.bassin }) : null,
-        h('button', { class: 'btn primary big', onclick: function () { if (getTok()) charger(); else ecranIdent(); } }, 'Accès client'),
+        h('button', { class: 'btn primary big', onclick: function () { if (getTok()) { S.reprise = true; charger(); } else ecranIdent(); } }, 'Accès client'),
         h('a', { class: 'btn big', href: '../terrain.html?site=' + encodeURIComponent(r.site_id) }, 'Je suis technicien'),
         r.carnet ? h('a', { class: 'muted', href: r.carnet, style: 'text-align:center' }, 'Carnet de bord de la salle (sans connexion)') : null,
         h('p', { class: 'muted', text: 'Accès réservé aux personnes autorisées par le gestionnaire de l’installation. Code ' + r.code + '.' })));
     }).catch(function () { erreur(); });
   }
-  function ecranIdent() {
+  /* Session gardée sur ce téléphone, mais pour d'autres installations que celle du QR : on demande l'adresse de CETTE
+     installation au lieu d'ouvrir le portail du client déjà connecté. Ses installations restent accessibles par un lien. */
+  function ecranAutreAcces(r) {
+    var noms = r.sites.map(function (s) { return s.nom; }).slice(0, 3).join(', ') + (r.sites.length > 3 ? '…' : '');
+    ecranIdent(h('div', { class: 'box', role: 'note' },
+      h('p', { text: 'Ce téléphone est connecté pour ' + (noms || 'un autre accès') + '. Pour ' + S.qr.site + ', entrez le courriel ou cellulaire inscrit pour cette installation.' }),
+      h('button', { class: 'btn', type: 'button', onclick: function () { S.reprise = false; S.horsQr = false; S.site = null; S.data = r; S.site = (r.sites[0] || {}).id || null; rendre(); } }, 'Continuer vers ' + (r.sites.length > 1 ? 'mes installations' : noms))));
+  }
+  function ecranIdent(note) {
     var inp = h('input', { class: 'input', id: 'ident', type: 'text', inputmode: 'email', autocomplete: 'email', placeholder: 'Courriel ou numéro de cellulaire', value: S.ident });
     var go = function (e) {
       e.preventDefault(); if (!inp.value.trim()) return inp.focus(); S.ident = inp.value.trim(); btn.disabled = true; btn.textContent = 'Envoi…';
@@ -70,7 +78,7 @@
     var btn = h('button', { class: 'btn primary big', type: 'submit' }, 'Recevoir un code');
     show(h('form', { class: 'stack', style: 'max-width:440px;margin:0 auto', onsubmit: go }, marque(),
       h('div', { class: 'row muted' }, icon('eye', 18), 'Connexion sécurisée'),
-      h('h1', { text: S.qr ? S.qr.site : 'Portail client' }),
+      h('h1', { text: S.qr ? S.qr.site : 'Portail client' }), note && note.nodeType ? note : null,
       h('label', { for: 'ident', text: 'Votre courriel ou cellulaire inscrit auprès de Soucy Aquatik' }), inp, btn,
       h('p', { class: 'muted', text: 'Pas encore inscrit ? Demandez l’accès à votre gestionnaire.' })));
     inp.focus();
@@ -111,6 +119,8 @@
       if (!r.ok) { if (S.apercu) return erreur('Aperçu impossible : ouvrez-le depuis sa-admin (session administrateur expirée ?).'); clearTok(); return P.get('q') ? ecranQr() : ecranIdent(); }
       S.data = r; var qs = S.qr && S.qr.site_id;
       S.horsQr = !!qs && !r.sites.some(function (s) { return s.id === qs; });
+      if (S.reprise && S.horsQr) { S.reprise = false; return ecranAutreAcces(r); }
+      S.reprise = false;
       if (qs && !S.horsQr) S.site = qs;
       if (!S.site || !r.sites.some(function (s) { return s.id === S.site; })) S.site = (r.sites[0] || {}).id || null; rendre();
     }).catch(function () { erreur(); });
