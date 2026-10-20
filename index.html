@@ -1020,6 +1020,7 @@ input,select,textarea{font-size:16px!important}
     <div style="display:flex;gap:6px">
       <span id="sbStatus" title="Hors-ligne" style="font-size:14px;margin-right:2px">🟡</span>
       <button class="tb-btn" id="dashBtn" style="display:none">📊</button>
+      <button class="tb-btn" id="mdpBtn" title="Changer mon mot de passe">🔒 Mot de passe</button>
       <button class="tb-btn" id="logoutBtn">↩ Quitter</button>
     </div>
   </div>
@@ -3782,7 +3783,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // a bien pris effet. Il reflète maintenant APP_BUILD ci-dessous, à mettre à jour à CHAQUE fois que
   // CACHE_NAME change dans sw.js (même valeur, ex: 'v48').
   try{
-    var APP_BUILD='v80';
+    var APP_BUILD='v81';
     var vb=document.createElement('div');
     vb.id='__buildBadge';
     vb.textContent='build '+APP_BUILD+' ⟲';
@@ -3872,6 +3873,8 @@ document.addEventListener('DOMContentLoaded', function(){
 
   // TOPBAR
   document.getElementById('logoutBtn').addEventListener('click', doLogout);
+  // ➕ v81 : changer son mot de passe à volonté (avant : seulement quand il était exigé à la connexion)
+  document.getElementById('mdpBtn').addEventListener('click', ouvrirChangementMdp);
   document.getElementById('dashBtn').addEventListener('click', function(){
     if(isAdmin()){renderAdminDash();document.getElementById('dbScreen').style.display='block';document.getElementById('dbScreen').scrollTop=0;}
     else{renderEmpDash();document.getElementById('edbScreen').style.display='block';document.getElementById('edbScreen').scrollTop=0;}

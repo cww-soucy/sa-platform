@@ -1,4 +1,6 @@
 // SA Platform — Service Worker
+// v81 — Bouton « 🔒 Mot de passe » dans la barre du haut : chaque employé peut changer son mot de passe
+// quand il le veut (même fenêtre et même fonction serveur changer_mdp qu'à la connexion).
 // v80 — Restauration : un envoi de fichiers sur GitHub (03/10) avait remis d'anciennes versions d'index.html (v76)
 // et de sw.js (v78) en ligne — les correctifs v79 avaient disparu. Version v79 rétablie à l'identique ; ce numéro
 // v80 force chaque appareil passé à la vieille copie à reprendre la bonne version. Aucune fonction modifiée.
@@ -144,7 +146,7 @@
 // (v59 — Mise en page des fichiers Excel refaite d'après les maquettes validées avant codage. …)
 // (v58 … v49 — voir historique précédent, inchangé.)
 
-var CACHE_NAME = 'sa-platform-v80';
+var CACHE_NAME = 'sa-platform-v81';
 
 // Installation : s'activer tout de suite sans attendre
 self.addEventListener('install', function(event) {
