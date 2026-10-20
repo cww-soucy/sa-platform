@@ -896,7 +896,15 @@ button{font-family:inherit}a{color:var(--color-accent-700)}
 <div class="field"><label>Identifiant</label><input id="lu" class="input" autocomplete="username" autocapitalize="off"></div>
 <div class="field"><label>Mot de passe</label><input id="lp" class="input" type="password" autocomplete="current-password"></div>
 <div id="le" style="min-height:22px;font-size:15px"></div>
-<button class="btn btn-primary" type="submit" style="min-height:48px">Se connecter</button></form></div>
+<button class="btn btn-primary" type="submit" style="min-height:48px">Se connecter</button></form><form id="mdpForm" style="display:none" autocomplete="off">
+<h1 style="font-size:28px">Choisissez votre nouveau mot de passe</h1>
+<div style="font-size:15px;line-height:1.4">Votre mot de passe actuel est temporaire. Choisissez-en un nouveau pour continuer.</div>
+<div class="field"><label for="ln">Nouveau mot de passe (8 caractères minimum)</label><input id="ln" class="input" type="password" autocomplete="new-password"></div>
+<div class="field"><label for="lc">Confirmer le nouveau mot de passe</label><input id="lc" class="input" type="password" autocomplete="new-password"></div>
+<div id="lme" aria-live="polite" style="min-height:22px;font-size:15px"></div>
+<button class="btn btn-primary" type="submit" style="min-height:48px">Enregistrer et continuer</button>
+<button class="btn btn-secondary" type="button" id="mdpRetour" style="min-height:48px">Retour</button>
+</form></div>
 <template id="tpl">'''+M+'''</template>
 <style>'''+lcss+'''</style>
 <script>'''+ljs+'''</script>
