@@ -194,3 +194,19 @@ test('hivernage : liste réelle des sites, liste de contrôle « Hivernement » 
   assert.deepEqual(errors, []);
   await page.close();
 });
+
+test('hivernage : le bureau et l’entrepôt (sites internes) ne sont ni listés ni comptés', async () => {
+  const t = base();
+  t.sites.push({ id: 9, nom: 'Soucy Aquatik - Entrepôt', addr: '925 av Newton', notes: '', type: 'autre' });
+  t.sites.push({ id: 10, nom: 'Bureau administratif', addr: '', notes: '', type: 'interne' });
+  t.contrats.push({ site_id: 9, type_code: 'GEN', code: null });
+  const { page, errors } = await openApp(browser, srv.url, { app: 'terrain', user: USER, tables: t });
+  await ready(page);
+  await T(page, () => window.__terrain.vals().goHiv());
+  await page.waitForFunction(() => Object.keys(window.__terrain.hivRep).length === 1);
+  const v = await T(page, () => { const x = window.__terrain.vals(); return { done: x.hivDoneCount, tot: x.hivTotalSites, list: x.hivList.map((h) => h.nom) }; });
+  assert.deepEqual(v, { done: 1, tot: 2, list: ['Piscine Alpha Sud'] }, 'même compte que sans les sites internes');
+  assert.doesNotMatch(await text(page), /Entrepôt|Bureau administratif/);
+  assert.deepEqual(errors, []);
+  await page.close();
+});
