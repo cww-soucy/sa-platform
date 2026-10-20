@@ -32,7 +32,7 @@ rep('<input class="input" value="{{ q }}" onChange="{{ onQ }}"','<input class="i
 rep('Geneviève Lemieux','{{ meNom }}'); rep('>GL<','>{{ meIni }}<'); rep('>Coordination<','>{{ meRole }}<')
 # nav: ajout du lien de déconnexion sous le profil
 m=re.search(r'(<span style="font-weight:500">\{\{ meNom \}\}</span><span style="font-size:12px">\{\{ meRole \}\}</span>)',M)
-if m: M=M.replace(m.group(1),m.group(1)+'<button onClick="{{ logout }}" style="all:unset;cursor:pointer;font-size:12px;text-decoration:underline;margin-top:2px">Se déconnecter</button>',1)
+if m: M=M.replace(m.group(1),m.group(1)+'<button onClick="{{ logout }}" style="all:unset;cursor:pointer;font-size:12px;text-decoration:underline;margin-top:2px">Se déconnecter</button><div class="sa-sig" title="Créé par Charles-William Weil (Central+)" style="font-size:11px;line-height:1.4;color:var(--color-neutral-500);text-align:center;letter-spacing:.3px;cursor:default;user-select:none;text-align:left;margin-top:6px">By Central+ · CW</div>',1)
 else: print('!! bloc profil')
 # écrans ajoutés : chargement/erreur et « Bientôt »
 LOAD='<sc-if value="{{ isLoading }}"><div style="padding:32px 28px;font-size:16px">Chargement des données réelles…<br><span style="font-size:14px">{{ loadErr }}</span></div></sc-if>\n'
@@ -888,7 +888,7 @@ html='''<!DOCTYPE html>
 html,body{margin:0;height:100%;background:var(--color-bg)}
 #app{position:fixed;inset:0}#app>div{height:100%}
 button{font-family:inherit}a{color:var(--color-accent-700)}
-#login{position:fixed;inset:0;background:var(--color-bg);display:none;align-items:center;justify-content:center;padding:24px;z-index:50}
+#login{position:fixed;inset:0;background:var(--color-bg);display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px;z-index:50}
 #login form{width:100%;max-width:380px;display:flex;flex-direction:column;gap:16px}#login h1{margin:0;font-size:44px;line-height:1}
 '''+'\n'.join(css)+'''
 </style></head><body>
@@ -906,7 +906,7 @@ button{font-family:inherit}a{color:var(--color-accent-700)}
 <div id="lme" aria-live="polite" style="min-height:22px;font-size:15px"></div>
 <button class="btn btn-primary" type="submit" style="min-height:48px">Enregistrer et continuer</button>
 <button class="btn btn-secondary" type="button" id="mdpRetour" style="min-height:48px">Retour</button>
-</form></div>
+</form><div class="sa-sig" title="Créé par Charles-William Weil (Central+)" style="font-size:11px;line-height:1.4;color:var(--color-neutral-500);text-align:center;letter-spacing:.3px;cursor:default;user-select:none;position:absolute;left:0;right:0;bottom:max(10px,env(safe-area-inset-bottom))">By Central+ · CW</div></div>
 <template id="tpl">'''+M+'''</template>
 <style>'''+lcss+'''</style>
 <script>'''+ljs+'''</script>
