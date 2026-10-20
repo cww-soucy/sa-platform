@@ -2,7 +2,7 @@
 // sa-admin — Communication : infolettre du lundi, informations, lettres, procédures (internes / externes), accusés de lecture.
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
-const { startServer, openApp, launch, iso, mondayOf, today } = require('./harness');
+const { startServer, openApp, launch, iso, mondayOf, today, attendre } = require('./harness');
 const { base } = require('./fixtures');
 
 const ADMIN = { id: 'cwweil', prenom: 'Bureau', nom: 'SA', role: 'admin' };
@@ -49,7 +49,7 @@ test('infolettre du lundi : préparée avec les chiffres réels, rédigée puis 
   assert.equal(c.sections[0].texte, 'Belle semaine à tous !');
   assert.equal(c.auteur, 'cwweil');
   await page.getByText(/Infolettre de la semaine du .* : publiée/).waitFor();
-  assert.ok(db.rows('audit_log').some((a) => a.ressource === 'communications'));
+  assert.ok(await attendre(page, () => db.rows('audit_log').some((a) => a.ressource === 'communications')));
   assert.deepEqual(errors, []);
   await page.close();
 });

@@ -168,7 +168,7 @@ commit;
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 -- RETOUR ARRIÈRE — rétablit EXACTEMENT les droits et politiques d'avant (relevés le 2026-10-20)
 -- Copier tout le bloc ci-dessous dans le SQL Editor, retirer les « -- » de début de ligne, exécuter.
--- Les apps continuent de marcher : elles envoient leur jeton, que les anciennes politiques acceptent aussi.
+-- Les apps continuent de marcher : les anciennes politiques sont recréées pour la clé publique ET pour les sessions avec jeton.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 -- begin;
 -- do $$ declare p record; begin
@@ -268,4 +268,12 @@ commit;
 -- create policy prefc_update on public.preferences_comptes as permissive for update to anon using (true) with check (true);
 -- create policy supp_select on public.suppressions as permissive for select to anon using (true);
 -- create policy supp_delete on public.suppressions as permissive for delete to anon using (true);
+-- -- les mêmes pour les sessions avec jeton (CORRECTIF_2026-10-20_politiques_connectes.sql) : sans elles, sa-admin et les apps
+-- -- connectées ne verraient plus relevés, bons de travail, demandes…
+-- do $c$ declare p record; begin
+--   for p in select tablename, policyname, cmd, qual, with_check from pg_policies where schemaname = 'public' and roles = '{anon}' loop
+--     execute format('create policy %I on public.%I for %s to authenticated%s%s', p.policyname || '_connecte', p.tablename, p.cmd,
+--       coalesce(' using (' || p.qual || ')', ''), coalesce(' with check (' || p.with_check || ')', ''));
+--   end loop;
+-- end $c$;
 -- commit;

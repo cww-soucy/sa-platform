@@ -70,7 +70,8 @@ test('terrain : jeton refusé avant son heure (révoqué) → renouvelé, puis l
   await page.evaluate(() => window.__terrain.enqueue({ _t: 'demandes', id: 'dm-jeton', tech: 'kael', type: 'Matériel', texte: 'x' }));
   await page.waitForFunction(() => JSON.parse(localStorage.getItem('sa_terrain_queue') || '[]').length === 0);
   assert.ok(db.rows('demandes').some((d) => d.id === 'dm-jeton'));
-  assert.equal(db.sansJeton.length, 1, 'un seul refus, puis rejouée avec le nouveau jeton');
+  assert.ok(db.sansJeton.includes('POST demandes'), 'refusée une fois, puis rejouée avec le nouveau jeton');
+  assert.equal(db.authLog.filter((a) => a.grant === 'refresh_token').length, 1, 'un seul renouvellement');
   await page.close();
 });
 

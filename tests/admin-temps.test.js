@@ -6,7 +6,7 @@ const { execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { startServer, openApp, launch, dayIdx, weekKey, iso, addDays, mondayOf } = require('./harness');
+const { startServer, openApp, launch, dayIdx, weekKey, iso, addDays, mondayOf, attendre } = require('./harness');
 const { base } = require('./fixtures');
 
 const USER = { id: 'cwweil', prenom: 'Bureau', nom: 'SA', role: 'admin' };
@@ -77,6 +77,8 @@ test('Journée : corriger l’heure de fin → heures recalculées, protocole SA
   assert.equal(t.hrs, 3.5);
   assert.equal(t.pendingValidation, false);
   assert.ok(t.k && t.mod > 0);
+  // le journal d'audit part à côté de l'écriture, sans l'attendre
+  await attendre(page, () => db.rows('audit_log').length > 0);
   const au = db.rows('audit_log')[0];
   assert.equal(au.acteur, 'cwweil');
   assert.equal(au.details.action, 'correction_punch');

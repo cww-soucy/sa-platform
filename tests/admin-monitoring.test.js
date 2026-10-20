@@ -2,7 +2,7 @@
 // sa-admin — Monitoring : relevés d'hier / 7 jours visibles, salles mécaniques réelles, mur de contrôle grand écran.
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
-const { startServer, openApp, launch, dayIdx, iso, addDays } = require('./harness');
+const { startServer, openApp, launch, dayIdx, iso, addDays, attendre } = require('./harness');
 const { base } = require('./fixtures');
 
 const USER = { id: 'cwweil', prenom: 'Bureau', nom: 'SA', role: 'admin' };
@@ -198,7 +198,7 @@ test('demande du terrain « Marquer traitée » : PATCH statut, journal, plus co
   assert.match(w[0].query, /id=eq\.d2/);
   assert.equal(w[0].body.statut, 'Traitée');
   assert.equal(db.rows('demandes').find((d) => d.id === 'd1').statut, 'Envoyée', 'l’autre demande est intacte');
-  assert.ok(db.rows('audit_log').some((a) => a.ressource === 'demandes' && a.ressource_id === 'd2'), 'journal d’audit');
+  assert.ok(await attendre(page, () => db.rows('audit_log').some((a) => a.ressource === 'demandes' && a.ressource_id === 'd2')), 'journal d’audit');
   assert.equal(await page.getByRole('button', { name: 'Marquer traitée' }).count(), 1, 'plus de bouton sur la demande traitée');
   await page.evaluate(() => window.__admin.go('globale'));
   await page.waitForTimeout(200);

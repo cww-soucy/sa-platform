@@ -2,7 +2,7 @@
 // sa-admin — Sites & Clients : un client regroupe plusieurs sites, fusion de sites (tout suit) et classement des lieux saisis à la main dans les punchs.
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
-const { startServer, openApp, launch, weekKey } = require('./harness');
+const { startServer, openApp, launch, weekKey, attendre } = require('./harness');
 const { base } = require('./fixtures');
 
 const USER = { id: 'cwweil', prenom: 'Bureau', nom: 'SA', role: 'admin' };
@@ -67,7 +67,7 @@ test('clients : fusion d’un site dans un autre (installation gardée) par la f
   await toast(page, /fusionné dans « CCNQ - Quai des Flots »/);
   assert.deepEqual(appel, { p_src: 'q2', p_dst: 'q1', p_par: 'cwweil', p_installation: 'Fontainiers' });
   await page.waitForFunction(() => !window.__admin.D.sites.some((s) => s.id === 'q2'));
-  assert.ok(db.rows('audit_log').some((a) => a.action === 'FUSION'));
+  assert.ok(await attendre(page, () => db.rows('audit_log').some((a) => a.action === 'FUSION')));
   assert.deepEqual(errors, []);
   await page.close();
 });

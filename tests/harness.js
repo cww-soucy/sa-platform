@@ -160,6 +160,9 @@ async function openPlatform(browser, base, { tables, viewport, local } = {}) {
   return { page, db, errors };
 }
 
+// Attend qu'une condition côté test devienne vraie (envois « à côté », sans attente dans l'app : journal d'audit, GPS…)
+async function attendre(page, fn, ms = 3000) { for (let t = 0; t < ms && !fn(); t += 20) await page.waitForTimeout(20); return fn(); }
+
 async function launch() { return chromium.launch(); }
 
-module.exports = { startServer, openApp, openPlatform, launch, FakeDB, iso, addDays, mondayOf, today, weekKey, dayIdx };
+module.exports = { startServer, openApp, openPlatform, launch, attendre, FakeDB, iso, addDays, mondayOf, today, weekKey, dayIdx };

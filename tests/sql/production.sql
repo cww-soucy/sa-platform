@@ -442,3 +442,5 @@ CREATE TRIGGER trg_ft_compte_supprime BEFORE INSERT ON public.feuilles_temps FOR
 
 -- ───────── Politiques RLS de production (avant l'étape 3) ─────────
 \i politiques_avant_etape3.sql
+-- Correctif appliqué le 20/10/2026 : mêmes politiques pour les sessions avec jeton
+\i ../../docs/sql/CORRECTIF_2026-10-20_politiques_connectes.sql

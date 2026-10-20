@@ -3,7 +3,7 @@
 // bassins et plan, accès client (fonction serveur « portail » simulée ; sa logique est testée dans portail-fonction.test.js).
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
-const { startServer, openApp, launch, iso, addDays } = require('./harness');
+const { startServer, openApp, launch, iso, addDays, attendre } = require('./harness');
 const { base } = require('./fixtures');
 
 const USER = { id: 'cwweil', prenom: 'Bureau', nom: 'SA', role: 'admin' };
@@ -89,7 +89,7 @@ test('saisie bureau : brouillon puis publication, journalisée (source, saisi pa
   assert.equal(r.source_detail, 'telephone');
   assert.deepEqual(r.vals, { ph: 7.3 });
   assert.deepEqual(r.points, { 'MI-0': { etat: 'ok' }, 'MI-1': { etat: 'ok' } });
-  assert.ok(db.rows('audit_log').some((a) => a.table_name === 'releves' || JSON.stringify(a).includes(r.id)), 'saisie journalisée');
+  assert.ok(await attendre(page, () => db.rows('audit_log').some((a) => a.table_name === 'releves' || JSON.stringify(a).includes(r.id))), 'saisie journalisée');
   assert.deepEqual(errors, []);
   await page.close();
 });

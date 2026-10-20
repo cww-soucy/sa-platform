@@ -2,7 +2,7 @@
 // sa-admin — Sites : répertoire utile et fiche complète (coordonnées, bassins avec leurs paramètres de relevé, équipements, pièces, journal).
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
-const { startServer, openApp, launch, today } = require('./harness');
+const { startServer, openApp, launch, today, attendre } = require('./harness');
 const { base } = require('./fixtures');
 
 const USER = { id: 'cwweil', prenom: 'Bureau', nom: 'SA', role: 'admin' };
@@ -43,7 +43,7 @@ test('sites : fiche complète — coordonnées, bassins (paramètres de relevé)
   assert.equal(s.tel, '418-555-0199');
   assert.deepEqual(s.bassins.map((b) => [b.nom, b.type, b.type_code]), [['Bassin principal', 'piscine', ''], ['Pataugeoire', 'pataugeoire', 'GEN']]);
   assert.deepEqual(s.equips, ['Pompe 2 HP', 'Chlorinateur']);
-  assert.ok(db.rows('audit_log').some((a) => a.ressource === 'sites'));
+  assert.ok(await attendre(page, () => db.rows('audit_log').some((a) => a.ressource === 'sites')));
   assert.deepEqual(errors, []);
   await page.close();
 });
