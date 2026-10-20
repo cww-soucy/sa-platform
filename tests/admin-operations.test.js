@@ -2,7 +2,7 @@
 // sa-admin — éditeur complet des bons de travail, créneaux et tâches planning (champs de SA Platform).
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
-const { startServer, openApp, launch, today, iso, addDays } = require('./harness');
+const { startServer, openApp, launch, today, iso, addDays, attendre } = require('./harness');
 const { base } = require('./fixtures');
 
 const USER = { id: 'cwweil', prenom: 'Bureau', nom: 'SA', role: 'admin' };
@@ -34,7 +34,7 @@ test('bon de travail : modifier statut, tâches, techniciens et exigences (forma
   assert.equal(w.assigne, 'kael, kael2');
   assert.deepEqual(w.assignes, ['kael', 'kael2']);
   assert.equal(w.req_photo, true);
-  assert.ok(db.rows('audit_log').some((a) => a.ressource === 'workorders' && a.action === 'MODIFICATION'));
+  assert.ok(await attendre(page, () => db.rows('audit_log').some((a) => a.ressource === 'workorders' && a.action === 'MODIFICATION')));
   assert.deepEqual(errors, []);
   await page.close();
 });

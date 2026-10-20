@@ -2,7 +2,7 @@
 // sa-admin — Stock (inventaire) et Flotte (tables et champs de SA Platform).
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
-const { startServer, openApp, launch } = require('./harness');
+const { startServer, openApp, launch, attendre } = require('./harness');
 const { base } = require('./fixtures');
 
 const USER = { id: 'cwweil', prenom: 'Bureau', nom: 'SA', role: 'admin' };
@@ -63,7 +63,7 @@ test('stock : entrée / sortie relit la quantité du serveur (pas d’écrasemen
   await dlg(page).getByRole('button', { name: '− Sortie' }).click();
   await toast(page, /stock insuffisant/);
   assert.equal(db.rows('inventaire').find((x) => x.id === 'i1').qte, 15);
-  assert.ok(db.rows('audit_log').some((a) => a.ressource === 'inventaire'));
+  assert.ok(await attendre(page, () => db.rows('audit_log').some((a) => a.ressource === 'inventaire')));
   await page.close();
 });
 

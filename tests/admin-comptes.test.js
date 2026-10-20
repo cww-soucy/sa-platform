@@ -3,7 +3,7 @@
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
-const { startServer, openApp, launch } = require('./harness');
+const { startServer, openApp, launch, attendre } = require('./harness');
 const { base } = require('./fixtures');
 
 const ADMIN = { id: 'cwweil', prenom: 'Bureau', nom: 'SA', role: 'admin' };
@@ -78,7 +78,7 @@ test('modifier rôle, droits, statut (désactiver) ; validations', async () => {
   assert.equal(c.role, 'superviseur');
   assert.equal(c.statut, 'inactif');
   assert.equal(c.droits.stats, true);
-  assert.ok(db.rows('audit_log').some((a) => a.ressource === 'comptes' && a.ressource_id === 'kael2'));
+  assert.ok(await attendre(page, () => db.rows('audit_log').some((a) => a.ressource === 'comptes' && a.ressource_id === 'kael2')));
   await page.close();
 });
 

@@ -2,7 +2,7 @@
 // sa-admin — Logistique (bons de livraison, sorties d'inventaire) et Hivernage côté bureau (tables SA Platform).
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
-const { startServer, openApp, launch, today } = require('./harness');
+const { startServer, openApp, launch, today, attendre } = require('./harness');
 const { base } = require('./fixtures');
 
 const USER = { id: 'cwweil', prenom: 'Bureau', nom: 'SA', role: 'admin' };
@@ -34,7 +34,7 @@ test('logistique : liste des bons, filtre, ouvrir et marquer livré', async () =
   assert.equal(b.livre_par_nom, 'Bureau SA');
   assert.ok(b.livre_at);
   assert.deepEqual(b.items_liv.map((i) => i.item), ['Chlore liquide 20 L'], 'articles conservés');
-  assert.ok(db.rows('audit_log').some((a) => a.ressource === 'bons_livraison'));
+  assert.ok(await attendre(page, () => db.rows('audit_log').some((a) => a.ressource === 'bons_livraison')));
   assert.deepEqual(errors, []);
   await page.close();
 });

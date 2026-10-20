@@ -77,6 +77,16 @@ test('préparation : un utilisateur Supabase Auth par compte, même haché, rôl
   assert.equal(psql(`select count(*) from auth.users where banned_until is not null`).out, '1');
 });
 
+test('avant l’étape 3 : une session avec jeton voit et écrit les mêmes données que la clé publique (correctif du 20/10)', { skip }, () => {
+  // régression du 20/10 : politiques « to anon » seulement → sa-admin connecté ne voyait plus relevés, bons de travail…
+  assert.ok(psql(`insert into releves(id,site_id,tech,date) values ('r0','1','kael','2026-10-19'); insert into types_bassin(code,label) values ('GEN','Générique')`).ok);
+  for (const t of ['releves', 'types_bassin', 'workorders', 'contrats', 'demandes', 'planning_tasks', 'communications', 'facturation']) {
+    assert.deepEqual(lignes(as('kael', `select count(*) from ${t}`)), lignes(as(null, `select count(*) from ${t}`)), t);
+  }
+  assert.ok(as('kael', `insert into releves(id,site_id,tech,date) values ('r-av','1','kael','2026-10-20')`).ok, 'fiche envoyée avec jeton');
+  assert.ok(as('kael', `insert into demandes(id,tech,type) values ('d-av','kael','Matériel')`).ok);
+});
+
 test('préparation : changer_mdp, admin_definir_mdp, rôle, statut et suppression restent synchronisés', { skip }, () => {
   assert.equal(psql(`select changer_mdp('kael','Kael-1234','Nouveau-5678')`).out, 't');
   assert.equal(psql(`select encrypted_password = extensions.crypt('Nouveau-5678', encrypted_password) from auth.users where email='kael@comptes.soucyaquatik.local'`).out, 't');

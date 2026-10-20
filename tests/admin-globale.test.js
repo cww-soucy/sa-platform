@@ -2,7 +2,7 @@
 // sa-admin — Vue globale : chiffres clés, charge sur 4 semaines, alertes, 7 prochains jours, file « terminé → à valider ».
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
-const { startServer, openApp, launch, today, iso, addDays } = require('./harness');
+const { startServer, openApp, launch, today, iso, addDays, attendre } = require('./harness');
 const { base } = require('./fixtures');
 
 const ADMIN = { id: 'cwweil', prenom: 'Bureau', nom: 'SA', role: 'admin' };
@@ -64,7 +64,7 @@ test('vue globale : valider un bon terminé (écriture conditionnelle) — rien 
   assert.equal(w.valide, true);
   assert.equal(w.valide_by, 'cwweil');
   assert.ok(w.valide_at);
-  assert.ok(db.rows('audit_log').some((a) => a.action === 'VALIDATION' && a.ressource === 'workorders'));
+  assert.ok(await attendre(page, () => db.rows('audit_log').some((a) => a.action === 'VALIDATION' && a.ressource === 'workorders')));
   await page.waitForFunction(() => { const x = window.__admin.vals(); return x.gReady && !x.gQueue.some((r) => r.nom === 'Piscine Delta'); });
   // l'employé retouche le créneau pendant que la page est ouverte
   db.rows('plan').find((x) => x.id === 'pl-fini').updated_at = '2026-10-02T15:00:00Z';
