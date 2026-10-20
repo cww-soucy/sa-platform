@@ -48,6 +48,23 @@ test('Semaine : grille de l’équipe (total, régulières, supp.) et journée d
   await page.close();
 });
 
+test('Semaine : ✓ « journée approuvée » seulement s’il y a un punch terminé, tous approuvés (un punch en cours seul n’en a pas)', async () => {
+  const t = base(), di = dayIdx(), autre = (di + 6) % 7;
+  const ft = t.feuilles_temps[0];
+  ft.days[di].tasks = [{ id: 1, lieu: 'Piscine Alpha', start: '07:00', end: '', hrs: 0, active: true }];
+  ft.days[autre].tasks = [
+    { id: 2, lieu: 'Piscine Beta', start: '07:00', end: '09:00', hrs: 2, active: false, approuve: true },
+    { id: 3, lieu: 'Piscine Beta', start: '09:00', end: '', hrs: 0, active: true },
+  ];
+  const { page, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: t });
+  await temps(page);
+  const j = await A(page, () => window.__admin.vals().tRows.find((x) => x.nom === 'Kaël Test').jours.map((d) => d.txt + d.ok));
+  assert.equal(j[di], ' ●', 'punch actif seul : ● sans ✓');
+  assert.equal(j[autre], '2 h 00 ●✓', 'punch terminé approuvé + punch actif : ●✓');
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
 test('Journée : corriger l’heure de fin → heures recalculées, protocole SA Platform, journal d’audit', async () => {
   const { page, db } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: base() });
   await temps(page);
