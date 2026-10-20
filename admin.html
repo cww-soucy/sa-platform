@@ -2901,6 +2901,9 @@ var PT_STAT=[['assigne','Assigné'],['approuve','Approuvé'],['en_attente','En a
 var FE_KIND={wo:['workorders','Bon de travail','bons de travail'],plan:['plan','Créneau','créneaux'],pt:['planning_tasks','Tâche planning','tâches planning']};
 function woDone(s){return s==='complete'||s==='facture'||s==='termine';}
 function splitIds(s){return String(s||'').split(/,\s*/).filter(Boolean);}
+/* Personnes d'un élément : assignes / emps sont des colonnes TEXTE en base ('["kael","cndiaye"]') ; repli sur assigne / emp (« a, b ») */
+function idList(v,str){if(Array.isArray(v)&&v.length)return v.map(String);
+  if(typeof v==='string'&&/^\s*\[/.test(v)){try{var a=JSON.parse(v);if(Array.isArray(a)&&a.length)return a.map(String);}catch(e){}}return splitIds(str);}
 function auditT(self,action,table,id,details){fetch(SB+'/rest/v1/audit_log',{method:'POST',headers:Object.assign({'Content-Type':'application/json',Prefer:'return=minimal'},H),
   body:JSON.stringify({acteur:self.user.id,acteur_nom:(self.user.prenom+' '+self.user.nom).trim(),action:action,ressource:table,ressource_id:id,details:details||null,appareil:'sa-admin'})}).catch(function(){});}
 /* Demande du terrain → « Traitée » : sort du compte « Demandes ouvertes » et de l'alerte URGENCE */
@@ -2920,8 +2923,8 @@ Comp.prototype.openFE=function(kind,id,preset){var self=this,p=preset||{},today=
     this.setState({fe:{kind:kind,id:null,f:f,when:{mode:'jour',debut:d0,fin:'',rec:'hebdo',jours:{}},indep:false,busy:false,confirm:0,taskIn:''}});return;}
   this.setState({fe:{kind:kind,id:id,loading:true}});
   get(FE_KIND[kind][0]+'?id=eq.'+encodeURIComponent(id)+'&select=*').then(function(r){var x=r[0];if(!x){self.setState({fe:null});self.flash('Élément introuvable');return;}
-    var f=Object.assign({},blank,x);if(kind==='wo'){f.assignes=(x.assignes&&x.assignes.length?x.assignes:splitIds(x.assigne));f.tasks=(x.tasks||[]).slice();f.files=(x.files||[]).slice();if(x.status==='termine')f.status='complete';}
-    else f.emps=splitIds(x.emp);
+    var f=Object.assign({},blank,x);if(kind==='wo'){f.assignes=self.globIds(x.assignes,x.assigne);f.tasks=(x.tasks||[]).slice();f.files=(x.files||[]).slice();if(x.status==='termine')f.status='complete';}
+    else f.emps=self.globIds(x.emps,x.emp);
     self.setState({fe:{kind:kind,id:id,f:f,orig:x,busy:false,confirm:0,taskIn:''}});}).catch(function(e){self.setState({fe:null});self.flash('Erreur : '+netMsg(e));});};
 Comp.prototype.feSet=function(k,v){var fe=this.state.fe,o={};o[k]=v;this.setState({fe:Object.assign({},fe,{f:Object.assign({},fe.f,o),confirm:0})});};
 Comp.prototype.feDates=function(){var fe=this.state.fe,w=fe.when;if(fe.id)return[fe.kind==='pt'?fe.f.date_debut:fe.f.date];if(!w.debut)return[];
@@ -3999,7 +4002,7 @@ Comp.prototype.loadGlob=function(force){var self=this;if(!force&&this.glob!==und
     .then(function(r){self.glob={wo:r[0],plan:r[1],pt:r[2],a:a,b:b};self.update();});};
 /* Les employés d'un élément, en identifiants : SA Platform range des NOMS dans assigne/emp et les identifiants dans assignes/emps. */
 Comp.prototype.globIds=function(arr,str){var nm=this.names(),by={};Object.keys(nm).forEach(function(k){by[norm(nm[k])]=k;});
-  var L=Array.isArray(arr)&&arr.length?arr:splitIds(str);return L.map(function(x){return nm[x]?x:(by[norm(x)]||x);});};
+  return idList(arr,str).map(function(x){return nm[x]?x:(by[norm(x)]||x);});};
 Comp.prototype.globData=function(){var self=this,D=this.D,G=this.glob,today=iso(new Date()),mon=mondayOf(new Date()),nm=this.names();
   var wos=G.wo,open=wos.filter(function(w){return!woDone(w.status)&&w.status!=='annule';}),late=open.filter(function(w){return w.date&&w.date<today;});
   var pts=G.pt.filter(function(t){return t.statut!=='annule';}),actives=pts.filter(function(t){return t.date_debut<=today&&t.date_fin>=today;});

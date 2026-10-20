@@ -169,3 +169,33 @@ test('planning : impression de la semaine (techniciens × jours)', async () => {
   await pop.close();
   await page.close();
 });
+
+test('bon de travail et créneau déjà créés : ajouter une personne (assignes / emps en texte JSON, noms dans emp, comme en base)', async () => {
+  const t = base();
+  // En base, assignes / emps sont des colonnes texte : '["kael"]' ; SA Platform range parfois le NOM dans emp
+  Object.assign(t.workorders.find((x) => x.id === 'wo-mine'), { assignes: '["kael"]', assigne: 'kael' });
+  t.plan.push({ id: 'cr-1', client: 'Piscine Alpha', addr: '1 rue A', date: today(), heure: '08:00', emp: 'Kaël Test', emps: null, type: 'entretien', status: 'assigned' });
+  const { page, db, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: t });
+  await ready(page);
+  await A(page, () => window.__admin.openFE('wo', 'wo-mine'));
+  await dlg(page).getByText('Liste de tâches').waitFor();
+  assert.equal(await A(page, () => window.__admin.vals().fTechs.filter((x) => x.on).map((x) => x.l).join()), 'Kaël Test', 'déjà assigné : coché');
+  await dlg(page).getByRole('button', { name: /Autre Tech/ }).click();
+  assert.equal(await A(page, () => window.__admin.vals().fTechs.filter((x) => x.on).length), 2, 'la personne ajoutée est cochée');
+  await dlg(page).getByRole('button', { name: 'Enregistrer' }).click();
+  await toast(page, /Bon de travail enregistré/);
+  const w = db.rows('workorders').find((x) => x.id === 'wo-mine');
+  assert.deepEqual(w.assignes, ['kael', 'kael2']);
+  assert.equal(w.assigne, 'kael, kael2');
+  await A(page, () => window.__admin.openFE('plan', 'cr-1'));
+  await dlg(page).getByRole('button', { name: /Autre Tech/ }).waitFor();
+  assert.equal(await A(page, () => window.__admin.vals().fTechs.filter((x) => x.on).map((x) => x.l).join()), 'Kaël Test', 'nom dans emp : reconnu et coché');
+  await dlg(page).getByRole('button', { name: /Autre Tech/ }).click();
+  await dlg(page).getByRole('button', { name: 'Enregistrer' }).click();
+  await toast(page, /Créneau enregistré/);
+  const c = db.rows('plan').find((x) => x.id === 'cr-1');
+  assert.deepEqual(c.emps, ['kael', 'kael2']);
+  assert.equal(c.emp, 'kael, kael2');
+  assert.deepEqual(errors, []);
+  await page.close();
+});
