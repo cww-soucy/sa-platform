@@ -172,3 +172,37 @@ test('réglages : sans la table au serveur, ils restent sur l’appareil sans er
   assert.deepEqual(errors, []);
   await page.close();
 });
+
+test('demande du terrain « Marquer traitée » : PATCH statut, journal, plus comptée dans « Demandes ouvertes » ni dans l’alerte URGENCE', async () => {
+  const t = tables();
+  t.demandes.push({ id: 'd2', tech: 'kael2', tech_nom: 'Autre Tech', site_nom: 'Piscine Alpha', type: 'Urgence', motif: 'Fuite', texte: 'Fuite salle mécanique', statut: 'Envoyée', created_at: new Date().toISOString() });
+  const { page, db, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: t });
+  await page.waitForFunction(() => window.__admin && window.__admin.D);
+  const kpi = () => page.evaluate(() => { const k = window.__admin.vals().kpis.find((x) => x.label === 'Demandes ouvertes'); return [k.val, k.sub]; });
+  await page.evaluate(() => window.__admin.go('globale'));
+  await page.getByText('1 demande(s) urgente(s) non traitée(s)').waitFor();
+  await page.evaluate(() => window.__admin.go('monitoring'));
+  assert.deepEqual(await kpi(), [2, '1 urgence(s)']);
+  await page.getByText('Urgence — Fuite salle mécanique').first().waitFor();
+  await page.getByRole('button', { name: 'Marquer traitée' }).first().waitFor();
+  const avant = await page.getByRole('button', { name: 'Marquer traitée' }).count();
+  assert.equal(avant, 2, 'un bouton par demande ouverte du flux');
+  // la demande urgente (la plus récente) est en tête du flux
+  await page.locator('main').getByText('Urgence — Fuite salle mécanique').locator('xpath=..').getByRole('button', { name: 'Marquer traitée' }).click();
+  await page.waitForFunction(() => /Demande marquée traitée/.test(window.__admin.state.toast || ''));
+  await page.waitForFunction(() => window.__admin.vals().kpis.find((x) => x.label === 'Demandes ouvertes').val === 1);
+  assert.deepEqual(await kpi(), [1, 'du terrain']);
+  const w = db.writes('demandes');
+  assert.equal(w.length, 1);
+  assert.equal(w[0].method, 'PATCH');
+  assert.match(w[0].query, /id=eq\.d2/);
+  assert.equal(w[0].body.statut, 'Traitée');
+  assert.equal(db.rows('demandes').find((d) => d.id === 'd1').statut, 'Envoyée', 'l’autre demande est intacte');
+  assert.ok(db.rows('audit_log').some((a) => a.ressource === 'demandes' && a.ressource_id === 'd2'), 'journal d’audit');
+  assert.equal(await page.getByRole('button', { name: 'Marquer traitée' }).count(), 1, 'plus de bouton sur la demande traitée');
+  await page.evaluate(() => window.__admin.go('globale'));
+  await page.waitForTimeout(200);
+  assert.doesNotMatch(await page.locator('main').innerText(), /urgente\(s\) non traitée/);
+  assert.deepEqual(errors, []);
+  await page.close();
+});
