@@ -27,6 +27,8 @@ def rep(a,b,c=None):
     if n==0: print('!! introuvable:',a[:60]); return
     M=M.replace(a,b)
 rep('En direct · jeu 1er oct. · 09:42','{{ liveTxt }}')
+# Recherche du haut : résultats pendant la frappe (oninput ; « change » ne part qu'à Entrée ou à la sortie du champ), Échap ferme la liste
+rep('<input class="input" value="{{ q }}" onChange="{{ onQ }}"','<input class="input" value="{{ q }}" onInput="{{ onQ }}" onKeyDown="{{ onQKey }}" aria-label="Recherche"')
 rep('Geneviève Lemieux','{{ meNom }}'); rep('>GL<','>{{ meIni }}<'); rep('>Coordination<','>{{ meRole }}<')
 # nav: ajout du lien de déconnexion sous le profil
 m=re.search(r'(<span style="font-weight:500">\{\{ meNom \}\}</span><span style="font-size:12px">\{\{ meRole \}\}</span>)',M)

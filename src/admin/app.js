@@ -1742,7 +1742,7 @@ Comp.prototype.statsVals=function(){var self=this,st=this.state,D=this.D,sMon=ad
 
 Comp.prototype.vals=function(){
   var self=this,st=this.state,D=this.D,mod=st.mod;
-  var base={rootRef:this.rootRef,hasToast:!!st.toast,toast:st.toast,q:st.q,onQ:function(e){self.setState({q:e.target.value});},meNom:(this.user.prenom+' '+this.user.nom).trim(),meIni:((this.user.prenom||'?')[0]+(this.user.nom||'?')[0]).toUpperCase(),meRole:this.user.role==='admin'?'Administration':'Supervision',
+  var base={rootRef:this.rootRef,hasToast:!!st.toast,toast:st.toast,q:st.q,onQ:function(e){self.setState({q:e.target.value});},onQKey:function(e){if(e.key==='Escape'&&st.q){self.setState({q:''});}},meNom:(this.user.prenom+' '+this.user.nom).trim(),meIni:((this.user.prenom||'?')[0]+(this.user.nom||'?')[0]).toUpperCase(),meRole:this.user.role==='admin'?'Administration':'Supervision',
     logout:function(){localStorage.removeItem('sa_admin_user');location.reload();}};
   Object.assign(base,this.portalVals());
   if(!D)return Object.assign(base,{navGroups:[],modTitle:'Chargement…',modSub:this.err||'Lecture des données en cours',results:[],hasResults:false,liveTxt:'Connexion…',isLoading:true,loadErr:this.err,isMonitoring:false,isInspections:false,isOperations:false,isSites:false,isSoon:false});
