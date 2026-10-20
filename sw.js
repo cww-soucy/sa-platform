@@ -2,6 +2,9 @@
 // v81 — Bouton « 🔒 Mot de passe » dans la barre du haut : chaque employé peut changer son mot de passe
 // quand il le veut (même fenêtre et même fonction serveur changer_mdp qu'à la connexion).
 // Signature de l'écran de connexion : « By Central+ · CW ».
+// Sécurité (SECURISATION_ETAPE3) : après « Se connecter », session Supabase Auth — chaque échange avec la base porte un
+// jeton signé par le serveur (identifiant + rôle) au lieu de la seule clé publique ; la synchro attend cette session.
+// Un employé ne renvoie plus la liste des comptes, ni le lien calendrier ou les feuilles de temps des autres.
 // v80 — Restauration : un envoi de fichiers sur GitHub (03/10) avait remis d'anciennes versions d'index.html (v76)
 // et de sw.js (v78) en ligne — les correctifs v79 avaient disparu. Version v79 rétablie à l'identique ; ce numéro
 // v80 force chaque appareil passé à la vieille copie à reprendre la bonne version. Aucune fonction modifiée.

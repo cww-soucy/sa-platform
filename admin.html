@@ -2468,6 +2468,35 @@ window.SARender=function(tpl,host,scope){
   document.addEventListener('click',function(e){var b=e.target&&e.target.closest&&e.target.closest('[data-navtog]');if(!b)return;var r=!H.classList.contains('nav-repli');set(r);try{localStorage.setItem(K,r?'repli':'ouvert');}catch(x){}});})();
 var SB='https://ldqvdiaewvhnukuaxdmc.supabase.co',KEY='sb_publishable_qVd_6eoAvwrDGs9u81woAg_RrMpTJxn';
 var H={apikey:KEY,Authorization:'Bearer '+KEY};
+/* ---------- Jeton de session (Supabase Auth — docs/sql/SECURISATION_ETAPE3*.sql) ----------
+   Après la connexion, chaque requête à la base porte le jeton signé par le serveur (identifiant + rôle) au lieu de la seule
+   clé publique. Il dure 1 h et se renouvelle avec le jeton de renouvellement, même après des heures hors réseau. Si le serveur
+   refuse de le renouveler (compte désactivé, session révoquée), l'écran de connexion revient — rien d'autre n'est effacé.
+   Sans jeton (session ouverte avant cette version), la clé publique sert encore tant que la base l'accepte. */
+var SES_KEY='sa_admin_user';
+function sesAuth(){var u=jget(SES_KEY,null);return u&&u.auth||null;}
+function jetonCourriel(id){return String(id||'').toLowerCase()+'@comptes.soucyaquatik.local';}
+function jetonDemande(grant,body){return window.fetch(SB+'/auth/v1/token?grant_type='+grant,{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify(body)})
+  .then(function(r){return r.json().catch(function(){return{};}).then(function(j){return{ok:r.ok&&!!j.access_token,status:r.status,j:j};});});}
+function jetonGarde(j){return{access_token:j.access_token,refresh_token:j.refresh_token,expires_at:j.expires_at||Math.floor(Date.now()/1000)+(j.expires_in||3600)};}
+/* Identifiant + mot de passe → jeton ; false si le serveur n'en donne pas (compte de connexion pas encore créé) */
+function jetonConnexion(id,mdp){return jetonDemande('password',{email:jetonCourriel(id),password:mdp}).then(function(x){return x.ok?jetonGarde(x.j):false;},function(){return false;});}
+var _renouv=null;
+function jetonRenouvele(){if(_renouv)return _renouv;var u=jget(SES_KEY,null),a=u&&u.auth;if(!a||!a.refresh_token)return Promise.resolve(false);
+  _renouv=jetonDemande('refresh_token',{refresh_token:a.refresh_token}).then(function(x){_renouv=null;
+    if(x.ok){var u2=jget(SES_KEY,null)||u;u2.auth=jetonGarde(x.j);try{localStorage.setItem(SES_KEY,JSON.stringify(u2));}catch(e){}return true;}
+    var b=sesAuth();if(b&&b.refresh_token!==a.refresh_token)return true; /* déjà renouvelé par un autre onglet (un jeton de renouvellement ne sert qu'une fois) */
+    if(x.status>=400&&x.status<500)sessionExpiree();return false;},function(){_renouv=null;return false;});
+  return _renouv;}
+function jetonFrais(){var a=sesAuth();if(!a||!a.refresh_token||a.expires_at-Date.now()/1000>60)return Promise.resolve();return jetonRenouvele();}
+function avecJeton(o){var a=sesAuth();o=Object.assign({},o);o.headers=Object.assign({},o.headers||{});if(a&&a.access_token)o.headers.Authorization='Bearer '+a.access_token;return o;}
+function jetonFin(){var a=sesAuth();if(a&&a.access_token)try{window.fetch(SB+'/auth/v1/logout?scope=local',{method:'POST',keepalive:true,headers:{apikey:KEY,Authorization:'Bearer '+a.access_token}}).catch(function(){});}catch(e){}}
+/* Toutes les requêtes à la base de ce fichier passent ici : jeton à jour ; un 401 → renouvellement puis un seul nouvel essai ;
+   un 401 sans jeton (la base n'accepte plus la clé publique seule) → reconnexion demandée */
+var fetch=function(url,opts){if(String(url).indexOf(SB+'/rest/v1/')!==0)return window.fetch(url,opts);
+  return jetonFrais().catch(function(){}).then(function(){return window.fetch(url,avecJeton(opts));}).then(function(r){if(r.status!==401)return r;
+    if(!sesAuth()){if(!/\/rpc\/(verifier_connexion|changer_mdp)$/.test(String(url).split('?')[0]))sessionExpiree();return r;}
+    return jetonRenouvele().then(function(ok){return ok?window.fetch(url,avecJeton(opts)):r;});});};
 function get(p){return fetch(SB+'/rest/v1/'+p,{headers:H}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status+' '+p.split('?')[0]);return r.json();});}
 /* Lecture « non bloquante » : l'écran reste utilisable, mais l'échec est consigné et affiché (bandeau), jamais avalé. */
 var SOFT_ERR=[];
@@ -4210,7 +4239,7 @@ Comp.prototype.statsVals=function(){var self=this,st=this.state,D=this.D,sMon=ad
 Comp.prototype.vals=function(){
   var self=this,st=this.state,D=this.D,mod=st.mod;
   var base={rootRef:this.rootRef,hasToast:!!st.toast,toast:st.toast,q:st.q,onQ:function(e){self.setState({q:e.target.value});},onQKey:function(e){if(e.key==='Escape'&&st.q){self.setState({q:''});}},meNom:(this.user.prenom+' '+this.user.nom).trim(),meIni:((this.user.prenom||'?')[0]+(this.user.nom||'?')[0]).toUpperCase(),meRole:this.user.role==='admin'?'Administration':'Supervision',
-    logout:function(){localStorage.removeItem('sa_admin_user');location.reload();}};
+    logout:function(){jetonFin();localStorage.removeItem('sa_admin_user');location.reload();}};
   Object.assign(base,this.portalVals());
   if(!D)return Object.assign(base,{navGroups:[],modTitle:'Chargement…',modSub:this.err||'Lecture des données en cours',results:[],hasResults:false,liveTxt:'Connexion…',isLoading:true,loadErr:this.err,isMonitoring:false,isInspections:false,isOperations:false,isSites:false,isSoon:false});
   var now=new Date(),lastRel=this.latest();
@@ -4446,8 +4475,10 @@ function choisirMdp(c,tmp,ouvrir){var lf=document.getElementById('loginForm'),mf
         ouvrir(c,n);})
       .catch(function(){busy=false;err.textContent='Réseau indisponible — réessayez.';});};}
 /* Ouvre la session (même enregistrement local qu’avant : jamais de mot de passe) */
-function ouvrirSession(c){localStorage.setItem('sa_admin_user',JSON.stringify({id:c.id,prenom:c.prenom,nom:c.nom,role:c.role}));location.reload();}
-function showLogin(){var el=document.getElementById('login');el.style.display='flex';
+function ouvrirSession(c,mdp){var le=document.getElementById('le');if(le)le.textContent='Connexion…';
+  jetonConnexion(c.id,mdp).then(function(auth){var u={id:c.id,prenom:c.prenom,nom:c.nom,role:c.role};u.auth=auth||null;localStorage.setItem('sa_admin_user',JSON.stringify(u));location.reload();});}
+function sessionExpiree(){if(sessionExpiree.vu||!jget(SES_KEY,null))return;sessionExpiree.vu=true;var u=jget(SES_KEY,null);showLogin('Session expirée — reconnectez-vous.');document.getElementById('lu').value=u.id||'';}
+function showLogin(msg){var el=document.getElementById('login');el.style.display='flex';if(msg)document.getElementById('le').textContent=msg;
   document.getElementById('loginForm').onsubmit=function(e){e.preventDefault();var u=document.getElementById('lu').value.trim().toLowerCase(),p=document.getElementById('lp').value,err=document.getElementById('le');err.textContent='Vérification…';
     fetch(SB+'/rest/v1/rpc/verifier_connexion',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},H),body:JSON.stringify({p_id:u,p_mdp:p})}).then(function(r){return r.json();}).then(function(rows){
       if(!Array.isArray(rows)||!rows.length){err.textContent='Identifiant ou mot de passe incorrect';return;}

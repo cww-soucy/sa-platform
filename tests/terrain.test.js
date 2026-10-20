@@ -53,7 +53,9 @@ test('punch : démarrer puis terminer écrit la feuille de temps au serveur', as
   assert.equal(tasks.length, 2);
   assert.equal(tasks[1].lieu, 'Piscine Alpha');
   assert.equal(tasks[1].active, true);
-  assert.ok(db.rows('punch_gps_log').some((g) => g.site_id === '1' && g.src === 'pending'), 'journal GPS créé');
+  const gpsOk = () => db.rows('punch_gps_log').some((g) => g.site_id === '1' && g.src === 'pending');
+  for (let i = 0; i < 150 && !gpsOk(); i++) await page.waitForTimeout(20); // le journal GPS part à côté de la feuille, sans l'attendre
+  assert.ok(gpsOk(), 'journal GPS créé');
   await page.evaluate(() => window.__terrain.submitStop());
   await page.waitForFunction(() => window.__terrain.ops().length === 0);
   tasks = db.rows('feuilles_temps')[0].days[dayIdx()].tasks;

@@ -49,13 +49,45 @@ function filters(qs) {
 }
 
 class FakeDB {
-  constructor(tables) { this.t = JSON.parse(JSON.stringify(tables || {})); this.log = []; this.fail = {}; this.rpc = {}; }
+  constructor(tables) {
+    this.t = JSON.parse(JSON.stringify(tables || {})); this.log = []; this.fail = {}; this.rpc = {};
+    // Jetons de session (Supabase Auth) : comme après SECURISATION_ETAPE3.sql, une table n'est servie qu'avec un jeton valide.
+    this.jetons = new Set(); this.renouv = new Set(); this.sansJeton = []; this.n = 0; this.authLog = []; this.refusAuth = false;
+    // carnet QR : nom d'un site par la fonction publique carnet_site_nom (null si inconnu)
+    this.rpc.carnet_site_nom = (b) => { const x = this.rows('sites').find((r) => String(r.id) === String(b.p_site)); return x ? x.nom : null; };
+  }
+  emettre(id) {
+    const n = ++this.n, c = this.rows('comptes').find((x) => x.id === id) || {};
+    const j = { access_token: 'jeton-' + id + '-' + n, refresh_token: 'renouv-' + id + '-' + n, token_type: 'bearer', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600,
+      user: { id: '00000000-0000-4000-8000-' + String(n).padStart(12, '0'), aud: 'authenticated', role: 'authenticated', email: id + '@comptes.soucyaquatik.local',
+        app_metadata: { provider: 'email', compte_id: id, app_role: c.role || 'employe' }, user_metadata: {} } };
+    this.jetons.add(j.access_token); this.renouv.add(j.refresh_token); return j;
+  }
+  async handleAuth(route, u) {
+    const req = route.request(), body = req.postData() ? JSON.parse(req.postData()) : {}, grant = u.searchParams.get('grant_type');
+    const json = (status, data) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(data) });
+    this.authLog.push({ path: u.pathname, grant, body });
+    if (this.fail.auth === 'network') return route.abort('failed');
+    if (u.pathname.endsWith('/logout')) return route.fulfill({ status: 204, body: '' });
+    if (grant === 'password') {
+      if (this.refusAuth) return json(400, { error_code: 'invalid_credentials', msg: 'Invalid login credentials' });
+      return json(200, this.emettre(String(body.email).split('@')[0]));
+    }
+    if (grant === 'refresh_token' && this.renouv.has(body.refresh_token)) { this.renouv.delete(body.refresh_token); return json(200, this.emettre(body.refresh_token.split('-')[1])); }
+    return json(400, { error_code: 'refresh_token_not_found', msg: 'Invalid Refresh Token' });
+  }
   rows(name) { return (this.t[name] = this.t[name] || []); }
   async handle(route) {
     const req = route.request(), u = new URL(req.url()), m = req.method();
+    if (u.pathname.startsWith('/auth/v1/')) return this.handleAuth(route, u);
     const name = u.pathname.replace('/rest/v1/', '');
     const body = req.postData() ? JSON.parse(req.postData()) : null;
     this.log.push({ method: m, table: name, query: u.search, body });
+    // Sans jeton valide : seulement ce qui reste public (connexion, carnet QR, sondages clients)
+    const pub = /^rpc\/(verifier_connexion|changer_mdp|carnet_site_nom|sondage_stats|sondages_liste|sondage_enregistrer)$/.test(name)
+      || (name === 'water_logs' && (m === 'GET' || m === 'POST')) || (name === 'sondages' && m === 'GET') || (name === 'sondage_reponses' && m === 'POST');
+    const jeton = (req.headers()['authorization'] || '').replace(/^Bearer /, '');
+    if (!pub && this.exigeJeton !== false && !this.jetons.has(jeton)) { this.sansJeton.push(m + ' ' + name); return route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ code: 'PGRST301', message: 'jeton absent ou expiré' }) }); }
     const f = this.fail[name];
     if (f === 'network') return route.abort('failed');
     if (f) return route.fulfill({ status: f, contentType: 'application/json', body: JSON.stringify({ message: 'échec simulé' }) });
@@ -87,9 +119,10 @@ class FakeDB {
   writes(table) { return this.log.filter((l) => l.table === table && l.method !== 'GET'); }
 }
 
-async function openApp(browser, base, { app, user, tables, fail, viewport, portail }) {
+async function openApp(browser, base, { app, user, tables, fail, viewport, portail, jeton }) {
   const db = new FakeDB(tables);
   Object.assign(db.fail, fail || {});
+  if (jeton === false) db.exigeJeton = false; // base d'avant SECURISATION_ETAPE3.sql : la clé publique suffit
   const page = await browser.newPage({ viewport: viewport || (app === 'terrain' ? { width: 402, height: 874 } : { width: 1440, height: 900 }) });
   const errors = [];
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
@@ -99,6 +132,8 @@ async function openApp(browser, base, { app, user, tables, fail, viewport, porta
   await page.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
   await page.route('https://unpkg.com/**', (r) => r.abort()); // l'app ne doit plus en dépendre
   const key = app === 'terrain' ? 'sa_terrain_user' : 'sa_admin_user';
+  // Session ouverte : avec un jeton valide, sauf si le test en fournit un (ou auth: null, session d'avant les jetons)
+  if (user && user.auth === undefined) { const j = db.emettre(user.id); user = Object.assign({}, user, { auth: { access_token: j.access_token, refresh_token: j.refresh_token, expires_at: j.expires_at } }); }
   // Le portail d'accueil de sa-admin est désactivé par défaut dans les tests (sauf ceux qui le testent : portail: true)
   await page.addInitScript(([k, u, pt]) => { if (!sessionStorage.getItem('__init')) { localStorage.clear(); if (u) localStorage.setItem(k, JSON.stringify(u)); if (!pt) localStorage.setItem('sa_admin_portail', 'off'); sessionStorage.setItem('__init', '1'); } }, [key, user, !!portail]);
   await page.goto(base + '/' + app + '.html');
@@ -108,7 +143,7 @@ async function openApp(browser, base, { app, user, tables, fail, viewport, porta
 /* SA Platform (index.html) : la vraie supabase-js (node_modules) remplace le CDN ; les autres bibliothèques externes
    (xlsx, qrcode, leaflet…) sont remplacées par un script vide. Le compte se connecte par l'écran de connexion. */
 const SBJS = path.join(ROOT, 'node_modules/@supabase/supabase-js/dist/umd/supabase.js');
-async function openPlatform(browser, base, { tables, viewport } = {}) {
+async function openPlatform(browser, base, { tables, viewport, local } = {}) {
   const db = new FakeDB(tables);
   const page = await browser.newPage({ viewport: viewport || { width: 1280, height: 860 }, serviceWorkers: 'block' });
   const errors = [];
@@ -119,6 +154,8 @@ async function openPlatform(browser, base, { tables, viewport } = {}) {
   await page.route(/^https:\/\/(cdnjs\.cloudflare\.com|cdn\.jsdelivr\.net|unpkg\.com)\//, (r) => r.fulfill({ status: 200, contentType: 'text/javascript', body: '' }));
   await page.route(/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js/, (r) => r.fulfill({ status: 200, contentType: 'text/javascript', body: fs.readFileSync(SBJS) }));
   await page.routeWebSocket(/supabase\.co\/realtime/, () => {}); // Realtime : jamais vers le vrai serveur
+  // local : données déjà sur l'appareil (clés sans le préfixe sa_plat_), posées une seule fois
+  if (local) await page.addInitScript((l) => { if (!sessionStorage.getItem('__init')) { Object.keys(l).forEach((k) => localStorage.setItem('sa_plat_' + k, JSON.stringify(l[k]))); sessionStorage.setItem('__init', '1'); } }, local);
   await page.goto(base + '/index.html');
   return { page, db, errors };
 }

@@ -2708,6 +2708,21 @@ function initSupabase(){
     if(sbReady && sb){ return; } // déjà connecté
     sb=supabase.createClient(SB_URL,SB_KEY);
     sbReady=true;
+    // ➕ v81 SÉCURITÉ (SECURISATION_ETAPE3) : les données ne s'échangent qu'avec une session Supabase Auth (jeton signé
+    // par le serveur : identifiant + rôle). supabase-js garde la session sur l'appareil, ajoute le jeton à chaque requête
+    // et le renouvelle seul. Sans session (premier démarrage, après « Quitter ») : la synchro attend la connexion.
+    sb.auth.onAuthStateChange(sessionChangee);
+    sb.auth.getSession().then(function(r){
+      var ses=r&&r.data&&r.data.session;sesRetenir(ses);
+      if(ses) syncDemarrage(); else { initSupabase._attente=true; setSbStatus('offline'); }
+    }).catch(function(){ syncDemarrage(); });
+  }catch(e){setSbStatus('offline');}
+}
+// Synchro de démarrage (pull, puis réconciliation montante une seule fois) — au lancement si une session existe,
+// sinon juste après la connexion.
+function syncDemarrage(){
+  try{
+    initSupabase._attente=false;
     setSbStatus('syncing');
     // ➕ GARDE-FOU CONTRE LA RÉSURRECTION DE VIEILLES DONNÉES (v74) : avant de pousser quoi que ce soit
     // vers le serveur, on vérifie un "epoch" de réinitialisation stocké côté serveur (app_meta). Si CET
@@ -2749,6 +2764,26 @@ function initSupabase(){
     });
     }); // fin checkResetEpoch
   }catch(e){setSbStatus('offline');}
+}
+// Compte de la session Supabase (connu même avant que l'écran de connexion soit passé) : sert à ne renvoyer que ce que
+// ce compte a le droit d'écrire (voir pushAllLocalToServer / pushAllLocalFT).
+var _sesCompte=null;
+function sesRetenir(ses){var m=ses&&ses.user&&ses.user.app_metadata;_sesCompte=m&&m.compte_id?{id:m.compte_id,role:m.app_role||''}:null;}
+function sesMoi(){return currentUser?currentUser.id:(_sesCompte&&_sesCompte.id);}
+function sesRole(){return currentUser?currentUser.role:(_sesCompte&&_sesCompte.role);}
+var _quitteVolontaire=false;
+function sessionChangee(ev,ses){
+  if(ev!=='INITIAL_SESSION') sesRetenir(ses);
+  // Session refusée par le serveur (compte désactivé, session révoquée) : retour à l'écran de connexion, données locales gardées
+  if(ev==='SIGNED_OUT'&&currentUser&&!_quitteVolontaire){ try{ toast('🔒 Session expirée — reconnecte-toi'); }catch(e){} doLogout(); }
+}
+// Connexion au serveur d'authentification avec le mot de passe déjà vérifié par verifier_connexion. Si aucun jeton n'est
+// donné (compte de connexion pas encore créé), on retire toute ancienne session pour ne jamais écrire au nom d'un autre.
+function connexionJeton(id,mdp){
+  return sb.auth.signInWithPassword({email:String(id).toLowerCase()+'@comptes.soucyaquatik.local',password:mdp}).then(function(res){
+    if(res&&res.error) return sb.auth.signOut({scope:'local'}).then(function(){return false;},function(){return false;});
+    return true;
+  }).catch(function(){ return false; });
 }
 
 // ➕ Vérifie si cet appareil a raté un reset admin (voir app_meta.reset_epoch). Callback(staleDevice) :
@@ -2965,6 +3000,13 @@ function syncPull(localKey, cb){
   var table=sbTableFor(localKey);
   if(!sb||!table){if(cb)cb();return;}
   sb.from(table).select('*').then(function(res){
+    // ➕ v81 : table comptes réservée à la supervision — un employé reçoit la liste publique (comptes_publics)
+    if(res.error && localKey==='comptes'){
+      return sb.from('comptes_publics').select('*').then(function(r2){
+        if(r2.error){ reportSyncError(localKey, r2.error); if(cb)cb(); return; }
+        lsSet(localKey, mergeById(lsGet(localKey)||[], r2.data||[])); if(cb)cb();
+      });
+    }
     if(res.error){ reportSyncError(localKey, res.error); if(cb)cb(); return; } // ➕ ne plus échouer en silence
     var rows=res.data||[];
     rows.forEach(function(r){ mapRowFromDb(localKey,r); });
@@ -3236,9 +3278,14 @@ function sbDelete(localKey, id){
 // ➕ Pousse TOUT le local vers le serveur (upsert). Exclut les feuilles de temps (gérées à part).
 function pushAllLocalToServer(){
   if(!sbReady||!sb)return;
+  // ➕ v81 (SECURISATION_ETAPE3) : la base refuse les comptes à un non-admin et le lien calendrier d'un autre employé ;
+  // on ne les renvoie donc pas (sinon tout le lot serait refusé et signalé « non synchronisé » à chaque ouverture).
+  var admin=sesRole()==='admin', moi=sesMoi();
   ['comptes','sites','flotte','inventaire','workorders','plan','planmatch','sortie','livraison','planning','calconn','hivernage'].forEach(function(localKey){
     try{
+      if(localKey==='comptes'&&!admin)return;
       var list=lsGet(localKey);
+      if(localKey==='calconn'&&!admin&&Array.isArray(list))list=list.filter(function(c){return c&&c.emp===moi;});
       if(Array.isArray(list)&&list.length>0){ sbPushAll(localKey,list); }
     }catch(e){}
   });
@@ -3253,6 +3300,8 @@ function pushAllLocalFT(){
       if(k && k.indexOf(LS+'ft_week_')===0){
         var d=null;try{d=JSON.parse(localStorage.getItem(k));}catch(e){}
         if(d&&d.uid&&d.week&&d.days){
+          // ➕ v81 : un employé ne renvoie que SES feuilles (admin et superviseur : toutes)
+          var r=sesRole(); if(r!=='admin'&&r!=='superviseur'&&d.uid!==sesMoi()) continue;
           var totalH=0;(d.days||[]).forEach(function(day){((day&&day.tasks)||[]).forEach(function(t){totalH+=(t.hrs||0);});});
           sbPushFT(d.uid,d.week,{emp:d.emp,email:d.email,days:d.days,savedAt:d.savedAt},totalH);
         }
@@ -3840,6 +3889,7 @@ document.addEventListener('DOMContentLoaded', function(){
   var _lastResync=0;
   window.resyncNow=function(){
     if(!sbReady||!sb){ initSupabase(); return; } // pas connecté → (re)tente l'init
+    if(initSupabase._attente) return; // ➕ v81 : pas de session (jeton) → rien à synchroniser avant la connexion
     var n=Date.now(); if(n-_lastResync<3000)return; _lastResync=n; // anti-rafale
     setSbStatus('syncing');
     try{ if(sb.removeAllChannels) sb.removeAllChannels(); }catch(e){}
@@ -4226,7 +4276,11 @@ function doLogin(){
       if(idx>=0)comptes[idx]=Object.assign({},comptes[idx],propre,{mdp:undefined});
       else comptes.push(propre);
       lsSet('comptes',comptes);
-      ouvrirSession(propre, !!compte.doit_changer_mdp);
+      // ➕ v81 : jeton de session (Supabase Auth) avant d'ouvrir — les échanges avec la base se font en son nom
+      connexionJeton(compte.id, pass).then(function(){
+        ouvrirSession(propre, !!compte.doit_changer_mdp);
+        if(initSupabase._attente) syncDemarrage();
+      });
     });
   }else{
     // ➕ SÉCURITÉ : jamais de vérification locale (un vieux cache peut contenir d'anciens mots de passe en clair)
@@ -4286,6 +4340,8 @@ function doLoginCheck(user,pass){
 function doLogout(){
   // Sauvegarder avant de partir
   if(currentUser) saveFT();
+  // ➕ v81 : fin de la session Supabase (jeton) sur cet appareil ; la synchro reprendra à la prochaine connexion
+  if(sb){ _quitteVolontaire=true; initSupabase._attente=true; sb.auth.signOut({scope:'local'}).then(function(){_quitteVolontaire=false;},function(){_quitteVolontaire=false;}); }
   // Réinitialiser l'état
   viewingUid=null;
   currentUser=null;
