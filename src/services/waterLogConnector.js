@@ -182,6 +182,14 @@ export async function getLogs(siteId, { from, to, limit = 500, ascending = false
 // Fiche du site visé par un QR (nom affiché en en-tête) ; null si l'identifiant n'existe pas.
 export async function getSiteInfo(siteId) {
   if (!siteId) return null;
+  // Fonction publique carnet_site_nom : la page QR n'a pas accès à la table sites (SECURISATION_ETAPE3.sql).
+  // Tant que la fonction n'existe pas en base (404), lecture directe de la table comme avant.
+  try {
+    const nom = await rest('rpc/carnet_site_nom', { method: 'POST', body: JSON.stringify({ p_site: String(siteId) }) });
+    return nom == null ? null : { id: String(siteId), nom };
+  } catch (e) {
+    if (e.status !== 404) throw e;
+  }
   const rows = await rest(`sites?select=id,nom,addr&id=eq.${encodeURIComponent(siteId)}`);
   return rows[0] || null;
 }

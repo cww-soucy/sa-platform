@@ -1220,6 +1220,35 @@ window.SARender=function(tpl,host,scope){
 'use strict';
 var SB='https://ldqvdiaewvhnukuaxdmc.supabase.co',KEY='sb_publishable_qVd_6eoAvwrDGs9u81woAg_RrMpTJxn';
 var H={apikey:KEY,Authorization:'Bearer '+KEY};
+/* ---------- Jeton de session (Supabase Auth — docs/sql/SECURISATION_ETAPE3*.sql) ----------
+   Après la connexion, chaque requête à la base porte le jeton signé par le serveur (identifiant + rôle) au lieu de la seule
+   clé publique. Il dure 1 h et se renouvelle avec le jeton de renouvellement, même après des heures hors réseau. Si le serveur
+   refuse de le renouveler (compte désactivé, session révoquée), l'écran de connexion revient — rien d'autre n'est effacé.
+   Sans jeton (session ouverte avant cette version), la clé publique sert encore tant que la base l'accepte. */
+var SES_KEY='sa_terrain_user';
+function sesAuth(){var u=jget(SES_KEY,null);return u&&u.auth||null;}
+function jetonCourriel(id){return String(id||'').toLowerCase()+'@comptes.soucyaquatik.local';}
+function jetonDemande(grant,body){return window.fetch(SB+'/auth/v1/token?grant_type='+grant,{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify(body)})
+  .then(function(r){return r.json().catch(function(){return{};}).then(function(j){return{ok:r.ok&&!!j.access_token,status:r.status,j:j};});});}
+function jetonGarde(j){return{access_token:j.access_token,refresh_token:j.refresh_token,expires_at:j.expires_at||Math.floor(Date.now()/1000)+(j.expires_in||3600)};}
+/* Identifiant + mot de passe → jeton ; false si le serveur n'en donne pas (compte de connexion pas encore créé) */
+function jetonConnexion(id,mdp){return jetonDemande('password',{email:jetonCourriel(id),password:mdp}).then(function(x){return x.ok?jetonGarde(x.j):false;},function(){return false;});}
+var _renouv=null;
+function jetonRenouvele(){if(_renouv)return _renouv;var u=jget(SES_KEY,null),a=u&&u.auth;if(!a||!a.refresh_token)return Promise.resolve(false);
+  _renouv=jetonDemande('refresh_token',{refresh_token:a.refresh_token}).then(function(x){_renouv=null;
+    if(x.ok){var u2=jget(SES_KEY,null)||u;u2.auth=jetonGarde(x.j);try{localStorage.setItem(SES_KEY,JSON.stringify(u2));}catch(e){}return true;}
+    var b=sesAuth();if(b&&b.refresh_token!==a.refresh_token)return true; /* déjà renouvelé par un autre onglet (un jeton de renouvellement ne sert qu'une fois) */
+    if(x.status>=400&&x.status<500)sessionExpiree();return false;},function(){_renouv=null;return false;});
+  return _renouv;}
+function jetonFrais(){var a=sesAuth();if(!a||!a.refresh_token||a.expires_at-Date.now()/1000>60)return Promise.resolve();return jetonRenouvele();}
+function avecJeton(o){var a=sesAuth();o=Object.assign({},o);o.headers=Object.assign({},o.headers||{});if(a&&a.access_token)o.headers.Authorization='Bearer '+a.access_token;return o;}
+function jetonFin(){var a=sesAuth();if(a&&a.access_token)try{window.fetch(SB+'/auth/v1/logout?scope=local',{method:'POST',keepalive:true,headers:{apikey:KEY,Authorization:'Bearer '+a.access_token}}).catch(function(){});}catch(e){}}
+/* Toutes les requêtes à la base de ce fichier passent ici : jeton à jour ; un 401 → renouvellement puis un seul nouvel essai ;
+   un 401 sans jeton (la base n'accepte plus la clé publique seule) → reconnexion demandée */
+var fetch=function(url,opts){if(String(url).indexOf(SB+'/rest/v1/')!==0)return window.fetch(url,opts);
+  return jetonFrais().catch(function(){}).then(function(){return window.fetch(url,avecJeton(opts));}).then(function(r){if(r.status!==401)return r;
+    if(!sesAuth()){if(!/\/rpc\/(verifier_connexion|changer_mdp)$/.test(String(url).split('?')[0]))sessionExpiree();return r;}
+    return jetonRenouvele().then(function(ok){return ok?window.fetch(url,avecJeton(opts)):r;});});};
 function get(p){return fetch(SB+'/rest/v1/'+p,{headers:H}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();});}
 function post(p,b,pref,sig){return fetch(SB+'/rest/v1/'+p,{method:'POST',headers:Object.assign({'Content-Type':'application/json',Prefer:pref||'return=minimal'},H),body:JSON.stringify(b),signal:sig});}
 function netMsg(e){var m=String(e&&e.message||e);return /Failed to fetch|NetworkError|Load failed/i.test(m)?'réseau injoignable':m;}
@@ -1433,7 +1462,8 @@ Comp.prototype.flushOps=function(){var self=this;if(this._fl||!navigator.onLine|
     }).catch(function(e){self._fl=false;if(navigator.onLine)self.sendErr='punch non envoyé ('+netMsg(e)+')';self.update();});})();};
 Comp.prototype.logGps=function(op,row){var tk=null;((row&&row.days&&row.days[op.dayIdx]&&row.days[op.dayIdx].tasks)||[]).forEach(function(t){if(t.opId===op.id)tk=t;});
   post('punch_gps_log',{id:'g'+op.id,uid:this.user.id,emp:this.me.nom,date:op.date,heure:op.hhmm,lieu:op.lieu,addr:op.addr||'',site_id:op.siteId||null,task_id:tk?tk.id:null,src:'pending',created_at:new Date(op.ts).toISOString(),updated_at:new Date().toISOString()},'resolution=merge-duplicates,return=minimal').catch(function(){});};
-Comp.prototype.updGps=function(op){post('punch_gps_log',{id:'g'+op.opId,lat:op.gps.lat,lng:op.gps.lng,acc:op.gps.acc,src:'gps',updated_at:new Date().toISOString()},'resolution=merge-duplicates,return=minimal').catch(function(){});};
+/* uid toujours envoyé : un ajout-ou-mise-à-jour est vérifié comme un ajout (« ses lignes seulement », SECURISATION_ETAPE3) */
+Comp.prototype.updGps=function(op){post('punch_gps_log',{id:'g'+op.opId,uid:this.user.id,lat:op.gps.lat,lng:op.gps.lng,acc:op.gps.acc,src:'gps',updated_at:new Date().toISOString()},'resolution=merge-duplicates,return=minimal').catch(function(){});};
 Comp.prototype.captureGps=function(op){var self=this;if(!navigator.geolocation)return;
   navigator.geolocation.getCurrentPosition(function(p){self.enqueueOp({type:'gps',id:'g-'+op.id,opId:op.id,week:op.week,dayIdx:op.dayIdx,gps:{lat:p.coords.latitude,lng:p.coords.longitude,acc:Math.round(p.coords.accuracy)}});},function(){},{enableHighAccuracy:true,timeout:9000,maximumAge:60000});};
 /* Règle existante de SA Platform : un punch resté actif après 20 h (ou un jour passé) est fermé à 20:00. Semaine en cours seulement. */
@@ -1779,7 +1809,7 @@ Comp.prototype.vals=function(){
     planDays:days.map(function(d,i){return Object.assign({dow:d.dow,num:d.num,go:function(){self.setState({planDay:i});}},segStyle(st.planDay===i));}),
     planTitle:dsel.title,planItems:dsel.items.map(function(it){var s=siteById(it[1])||pseudoSite(it[1],'');return{h:it[0]||'—',nom:s.nom,ville:s.ville,tache:it[2],rec:it[3]};}),recurrences:Object.keys(recMap).map(function(k){return recMap[k];}),
     myWeek:this.hours==null?'—':fr(Math.round(this.hours*100)/100),me:this.me,queueLbl:this.queueN?this.queueN+' fiche(s) à envoyer':'Rien en attente',
-    bureauTel:String(this.bureau||'').replace(/[^\d+]/g,''),logout:function(){localStorage.removeItem('sa_terrain_user');location.reload();},mdp:this.mdpVals(),
+    bureauTel:String(this.bureau||'').replace(/[^\d+]/g,''),logout:function(){jetonFin();localStorage.removeItem('sa_terrain_user');location.reload();},mdp:this.mdpVals(),
     tabs:TABS.map(function(t){return{label:t[1],icon:t[2],go:function(){self.go(t[0]);},fg:tabOf===t[0]?'var(--color-text)':'var(--color-neutral-600)',fw:tabOf===t[0]?600:400,bar:tabOf===t[0]?'inset 0 3px 0 var(--color-text)':'none',dot:t[0]==='fiche'&&!!cj};})
   },stepV||{});};
 /* Profil : l'employé change son propre mot de passe (RPC changer_mdp, demande le réseau). Champs gardés hors de state : jamais persistés. */
@@ -1834,8 +1864,10 @@ function choisirMdp(c,tmp,ouvrir){var lf=document.getElementById('loginForm'),mf
         ouvrir(c,n);})
       .catch(function(){busy=false;err.textContent='Réseau indisponible — réessayez.';});};}
 /* Ouvre la session (même enregistrement local qu’avant : jamais de mot de passe) */
-function ouvrirSession(c){localStorage.setItem('sa_terrain_user',JSON.stringify({id:c.id,prenom:c.prenom,nom:c.nom,role:c.role,dept:c.dept,tel:c.tel,email:c.email||''}));try{localStorage.setItem('sa_terrain_bienvenue','1');}catch(x){}location.reload();}
-function showLogin(){var el=document.getElementById('login');el.style.display='flex';
+function ouvrirSession(c,mdp){var le=document.getElementById('le');if(le)le.textContent='Connexion…';
+  jetonConnexion(c.id,mdp).then(function(auth){var u={id:c.id,prenom:c.prenom,nom:c.nom,role:c.role,dept:c.dept,tel:c.tel,email:c.email||''};u.auth=auth||null;localStorage.setItem('sa_terrain_user',JSON.stringify(u));try{localStorage.setItem('sa_terrain_bienvenue','1');}catch(x){}location.reload();});}
+function sessionExpiree(){if(sessionExpiree.vu||!jget(SES_KEY,null))return;sessionExpiree.vu=true;var u=jget(SES_KEY,null);showLogin('Session expirée — reconnectez-vous. Vos fiches en attente restent sur le téléphone.');document.getElementById('lu').value=u.id||'';}
+function showLogin(msg){var el=document.getElementById('login');el.style.display='flex';if(msg)document.getElementById('le').textContent=msg;
   document.getElementById('loginForm').onsubmit=function(e){e.preventDefault();var u=document.getElementById('lu').value.trim().toLowerCase(),p=document.getElementById('lp').value,err=document.getElementById('le');err.textContent='Vérification…';
     fetch(SB+'/rest/v1/rpc/verifier_connexion',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},H),body:JSON.stringify({p_id:u,p_mdp:p})}).then(function(r){return r.json();}).then(function(rows){
       if(!Array.isArray(rows)||!rows.length){err.textContent='Identifiant ou mot de passe incorrect';return;}
