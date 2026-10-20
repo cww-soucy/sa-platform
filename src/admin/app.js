@@ -317,10 +317,11 @@ Comp.prototype.approve=function(uid,wk,di){var who=this.user.id,now=new Date().t
 Comp.prototype.weekData=function(wk){var D=this.D,rows=Array.isArray(this.ftw[wk])?this.ftw[wk]:[],by={};rows.forEach(function(r){by[r.uid]=r;});
   var st=D.statut,emps=D.comptes.filter(function(c){return c.role!=='admin'&&(st[c.id]!=='inactif'||by[c.id]);}),env={};(this.envois[wk]||[]).forEach(function(e){env[e.uid]=e;});
   return emps.map(function(c){var row=by[c.id],jours=[],tot=0,nbP=0,nbAV=0,enCours=false,ap=true,any=false,punchs=[];
-    for(var i=0;i<7;i++){var d=row&&row.days&&row.days[i],ts=(d&&d.tasks)||[],h=0,live=false,dap=true;
-      ts.forEach(function(t,ti){var act=!!(t.active||!t.end);if(act){live=true;enCours=true;}else h+=Number(t.hrs)||0;nbP++;any=true;if(t.pendingValidation)nbAV++;if(!t.approuve&&!act){dap=false;ap=false;}
+    for(var i=0;i<7;i++){var d=row&&row.days&&row.days[i],ts=(d&&d.tasks)||[],h=0,live=false,dap=true,nFin=0;
+      ts.forEach(function(t,ti){var act=!!(t.active||!t.end);if(act){live=true;enCours=true;}else{h+=Number(t.hrs)||0;nFin++;}nbP++;any=true;if(t.pendingValidation)nbAV++;if(!t.approuve&&!act){dap=false;ap=false;}
         punchs.push({di:i,lieu:t.lieu||'—',odt:t.odt||'',detail:t.detail||'',start:t.start||'',end:t.end||'',hrs:act?0:(Number(t.hrs)||0),act:act,av:!!t.pendingValidation,ap:!!t.approuve});});
-      tot+=h;jours.push({h:h,nb:ts.length,live:live,ap:ts.length>0&&dap});}
+      tot+=h;/* ✓ « journée approuvée » : au moins un punch terminé, et tous les punchs terminés approuvés (un punch en cours seul ne compte pas) */
+      jours.push({h:h,nb:ts.length,live:live,ap:nFin>0&&dap});}
     return{id:c.id,nom:(c.prenom+' '+c.nom).trim()+(st[c.id]==='inactif'?' (inactif)':''),email:c.email||'',jours:jours,total:tot,reg:Math.min(tot,40),supp:Math.max(0,tot-40),nbPunchs:nbP,nbAV:nbAV,enCours:enCours,approuvee:any&&ap,any:any,punchs:punchs,envoi:env[c.id]||null};});};
 function grouperJour(ps){var m={},o=[];ps.forEach(function(p){var k=norm(p.lieu)+'|'+p.odt;if(!m[k]){m[k]={lieu:p.lieu,odt:p.odt,detail:p.detail,debut:p.start,fin:p.end,h:0,nb:0,act:false,av:false};o.push(k);}
   var l=m[k];l.nb++;if(p.act)l.act=true;else l.h+=p.hrs;if(p.start&&(!l.debut||p.start<l.debut))l.debut=p.start;if(p.end&&(!l.fin||p.end>l.fin))l.fin=p.end;if(!l.detail&&p.detail)l.detail=p.detail;if(p.av)l.av=true;});
