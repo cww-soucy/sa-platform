@@ -67,7 +67,8 @@ test('inspection : choix du site compact (recherche, clavier, précédent / suiv
   await page.getByRole('button', { name: 'Changer de site' }).click();
   const box = page.getByRole('searchbox', { name: 'Chercher un site' });
   await box.waitFor();
-  assert.equal(await page.evaluate(() => document.activeElement.getAttribute('aria-label')), 'Chercher un site');
+  // le curseur est placé juste après l'affichage (setTimeout) : l'attendre plutôt que le lire au même instant
+  await page.waitForFunction(() => document.activeElement && document.activeElement.getAttribute('aria-label') === 'Chercher un site');
   await box.fill('beta');
   await page.getByText('1 site(s) trouvé(s)').waitFor();
   await box.press('Enter');
