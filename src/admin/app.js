@@ -413,6 +413,11 @@ function woDone(s){return s==='complete'||s==='facture'||s==='termine';}
 function splitIds(s){return String(s||'').split(/,\s*/).filter(Boolean);}
 function auditT(self,action,table,id,details){fetch(SB+'/rest/v1/audit_log',{method:'POST',headers:Object.assign({'Content-Type':'application/json',Prefer:'return=minimal'},H),
   body:JSON.stringify({acteur:self.user.id,acteur_nom:(self.user.prenom+' '+self.user.nom).trim(),action:action,ressource:table,ressource_id:id,details:details||null,appareil:'sa-admin'})}).catch(function(){});}
+/* Demande du terrain → « Traitée » : sort du compte « Demandes ouvertes » et de l'alerte URGENCE */
+Comp.prototype.traiterDemande=function(d){var self=this;if(this._dt)return;this._dt=true;
+  rest('PATCH','demandes?id=eq.'+encodeURIComponent(d.id),{statut:'Traitée',updated_at:new Date().toISOString()},'return=minimal')
+    .then(function(){self._dt=false;auditT(self,'MODIFICATION','demandes',d.id,{action:'demande_traitee',type:d.type,tech:d.tech||null});self.flash('Demande marquée traitée');return self.load().then(function(){self.update();});})
+    .catch(function(e){self._dt=false;self.flash('Demande non modifiée : '+e.message);});};
 Comp.prototype.openFE=function(kind,id,preset){var self=this,p=preset||{},today=iso(new Date());
   var blank={wo:{client:'',site:'',type:'entretien',priorite:'normal',status:'ouvert',assignes:[],descr:'',notes:'',tasks:[],files:[],req_bassin:false,req_photo:false,req_notes:false,date:today,groupe_id:null},
     plan:{client:'',addr:'',site_id:null,heure:'07:00',emps:[],type:'entretien',descr:'',notes:'',wo_id:'',status:'assigned',date:today},
@@ -1207,7 +1212,7 @@ Comp.prototype.monVals=function(){var self=this,st=this.state,D=this.D;if(!D)ret
   var wallK=[{l:'En punch',v:String(team.filter(function(t){return t.on;}).length),s:'sur '+team.length+' au travail aujourd’hui'},{l:'Relevés aujourd’hui',v:String(D.rel.filter(function(r){return r.date===today;}).length),s:'hier : '+D.rel.filter(function(r){return r.date===yest;}).length},
     {l:'Salles hors zone',v:String(nOut),s:nOld+' sans relevé depuis 7 j',hot:nOut>0},{l:'Bons de travail du jour',v:woDoneT+' / '+woToday.length,s:'terminés'},{l:'Demandes ouvertes',v:String(openDem.length),s:urg.length+' urgence(s)',hot:urg.length>0}];
   var fl=[];relP.slice(0,12).forEach(function(r){var no=self.outOf(r).length;fl.push({t:r.date+' '+(r.heure||''),h:(r.date===today?'':fdate(r.date)+' ')+(r.heure||''),txt:no?'Relevé — '+no+' hors zone':'Relevé',who:r.tech_nom||r.tech,site:r.site_nom,hot:no>0});});
-  D.dem.slice(0,8).forEach(function(d){var t=new Date(d.created_at),ds=iso(t);if(!inPer(ds)&&!(d.type==='Urgence'&&d.statut!=='Traitée'))return;fl.push({t:ds+' '+pad(t.getHours())+':'+pad(t.getMinutes()),h:(ds===today?'':fdate(ds)+' ')+pad(t.getHours())+':'+pad(t.getMinutes()),txt:d.type+' — '+(d.texte||d.motif||''),who:d.tech_nom||d.tech,site:d.site_nom||'hors site',hot:d.type==='Urgence'&&d.statut!=='Traitée'});});
+  D.dem.slice(0,8).forEach(function(d){var t=new Date(d.created_at),ds=iso(t);if(!inPer(ds)&&!(d.type==='Urgence'&&d.statut!=='Traitée'))return;fl.push({t:ds+' '+pad(t.getHours())+':'+pad(t.getMinutes()),h:(ds===today?'':fdate(ds)+' ')+pad(t.getHours())+':'+pad(t.getMinutes()),txt:d.type+' — '+(d.texte||d.motif||''),who:d.tech_nom||d.tech,site:d.site_nom||'hors site',hot:d.type==='Urgence'&&d.statut!=='Traitée',canTraiter:d.statut!=='Traitée',traiter:function(){self.traiterDemande(d);}});});
   fl.sort(function(a,b){return String(b.t).localeCompare(String(a.t));});
   return{monPers:MON_PER.map(function(p){return Object.assign({label:p[1],go:function(){self.setState({monPer:p[0]});}},segS(per===p[0]));}),monPerLbl:perLbl,
     relRows:relRows,relNone:!relRows.length,relTitle:'Relevés '+perLbl+' ('+relRows.length+')',
@@ -1775,7 +1780,7 @@ Comp.prototype.vals=function(){
   var flux=[];
   D.gps.forEach(function(g){flux.push({t:D.today+' '+(g.heure||''),h:g.heure||'',txt:'Punch',who:g.emp,site:g.lieu||'—',icon:'login',bg:'transparent',fg:'var(--color-text)'});});
   relToday.forEach(function(r){var no=self.outOf(r).length;flux.push({t:D.today+' '+(r.heure||''),h:r.heure||'',txt:no?'Relevé — '+no+' valeur(s) hors zone':'Relevé enregistré',who:r.tech_nom||r.tech,site:r.site_nom,icon:no?'alert':'clipboard',bg:no?'var(--color-accent-900)':'transparent',fg:no?'#ffffff':'var(--color-text)'});});
-  D.dem.slice(0,10).forEach(function(d){var t=new Date(d.created_at),urg=d.type==='Urgence'&&d.statut!=='Traitée',tod=iso(t)===D.today;flux.push({t:iso(t)+' '+pad(t.getHours())+':'+pad(t.getMinutes()),h:(tod?'':t.getDate()+' '+MOIS[t.getMonth()].slice(0,3)+'. ')+pad(t.getHours())+':'+pad(t.getMinutes()),txt:d.type+' — '+(d.texte||d.motif||''),who:d.tech_nom||d.tech,site:d.site_nom||'hors site',hasPhoto:!!d.has_photo,openPhoto:function(){self.openDemPhoto(d.id);},icon:urg?'alert':'message',bg:urg?'var(--color-accent-900)':'transparent',fg:urg?'#ffffff':'var(--color-text)'});});
+  D.dem.slice(0,10).forEach(function(d){var t=new Date(d.created_at),urg=d.type==='Urgence'&&d.statut!=='Traitée',tod=iso(t)===D.today;flux.push({t:iso(t)+' '+pad(t.getHours())+':'+pad(t.getMinutes()),h:(tod?'':t.getDate()+' '+MOIS[t.getMonth()].slice(0,3)+'. ')+pad(t.getHours())+':'+pad(t.getMinutes()),txt:d.type+' — '+(d.texte||d.motif||''),who:d.tech_nom||d.tech,site:d.site_nom||'hors site',hasPhoto:!!d.has_photo,openPhoto:function(){self.openDemPhoto(d.id);},canTraiter:d.statut!=='Traitée',traiter:function(){self.traiterDemande(d);},icon:urg?'alert':'message',bg:urg?'var(--color-accent-900)':'transparent',fg:urg?'#ffffff':'var(--color-text)'});});
   flux.sort(function(a,b){return String(b.t).localeCompare(String(a.t));});flux=flux.slice(0,16);
   // ---- inspections
   var fil=st.inspFilter,typesArr=Object.keys(D.types);

@@ -590,7 +590,7 @@ WALL=('<sc-if value="{{ monWall }}"><div role="dialog" aria-label="Mur de contr�
   '<sc-for list="{{ wallTeam }}" as="t"><div style="display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 10px;background:rgba(255,255,255,.05)"><span style="width:12px;height:12px;border-radius:50%;background:{{ t.dot }}"></span>'
   '<div style="display:flex;flex-direction:column;min-width:0"><b style="font-size:16px">{{ t.nom }}</b><span style="font-size:14px;opacity:.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ t.lieu }} · {{ t.depuis }}</span></div><span style="font:600 18px var(--font-heading)">{{ t.h }}</span></div></sc-for></div>'
   '<div style="display:flex;flex-direction:column;gap:6px"><span style="font:600 24px var(--font-heading)">Flux terrain</span><sc-for list="{{ wallFlux }}" as="f"><div style="padding:7px 10px;background:{{ f.bg }};border-bottom:1px solid rgba(255,255,255,.1)">'
-  '<div style="display:flex;gap:8px"><b style="font-variant-numeric:tabular-nums">{{ f.h }}</b><span>{{ f.txt }}</span></div><div style="font-size:13px;opacity:.8">{{ f.who }} · {{ f.site }}</div></div></sc-for></div></div></div>'
+  '<div style="display:flex;gap:8px"><b style="font-variant-numeric:tabular-nums">{{ f.h }}</b><span>{{ f.txt }}</span></div><div style="font-size:13px;opacity:.8">{{ f.who }} · {{ f.site }}</div><sc-if value="{{ f.canTraiter }}"><button onClick="{{ f.traiter }}" style="all:unset;cursor:pointer;font-size:13px;text-decoration:underline;margin-top:2px">Marquer traitée</button></sc-if></div></sc-for></div></div></div>'
   '</div></div></sc-if>\n')
 M=M.rstrip()+'\n'+WALL
 
@@ -827,7 +827,7 @@ css.append('html.nav-repli .sa-shell{grid-template-columns:72px minmax(0,1fr)!im
 
 
 # Monitoring : lien vers la photo jointe à une demande du terrain (chargée seulement au clic)
-rep('<span style="font-size:12px">{{ f.who }} · {{ f.site }}</span>','<span style="font-size:12px">{{ f.who }} · {{ f.site }}</span><sc-if value="{{ f.hasPhoto }}"><button onClick="{{ f.openPhoto }}" style="all:unset;cursor:pointer;font-size:12px;text-decoration:underline;width:fit-content">Voir la photo jointe</button></sc-if>')
+rep('<span style="font-size:12px">{{ f.who }} · {{ f.site }}</span>','<span style="font-size:12px">{{ f.who }} · {{ f.site }}</span><sc-if value="{{ f.hasPhoto }}"><button onClick="{{ f.openPhoto }}" style="all:unset;cursor:pointer;font-size:12px;text-decoration:underline;width:fit-content">Voir la photo jointe</button></sc-if><sc-if value="{{ f.canTraiter }}"><button class="btn btn-secondary" onClick="{{ f.traiter }}" style="width:fit-content;min-height:30px;padding:0 10px;font-size:13px;margin-top:4px;color:inherit;border-color:currentColor">Marquer traitée</button></sc-if>')
 # Carte : la maquette affichait une <iframe src="SA Carte.html"> (fichier de démo jamais déployé : en production,
 # l'URL inexistante renvoie une autre page, d'où une « carte » blanche ou étrangère). On remplace l'iframe par le
 # conteneur de la vraie carte Leaflet (syncMap), dans le même panneau, à côté de la liste « En tournée ».
