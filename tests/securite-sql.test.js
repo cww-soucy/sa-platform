@@ -104,6 +104,20 @@ test('préparation : changer_mdp, admin_definir_mdp, rôle, statut et suppressio
   assert.equal(psql(`select count(*) from auth.users where email='julie@comptes.soucyaquatik.local'`).out, '0');
 });
 
+test('nouvelle table (Supabase, 30/10/2026) : sans grant, refusée même connecté ; le modèle de docs/sql/README.md la rend utilisable', { skip }, () => {
+  assert.ok(psql(`create table public.essai_sans (id text primary key); alter table public.essai_sans enable row level security;`).ok);
+  assert.ok(refuse(as('kael', `select * from essai_sans`)), 'pas de droit automatique');
+  const modele = fs.readFileSync(path.join(ROOT, 'docs/sql/README.md'), 'utf8').split('```sql')[1].split('```')[0];
+  const r = psql(modele.replace(/ma_table/g, 'essai_modele'));
+  assert.ok(r.ok, r.err);
+  assert.ok(psql(`insert into essai_modele(id) values ('a')`).ok);
+  assert.deepEqual(lignes(as('kael', `select count(*) from essai_modele`)), ['1'], 'connecté : lecture');
+  assert.ok(refuse(as('kael', `insert into essai_modele(id) values ('b')`)), 'employé : écriture refusée (supervision)');
+  assert.ok(as('chef', `insert into essai_modele(id) values ('c')`).ok, 'superviseur : écriture');
+  assert.ok(refuse(as(null, `select * from essai_modele`)), 'clé publique seule : rien');
+  assert.ok(psql(`drop table essai_sans, essai_modele`).ok);
+});
+
 test('étape 3 refusée sans la préparation', { skip }, () => {
   assert.ok(psql('create database vide', { db: 'postgres' }).ok);
   assert.ok(psql('', { db: 'vide', file: 'production.sql', cwd: path.join(__dirname, 'sql') }).ok);

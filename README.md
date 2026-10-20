@@ -31,3 +31,8 @@ pour que les tests vérifient tout avant la mise en ligne.
 1. Modifier `src/admin/…` ou `src/terrain/…` (jamais `admin.html` / `terrain.html` directement).
 2. `python3 src/build.py` puis `npm test`.
 3. Branche → PR → tests verts → fusion : Cloudflare publie.
+
+## Modifier la base (Supabase)
+Migrations à appliquer à la main, dans `docs/sql/`. **Depuis le 30/10/2026, une nouvelle table n'a aucun droit automatique** :
+RLS, `grant` explicites et politiques `to authenticated` dans la même migration — modèle dans `docs/sql/README.md`,
+vérifié par `tests/migrations-droits.test.js`.
