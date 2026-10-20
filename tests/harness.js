@@ -105,6 +105,24 @@ async function openApp(browser, base, { app, user, tables, fail, viewport, porta
   return { page, db, errors };
 }
 
+/* SA Platform (index.html) : la vraie supabase-js (node_modules) remplace le CDN ; les autres bibliothèques externes
+   (xlsx, qrcode, leaflet…) sont remplacées par un script vide. Le compte se connecte par l'écran de connexion. */
+const SBJS = path.join(ROOT, 'node_modules/@supabase/supabase-js/dist/umd/supabase.js');
+async function openPlatform(browser, base, { tables, viewport } = {}) {
+  const db = new FakeDB(tables);
+  const page = await browser.newPage({ viewport: viewport || { width: 1280, height: 860 }, serviceWorkers: 'block' });
+  const errors = [];
+  page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
+  await page.route(SB + '/**', (r) => db.handle(r));
+  // Playwright : la DERNIÈRE route déclarée l'emporte — du plus général au plus précis
+  await page.route(/^https:\/\/(?!ldqvdiaewvhnukuaxdmc)[^/]+\//, (r) => r.abort());
+  await page.route(/^https:\/\/(cdnjs\.cloudflare\.com|cdn\.jsdelivr\.net|unpkg\.com)\//, (r) => r.fulfill({ status: 200, contentType: 'text/javascript', body: '' }));
+  await page.route(/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js/, (r) => r.fulfill({ status: 200, contentType: 'text/javascript', body: fs.readFileSync(SBJS) }));
+  await page.routeWebSocket(/supabase\.co\/realtime/, () => {}); // Realtime : jamais vers le vrai serveur
+  await page.goto(base + '/index.html');
+  return { page, db, errors };
+}
+
 async function launch() { return chromium.launch(); }
 
-module.exports = { startServer, openApp, launch, FakeDB, iso, addDays, mondayOf, today, weekKey, dayIdx };
+module.exports = { startServer, openApp, openPlatform, launch, FakeDB, iso, addDays, mondayOf, today, weekKey, dayIdx };
