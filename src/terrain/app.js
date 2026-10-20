@@ -347,7 +347,8 @@ Comp.prototype.confirmSig=function(){var b=this.curBon();if(!b)return;var nom=St
 
 /* ---------- Hivernage : liste de contrôle « Hivernement » (src/hivernage/checklist.js, la même que sa-admin) → rapport (brouillon)
    que le bureau complète, imprime ou envoie au client depuis sa-admin ---------- */
-Comp.prototype.hivSites=function(){return REF.list.filter(function(s){return s.type!=='SP'&&s.type!=='MI';});};
+/* Hivernement : sites clients seulement — ni spas (SP), ni piscines intérieures (MI), ni bureau / entrepôt (sites internes) */
+Comp.prototype.hivSites=function(){return REF.list.filter(function(s){return s.type!=='SP'&&s.type!=='MI'&&!s.interne;});};
 Comp.prototype.hivCur=function(sid){var s=siteById(sid),d=this.state.hivData[sid];return window.SAHiv.norm(d||window.SAHiv.blank({site:s?s.nom:'',chef:this.me.nom,date:iso(new Date())}));};
 Comp.prototype.hivSet=function(sid,fn){var d=this.hivCur(sid);fn(d);var o={};o[sid]=d;this.setState(function(s2){return{hivData:Object.assign({},s2.hivData,o)};});this.persist();};
 Comp.prototype.sendHiv=function(){var st=this.state,sid=st.hivSel,s=sid&&siteById(sid);if(!s)return;var now=new Date(),d=this.hivCur(sid);
