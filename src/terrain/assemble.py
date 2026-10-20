@@ -104,6 +104,10 @@ MDP=('<sc-if value="{{ mdp.closed }}">'+BTN('btn-secondary','mdp.open','pen','Ch
  +BTN('btn-primary','mdp.submit','check','{{ mdp.label }}','54px;font-size:18px')+BTN('btn-secondary','mdp.cancel','left','Annuler','52px;font-size:18px')+'</div></sc-if>\n')
 if m: M=M.replace(m.group(0),MDP+'<button onClick="{{ logout }}"'+m.group(1)+'>'+m.group(2),1); print('logout lié')
 else: print('!! bouton déconnexion introuvable')
+# signature discrète du créateur, en bas de l'onglet Profil (sous « Se déconnecter »)
+i=M.find('Se déconnecter</button>',M.find('{{ logout }}'))
+if i>=0: i+=len('Se déconnecter</button>'); M=M[:i]+'<div class="sa-sig" title="Créé par Charles-William Weil (Central+)" style="font-size:11px;line-height:1.4;color:var(--color-neutral-500);text-align:center;letter-spacing:.3px;cursor:default;user-select:none;margin-top:6px">By Central+ · CW</div>'+M[i:]
+else: print('!! signature du profil')
 # blocs ajoutés : écran « Bientôt » et journée vide
 SOON='''<sc-if value="{{ isSoon }}"><div style="padding:24px 20px;display:flex;flex-direction:column;gap:16px">
 <h1 style="margin:0;font-size:38px;line-height:1">{{ soonTitle }}</h1>
@@ -333,7 +337,7 @@ button{font-family:inherit}
 <div id="lme" aria-live="polite" style="min-height:22px;font-size:15px"></div>
 <button class="btn btn-primary" type="submit" style="min-height:58px;font-size:20px">Enregistrer et continuer</button>
 <button class="btn btn-secondary" type="button" id="mdpRetour" style="min-height:48px">Retour</button>
-</form><div style="margin-top:18px;font-size:13px;color:var(--color-accent-700);text-align:center">Mot de passe oublié ? Demandez à votre superviseur.</div></div>
+</form><div style="margin-top:18px;font-size:13px;color:var(--color-accent-700);text-align:center">Mot de passe oublié ? Demandez à votre superviseur.</div><div class="sa-sig" title="Créé par Charles-William Weil (Central+)" style="font-size:11px;line-height:1.4;color:var(--color-neutral-500);text-align:center;letter-spacing:.3px;cursor:default;user-select:none;position:absolute;left:0;right:0;bottom:max(10px,env(safe-area-inset-bottom))">By Central+ · CW</div></div>
 <input id="photoInput" type="file" accept="image/*" capture="environment" style="display:none">
 <template id="tpl">'''+M+'''</template>
 <script>'''+icons+'''</script>

@@ -53,4 +53,5 @@ td.out{background:var(--color-accent-900);color:#fff;font-weight:600}
 #apercu select{font:inherit}
 svg.chart{width:100%;height:180px;display:block}
 .foot{margin-top:24px;padding-top:12px;border-top:1px solid var(--color-divider);display:flex;gap:14px;flex-wrap:wrap;font-size:14px}
-@media print{#apercu,.tabs,.noprint,.foot{display:none!important}main{max-width:none}}
+.sa-sig{max-width:none;margin:8px 0 18px;text-align:center;font-size:11px;letter-spacing:.3px;color:var(--color-neutral-500);cursor:default;user-select:none}
+@media print{#apercu,.tabs,.noprint,.foot,.sa-sig{display:none!important}main{max-width:none}}
