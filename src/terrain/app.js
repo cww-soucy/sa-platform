@@ -597,19 +597,38 @@ Comp.prototype.mount=function(host){var self=this;this._host=host;this.update();
   this.refresh();};
 
 /* ---------- Connexion (même vérification serveur que SA Platform) ---------- */
+/* Mot de passe temporaire (doit_changer_mdp) : la personne choisit son nouveau mot de passe ici même, puis la session s'ouvre.
+   Le mot de passe temporaire reste dans cette fermeture le temps du changement : jamais enregistré sur l'appareil. */
+function choisirMdp(c,tmp,ouvrir){var lf=document.getElementById('loginForm'),mf=document.getElementById('mdpForm'),err=document.getElementById('lme'),busy=false;
+  lf.style.display='none';mf.style.display='flex';err.textContent='';document.getElementById('ln').value='';document.getElementById('lc').value='';
+  try{document.getElementById('ln').focus();}catch(e){}
+  document.getElementById('mdpRetour').onclick=function(){mf.style.display='none';lf.style.display='flex';document.getElementById('lp').value='';document.getElementById('le').textContent='';tmp=null;};
+  mf.onsubmit=function(e){e.preventDefault();if(busy)return;var n=document.getElementById('ln').value,cf=document.getElementById('lc').value;
+    if(n.length<8){err.textContent='Le nouveau mot de passe doit contenir au moins 8 caractères.';return;}
+    if(n!==cf){err.textContent='La confirmation ne correspond pas.';return;}
+    if(n===tmp){err.textContent='Le nouveau mot de passe doit être différent de l’actuel.';return;}
+    busy=true;err.textContent='Enregistrement…';
+    fetch(SB+'/rest/v1/rpc/changer_mdp',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},H),body:JSON.stringify({p_id:c.id,p_ancien:tmp,p_nouveau:n})})
+      .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j};});}).then(function(x){busy=false;
+        if(!x.ok){err.textContent=(x.j&&x.j.message)||'Changement refusé par le serveur.';return;}
+        if(x.j!==true){err.textContent='Le mot de passe temporaire n’est plus valide — revenez en arrière et reconnectez-vous.';return;}
+        ouvrir(c,n);})
+      .catch(function(){busy=false;err.textContent='Réseau indisponible — réessayez.';});};}
+/* Ouvre la session (même enregistrement local qu’avant : jamais de mot de passe) */
+function ouvrirSession(c){localStorage.setItem('sa_terrain_user',JSON.stringify({id:c.id,prenom:c.prenom,nom:c.nom,role:c.role,dept:c.dept,tel:c.tel,email:c.email||''}));try{localStorage.setItem('sa_terrain_bienvenue','1');}catch(x){}location.reload();}
 function showLogin(){var el=document.getElementById('login');el.style.display='flex';
   document.getElementById('loginForm').onsubmit=function(e){e.preventDefault();var u=document.getElementById('lu').value.trim().toLowerCase(),p=document.getElementById('lp').value,err=document.getElementById('le');err.textContent='Vérification…';
     fetch(SB+'/rest/v1/rpc/verifier_connexion',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},H),body:JSON.stringify({p_id:u,p_mdp:p})}).then(function(r){return r.json();}).then(function(rows){
       if(!Array.isArray(rows)||!rows.length){err.textContent='Identifiant ou mot de passe incorrect';return;}
-      var c=rows[0];if(c.doit_changer_mdp){err.textContent='Changez d’abord votre mot de passe dans SA Platform.';return;}
-      localStorage.setItem('sa_terrain_user',JSON.stringify({id:c.id,prenom:c.prenom,nom:c.nom,role:c.role,dept:c.dept,tel:c.tel,email:c.email||''}));try{localStorage.setItem('sa_terrain_bienvenue','1');}catch(x){}location.reload();
+      var c=rows[0];if(c.doit_changer_mdp){err.textContent='';choisirMdp(c,p,ouvrirSession);return;}
+      ouvrirSession(c,p);
     }).catch(function(){err.textContent='Réseau indisponible — réessayez.';});};}
 window.addEventListener('DOMContentLoaded',function(){
   /* Garde une copie de la page sur le téléphone : elle se rouvre même sans réseau (voir sw.js) */
   try{if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js',{updateViaCache:'none'}).catch(function(){});}catch(e){}
   var user=jget('sa_terrain_user',null);
   if(!user){showLogin();return;}
-  document.getElementById('login').style.display='none';
+  document.getElementById('login').style.display='none';var mf=document.getElementById('mdpForm');if(mf)mf.parentNode.removeChild(mf);/* formulaire du mot de passe temporaire : inutile une fois connecté */
   var c=new Comp(user);window.__terrain=c;c.mount(document.getElementById('app'));
   /* Code QR d'un site → sa fiche directement (le lien est retiré de l'adresse pour ne pas la rouvrir à chaque visite) */
   var qs=(new URLSearchParams(location.search).get('site')||'').trim();
