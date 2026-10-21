@@ -177,7 +177,21 @@ Comp.prototype.curJob=function(){var id=this.state.openJob,j=id&&this.jobs.filte
   return null;};
 Comp.prototype.dec=function(step){return(String(step).split('.')[1]||'').length;};
 Comp.prototype.fmt=function(v,step){return Number(v).toFixed(this.dec(step)).replace('.',',');};
-Comp.prototype.setVal=function(sid,f,v){var self=this;v=Math.min(f.max,Math.max(f.min,Math.round(v/f.step)*f.step));v=+v.toFixed(this.dec(f.step));
+/* Pas de saisie calibré : un pas trop grossier pour la zone du contrat (ex. pH 7,3–7,6 au pas de 0,5 ne donnait que 7,2 ou 7,8)
+   est ramené à une valeur ronde qui laisse au moins 3 crans dans la zone. */
+var PAS_RONDS=[0.01,0.02,0.05,0.1,0.2,0.5,1,2,5,10,20,50,100];
+Comp.prototype.stepOf=function(f){var s=+f.step||1;if(f.kind!=='range'||!(f.hi>f.lo))return s;var m=Math.min(s,(f.hi-f.lo)/3);return PAS_RONDS.filter(function(x){return x<=m+1e-9;}).pop()||s;};
+/* Température : affichage et saisie en °C ou °F au choix du technicien (gardé sur le téléphone) ; toujours enregistrée en °C */
+Comp.prototype.isTemp=function(f){return f.key==='temp'||/°\s*C/i.test(f.unit||'');};
+Comp.prototype.tempF=function(v){var K='sa_terrain_temp_f';if(v===undefined){try{return localStorage.getItem(K)==='1';}catch(e){return false;}}try{localStorage.setItem(K,v?'1':'0');}catch(e){}this.update();};
+/* Saisie au clavier : n'importe quelle valeur (même hors de l'échelle du curseur), virgule ou point, 2 décimales */
+Comp.prototype.setValRaw=function(sid,f,v){v=Math.round(v*100)/100;this.setState(function(s){var a={},b={};a[sid]=Object.assign({},s.vals[sid]||{});a[sid][f.key]=v;b[sid]=Object.assign({},s.touched[sid]||{});b[sid][f.key]=1;
+    return{vals:Object.assign({},s.vals,a),touched:Object.assign({},s.touched,b),numEdit:null};});};
+/* Bouton − / + maintenu : répète après 0,4 s, de plus en plus vite */
+Comp.prototype.hold=function(fn){var self=this;this.unhold();var n=0;this._holdT=setTimeout(function tick(){fn();n++;self._holdT=setTimeout(tick,n>8?40:90);},400);
+  var stop=function(){self.unhold();window.removeEventListener('pointerup',stop);window.removeEventListener('pointercancel',stop);};window.addEventListener('pointerup',stop);window.addEventListener('pointercancel',stop);};
+Comp.prototype.unhold=function(){clearTimeout(this._holdT);this._holdT=null;};
+Comp.prototype.setVal=function(sid,f,v,step){var self=this;step=step||this.stepOf(f);v=Math.min(f.max,Math.max(f.min,Math.round(v/step)*step));v=+v.toFixed(Math.max(this.dec(step),this.dec(f.step)));
   this.setState(function(s){var a={},b={};a[sid]=Object.assign({},s.vals[sid]||{});a[sid][f.key]=v;b[sid]=Object.assign({},s.touched[sid]||{});b[sid][f.key]=1;
     return{vals:Object.assign({},s.vals,a),touched:Object.assign({},s.touched,b)};});};
 Comp.prototype.open=function(id){this.setState({openJob:id});this.go('fiche');var j=this.jobs.filter(function(x){return x.id===id;})[0];if(j)this.loadLast(j.site);};
@@ -399,16 +413,33 @@ Comp.prototype.vals=function(){
   var cur={},fields=[],checks=[],prods=[],ph=null;
   if(cj){var s=siteById(cj.site)||pseudoSite(cj.site,''),bl=s.interne?[]:(s.bassins||[]),bsel=bl.length?(bl.filter(function(x){return x.id===(st.bassinSel||{})[s.id];})[0]||bl[0]):null,T=TY(bsel?bsel.code:s.type),sid=bsel&&bl.length>1?s.id+'#'+bsel.id:s.id;
     if(sid!==s.id&&self.last[sid]===undefined)self.loadLast(sid);var vals=st.vals[sid]||{},tch=st.touched[sid]||{},lastRow=self.last[sid];
-    fields=T.fields.map(function(f){var lv=lastRow&&lastRow.vals&&lastRow.vals[f.key],hasLast=lv!=null;var base=hasLast?lv:(f.lo+f.hi)/2;base=Math.min(f.max,Math.max(f.min,+(Math.round(base/f.step)*f.step).toFixed(self.dec(f.step))));
-      var v=vals[f.key]!=null?vals[f.key]:base,touched=!!tch[f.key];
+    fields=T.fields.map(function(f){var stp=self.stepOf(f),lv=lastRow&&lastRow.vals&&lastRow.vals[f.key],hasLast=lv!=null;var base=hasLast?lv:(f.lo+f.hi)/2;base=Math.min(f.max,Math.max(f.min,+(Math.round(base/stp)*stp).toFixed(self.dec(stp))));
+      var v=vals[f.key]!=null?vals[f.key]:base,touched=!!tch[f.key],cur_=function(){var x=(self.state.vals[sid]||{})[f.key];return x!=null?x:base;};
       var pc=function(x){return Math.max(0,Math.min(100,(x-f.min)/(f.max-f.min)*100));};
-      var out=v<f.lo?'bas':v>f.hi?'haut':null,zone=f.lo===f.hi?self.fmt(f.lo,f.step):self.fmt(f.lo,f.step)+' – '+self.fmt(f.hi,f.step);
-      return{key:f.key,label:f.label,unit:f.unit,icon:f.kind==='count'?'list':f.icon,isRange:f.kind==='range',isCount:f.kind==='count',val:self.fmt(v,f.step),
-        pct:pc(v),loPct:pc(f.lo),hiPct:pc(f.hi),bandW:pc(f.hi)-pc(f.lo),minTxt:self.fmt(f.min,f.step),maxTxt:self.fmt(f.max,f.step),loTxt:self.fmt(f.lo,f.step),hiTxt:self.fmt(f.hi,f.step),zoneTxt:zone,
+      // affichage : °F au choix pour la température (1 °F par cran), sinon l'unité du contrat
+      var isT=self.isTemp(f),inF=isT&&self.tempF(),dv=function(x){return inF?x*9/5+32:x;},dStep=inF?1:stp,unit=inF?'°F':f.unit,F_=function(x){return self.fmt(dv(x),dStep);};
+      // valeur saisie au clavier : jusqu'à 2 décimales, sans l'arrondir au pas du curseur
+      var V_=function(x){if(inF)return F_(x);var c=Math.round(dv(x)*100),d=Math.max(self.dec(dStep),c%10?2:(c%100?1:0));return(c/100).toFixed(Math.min(2,d)).replace('.',',');};
+      var bump=function(sgn){var x=cur_();if(inF)self.setValRaw(sid,f,Math.min(f.max,Math.max(f.min,((Math.round(dv(x))+sgn)-32)*5/9)));else self.setVal(sid,f,x+sgn*stp);};
+      var out=v<f.lo?'bas':v>f.hi?'haut':null,zone=f.lo===f.hi?F_(f.lo):F_(f.lo)+' – '+F_(f.hi);
+      var editing=st.numEdit===sid+'|'+f.key;
+      return{key:f.key,label:f.label,unit:unit,icon:f.kind==='count'?'list':f.icon,isRange:f.kind==='range',isCount:f.kind==='count',val:V_(v),
+        pct:pc(v),loPct:pc(f.lo),hiPct:pc(f.hi),bandW:pc(f.hi)-pc(f.lo),minTxt:F_(f.min),maxTxt:F_(f.max),loTxt:F_(f.lo),hiTxt:F_(f.hi),zoneTxt:zone,
         pending:!touched,ok:touched&&!out,bad:touched&&!!out,out:touched&&!!out,badTxt:(out==='bas'?'Bas':'Élevé')+' · viser '+zone,valColor:touched?'var(--color-text)':'var(--color-neutral-500)',
-        lastTxt:hasLast?self.fmt(lv,f.step)+(f.unit?' '+f.unit:'')+' · '+lastRow.date:'aucun relevé précédent',
-        minus:function(){self.setVal(sid,f,v-f.step);},plus:function(){self.setVal(sid,f,v+f.step);},
-        onRuler:function(e){if(e.type==='pointermove'&&!e.buttons)return;var r=e.currentTarget.getBoundingClientRect();var p=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));self.setVal(sid,f,f.min+p*(f.max-f.min));}};});
+        lastTxt:hasLast?V_(lv)+(unit?' '+unit:'')+' · '+lastRow.date:'aucun relevé précédent',
+        minus:function(){bump(-1);},plus:function(){bump(1);},minusHold:function(){self.hold(function(){bump(-1);});},plusHold:function(){self.hold(function(){bump(1);});},
+        // curseur : le doigt reste « attrapé » même s'il sort de la règle ; un seul rendu par image
+        onRuler:function(e){if(e.type==='pointermove'&&!e.buttons)return;var el=e.currentTarget;if(e.type==='pointerdown'){try{el.setPointerCapture(e.pointerId);}catch(x){}}
+          var r=el.getBoundingClientRect(),p=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));self._ruler={sid:sid,f:f,v:f.min+p*(f.max-f.min),inF:inF};
+          if(!self._rulerRaf)self._rulerRaf=requestAnimationFrame(function(){var q=self._ruler;self._rulerRaf=null;if(!q)return;
+            if(q.inF)self.setValRaw(q.sid,q.f,Math.min(q.f.max,Math.max(q.f.min,(Math.round(q.v*9/5+32)-32)*5/9)));else self.setVal(q.sid,q.f,q.v);});},
+        // saisie au clavier
+        editing:editing,notEditing:!editing,editVal:V_(v),editAria:'Saisir '+f.label+' au clavier',
+        edit:function(){self.setState({numEdit:sid+'|'+f.key});setTimeout(function(){var el=document.querySelector('input[data-num="'+f.key+'"]');if(el){el.focus();el.select();}},0);},
+        onNumKey:function(e){if(e.key==='Enter'){e.preventDefault();e.target.blur();}else if(e.key==='Escape'){self.setState({numEdit:null});}},
+        onNumDone:function(e){if(self.state.numEdit!==sid+'|'+f.key)return;var t=String(e.target.value||'').trim().replace(',','.').replace(/[^\d.\-]/g,'');var n=parseFloat(t);
+          if(t===''||!isFinite(n)){self.setState({numEdit:null});return;}if(inF)n=(n-32)*5/9;self.setValRaw(sid,f,n);},
+        isTemp:isT,units:isT?[['c','°C'],['f','°F']].map(function(u){var on=(u[0]==='f')===inF;return{label:u[1],on:on,bg:on?'var(--color-text)':'transparent',fg:on?'var(--color-bg)':'var(--color-text)',go:function(){self.tempF(u[0]==='f');}};}):[]};});
     var ck=st.checks[sid]||{};
     checks=T.checks.map(function(label,i){return{label:label,on:!!ck[i],box:ck[i]?'var(--color-text)':'transparent',toggle:function(){self.setState(function(s2){var o={};o[sid]=Object.assign({},s2.checks[sid]||{});o[sid][i]=!ck[i];return{checks:Object.assign({},s2.checks,o)};});}};});
     var pq=st.prods[sid]||{};
@@ -567,6 +598,9 @@ Comp.prototype.vals=function(){
     takePhoto:function(){if(cj)self.pickPhoto(cur.sid);},
     photoTitle:ph?'Photo prise à '+ph:'Prendre la photo',photoSub:ph?'Toucher pour reprendre':'Requise : '+(cur.photoReq||''),
     photoBg:ph?'repeating-linear-gradient(135deg,var(--color-accent-200) 0 1px,transparent 1px 8px)':'transparent',
+    /* Refaire un test au même site sans dépuncher : la fiche validée est gardée (déjà envoyée), une nouvelle fiche vierge s'ouvre */
+    nouvelleFiche:function(){if(!cj)return;var k=cur.sid,sk=cur._site.id;self.setState(function(s2){var o={};['vals','touched','checks','prods','photo','photoData','notes','pts','acts','step','validated'].forEach(function(n){var x=Object.assign({},s2[n]||{});delete x[k];if(n==='validated')delete x[sk];o[n]=x;});return o;});
+      delete self.last[k];self.loadLast(k);self.flash('Nouvelle fiche — la précédente est gardée et envoyée au bureau');},
     validate:function(){if(!cj)return;var s=cur._site,T=cur._T,k=cur.sid,vv=st.vals[k]||{},tt=st.touched[k]||{},vout={},ch={},pr={};
       if(s.interne){self.flash('Bureau / entrepôt : aucun relevé à faire ici');return;}
       var I=window.SAInsp,ps=cur._ps,PTS=cur._pts,nPts=Object.keys(ps).filter(function(id){return ps[id]&&ps[id].etat;}).length;
@@ -577,7 +611,7 @@ Comp.prototype.vals=function(){
       Object.keys(tt).forEach(function(k){if(vv[k]!=null)vout[k]=vv[k];});
       PTS.forEach(function(p){ch[p.libelle]=!!(ps[p.id]&&ps[p.id].etat==='ok');});T.produits.forEach(function(p,i){var q=(st.prods[k]||{})[i]||0;if(q>0)pr[p[0]]=q;});
       var bs=s.bassins||[],b=bs.length>1?bs.filter(function(x){return k===s.id+'#'+x.id;})[0]:(bs[0]||null);
-      var now=new Date(),rec={_sk:k,id:self.user.id+'-'+self.today+'-'+s.id+(bs.length>1&&b?'-'+b.id:''),site_id:s.id,site_nom:s.nom,tech:self.user.id,tech_nom:self.me.nom,date:self.today,heure:hhmm(now),type_code:b?b.code:s.type,bassin:b?b.nom:null,
+      var now=new Date(),rec={_sk:k,id:self.user.id+'-'+self.today+'-'+s.id+(bs.length>1&&b?'-'+b.id:'')+'-'+pad(now.getHours())+pad(now.getMinutes())+pad(now.getSeconds())+('00'+now.getMilliseconds()).slice(-3),site_id:s.id,site_nom:s.nom,tech:self.user.id,tech_nom:self.me.nom,date:self.today,heure:hhmm(now),type_code:b?b.code:s.type,bassin:b?b.nom:null,
         vals:vout,touched:tt,checks:ch,prods:pr,note:st.notes[k]||null,photo:st.photoData[k]||null,hors_zone:cur.nOut};
       /* Visite par système : états des points, mesures prises, résumé ; bon de travail urgent créé pour les points cochés */
       var pout={},aout={},wos=[];PTS.forEach(function(p){var x=ps[p.id];if(!x||!x.etat)return;var o={etat:x.etat};if(x.note)o.note=x.note;if(x.valeur!=null&&x.valeur!=='')o.valeur=x.valeur;if(x.photos&&x.photos.length)o.photos=x.photos;

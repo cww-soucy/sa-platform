@@ -1,7 +1,7 @@
 /* Mini-rendu maison (vanilla) : <sc-if>, <sc-for>, {{ chemin }}, onClick, ref — sans framework. */
 (function(){
 var NS='http://www.w3.org/1999/xhtml',RE=/\{\{\s*([\w.$]+)\s*\}\}/g,WH=/^\s*\{\{\s*([\w.$]+)\s*\}\}\s*$/;
-var EVS=['onclick','onchange','oninput','onpointerdown','onpointermove','onpointerup'];
+var EVS=['onclick','onchange','oninput','onkeydown','onpointerdown','onpointermove','onpointerup','onpointercancel'];
 function look(s,p){var v=s;p.split('.').forEach(function(k){v=v==null?undefined:v[k];});return v;}
 function itp(s,sc){return s.replace(RE,function(m,p){var v=look(sc,p);return(v==null||v===false)?'':String(v);});}
 function kids(n,sc){var o=[];n.childNodes.forEach(function(c){mk(c,sc).forEach(function(x){o.push(x);});});return o;}
