@@ -29,6 +29,18 @@ import base64
 LOGO='data:image/png;base64,'+base64.b64encode(open(os.path.join(SRC,'design','logo-soucy-aquatik.png'),'rb').read()).decode()
 rep('<div style="width:46px;height:46px;background:#004987;color:#ffffff;display:flex;align-items:flex-end;padding:5px;box-sizing:border-box;font:600 11px/0.95 var(--font-heading);letter-spacing:0.01em">Soucy<br>Aquatik</div>','<img src="'+LOGO+'" alt="Soucy Aquatik" style="width:46px;height:46px;flex:none;display:block">',1)
 # Fiche : choix du bassin quand le site en a plusieurs (bassins déclarés dans la fiche du site)
+# Relevés : saisie au clavier (toucher la valeur), ± maintenus, choix °C / °F pour la température
+rep('<span style="font:600 52px/0.9 var(--font-heading);letter-spacing:-0.02em">{{ f.val }}</span><span style="font-size:16px">{{ f.unit }}</span>',
+  '<sc-if value="{{ f.notEditing }}"><button onClick="{{ f.edit }}" aria-label="{{ f.editAria }}" title="Toucher pour saisir au clavier" style="all:unset;cursor:text;display:flex;align-items:baseline;gap:6px;border-bottom:2px dotted var(--color-divider);padding-bottom:2px">'
+  '<span style="font:600 52px/0.9 var(--font-heading);letter-spacing:-0.02em">{{ f.val }}</span><span style="font-size:16px">{{ f.unit }}</span></button></sc-if>'
+  '<sc-if value="{{ f.editing }}"><input data-num="{{ f.key }}" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" aria-label="{{ f.editAria }}" value="{{ f.editVal }}" onChange="{{ f.onNumDone }}" onKeyDown="{{ f.onNumKey }}" '
+  'style="font:600 44px/1 var(--font-heading);width:100%;max-width:200px;box-sizing:border-box;padding:4px 8px;border:2px solid var(--color-text);background:var(--color-bg);color:var(--color-text)"><span style="font-size:16px">{{ f.unit }}</span></sc-if>',1)
+rep('<button onClick="{{ f.minus }}" aria-label="Diminuer"','<button onClick="{{ f.minus }}" onPointerDown="{{ f.minusHold }}" aria-label="Diminuer"',1)
+rep('<button onClick="{{ f.plus }}" aria-label="Augmenter"','<button onClick="{{ f.plus }}" onPointerDown="{{ f.plusHold }}" aria-label="Augmenter"',1)
+rep('<span style="font-size:17px;font-weight:500;flex:1;min-width:0">{{ f.label }}</span>',
+  '<span style="font-size:17px;font-weight:500;flex:1;min-width:0">{{ f.label }}</span><sc-if value="{{ f.isTemp }}"><span role="group" aria-label="Unité de température" style="display:flex;border:1px solid var(--color-divider)">'
+  '<sc-for list="{{ f.units }}" as="u"><button onClick="{{ u.go }}" aria-pressed="{{ u.on }}" style="all:unset;cursor:pointer;padding:4px 9px;font-size:14px;font-weight:600;background:{{ u.bg }};color:{{ u.fg }}">{{ u.label }}</button></sc-for></span></sc-if>',1)
+rep('style="position:relative;height:44px;touch-action:none;cursor:pointer;','style="position:relative;height:52px;touch-action:none;cursor:pointer;',1)
 rep('{{ cur.typeLabel }} · {{ cur.bassin }}</div>','{{ cur.typeLabel }} · {{ cur.bassin }}</div><sc-if value="{{ cur.hasBassins }}"><div role="group" aria-label="Bassin" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"><sc-for list="{{ cur.bassinChips }}" as="b"><button onClick="{{ b.go }}" style="all:unset;cursor:pointer;padding:8px 14px;border:1.5px solid var(--color-text);font:600 16px var(--font-heading);background:{{ b.bg }};color:{{ b.fg }}">{{ b.label }}</button></sc-for></div></sc-if>',1)
 rep('Punché depuis {{ punchAt }}','{{ punchLbl }}',1)
 rep('Punch sur ce site','Ouvrir la fiche')

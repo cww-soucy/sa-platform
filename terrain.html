@@ -455,21 +455,21 @@ button{font-family:inherit}
               <div style="padding:14px 20px 16px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:10px">
                 <div style="display:flex;align-items:center;gap:8px">
                   <sa-i n="{{ f.icon }}" s="20"></sa-i>
-                  <span style="font-size:17px;font-weight:500;flex:1;min-width:0">{{ f.label }}</span>
+                  <span style="font-size:17px;font-weight:500;flex:1;min-width:0">{{ f.label }}</span><sc-if value="{{ f.isTemp }}"><span role="group" aria-label="Unité de température" style="display:flex;border:1px solid var(--color-divider)"><sc-for list="{{ f.units }}" as="u"><button onClick="{{ u.go }}" aria-pressed="{{ u.on }}" style="all:unset;cursor:pointer;padding:4px 9px;font-size:14px;font-weight:600;background:{{ u.bg }};color:{{ u.fg }}">{{ u.label }}</button></sc-for></span></sc-if>
                   <sc-if value="{{ f.pending }}"><span style="font-size:13px;padding:4px 8px;border:1px dashed var(--color-divider);white-space:nowrap">À saisir</span></sc-if>
                   <sc-if value="{{ f.ok }}"><span style="font-size:13px;padding:4px 8px;border:1px solid var(--color-accent);color:var(--color-accent-700);display:flex;align-items:center;gap:4px;white-space:nowrap"><sa-i n="check" s="14" w="2"></sa-i>Dans la zone</span></sc-if>
                   <sc-if value="{{ f.bad }}"><span style="font-size:13px;padding:4px 8px;background:var(--color-accent-900);color:var(--color-bg);display:flex;align-items:center;gap:4px;font-weight:500"><sa-i n="alert" s="14" w="2"></sa-i>{{ f.badTxt }}</span></sc-if>
                 </div>
                 <div style="display:flex;align-items:center;gap:10px">
                   <div style="flex:1;min-width:0;display:flex;align-items:baseline;gap:6px;color:{{ f.valColor }}">
-                    <span style="font:600 52px/0.9 var(--font-heading);letter-spacing:-0.02em">{{ f.val }}</span><span style="font-size:16px">{{ f.unit }}</span>
+                    <sc-if value="{{ f.notEditing }}"><button onClick="{{ f.edit }}" aria-label="{{ f.editAria }}" title="Toucher pour saisir au clavier" style="all:unset;cursor:text;display:flex;align-items:baseline;gap:6px;border-bottom:2px dotted var(--color-divider);padding-bottom:2px"><span style="font:600 52px/0.9 var(--font-heading);letter-spacing:-0.02em">{{ f.val }}</span><span style="font-size:16px">{{ f.unit }}</span></button></sc-if><sc-if value="{{ f.editing }}"><input data-num="{{ f.key }}" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" aria-label="{{ f.editAria }}" value="{{ f.editVal }}" onChange="{{ f.onNumDone }}" onKeyDown="{{ f.onNumKey }}" style="font:600 44px/1 var(--font-heading);width:100%;max-width:200px;box-sizing:border-box;padding:4px 8px;border:2px solid var(--color-text);background:var(--color-bg);color:var(--color-text)"><span style="font-size:16px">{{ f.unit }}</span></sc-if>
                   </div>
-                  <button onClick="{{ f.minus }}" aria-label="Diminuer" style="all:unset;cursor:pointer;width:58px;height:58px;display:flex;align-items:center;justify-content:center;border:1px solid var(--color-divider)" data-ac="6"><sa-i n="minus" s="28" w="2"></sa-i></button>
-                  <button onClick="{{ f.plus }}" aria-label="Augmenter" style="all:unset;cursor:pointer;width:58px;height:58px;display:flex;align-items:center;justify-content:center;border:1px solid var(--color-divider)" data-ac="7"><sa-i n="plus" s="28" w="2"></sa-i></button>
+                  <button onClick="{{ f.minus }}" onPointerDown="{{ f.minusHold }}" aria-label="Diminuer" style="all:unset;cursor:pointer;width:58px;height:58px;display:flex;align-items:center;justify-content:center;border:1px solid var(--color-divider)" data-ac="6"><sa-i n="minus" s="28" w="2"></sa-i></button>
+                  <button onClick="{{ f.plus }}" onPointerDown="{{ f.plusHold }}" aria-label="Augmenter" style="all:unset;cursor:pointer;width:58px;height:58px;display:flex;align-items:center;justify-content:center;border:1px solid var(--color-divider)" data-ac="7"><sa-i n="plus" s="28" w="2"></sa-i></button>
                 </div>
                 <sc-if value="{{ f.isRange }}">
                   <div style="display:flex;flex-direction:column;gap:4px">
-                    <div onPointerDown="{{ f.onRuler }}" onPointerMove="{{ f.onRuler }}" style="position:relative;height:44px;touch-action:none;cursor:pointer;border-left:1px solid var(--color-text);border-right:1px solid var(--color-text)">
+                    <div onPointerDown="{{ f.onRuler }}" onPointerMove="{{ f.onRuler }}" style="position:relative;height:52px;touch-action:none;cursor:pointer;border-left:1px solid var(--color-text);border-right:1px solid var(--color-text)">
                       <div style="position:absolute;left:0;right:0;bottom:0;height:10px;background-image:repeating-linear-gradient(90deg,var(--color-text) 0 1px,transparent 1px 10%);opacity:0.6"></div>
                       <div style="position:absolute;left:0;right:0;bottom:0;height:1px;background:var(--color-text)"></div>
                       <div style="position:absolute;top:6px;bottom:10px;left:{{ f.loPct }}%;width:{{ f.bandW }}%;background:repeating-linear-gradient(135deg,var(--color-accent-300) 0 1.5px,transparent 1.5px 6px),var(--color-accent-100);border-left:1.5px solid var(--color-accent-700);border-right:1.5px solid var(--color-accent-700);box-sizing:border-box"></div>
@@ -1161,7 +1161,7 @@ button{font-family:inherit}
 </script><script>/* Mini-rendu maison (vanilla) : <sc-if>, <sc-for>, {{ chemin }}, onClick, ref — sans framework. */
 (function(){
 var NS='http://www.w3.org/1999/xhtml',RE=/\{\{\s*([\w.$]+)\s*\}\}/g,WH=/^\s*\{\{\s*([\w.$]+)\s*\}\}\s*$/;
-var EVS=['onclick','onchange','oninput','onpointerdown','onpointermove','onpointerup'];
+var EVS=['onclick','onchange','oninput','onkeydown','onpointerdown','onpointermove','onpointerup','onpointercancel'];
 function look(s,p){var v=s;p.split('.').forEach(function(k){v=v==null?undefined:v[k];});return v;}
 function itp(s,sc){return s.replace(RE,function(m,p){var v=look(sc,p);return(v==null||v===false)?'':String(v);});}
 function kids(n,sc){var o=[];n.childNodes.forEach(function(c){mk(c,sc).forEach(function(x){o.push(x);});});return o;}
@@ -1395,7 +1395,21 @@ Comp.prototype.curJob=function(){var id=this.state.openJob,j=id&&this.jobs.filte
   return null;};
 Comp.prototype.dec=function(step){return(String(step).split('.')[1]||'').length;};
 Comp.prototype.fmt=function(v,step){return Number(v).toFixed(this.dec(step)).replace('.',',');};
-Comp.prototype.setVal=function(sid,f,v){var self=this;v=Math.min(f.max,Math.max(f.min,Math.round(v/f.step)*f.step));v=+v.toFixed(this.dec(f.step));
+/* Pas de saisie calibré : un pas trop grossier pour la zone du contrat (ex. pH 7,3–7,6 au pas de 0,5 ne donnait que 7,2 ou 7,8)
+   est ramené à une valeur ronde qui laisse au moins 3 crans dans la zone. */
+var PAS_RONDS=[0.01,0.02,0.05,0.1,0.2,0.5,1,2,5,10,20,50,100];
+Comp.prototype.stepOf=function(f){var s=+f.step||1;if(f.kind!=='range'||!(f.hi>f.lo))return s;var m=Math.min(s,(f.hi-f.lo)/3);return PAS_RONDS.filter(function(x){return x<=m+1e-9;}).pop()||s;};
+/* Température : affichage et saisie en °C ou °F au choix du technicien (gardé sur le téléphone) ; toujours enregistrée en °C */
+Comp.prototype.isTemp=function(f){return f.key==='temp'||/°\s*C/i.test(f.unit||'');};
+Comp.prototype.tempF=function(v){var K='sa_terrain_temp_f';if(v===undefined){try{return localStorage.getItem(K)==='1';}catch(e){return false;}}try{localStorage.setItem(K,v?'1':'0');}catch(e){}this.update();};
+/* Saisie au clavier : n'importe quelle valeur (même hors de l'échelle du curseur), virgule ou point, 2 décimales */
+Comp.prototype.setValRaw=function(sid,f,v){v=Math.round(v*100)/100;this.setState(function(s){var a={},b={};a[sid]=Object.assign({},s.vals[sid]||{});a[sid][f.key]=v;b[sid]=Object.assign({},s.touched[sid]||{});b[sid][f.key]=1;
+    return{vals:Object.assign({},s.vals,a),touched:Object.assign({},s.touched,b),numEdit:null};});};
+/* Bouton − / + maintenu : répète après 0,4 s, de plus en plus vite */
+Comp.prototype.hold=function(fn){var self=this;this.unhold();var n=0;this._holdT=setTimeout(function tick(){fn();n++;self._holdT=setTimeout(tick,n>8?40:90);},400);
+  var stop=function(){self.unhold();window.removeEventListener('pointerup',stop);window.removeEventListener('pointercancel',stop);};window.addEventListener('pointerup',stop);window.addEventListener('pointercancel',stop);};
+Comp.prototype.unhold=function(){clearTimeout(this._holdT);this._holdT=null;};
+Comp.prototype.setVal=function(sid,f,v,step){var self=this;step=step||this.stepOf(f);v=Math.min(f.max,Math.max(f.min,Math.round(v/step)*step));v=+v.toFixed(Math.max(this.dec(step),this.dec(f.step)));
   this.setState(function(s){var a={},b={};a[sid]=Object.assign({},s.vals[sid]||{});a[sid][f.key]=v;b[sid]=Object.assign({},s.touched[sid]||{});b[sid][f.key]=1;
     return{vals:Object.assign({},s.vals,a),touched:Object.assign({},s.touched,b)};});};
 Comp.prototype.open=function(id){this.setState({openJob:id});this.go('fiche');var j=this.jobs.filter(function(x){return x.id===id;})[0];if(j)this.loadLast(j.site);};
@@ -1617,16 +1631,33 @@ Comp.prototype.vals=function(){
   var cur={},fields=[],checks=[],prods=[],ph=null;
   if(cj){var s=siteById(cj.site)||pseudoSite(cj.site,''),bl=s.interne?[]:(s.bassins||[]),bsel=bl.length?(bl.filter(function(x){return x.id===(st.bassinSel||{})[s.id];})[0]||bl[0]):null,T=TY(bsel?bsel.code:s.type),sid=bsel&&bl.length>1?s.id+'#'+bsel.id:s.id;
     if(sid!==s.id&&self.last[sid]===undefined)self.loadLast(sid);var vals=st.vals[sid]||{},tch=st.touched[sid]||{},lastRow=self.last[sid];
-    fields=T.fields.map(function(f){var lv=lastRow&&lastRow.vals&&lastRow.vals[f.key],hasLast=lv!=null;var base=hasLast?lv:(f.lo+f.hi)/2;base=Math.min(f.max,Math.max(f.min,+(Math.round(base/f.step)*f.step).toFixed(self.dec(f.step))));
-      var v=vals[f.key]!=null?vals[f.key]:base,touched=!!tch[f.key];
+    fields=T.fields.map(function(f){var stp=self.stepOf(f),lv=lastRow&&lastRow.vals&&lastRow.vals[f.key],hasLast=lv!=null;var base=hasLast?lv:(f.lo+f.hi)/2;base=Math.min(f.max,Math.max(f.min,+(Math.round(base/stp)*stp).toFixed(self.dec(stp))));
+      var v=vals[f.key]!=null?vals[f.key]:base,touched=!!tch[f.key],cur_=function(){var x=(self.state.vals[sid]||{})[f.key];return x!=null?x:base;};
       var pc=function(x){return Math.max(0,Math.min(100,(x-f.min)/(f.max-f.min)*100));};
-      var out=v<f.lo?'bas':v>f.hi?'haut':null,zone=f.lo===f.hi?self.fmt(f.lo,f.step):self.fmt(f.lo,f.step)+' – '+self.fmt(f.hi,f.step);
-      return{key:f.key,label:f.label,unit:f.unit,icon:f.kind==='count'?'list':f.icon,isRange:f.kind==='range',isCount:f.kind==='count',val:self.fmt(v,f.step),
-        pct:pc(v),loPct:pc(f.lo),hiPct:pc(f.hi),bandW:pc(f.hi)-pc(f.lo),minTxt:self.fmt(f.min,f.step),maxTxt:self.fmt(f.max,f.step),loTxt:self.fmt(f.lo,f.step),hiTxt:self.fmt(f.hi,f.step),zoneTxt:zone,
+      // affichage : °F au choix pour la température (1 °F par cran), sinon l'unité du contrat
+      var isT=self.isTemp(f),inF=isT&&self.tempF(),dv=function(x){return inF?x*9/5+32:x;},dStep=inF?1:stp,unit=inF?'°F':f.unit,F_=function(x){return self.fmt(dv(x),dStep);};
+      // valeur saisie au clavier : jusqu'à 2 décimales, sans l'arrondir au pas du curseur
+      var V_=function(x){if(inF)return F_(x);var c=Math.round(dv(x)*100),d=Math.max(self.dec(dStep),c%10?2:(c%100?1:0));return(c/100).toFixed(Math.min(2,d)).replace('.',',');};
+      var bump=function(sgn){var x=cur_();if(inF)self.setValRaw(sid,f,Math.min(f.max,Math.max(f.min,((Math.round(dv(x))+sgn)-32)*5/9)));else self.setVal(sid,f,x+sgn*stp);};
+      var out=v<f.lo?'bas':v>f.hi?'haut':null,zone=f.lo===f.hi?F_(f.lo):F_(f.lo)+' – '+F_(f.hi);
+      var editing=st.numEdit===sid+'|'+f.key;
+      return{key:f.key,label:f.label,unit:unit,icon:f.kind==='count'?'list':f.icon,isRange:f.kind==='range',isCount:f.kind==='count',val:V_(v),
+        pct:pc(v),loPct:pc(f.lo),hiPct:pc(f.hi),bandW:pc(f.hi)-pc(f.lo),minTxt:F_(f.min),maxTxt:F_(f.max),loTxt:F_(f.lo),hiTxt:F_(f.hi),zoneTxt:zone,
         pending:!touched,ok:touched&&!out,bad:touched&&!!out,out:touched&&!!out,badTxt:(out==='bas'?'Bas':'Élevé')+' · viser '+zone,valColor:touched?'var(--color-text)':'var(--color-neutral-500)',
-        lastTxt:hasLast?self.fmt(lv,f.step)+(f.unit?' '+f.unit:'')+' · '+lastRow.date:'aucun relevé précédent',
-        minus:function(){self.setVal(sid,f,v-f.step);},plus:function(){self.setVal(sid,f,v+f.step);},
-        onRuler:function(e){if(e.type==='pointermove'&&!e.buttons)return;var r=e.currentTarget.getBoundingClientRect();var p=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));self.setVal(sid,f,f.min+p*(f.max-f.min));}};});
+        lastTxt:hasLast?V_(lv)+(unit?' '+unit:'')+' · '+lastRow.date:'aucun relevé précédent',
+        minus:function(){bump(-1);},plus:function(){bump(1);},minusHold:function(){self.hold(function(){bump(-1);});},plusHold:function(){self.hold(function(){bump(1);});},
+        // curseur : le doigt reste « attrapé » même s'il sort de la règle ; un seul rendu par image
+        onRuler:function(e){if(e.type==='pointermove'&&!e.buttons)return;var el=e.currentTarget;if(e.type==='pointerdown'){try{el.setPointerCapture(e.pointerId);}catch(x){}}
+          var r=el.getBoundingClientRect(),p=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));self._ruler={sid:sid,f:f,v:f.min+p*(f.max-f.min),inF:inF};
+          if(!self._rulerRaf)self._rulerRaf=requestAnimationFrame(function(){var q=self._ruler;self._rulerRaf=null;if(!q)return;
+            if(q.inF)self.setValRaw(q.sid,q.f,Math.min(q.f.max,Math.max(q.f.min,(Math.round(q.v*9/5+32)-32)*5/9)));else self.setVal(q.sid,q.f,q.v);});},
+        // saisie au clavier
+        editing:editing,notEditing:!editing,editVal:V_(v),editAria:'Saisir '+f.label+' au clavier',
+        edit:function(){self.setState({numEdit:sid+'|'+f.key});setTimeout(function(){var el=document.querySelector('input[data-num="'+f.key+'"]');if(el){el.focus();el.select();}},0);},
+        onNumKey:function(e){if(e.key==='Enter'){e.preventDefault();e.target.blur();}else if(e.key==='Escape'){self.setState({numEdit:null});}},
+        onNumDone:function(e){if(self.state.numEdit!==sid+'|'+f.key)return;var t=String(e.target.value||'').trim().replace(',','.').replace(/[^\d.\-]/g,'');var n=parseFloat(t);
+          if(t===''||!isFinite(n)){self.setState({numEdit:null});return;}if(inF)n=(n-32)*5/9;self.setValRaw(sid,f,n);},
+        isTemp:isT,units:isT?[['c','°C'],['f','°F']].map(function(u){var on=(u[0]==='f')===inF;return{label:u[1],on:on,bg:on?'var(--color-text)':'transparent',fg:on?'var(--color-bg)':'var(--color-text)',go:function(){self.tempF(u[0]==='f');}};}):[]};});
     var ck=st.checks[sid]||{};
     checks=T.checks.map(function(label,i){return{label:label,on:!!ck[i],box:ck[i]?'var(--color-text)':'transparent',toggle:function(){self.setState(function(s2){var o={};o[sid]=Object.assign({},s2.checks[sid]||{});o[sid][i]=!ck[i];return{checks:Object.assign({},s2.checks,o)};});}};});
     var pq=st.prods[sid]||{};
