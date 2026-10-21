@@ -29,6 +29,9 @@ import base64
 LOGO='data:image/png;base64,'+base64.b64encode(open(os.path.join(SRC,'design','logo-soucy-aquatik.png'),'rb').read()).decode()
 rep('<div style="width:46px;height:46px;background:#004987;color:#ffffff;display:flex;align-items:flex-end;padding:5px;box-sizing:border-box;font:600 11px/0.95 var(--font-heading);letter-spacing:0.01em">Soucy<br>Aquatik</div>','<img src="'+LOGO+'" alt="Soucy Aquatik" style="width:46px;height:46px;flex:none;display:block">',1)
 # Fiche : choix du bassin quand le site en a plusieurs (bassins déclarés dans la fiche du site)
+# Fiche validée : refaire un test au même site sans dépuncher
+rep('<span>Fiche validée à {{ cur.validAt }} · envoyée au bureau</span></div>',
+  '<span>Fiche validée à {{ cur.validAt }} · envoyée au bureau</span></div><button class="btn btn-secondary" onClick="{{ nouvelleFiche }}" style="min-height:56px;font-size:19px;width:100%;gap:10px"><sa-i n="plus" s="22"></sa-i>Refaire un test (nouvelle fiche)</button>',1)
 # Relevés : saisie au clavier (toucher la valeur), ± maintenus, choix °C / °F pour la température
 rep('<span style="font:600 52px/0.9 var(--font-heading);letter-spacing:-0.02em">{{ f.val }}</span><span style="font-size:16px">{{ f.unit }}</span>',
   '<sc-if value="{{ f.notEditing }}"><button onClick="{{ f.edit }}" aria-label="{{ f.editAria }}" title="Toucher pour saisir au clavier" style="all:unset;cursor:text;display:flex;align-items:baseline;gap:6px;border-bottom:2px dotted var(--color-divider);padding-bottom:2px">'

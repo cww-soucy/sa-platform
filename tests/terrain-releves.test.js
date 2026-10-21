@@ -112,3 +112,25 @@ test('température : °C ou °F au choix (gardé sur le téléphone), toujours e
   assert.deepEqual(errors, []);
   await page.close();
 });
+
+test('refaire un test au même site sans dépuncher : nouvelle fiche, la première est gardée (2 relevés distincts)', async () => {
+  const { page, db, errors } = await openApp(browser, srv.url, { app: 'terrain', user: USER, tables: tables() });
+  await page.waitForFunction(() => window.__terrain && window.__terrain.syncAt && window.__terrain.jobs.length);
+  await page.evaluate(() => window.__terrain.open('wo:wo-mine'));
+  await page.waitForFunction(() => window.__terrain.vals().fields.length > 1);
+  await page.evaluate(() => { const t = window.__terrain; t.vals().fields[0].plus(); t.vals().validate(); });
+  await page.getByText(/Fiche validée à/).first().waitFor();
+  await page.getByRole('button', { name: 'Refaire un test (nouvelle fiche)' }).click();
+  // fiche vierge : plus « validée », valeurs à saisir
+  assert.equal(await page.evaluate(() => window.__terrain.vals().cur.isValidated), false);
+  assert.equal(await page.evaluate(() => window.__terrain.vals().fields.filter((f) => !f.pending).length), 0);
+  await page.evaluate(() => { const t = window.__terrain; t.vals().fields[1].plus(); t.vals().validate(); });
+  await page.waitForFunction(() => window.__terrain.vals().cur.isValidated);
+  await page.waitForFunction(() => !window.__terrain.queueN);
+  const rel = db.rows('releves').filter((r) => r.tech === 'kael' && r.site_id === '1');
+  assert.equal(rel.length, 2, 'les deux fiches sont au bureau');
+  assert.notEqual(rel[0].id, rel[1].id);
+  assert.deepEqual(rel.map((r) => Object.keys(r.touched).join(',')).sort(), ['cl', 'ph']);
+  assert.deepEqual(errors, []);
+  await page.close();
+});

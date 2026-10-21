@@ -598,6 +598,9 @@ Comp.prototype.vals=function(){
     takePhoto:function(){if(cj)self.pickPhoto(cur.sid);},
     photoTitle:ph?'Photo prise à '+ph:'Prendre la photo',photoSub:ph?'Toucher pour reprendre':'Requise : '+(cur.photoReq||''),
     photoBg:ph?'repeating-linear-gradient(135deg,var(--color-accent-200) 0 1px,transparent 1px 8px)':'transparent',
+    /* Refaire un test au même site sans dépuncher : la fiche validée est gardée (déjà envoyée), une nouvelle fiche vierge s'ouvre */
+    nouvelleFiche:function(){if(!cj)return;var k=cur.sid,sk=cur._site.id;self.setState(function(s2){var o={};['vals','touched','checks','prods','photo','photoData','notes','pts','acts','step','validated'].forEach(function(n){var x=Object.assign({},s2[n]||{});delete x[k];if(n==='validated')delete x[sk];o[n]=x;});return o;});
+      delete self.last[k];self.loadLast(k);self.flash('Nouvelle fiche — la précédente est gardée et envoyée au bureau');},
     validate:function(){if(!cj)return;var s=cur._site,T=cur._T,k=cur.sid,vv=st.vals[k]||{},tt=st.touched[k]||{},vout={},ch={},pr={};
       if(s.interne){self.flash('Bureau / entrepôt : aucun relevé à faire ici');return;}
       var I=window.SAInsp,ps=cur._ps,PTS=cur._pts,nPts=Object.keys(ps).filter(function(id){return ps[id]&&ps[id].etat;}).length;
@@ -608,7 +611,7 @@ Comp.prototype.vals=function(){
       Object.keys(tt).forEach(function(k){if(vv[k]!=null)vout[k]=vv[k];});
       PTS.forEach(function(p){ch[p.libelle]=!!(ps[p.id]&&ps[p.id].etat==='ok');});T.produits.forEach(function(p,i){var q=(st.prods[k]||{})[i]||0;if(q>0)pr[p[0]]=q;});
       var bs=s.bassins||[],b=bs.length>1?bs.filter(function(x){return k===s.id+'#'+x.id;})[0]:(bs[0]||null);
-      var now=new Date(),rec={_sk:k,id:self.user.id+'-'+self.today+'-'+s.id+(bs.length>1&&b?'-'+b.id:''),site_id:s.id,site_nom:s.nom,tech:self.user.id,tech_nom:self.me.nom,date:self.today,heure:hhmm(now),type_code:b?b.code:s.type,bassin:b?b.nom:null,
+      var now=new Date(),rec={_sk:k,id:self.user.id+'-'+self.today+'-'+s.id+(bs.length>1&&b?'-'+b.id:'')+'-'+pad(now.getHours())+pad(now.getMinutes())+pad(now.getSeconds())+('00'+now.getMilliseconds()).slice(-3),site_id:s.id,site_nom:s.nom,tech:self.user.id,tech_nom:self.me.nom,date:self.today,heure:hhmm(now),type_code:b?b.code:s.type,bassin:b?b.nom:null,
         vals:vout,touched:tt,checks:ch,prods:pr,note:st.notes[k]||null,photo:st.photoData[k]||null,hors_zone:cur.nOut};
       /* Visite par système : états des points, mesures prises, résumé ; bon de travail urgent créé pour les points cochés */
       var pout={},aout={},wos=[];PTS.forEach(function(p){var x=ps[p.id];if(!x||!x.etat)return;var o={etat:x.etat};if(x.note)o.note=x.note;if(x.valeur!=null&&x.valeur!=='')o.valeur=x.valeur;if(x.photos&&x.photos.length)o.photos=x.photos;
