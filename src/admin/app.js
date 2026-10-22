@@ -77,7 +77,7 @@ Comp.prototype.load=function(){
     wo:soft('workorders?select=id,client,site,type,priorite,status,date,assigne,descr,groupe_id&order=date.asc',[]),
     rel:get('releves?select=id,site_id,site_nom,tech,tech_nom,date,heure,type_code,vals,touched,checks,prods,note,hors_zone,bassin,points,actions,statut,source,saisi_par,source_detail,resume,publiee_le,envoyee_le,photo&date=gte.'+since+'&order=date.asc,heure.asc')
       .catch(function(){return soft('releves?select=id,site_id,site_nom,tech,tech_nom,date,heure,type_code,vals,touched,checks,prods,note,hors_zone,bassin&date=gte.'+since+'&order=date.asc,heure.asc',[]);}),
-    cat:get('inspection_points?select=*').catch(function(){return[];}),gab:get('gabarits_hivernage?select=*').catch(function(){return[];}),
+    cat:get('inspection_points?select=*').catch(function(){return[];}),gab:get('gabarits_hivernage?select=*').catch(function(){return[];}),adj:get('ouvrage_ajustements?select=*&actif=eq.true').catch(function(){return[];}),
     gps:soft('punch_gps_log?select=emp,heure,lieu,date&date=eq.'+today+'&order=heure.desc&limit=30',[]),
     plan:soft('plan?select=id,client,addr,emp&date=eq.'+today,[]),pt:soft('planning_tasks?select=id,titre,site_nom,emp&date_debut=lte.'+today+'&date_fin=gte.'+today,[]),
     dem:soft('demandes?select=id,tech,tech_nom,site_nom,type,motif,texte,statut,created_at,has_photo&order=created_at.desc&limit=40',[]),
@@ -98,7 +98,7 @@ Comp.prototype.load=function(){
     var byId={};sites.forEach(function(s){byId[s.id]=s;s.merged=/^Fusionné →/.test(s.notes);s.client_id=scl[s.id]||null;if(cint[s.client_id])s.interne=true;});var sitesAll=sites;sites=sites.filter(function(s){return!s.merged;});
     var statut={},email={};(r.statut||[]).forEach(function(c){statut[c.id]=c.statut;if(c.email)email[c.id]=c.email;});
     (r.comptes||[]).forEach(function(c){if(c.email==null&&email[c.id])c.email=email[c.id];});
-    self.D={sites:sites,sitesAll:sitesAll,byId:byId,types:T,comptes:r.comptes,ft:r.ft,wo:r.wo,rel:r.rel.map(function(x){x.site_id=String(x.site_id);return x;}).filter(function(x){var s=byId[x.site_id];return!(s?s.interne:isInterne('',x.site_nom));}),gps:r.gps,nPlan:r.plan.length,nPt:r.pt.length,planT:r.plan||[],ptT:r.pt||[],dem:r.dem||[],ftAll:r.ftAll||[],fact:r.fact||[],proj:r.proj||[],sond:r.sond||[],geo:r.geo||[],inv:r.inv||[],flotte:r.flotte||[],cat:r.cat||[],gab:r.gab||[],statut:statut,today:today,clients:cli,hasClients:!!r.cli,alias:alias};
+    self.D={sites:sites,sitesAll:sitesAll,byId:byId,types:T,comptes:r.comptes,ft:r.ft,wo:r.wo,rel:r.rel.map(function(x){x.site_id=String(x.site_id);return x;}).filter(function(x){var s=byId[x.site_id];return!(s?s.interne:isInterne('',x.site_nom));}),gps:r.gps,nPlan:r.plan.length,nPt:r.pt.length,planT:r.plan||[],ptT:r.pt||[],dem:r.dem||[],ftAll:r.ftAll||[],fact:r.fact||[],proj:r.proj||[],sond:r.sond||[],geo:r.geo||[],inv:r.inv||[],flotte:r.flotte||[],cat:r.cat||[],gab:r.gab||[],adj:r.adj||[],statut:statut,today:today,clients:cli,hasClients:!!r.cli,alias:alias};
     self.loadedAt=new Date();self.err='';self.softErr=SOFT_ERR.slice();self.monSync(r.prefs);
     if(!self.state.inspSite){var w=self.D.rel.length?String(self.D.rel[self.D.rel.length-1].site_id):(sites[0]&&sites[0].id);self.state.inspSite=w||null;}
   }).catch(function(e){self.err='Chargement impossible : '+netMsg(e);});
@@ -878,7 +878,7 @@ Comp.prototype.hvVals=function(de){var self=this,H=window.SAHiv,hv=H.norm(de.hv)
     hvInfo:H.INFO.map(function(f){return{l:f[1],type:f[2],v:hv.info[f[0]]||'',span:f[3]?'span 2':'auto',list:f[0]==='site'?'deSites':(f[0]==='chef'?'deTechs':''),
       on:set(function(h,v,d){h.info[f[0]]=v;if(f[0]==='site'){d.f.site_nom=v;var s=self.hvSiteOf(v);if(s&&!h.courriel&&s.email)h.courriel=s.email;
         /* Liste pas encore commencée : étapes selon les ouvrages du site choisi */
-        if(!Object.keys(h.c).some(function(k){return h.c[k];}))h.plan=s?window.SAHiv.planPourSite(s,self.D.gab):null;}})};}),
+        if(!Object.keys(h.c).some(function(k){return h.c[k];}))h.plan=s?window.SAHiv.planPourSite(s,self.D.gab,self.adjDe(s.id)):null;}})};}),
     hvSecs:H.planDe(hv).sections.map(function(s){var mk=function(it){var on=!!hv.c[it.k];return{t:it.t+(it.b?' '+it.b:''),n:s.num?it.n:'',nw:s.num?'28px':'0',fw:it.crit?'700':'400',op:on?'0.6':'1',on:on,
         go:function(){self.deHv(function(h){h.c[it.k]=!h.c[it.k];});}};};
       var all=s.items.every(function(it){return hv.c[it.k];});

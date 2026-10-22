@@ -2409,36 +2409,52 @@ svg.leaflet-image-layer.leaflet-interactive path {
   }
   /* Liste de contrôle d’un site : sections communes fusionnées (une fois), puis les phases de chaque ouvrage.
      Un seul ouvrage : clés « p1-0 » comme avant ; plusieurs : « <id ouvrage>:p1-0 ». Retraits (hiv.exclus) et ajouts (hiv.ajouts) de la fiche de l’ouvrage. */
+  /* Ajustements d’un site (table ouvrage_ajustements, faits sur le terrain ou au bureau) appliqués à ses bassins :
+     hiv.exclus / insp.exclus (réf. retirées) et hiv.ajouts (étapes ajoutées). bassin_id vide = tout le site. */
+  function avecAjustements(bassins, adj) {
+    var act = (adj || []).filter(function (r) { return r && r.actif !== false; });
+    return (bassins || []).map(function (b, i) {
+      var id = String(b.id || 'b' + i), mine = act.filter(function (r) { return !r.bassin_id || String(r.bassin_id) === id; });
+      var ex = function (dom) { return mine.filter(function (r) { return r.domaine === dom && r.action === 'exclure'; }).map(function (r) { return r.ref; }); };
+      return Object.assign({}, b, { id: id,
+        hiv: Object.assign({}, b.hiv, { exclus: ex('hiv'), ajouts: mine.filter(function (r) { return r.domaine === 'hiv' && r.action === 'ajouter' && r.bassin_id; })
+          .map(function (r) { return { id: r.id, t: r.texte, section: r.section, crit: !!r.crit }; }) }),
+        insp: Object.assign({}, b.insp, { exclus: ex('insp') }) });
+    });
+  }
+  /* Liste de contrôle d’un site : sections communes fusionnées (une fois), puis les phases de chaque ouvrage.
+     Un seul ouvrage : clés « p1-0 » comme avant ; plusieurs : « <id ouvrage>:p1-0 ». Chaque case garde sa référence de gabarit
+     (gref « jeuxdeau:p1-0 », celle des retraits) et son ouvrage (ob ; vide pour une section commune au site). */
   function planSite(bassins, rows) {
     var liste = gabarits(rows), ouv = [];
     (bassins || []).forEach(function (b, i) { if (!b || !String(b.nom || '').trim()) return; var g = gabaritDe(b, liste); if (g) ouv.push({ id: String(b.id || 'b' + i), nom: String(b.nom).trim(), g: g, cfg: b.hiv || {} }); });
     if (!(bassins || []).length) ouv.push({ id: '', nom: '', g: gabaritDe({}, liste), cfg: {} });
-    var multi = ouv.length > 1, tete = [], corps = [], fin = [], vus = {}, conseils = [], alerte = '';
-    var fusion = function (dest, s, o, premier) {
+    var multi = ouv.length > 1, tete = [], corps = [], fin = [], conseils = [], alerte = '', premier = {};
+    var exclu = function (o, gref) { return (o.cfg.exclus || []).indexOf(gref) >= 0; };
+    var fusion = function (dest, s, o) {
       var cur = dest.filter(function (x) { return x.id === s.id; })[0];
-      if (!cur) { cur = { id: s.id, titre: s.titre, col: s.col, col2: s.col2, num: s.num, commun: true, items: [] }; dest.push(cur); }
+      if (!cur) { cur = { id: s.id, titre: s.titre, col: s.col, col2: s.col2, num: s.num, commun: true, ob: '', items: [] }; dest.push(cur); }
       s.items.forEach(function (it, j) {
-        var ref = s.id + '-' + j, k = (premier[s.id] && premier[s.id] !== o.g.code ? o.g.code + ':' : '') + ref, ex = (o.cfg.exclus || []).indexOf(ref) >= 0;
+        var ref = s.id + '-' + j, gref = o.g.code + ':' + ref, k = (premier[s.id] !== o.g.code ? o.g.code + ':' : '') + ref, ex = exclu(o, gref);
         var deja = cur.items.filter(function (x) { return x.t === it.t && !!x.b === !!it.b; })[0];
-        if (deja) { if (!ex) deja._garde = true; return; }
-        cur.items.push(Object.assign(copie(it), { k: k, ref: ref, _garde: !ex }));
+        if (deja) { if (!ex) deja._garde = true; if (deja.grefs.indexOf(gref) < 0) deja.grefs.push(gref); return; }
+        cur.items.push(Object.assign(copie(it), { k: k, ref: ref, gref: gref, grefs: [gref], ob: '', _garde: !ex }));
       });
     };
-    var premier = {};
     ouv.forEach(function (o) {
       var secs = o.g.sections || [], pre = multi ? o.id + ':' : '', suf = multi ? ' — ' + o.nom : '';
       var iCorps = secs.map(function (s) { return !s.commun; }).indexOf(true);
       secs.forEach(function (s, si) {
-        if (s.commun) { if (!premier[s.id]) premier[s.id] = o.g.code; fusion(iCorps < 0 || si < iCorps ? tete : fin, s, o, premier); return; }
+        if (s.commun) { if (!premier[s.id]) premier[s.id] = o.g.code; fusion(iCorps < 0 || si < iCorps ? tete : fin, s, o); return; }
         var its = [];
-        s.items.forEach(function (it, j) { var ref = s.id + '-' + j; if ((o.cfg.exclus || []).indexOf(ref) < 0) its.push(Object.assign(copie(it), { k: pre + ref, ref: ref }, multi ? { o: o.nom } : {})); });
-        corps.push({ id: pre + s.id, titre: s.titre + suf, col: s.col, col2: s.col2, num: s.num, ouvrage: o.id, items: its });
+        s.items.forEach(function (it, j) { var ref = s.id + '-' + j, gref = o.g.code + ':' + ref; if (!exclu(o, gref)) its.push(Object.assign(copie(it), { k: pre + ref, ref: ref, gref: gref, ob: o.id }, multi ? { o: o.nom } : {})); });
+        corps.push({ id: pre + s.id, sid: s.id, titre: s.titre + suf, col: s.col, col2: s.col2, num: s.num, ob: o.id, items: its });
       });
       (o.cfg.ajouts || []).forEach(function (a) {
         if (!a || !String(a.t || '').trim()) return;
-        var cible = corps.filter(function (x) { return x.ouvrage === o.id && x.id === pre + (a.section || ''); })[0] || corps.filter(function (x) { return x.ouvrage === o.id; }).slice(-1)[0];
-        var it = Object.assign({ n: '—', t: String(a.t).trim(), crit: !!a.crit, k: pre + 'aj-' + a.id, ref: 'aj-' + a.id, ajout: true }, multi ? { o: o.nom } : {});
-        if (cible) cible.items.push(it); else corps.push({ id: pre + 'aj', titre: 'Étapes propres au site' + suf, col: 'Tâche', num: true, ouvrage: o.id, items: [it] });
+        var cible = corps.filter(function (x) { return x.ob === o.id && x.sid === a.section; })[0] || corps.filter(function (x) { return x.ob === o.id; }).slice(-1)[0];
+        var it = Object.assign({ n: '—', t: String(a.t).trim(), crit: !!a.crit, k: pre + 'aj-' + a.id, ref: 'aj-' + a.id, aj: a.id, ob: o.id }, multi ? { o: o.nom } : {});
+        if (cible) cible.items.push(it); else corps.push({ id: pre + 'aj', sid: 'aj', titre: 'Étapes propres au site' + suf, col: 'Tâche', num: true, ob: o.id, items: [it] });
       });
       (o.g.conseils || []).forEach(function (t) { if (conseils.indexOf(t) < 0) conseils.push(t); });
       if (!alerte && o.g.alerte) alerte = o.g.alerte;
@@ -2446,8 +2462,14 @@ svg.leaflet-image-layer.leaflet-interactive path {
     var secs = tete.concat(corps, fin).map(function (s) { s.items = s.items.filter(function (it) { var g = it._garde !== false; delete it._garde; return g; }); return s; })
       .filter(function (s) { return s.items.length; });
     var dernier = corps.filter(function (s) { return s.items.length; }).slice(-1)[0];
-    secs.forEach(function (s, i) { s.no = i + 2; s.tips = !!dernier && s.id === dernier.id; delete s.ouvrage; });
+    secs.forEach(function (s, i) { s.no = i + 2; s.tips = !!dernier && s.id === dernier.id; });
     return { v: 1, ouvrages: ouv.filter(function (o) { return o.id; }).map(function (o) { return { id: o.id, nom: o.nom, gabarit: o.g.code }; }), sections: secs, conseils: conseils, alerte: alerte };
+  }
+  /* Libellé d’une case retirée (gref « jeuxdeau:p1-0 »), pour la liste « Retirées pour ce site » */
+  function libelleRef(gref, rows) {
+    var p = String(gref || '').split(':'), g = gabarits(rows).filter(function (x) { return x.code === p[0]; })[0], m = /^(.*)-(\d+)$/.exec(p[1] || '');
+    var s = g && m && (g.sections || []).filter(function (x) { return x.id === m[1]; })[0], it = s && s.items[+m[2]];
+    return it ? (it.n && it.n !== '—' ? it.n + '. ' : '') + it.t + (it.b ? ' ' + it.b : '') : String(gref || '');
   }
   /* Édition d’un gabarit dans sa-admin, en texte : « ## Titre [commun] », puis une ligne par case :
      « 12. Étape », « — Étape » (sans numéro), « - Vérification », « * Pièce de rechange ». « **texte** » = en gras ; « ! » à la fin = étape critique. */
@@ -2491,10 +2513,10 @@ svg.leaflet-image-layer.leaflet-interactive path {
     });
   }
   /* Site sans bassin déclaré : un seul ouvrage, du type de relevé du site */
-  function planPourSite(site, rows) {
+  function planPourSite(site, rows, adj) {
     site = site || {};
     var bs = (site.bassins || []).filter(function (b) { return b && String(b.nom || '').trim(); });
-    return planSite(bs.length ? bs : [{ id: '', nom: site.nom || 'Site', type_code: site.type || '' }], rows);
+    return planSite(avecAjustements(bs.length ? bs : [{ id: '', nom: site.nom || 'Site', type_code: site.type || '' }], adj), rows);
   }
   /* Plan par défaut (anciens rapports et brouillons sans plan) : la piscine, telle que le formulaire papier */
   var DEFAUT = planSite([], GABARITS);
@@ -2613,7 +2635,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   }
   function fichier(d) { d = norm(d); return ('Hivernement ' + (d.info.site || '') + ' ' + (d.info.date || '')).trim().replace(/[\\/:*?"<>|\s]+/g, '-').replace(/-{2,}/g, '-').replace(/^-|-$/g, '') + '.html'; }
 
-  var api = { SECTIONS: SECTIONS, GABARITS: GABARITS, DEFAUT: DEFAUT, gabarits: gabarits, gabaritDe: gabaritDe, planSite: planSite, planPourSite: planPourSite, planDe: planDe, versTexte: versTexte, deTexte: deTexte, INFO: INFO, TIPS: TIPS, ALERTE: ALERTE, LOGO: LOGO, blank: blank, norm: norm, isChecklist: isChecklist, fromReport: fromReport, photosOf: photosOf,
+  var api = { SECTIONS: SECTIONS, GABARITS: GABARITS, DEFAUT: DEFAUT, gabarits: gabarits, gabaritDe: gabaritDe, planSite: planSite, planPourSite: planPourSite, avecAjustements: avecAjustements, libelleRef: libelleRef, planDe: planDe, versTexte: versTexte, deTexte: deTexte, INFO: INFO, TIPS: TIPS, ALERTE: ALERTE, LOGO: LOGO, blank: blank, norm: norm, isChecklist: isChecklist, fromReport: fromReport, photosOf: photosOf,
     progress: progress, manquants: manquants, critiquesManquants: critiquesManquants, toReport: toReport, html: html, texte: texte, fichier: fichier };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.SAHiv = api;
 })(typeof window !== 'undefined' ? window : this);
@@ -2754,7 +2776,7 @@ Comp.prototype.load=function(){
     wo:soft('workorders?select=id,client,site,type,priorite,status,date,assigne,descr,groupe_id&order=date.asc',[]),
     rel:get('releves?select=id,site_id,site_nom,tech,tech_nom,date,heure,type_code,vals,touched,checks,prods,note,hors_zone,bassin,points,actions,statut,source,saisi_par,source_detail,resume,publiee_le,envoyee_le,photo&date=gte.'+since+'&order=date.asc,heure.asc')
       .catch(function(){return soft('releves?select=id,site_id,site_nom,tech,tech_nom,date,heure,type_code,vals,touched,checks,prods,note,hors_zone,bassin&date=gte.'+since+'&order=date.asc,heure.asc',[]);}),
-    cat:get('inspection_points?select=*').catch(function(){return[];}),gab:get('gabarits_hivernage?select=*').catch(function(){return[];}),
+    cat:get('inspection_points?select=*').catch(function(){return[];}),gab:get('gabarits_hivernage?select=*').catch(function(){return[];}),adj:get('ouvrage_ajustements?select=*&actif=eq.true').catch(function(){return[];}),
     gps:soft('punch_gps_log?select=emp,heure,lieu,date&date=eq.'+today+'&order=heure.desc&limit=30',[]),
     plan:soft('plan?select=id,client,addr,emp&date=eq.'+today,[]),pt:soft('planning_tasks?select=id,titre,site_nom,emp&date_debut=lte.'+today+'&date_fin=gte.'+today,[]),
     dem:soft('demandes?select=id,tech,tech_nom,site_nom,type,motif,texte,statut,created_at,has_photo&order=created_at.desc&limit=40',[]),
@@ -2775,7 +2797,7 @@ Comp.prototype.load=function(){
     var byId={};sites.forEach(function(s){byId[s.id]=s;s.merged=/^Fusionné →/.test(s.notes);s.client_id=scl[s.id]||null;if(cint[s.client_id])s.interne=true;});var sitesAll=sites;sites=sites.filter(function(s){return!s.merged;});
     var statut={},email={};(r.statut||[]).forEach(function(c){statut[c.id]=c.statut;if(c.email)email[c.id]=c.email;});
     (r.comptes||[]).forEach(function(c){if(c.email==null&&email[c.id])c.email=email[c.id];});
-    self.D={sites:sites,sitesAll:sitesAll,byId:byId,types:T,comptes:r.comptes,ft:r.ft,wo:r.wo,rel:r.rel.map(function(x){x.site_id=String(x.site_id);return x;}).filter(function(x){var s=byId[x.site_id];return!(s?s.interne:isInterne('',x.site_nom));}),gps:r.gps,nPlan:r.plan.length,nPt:r.pt.length,planT:r.plan||[],ptT:r.pt||[],dem:r.dem||[],ftAll:r.ftAll||[],fact:r.fact||[],proj:r.proj||[],sond:r.sond||[],geo:r.geo||[],inv:r.inv||[],flotte:r.flotte||[],cat:r.cat||[],gab:r.gab||[],statut:statut,today:today,clients:cli,hasClients:!!r.cli,alias:alias};
+    self.D={sites:sites,sitesAll:sitesAll,byId:byId,types:T,comptes:r.comptes,ft:r.ft,wo:r.wo,rel:r.rel.map(function(x){x.site_id=String(x.site_id);return x;}).filter(function(x){var s=byId[x.site_id];return!(s?s.interne:isInterne('',x.site_nom));}),gps:r.gps,nPlan:r.plan.length,nPt:r.pt.length,planT:r.plan||[],ptT:r.pt||[],dem:r.dem||[],ftAll:r.ftAll||[],fact:r.fact||[],proj:r.proj||[],sond:r.sond||[],geo:r.geo||[],inv:r.inv||[],flotte:r.flotte||[],cat:r.cat||[],gab:r.gab||[],adj:r.adj||[],statut:statut,today:today,clients:cli,hasClients:!!r.cli,alias:alias};
     self.loadedAt=new Date();self.err='';self.softErr=SOFT_ERR.slice();self.monSync(r.prefs);
     if(!self.state.inspSite){var w=self.D.rel.length?String(self.D.rel[self.D.rel.length-1].site_id):(sites[0]&&sites[0].id);self.state.inspSite=w||null;}
   }).catch(function(e){self.err='Chargement impossible : '+netMsg(e);});
@@ -3555,7 +3577,7 @@ Comp.prototype.hvVals=function(de){var self=this,H=window.SAHiv,hv=H.norm(de.hv)
     hvInfo:H.INFO.map(function(f){return{l:f[1],type:f[2],v:hv.info[f[0]]||'',span:f[3]?'span 2':'auto',list:f[0]==='site'?'deSites':(f[0]==='chef'?'deTechs':''),
       on:set(function(h,v,d){h.info[f[0]]=v;if(f[0]==='site'){d.f.site_nom=v;var s=self.hvSiteOf(v);if(s&&!h.courriel&&s.email)h.courriel=s.email;
         /* Liste pas encore commencée : étapes selon les ouvrages du site choisi */
-        if(!Object.keys(h.c).some(function(k){return h.c[k];}))h.plan=s?window.SAHiv.planPourSite(s,self.D.gab):null;}})};}),
+        if(!Object.keys(h.c).some(function(k){return h.c[k];}))h.plan=s?window.SAHiv.planPourSite(s,self.D.gab,self.adjDe(s.id)):null;}})};}),
     hvSecs:H.planDe(hv).sections.map(function(s){var mk=function(it){var on=!!hv.c[it.k];return{t:it.t+(it.b?' '+it.b:''),n:s.num?it.n:'',nw:s.num?'28px':'0',fw:it.crit?'700':'400',op:on?'0.6':'1',on:on,
         go:function(){self.deHv(function(h){h.c[it.k]=!h.c[it.k];});}};};
       var all=s.items.every(function(it){return hv.c[it.k];});
@@ -4769,7 +4791,7 @@ Comp.prototype.isfNew=function(site,draft){var r=draft||null,b=(site.bassins||[]
   return f;};
 Comp.prototype.isfSave=function(site,statut){var self=this,I=window.SAInsp,f=this.state.isf,D=this.D;if(!f||this.state.isfBusy)return;
   var b=(site.bassins||[]).filter(function(x){return x.nom===f.bassin;})[0]||null,code=b&&b.type_code&&D.types[b.type_code]?b.type_code:site.type,T=this.T(code);
-  var PTS=I.pointsDuType(code,D.cat||[],T.checks,b),vals={},tch={},pts={},ch={};
+  var PTS=I.pointsDuType(code,D.cat||[],T.checks,this.ouvInsp(site,b)),vals={},tch={},pts={},ch={};
   (T.fields||[]).forEach(function(x){var v=num(f.vals[x.key]);if(v!=null){vals[x.key]=v;tch[x.key]=true;}});
   PTS.forEach(function(p){var x=f.pts[p.id];ch[p.libelle]=!!(x&&x.etat==='ok');if(x&&x.etat){pts[p.id]={etat:x.etat};if(x.note)pts[p.id].note=x.note;}});
   if(statut==='publiee'){var miss=PTS.filter(function(p){return p.obligatoire&&!pts[p.id];});if(miss.length){this.flash(miss.length+' point(s) obligatoire(s) à répondre : '+miss.map(function(p){return p.libelle;}).join(', '));return;}
@@ -4891,7 +4913,7 @@ Comp.prototype.inspVals=function(){
     else iq.v={sections:[],photos:[],prods:[]};}
   /* ----- 5a-2 Saisie bureau ----- */
   var f=st.isf;
-  if(view==='saisie'&&f){var b=(site.bassins||[]).filter(function(x){return x.nom===f.bassin;})[0]||null,code=b&&b.type_code&&D.types[b.type_code]?b.type_code:site.type,TT=this.T(code),PTS=I.pointsDuType(code,D.cat||[],TT.checks,b);
+  if(view==='saisie'&&f){var b=(site.bassins||[]).filter(function(x){return x.nom===f.bassin;})[0]||null,code=b&&b.type_code&&D.types[b.type_code]?b.type_code:site.type,TT=this.T(code),PTS=I.pointsDuType(code,D.cat||[],TT.checks,this.ouvInsp(site,b));
     var setF=function(p){self.setState(function(s2){return{isf:Object.assign({},s2.isf,p)};});},setP=function(id,p){var o=Object.assign({},f.pts);o[id]=Object.assign({},o[id]||{},p);setF({pts:o});};
     var vals={},tch={};(TT.fields||[]).forEach(function(x){var v=num(f.vals[x.key]);if(v!=null){vals[x.key]=v;tch[x.key]=true;}});
     var items=I.itemsVisite({type_code:code,vals:vals,touched:tch,points:f.pts},TT,D.cat||[]),se2=I.etatsSystemes(items);
@@ -5177,30 +5199,45 @@ Comp.prototype.sondagesVals=function(){var self=this,st=this.state,D=this.D,k=st
 
 /* ---------- sa-admin › Inspection et hivernage par ouvrage, gabarits d'hivernage ----------
    Inséré dans app.js par assemble.py (même portée : get, rest, Comp, norm, nowIso, auditT…).
-   Fiche du site › bassin › « Inspection et hivernage » : points d'inspection retirés (bassin.insp.exclus) ou propres à l'ouvrage
-   (inspection_points.bassin_id), gabarit d'hivernage, étapes retirées (bassin.hiv.exclus) ou ajoutées (bassin.hiv.ajouts).
+   Fiche du site › bassin › « Inspection et hivernage » : gabarit d'hivernage (bassin.hiv.gabarit, enregistré avec la fiche), points et étapes
+   retirés ou ajoutés (table ouvrage_ajustements, la même que sa-terrain : le technicien ajuste sur place, le bureau voit et annule ici),
+   points d'inspection propres à l'ouvrage (inspection_points.bassin_id).
    Hivernage › « Gabarits d'hivernage » : étapes de chaque gabarit (table gabarits_hivernage ; src/hivernage/checklist.js tant qu'elle est vide).
    Base : docs/sql/MIGRATION_2026-10-22_gabarits_ouvrages.sql. */
 var OUV_TYPE='_ouvrage';   /* type_code des points propres à un ouvrage : jamais pris pour un type de bassin, même par une ancienne version */
 function ouvId(p){return p+Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
-function basculer(arr,v){var a=(arr||[]).slice(),i=a.indexOf(v);if(i>=0)a.splice(i,1);else a.push(v);return a;}
+function fdAdj(r){return(r.par_nom||'')+(r.cree_le?' le '+fdate(String(r.cree_le).slice(0,10)):'');}
 
 Comp.prototype.ocMut=function(fn){var i=this.state.oc.i;this.sfMut(function(x){var b=x.bassins[i];if(b)fn(b);});};
+Comp.prototype.adjDe=function(sid){return(this.D.adj||[]).filter(function(r){return String(r.site_id)===String(sid)&&r.actif!==false;});};
+/* Bassin (ou site sans bassin) avec ses ajustements, pour l'inspection et l'hivernage */
+Comp.prototype.ouvInsp=function(site,b){var a=this.adjDe(site.id);if(b)return window.SAHiv.avecAjustements([b],a)[0];
+  return{id:'site:'+site.id,insp:{exclus:a.filter(function(r){return!r.bassin_id&&r.domaine==='insp'&&r.action==='exclure';}).map(function(r){return r.ref;})}};};
+Comp.prototype.adjLoad=function(){var self=this;return get('ouvrage_ajustements?select=*&actif=eq.true').then(function(r){self.D.adj=r||[];self.update();});};
+Comp.prototype.adjAdd=function(row){var self=this,u=this.user;row=Object.assign({id:ouvId('adj'),actif:true,par:u.id,par_nom:(u.prenom+' '+u.nom).trim(),cree_le:nowIso()},row);
+  return rest('POST','ouvrage_ajustements',row,'return=minimal').then(function(){auditT(self,'CREATION','ouvrage_ajustements',row.id);return self.adjLoad();}).catch(function(e){self.flash('Échec — rien n’a été modifié : '+netMsg(e));});};
+Comp.prototype.adjDel=function(ids){var self=this,u=this.user;return Promise.all(ids.map(function(id){return rest('PATCH','ouvrage_ajustements?id=eq.'+encodeURIComponent(id),{actif:false,annule_par:u.id,annule_par_nom:(u.prenom+' '+u.nom).trim(),annule_le:nowIso()},'return=minimal');}))
+  .then(function(){ids.forEach(function(id){auditT(self,'SUPPRESSION','ouvrage_ajustements',id);});return self.adjLoad();}).catch(function(e){self.flash('Échec — rien n’a été modifié : '+netMsg(e));});};
 Comp.prototype.ocSet=function(o){this.setState({oc:Object.assign({},this.state.oc,o)});};
 Comp.prototype.ocVals=function(){var self=this,st=this.state,sf=st.sf,oc=st.oc,D=this.D,I=window.SAInsp,H=window.SAHiv;
   if(!oc||!D||!sf||!sf.f||!sf.f.bassins||!sf.f.bassins[oc.i])return{ocOpen:false};
   var b=sf.f.bassins[oc.i],bid=String(b.id||''),code=b.type_code&&D.types[b.type_code]?b.type_code:(sf.type_code||'GEN'),T=D.types[code]||{label:code,checks:[]};
-  var close=function(){self.setState({oc:null});};
+  var close=function(){self.setState({oc:null});},sid=sf.id,adj=sid?this.adjDe(sid):[];
+  var mien=function(dom,act){return adj.filter(function(r){return r.domaine===dom&&r.action===act&&(!r.bassin_id||String(r.bassin_id)===bid);});};
+  var exI=mien('insp','exclure'),exH=mien('hiv','exclure'),aj=mien('hiv','ajouter').filter(function(r){return r.bassin_id;});
+  /* Case cochée = demandée à ce site ; décocher crée un retrait (comme « Ne s'applique pas ici » sur le terrain), recocher l'annule */
+  var basc=function(dom,ref,rows){if(!sid){self.flash('Enregistrez d’abord la fiche du site');return;}var r=rows.filter(function(x){return x.ref===ref;});
+    if(r.length)self.adjDel(r.map(function(x){return x.id;}));else self.adjAdd({site_id:String(sid),bassin_id:bid,domaine:dom,action:'exclure',ref:ref});};
   /* Inspection */
-  var ex=(b.insp&&b.insp.exclus)||[],pts=I.pointsDuType(code,D.cat||[],T.checks||[]),pr=I.propres(D.cat||[],bid);
+  var pts=I.pointsDuType(code,D.cat||[],T.checks||[]),pr=I.propres(D.cat||[],bid);
   var sysOpts=I.SYSTEMES.filter(function(s){return s.code!=='eau';});
   /* Hivernage */
-  var L=H.gabarits(D.gab),cfg=b.hiv||{},g=H.gabaritDe(b,D.gab),auto=H.gabaritDe(Object.assign({},b,{hiv:null}),D.gab),hex=cfg.exclus||[],aj=cfg.ajouts||[];
+  var L=H.gabarits(D.gab),cfg=b.hiv||{},g=H.gabaritDe(b,D.gab),auto=H.gabaritDe(Object.assign({},b,{hiv:null}),D.gab);
   var gsel=cfg.gabarit||'';
   var corps=g?(g.sections||[]).filter(function(s){return!s.commun;}):[];
   return{ocOpen:true,ocTitle:(b.nom||'Bassin')+' — inspection et hivernage',ocClose:close,ocCloseBg:function(e){if(e.target===e.currentTarget)close();},
     ocInspTxt:'Points du type « '+(T.label||code)+' » (décocher ceux qui ne s’appliquent pas à cet ouvrage)',
-    ocPts:pts.map(function(p){var on=ex.indexOf(p.id)<0;return{l:p.libelle,sys:I.NOM[p.systeme_code]||'',on:on,go:function(){self.ocMut(function(x){x.insp=Object.assign({},x.insp,{exclus:basculer((x.insp&&x.insp.exclus)||[],p.id)});});}};}),
+    ocPts:pts.map(function(p){var r=exI.filter(function(x){return x.ref===p.id;})[0];return{l:p.libelle,sys:r?'Retiré par '+fdAdj(r):(I.NOM[p.systeme_code]||''),on:!r,fw:'400',go:function(){basc('insp',p.id,exI);}};}),
     ocNoPts:!pts.length,
     ocPropres:pr.map(function(p){return{l:p.libelle,sys:I.NOM[p.systeme_code]||'',del:function(){self.savePoint(Object.assign({},p,{actif:false})).then(function(){self.flash('Point retiré de cet ouvrage');});}};}),
     ocNoPropre:!pr.length,
@@ -5210,18 +5247,18 @@ Comp.prototype.ocVals=function(){var self=this,st=this.state,sf=st.sf,oc=st.oc,D
       self.savePoint({id:ouvId('ouv-'),systeme_code:sy,type_code:OUV_TYPE,bassin_id:bid,site_id:sf.id||null,libelle:l,mode:sy==='securite'?'ouinon':'etat',obligatoire:false,ordre:100+pr.length,actif:true})
         .then(function(){self.ocSet({pt:''});});},
     ocGabs:[{v:'',l:'Automatique'+(auto?' ('+auto.nom+')':''),sel:!gsel}].concat(L.map(function(x){return{v:x.code,l:x.nom,sel:gsel===x.code};}),[{v:'aucun',l:'Aucun hivernage',sel:gsel==='aucun'}]),
-    onOcGab:function(e){var v=e.target.value;self.ocMut(function(x){x.hiv=Object.assign({},x.hiv,{gabarit:v||undefined,exclus:[]});if(!v)delete x.hiv.gabarit;});},
+    onOcGab:function(e){var v=e.target.value;self.ocMut(function(x){x.hiv=Object.assign({},x.hiv,{gabarit:v||undefined});if(!v)delete x.hiv.gabarit;});},
     ocHasGab:!!g,ocGabTxt:g?'Étapes du gabarit « '+g.nom+' » (décocher celles qui ne s’appliquent pas)':'Pas d’hivernement pour cet ouvrage.',
-    ocSecs:g?(g.sections||[]).map(function(s){return{titre:s.titre+(s.commun?' (commune au site)':''),items:s.items.map(function(it,j){var ref=s.id+'-'+j,on=hex.indexOf(ref)<0;
-      return{l:(it.n&&it.n!=='—'?it.n+'. ':'')+it.t+(it.b?' '+it.b:''),fw:it.crit?'700':'400',on:on,go:function(){self.ocMut(function(x){x.hiv=Object.assign({},x.hiv,{exclus:basculer((x.hiv&&x.hiv.exclus)||[],ref)});});}};})};}):[],
-    ocAjouts:aj.map(function(a,i){var sec=corps.filter(function(s){return s.id===a.section;})[0];return{l:a.t+(a.crit?' (critique)':''),sec:sec?sec.titre:'',del:function(){self.ocMut(function(x){x.hiv.ajouts.splice(i,1);});}};}),
+    ocSecs:g?(g.sections||[]).map(function(s){return{titre:s.titre+(s.commun?' (commune au site)':''),items:s.items.map(function(it,j){var ref=g.code+':'+s.id+'-'+j,r=exH.filter(function(x){return x.ref===ref;})[0];
+      return{l:(it.n&&it.n!=='—'?it.n+'. ':'')+it.t+(it.b?' '+it.b:''),sys:r?'Retirée par '+fdAdj(r):'',fw:it.crit?'700':'400',on:!r,go:function(){basc('hiv',ref,exH);}};})};}):[],
+    ocAjouts:aj.map(function(a){var sec=corps.filter(function(s){return s.id===a.section;})[0];return{l:a.texte+(a.crit?' (critique)':''),sec:(sec?sec.titre+' · ':'')+'ajoutée par '+fdAdj(a),del:function(){self.adjDel([a.id]);}};}),
     ocNoAjout:!aj.length,
     ocEt:{v:oc.et||'',on:function(e){self.ocSet({et:e.target.value});}},
     ocEtSecs:corps.map(function(s,i){return{v:s.id,l:s.titre,sel:(oc.sec||(corps[corps.length-1]||{}).id)===s.id};}),onOcEtSec:function(e){self.ocSet({sec:e.target.value});},
     ocCrit:!!oc.crit,onOcCrit:function(e){self.ocSet({crit:e.target.checked});},
-    ocAddEt:function(){var o=self.state.oc,t=String(o.et||'').trim();if(!t)return;var sec=o.sec||(corps[corps.length-1]||{}).id||'';
-      self.ocMut(function(x){x.hiv=Object.assign({},x.hiv);x.hiv.ajouts=(x.hiv.ajouts||[]).concat([{id:ouvId(''),t:t,section:sec,crit:!!o.crit}]);});self.ocSet({et:'',crit:false});},
-    ocNote:'Les retraits, ajouts d’étapes et le gabarit sont enregistrés avec la fiche du site. Les points d’inspection propres à l’ouvrage sont enregistrés tout de suite.'};
+    ocAddEt:function(){var o=self.state.oc,t=String(o.et||'').trim();if(!t)return;if(!sid){self.flash('Enregistrez d’abord la fiche du site');return;}var sec=o.sec||(corps[corps.length-1]||{}).id||'';
+      self.adjAdd({site_id:String(sid),bassin_id:bid,domaine:'hiv',action:'ajouter',section:sec,texte:t,crit:!!o.crit}).then(function(){self.ocSet({et:'',crit:false});});},
+    ocNote:'Chaque changement est enregistré tout de suite et vaut aussi pour sa-terrain. Les techniciens peuvent faire les mêmes ajustements sur place ; ils apparaissent ici avec leur nom. Le gabarit choisi est enregistré avec la fiche du site.'};
 };
 
 /* ---------- Gabarits d'hivernage ---------- */

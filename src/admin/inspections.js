@@ -56,7 +56,7 @@ Comp.prototype.isfNew=function(site,draft){var r=draft||null,b=(site.bassins||[]
   return f;};
 Comp.prototype.isfSave=function(site,statut){var self=this,I=window.SAInsp,f=this.state.isf,D=this.D;if(!f||this.state.isfBusy)return;
   var b=(site.bassins||[]).filter(function(x){return x.nom===f.bassin;})[0]||null,code=b&&b.type_code&&D.types[b.type_code]?b.type_code:site.type,T=this.T(code);
-  var PTS=I.pointsDuType(code,D.cat||[],T.checks,b),vals={},tch={},pts={},ch={};
+  var PTS=I.pointsDuType(code,D.cat||[],T.checks,this.ouvInsp(site,b)),vals={},tch={},pts={},ch={};
   (T.fields||[]).forEach(function(x){var v=num(f.vals[x.key]);if(v!=null){vals[x.key]=v;tch[x.key]=true;}});
   PTS.forEach(function(p){var x=f.pts[p.id];ch[p.libelle]=!!(x&&x.etat==='ok');if(x&&x.etat){pts[p.id]={etat:x.etat};if(x.note)pts[p.id].note=x.note;}});
   if(statut==='publiee'){var miss=PTS.filter(function(p){return p.obligatoire&&!pts[p.id];});if(miss.length){this.flash(miss.length+' point(s) obligatoire(s) à répondre : '+miss.map(function(p){return p.libelle;}).join(', '));return;}
@@ -178,7 +178,7 @@ Comp.prototype.inspVals=function(){
     else iq.v={sections:[],photos:[],prods:[]};}
   /* ----- 5a-2 Saisie bureau ----- */
   var f=st.isf;
-  if(view==='saisie'&&f){var b=(site.bassins||[]).filter(function(x){return x.nom===f.bassin;})[0]||null,code=b&&b.type_code&&D.types[b.type_code]?b.type_code:site.type,TT=this.T(code),PTS=I.pointsDuType(code,D.cat||[],TT.checks,b);
+  if(view==='saisie'&&f){var b=(site.bassins||[]).filter(function(x){return x.nom===f.bassin;})[0]||null,code=b&&b.type_code&&D.types[b.type_code]?b.type_code:site.type,TT=this.T(code),PTS=I.pointsDuType(code,D.cat||[],TT.checks,this.ouvInsp(site,b));
     var setF=function(p){self.setState(function(s2){return{isf:Object.assign({},s2.isf,p)};});},setP=function(id,p){var o=Object.assign({},f.pts);o[id]=Object.assign({},o[id]||{},p);setF({pts:o});};
     var vals={},tch={};(TT.fields||[]).forEach(function(x){var v=num(f.vals[x.key]);if(v!=null){vals[x.key]=v;tch[x.key]=true;}});
     var items=I.itemsVisite({type_code:code,vals:vals,touched:tch,points:f.pts},TT,D.cat||[]),se2=I.etatsSystemes(items);

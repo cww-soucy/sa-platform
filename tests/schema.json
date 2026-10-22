@@ -496,5 +496,23 @@
     "ordre",
     "actif",
     "updated_at"
+  ],
+  "ouvrage_ajustements": [
+    "id",
+    "site_id",
+    "bassin_id",
+    "domaine",
+    "action",
+    "ref",
+    "texte",
+    "section",
+    "crit",
+    "actif",
+    "par",
+    "par_nom",
+    "cree_le",
+    "annule_par",
+    "annule_par_nom",
+    "annule_le"
   ]
 }

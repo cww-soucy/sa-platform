@@ -179,36 +179,52 @@
   }
   /* Liste de contrôle d’un site : sections communes fusionnées (une fois), puis les phases de chaque ouvrage.
      Un seul ouvrage : clés « p1-0 » comme avant ; plusieurs : « <id ouvrage>:p1-0 ». Retraits (hiv.exclus) et ajouts (hiv.ajouts) de la fiche de l’ouvrage. */
+  /* Ajustements d’un site (table ouvrage_ajustements, faits sur le terrain ou au bureau) appliqués à ses bassins :
+     hiv.exclus / insp.exclus (réf. retirées) et hiv.ajouts (étapes ajoutées). bassin_id vide = tout le site. */
+  function avecAjustements(bassins, adj) {
+    var act = (adj || []).filter(function (r) { return r && r.actif !== false; });
+    return (bassins || []).map(function (b, i) {
+      var id = String(b.id || 'b' + i), mine = act.filter(function (r) { return !r.bassin_id || String(r.bassin_id) === id; });
+      var ex = function (dom) { return mine.filter(function (r) { return r.domaine === dom && r.action === 'exclure'; }).map(function (r) { return r.ref; }); };
+      return Object.assign({}, b, { id: id,
+        hiv: Object.assign({}, b.hiv, { exclus: ex('hiv'), ajouts: mine.filter(function (r) { return r.domaine === 'hiv' && r.action === 'ajouter' && r.bassin_id; })
+          .map(function (r) { return { id: r.id, t: r.texte, section: r.section, crit: !!r.crit }; }) }),
+        insp: Object.assign({}, b.insp, { exclus: ex('insp') }) });
+    });
+  }
+  /* Liste de contrôle d’un site : sections communes fusionnées (une fois), puis les phases de chaque ouvrage.
+     Un seul ouvrage : clés « p1-0 » comme avant ; plusieurs : « <id ouvrage>:p1-0 ». Chaque case garde sa référence de gabarit
+     (gref « jeuxdeau:p1-0 », celle des retraits) et son ouvrage (ob ; vide pour une section commune au site). */
   function planSite(bassins, rows) {
     var liste = gabarits(rows), ouv = [];
     (bassins || []).forEach(function (b, i) { if (!b || !String(b.nom || '').trim()) return; var g = gabaritDe(b, liste); if (g) ouv.push({ id: String(b.id || 'b' + i), nom: String(b.nom).trim(), g: g, cfg: b.hiv || {} }); });
     if (!(bassins || []).length) ouv.push({ id: '', nom: '', g: gabaritDe({}, liste), cfg: {} });
-    var multi = ouv.length > 1, tete = [], corps = [], fin = [], vus = {}, conseils = [], alerte = '';
-    var fusion = function (dest, s, o, premier) {
+    var multi = ouv.length > 1, tete = [], corps = [], fin = [], conseils = [], alerte = '', premier = {};
+    var exclu = function (o, gref) { return (o.cfg.exclus || []).indexOf(gref) >= 0; };
+    var fusion = function (dest, s, o) {
       var cur = dest.filter(function (x) { return x.id === s.id; })[0];
-      if (!cur) { cur = { id: s.id, titre: s.titre, col: s.col, col2: s.col2, num: s.num, commun: true, items: [] }; dest.push(cur); }
+      if (!cur) { cur = { id: s.id, titre: s.titre, col: s.col, col2: s.col2, num: s.num, commun: true, ob: '', items: [] }; dest.push(cur); }
       s.items.forEach(function (it, j) {
-        var ref = s.id + '-' + j, k = (premier[s.id] && premier[s.id] !== o.g.code ? o.g.code + ':' : '') + ref, ex = (o.cfg.exclus || []).indexOf(ref) >= 0;
+        var ref = s.id + '-' + j, gref = o.g.code + ':' + ref, k = (premier[s.id] !== o.g.code ? o.g.code + ':' : '') + ref, ex = exclu(o, gref);
         var deja = cur.items.filter(function (x) { return x.t === it.t && !!x.b === !!it.b; })[0];
-        if (deja) { if (!ex) deja._garde = true; return; }
-        cur.items.push(Object.assign(copie(it), { k: k, ref: ref, _garde: !ex }));
+        if (deja) { if (!ex) deja._garde = true; if (deja.grefs.indexOf(gref) < 0) deja.grefs.push(gref); return; }
+        cur.items.push(Object.assign(copie(it), { k: k, ref: ref, gref: gref, grefs: [gref], ob: '', _garde: !ex }));
       });
     };
-    var premier = {};
     ouv.forEach(function (o) {
       var secs = o.g.sections || [], pre = multi ? o.id + ':' : '', suf = multi ? ' — ' + o.nom : '';
       var iCorps = secs.map(function (s) { return !s.commun; }).indexOf(true);
       secs.forEach(function (s, si) {
-        if (s.commun) { if (!premier[s.id]) premier[s.id] = o.g.code; fusion(iCorps < 0 || si < iCorps ? tete : fin, s, o, premier); return; }
+        if (s.commun) { if (!premier[s.id]) premier[s.id] = o.g.code; fusion(iCorps < 0 || si < iCorps ? tete : fin, s, o); return; }
         var its = [];
-        s.items.forEach(function (it, j) { var ref = s.id + '-' + j; if ((o.cfg.exclus || []).indexOf(ref) < 0) its.push(Object.assign(copie(it), { k: pre + ref, ref: ref }, multi ? { o: o.nom } : {})); });
-        corps.push({ id: pre + s.id, titre: s.titre + suf, col: s.col, col2: s.col2, num: s.num, ouvrage: o.id, items: its });
+        s.items.forEach(function (it, j) { var ref = s.id + '-' + j, gref = o.g.code + ':' + ref; if (!exclu(o, gref)) its.push(Object.assign(copie(it), { k: pre + ref, ref: ref, gref: gref, ob: o.id }, multi ? { o: o.nom } : {})); });
+        corps.push({ id: pre + s.id, sid: s.id, titre: s.titre + suf, col: s.col, col2: s.col2, num: s.num, ob: o.id, items: its });
       });
       (o.cfg.ajouts || []).forEach(function (a) {
         if (!a || !String(a.t || '').trim()) return;
-        var cible = corps.filter(function (x) { return x.ouvrage === o.id && x.id === pre + (a.section || ''); })[0] || corps.filter(function (x) { return x.ouvrage === o.id; }).slice(-1)[0];
-        var it = Object.assign({ n: '—', t: String(a.t).trim(), crit: !!a.crit, k: pre + 'aj-' + a.id, ref: 'aj-' + a.id, ajout: true }, multi ? { o: o.nom } : {});
-        if (cible) cible.items.push(it); else corps.push({ id: pre + 'aj', titre: 'Étapes propres au site' + suf, col: 'Tâche', num: true, ouvrage: o.id, items: [it] });
+        var cible = corps.filter(function (x) { return x.ob === o.id && x.sid === a.section; })[0] || corps.filter(function (x) { return x.ob === o.id; }).slice(-1)[0];
+        var it = Object.assign({ n: '—', t: String(a.t).trim(), crit: !!a.crit, k: pre + 'aj-' + a.id, ref: 'aj-' + a.id, aj: a.id, ob: o.id }, multi ? { o: o.nom } : {});
+        if (cible) cible.items.push(it); else corps.push({ id: pre + 'aj', sid: 'aj', titre: 'Étapes propres au site' + suf, col: 'Tâche', num: true, ob: o.id, items: [it] });
       });
       (o.g.conseils || []).forEach(function (t) { if (conseils.indexOf(t) < 0) conseils.push(t); });
       if (!alerte && o.g.alerte) alerte = o.g.alerte;
@@ -216,8 +232,14 @@
     var secs = tete.concat(corps, fin).map(function (s) { s.items = s.items.filter(function (it) { var g = it._garde !== false; delete it._garde; return g; }); return s; })
       .filter(function (s) { return s.items.length; });
     var dernier = corps.filter(function (s) { return s.items.length; }).slice(-1)[0];
-    secs.forEach(function (s, i) { s.no = i + 2; s.tips = !!dernier && s.id === dernier.id; delete s.ouvrage; });
+    secs.forEach(function (s, i) { s.no = i + 2; s.tips = !!dernier && s.id === dernier.id; });
     return { v: 1, ouvrages: ouv.filter(function (o) { return o.id; }).map(function (o) { return { id: o.id, nom: o.nom, gabarit: o.g.code }; }), sections: secs, conseils: conseils, alerte: alerte };
+  }
+  /* Libellé d’une case retirée (gref « jeuxdeau:p1-0 »), pour la liste « Retirées pour ce site » */
+  function libelleRef(gref, rows) {
+    var p = String(gref || '').split(':'), g = gabarits(rows).filter(function (x) { return x.code === p[0]; })[0], m = /^(.*)-(\d+)$/.exec(p[1] || '');
+    var s = g && m && (g.sections || []).filter(function (x) { return x.id === m[1]; })[0], it = s && s.items[+m[2]];
+    return it ? (it.n && it.n !== '—' ? it.n + '. ' : '') + it.t + (it.b ? ' ' + it.b : '') : String(gref || '');
   }
   /* Édition d’un gabarit dans sa-admin, en texte : « ## Titre [commun] », puis une ligne par case :
      « 12. Étape », « — Étape » (sans numéro), « - Vérification », « * Pièce de rechange ». « **texte** » = en gras ; « ! » à la fin = étape critique. */
@@ -261,10 +283,10 @@
     });
   }
   /* Site sans bassin déclaré : un seul ouvrage, du type de relevé du site */
-  function planPourSite(site, rows) {
+  function planPourSite(site, rows, adj) {
     site = site || {};
     var bs = (site.bassins || []).filter(function (b) { return b && String(b.nom || '').trim(); });
-    return planSite(bs.length ? bs : [{ id: '', nom: site.nom || 'Site', type_code: site.type || '' }], rows);
+    return planSite(avecAjustements(bs.length ? bs : [{ id: '', nom: site.nom || 'Site', type_code: site.type || '' }], adj), rows);
   }
   /* Plan par défaut (anciens rapports et brouillons sans plan) : la piscine, telle que le formulaire papier */
   var DEFAUT = planSite([], GABARITS);
@@ -383,7 +405,7 @@
   }
   function fichier(d) { d = norm(d); return ('Hivernement ' + (d.info.site || '') + ' ' + (d.info.date || '')).trim().replace(/[\\/:*?"<>|\s]+/g, '-').replace(/-{2,}/g, '-').replace(/^-|-$/g, '') + '.html'; }
 
-  var api = { SECTIONS: SECTIONS, GABARITS: GABARITS, DEFAUT: DEFAUT, gabarits: gabarits, gabaritDe: gabaritDe, planSite: planSite, planPourSite: planPourSite, planDe: planDe, versTexte: versTexte, deTexte: deTexte, INFO: INFO, TIPS: TIPS, ALERTE: ALERTE, LOGO: LOGO, blank: blank, norm: norm, isChecklist: isChecklist, fromReport: fromReport, photosOf: photosOf,
+  var api = { SECTIONS: SECTIONS, GABARITS: GABARITS, DEFAUT: DEFAUT, gabarits: gabarits, gabaritDe: gabaritDe, planSite: planSite, planPourSite: planPourSite, avecAjustements: avecAjustements, libelleRef: libelleRef, planDe: planDe, versTexte: versTexte, deTexte: deTexte, INFO: INFO, TIPS: TIPS, ALERTE: ALERTE, LOGO: LOGO, blank: blank, norm: norm, isChecklist: isChecklist, fromReport: fromReport, photosOf: photosOf,
     progress: progress, manquants: manquants, critiquesManquants: critiquesManquants, toReport: toReport, html: html, texte: texte, fichier: fichier };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.SAHiv = api;
 })(typeof window !== 'undefined' ? window : this);
