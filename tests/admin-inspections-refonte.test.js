@@ -233,7 +233,7 @@ test('onglets personnalisables : masquer et réordonner, gardé sur le navigateu
   await page.close();
 });
 
-test('accès client : courriel déjà autorisé pour un autre compte → message clair, rien n’est écrit', async () => {
+test('accès client : un même courriel peut être contact de plusieurs comptes, mais une seule fois par compte', async () => {
   const { page, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: tables() });
   const S = { comptes: [{ id: 'cl-a', nom: 'Ville de Test', sites: ['1'], niveaux: {} }, { id: 'cl-b', nom: 'Autre client', sites: ['2'], niveaux: {} }],
     contacts: [{ id: 'ct-1', compte_id: 'cl-b', nom: 'Jeanne', courriel: 'jeanne@ville.qc.ca', niveau: 'gestionnaire', actif: true }], qr: [], journal: [], documents: [] }, writes = [];
@@ -241,17 +241,25 @@ test('accès client : courriel déjà autorisé pour un autre compte → message
     const b = JSON.parse(route.request().postData()), ok = (o) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(o) });
     if (b.action === 'admin_ouvrir') return ok({ ok: true, session: 'ADM-TOKEN-xxxxxxxxxxxxxxxx', role: 'admin' });
     if (b.action === 'admin_lire') return ok({ ok: true, role: 'admin', ...S, portail: 'https://sa-platform.pages.dev/portail/', envoi: true });
-    if (b.action === 'admin_ecrire') { writes.push(b); return ok({ ok: false, message: 'duplicate key value violates unique constraint "client_contacts_courriel"' }); }
+    if (b.action === 'admin_ecrire') { writes.push(b); S.contacts = S.contacts.concat([b.row]); return ok({ ok: true }); }
     return ok({ ok: false });
   });
   await open(page, 'acces');
   await page.getByLabel('Mot de passe').fill('bon');
   await page.getByRole('button', { name: 'Ouvrir la gestion' }).click();
+  // déjà contact du compte « Autre client » : accepté pour ce compte-ci aussi
   await page.getByLabel('Nom du contact').fill('Jeanne G.');
   await page.getByLabel('Courriel du contact').fill('Jeanne@Ville.qc.ca');
   await page.getByRole('button', { name: 'Ajouter', exact: true }).click();
-  await toast(page, /déjà autorisé pour le compte « Autre client »/);
-  assert.equal(writes.length, 0);
+  await toast(page, /Contact autorisé/);
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].row.compte_id, 'cl-a');
+  // une deuxième fois dans le même compte : refusé sans rien écrire
+  await page.getByLabel('Nom du contact').fill('Jeanne bis');
+  await page.getByLabel('Courriel du contact').fill('jeanne@ville.qc.ca');
+  await page.getByRole('button', { name: 'Ajouter', exact: true }).click();
+  await toast(page, /déjà autorisé pour ce compte client/);
+  assert.equal(writes.length, 1);
   assert.deepEqual(errors, []);
   await page.close();
 });

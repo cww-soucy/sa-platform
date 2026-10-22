@@ -70,3 +70,17 @@ test('portail : sa-admin n’écrit que les colonnes permises', async () => {
   assert.equal(L.filtrerLigne('client_sessions', { id: 'x' }), null);
   assert.equal(L.nomFichier('Plan salle mécanique (v2).pdf'), 'Plan_salle_mecanique_v2_.pdf');
 });
+
+test('portail : un même courriel dans plusieurs comptes — toutes ses installations, chacune avec les droits de son compte', async () => {
+  const L = await mod();
+  const a = { contact: { id: 'ct-a', sites: null, niveau: 'gestionnaire' }, compte: { id: 'cl-a', nom: 'Complexe AULA', sites: ['s1'] } };
+  const b = { contact: { id: 'ct-b', sites: ['s3'], niveau: 'direction' }, compte: { id: 'cl-b', nom: 'CCNQ', sites: ['s2', 's3'] } };
+  assert.deepEqual(L.installationsDe([a, b], { s1: 'Aula', s3: 'Canotier' }), [{ id: 's1', nom: 'Aula', compte: 'Complexe AULA' }, { id: 's3', nom: 'Canotier', compte: 'CCNQ' }],
+    'les sites du compte que le contact n’a pas (s2) sont exclus');
+  assert.equal(L.lienPour([a, b], 's3'), b);
+  assert.equal(L.lienPour([a, b], 's1'), a);
+  assert.equal(L.lienPour([a, b], null), null, 'plusieurs comptes sans site demandé : demander lequel');
+  assert.equal(L.lienPour([a, b], 's2'), null, 'site hors de ses accès : demander lequel');
+  assert.equal(L.lienPour([a], 's2'), a, 'un seul compte : comportement inchangé (le portail dit « pas d’accès »)');
+  assert.equal(L.lienPour([a], null), a);
+});
