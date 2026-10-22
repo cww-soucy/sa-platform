@@ -129,7 +129,7 @@ const actions: Record<string, (req: Request, b: any) => Promise<Response>> = {
     const ip = await ipHash(req);
     let q = sb.from("client_contacts").select("id, compte_id, courriel, cellulaire, sites").eq("actif", true);
     q = idt.courriel ? q.eq("courriel", idt.courriel) : q.eq("cellulaire", idt.cellulaire);
-    const { data: c } = await q.limit(1).maybeSingle();
+    const { data: c } = await q.order("id").limit(1).maybeSingle(); // plusieurs comptes possibles : toujours le même contact
     const ilY15 = new Date(Date.now() - 15 * 6e4).toISOString(), ilY60 = new Date(Date.now() - 36e5).toISOString();
     const [nc, ni] = await Promise.all([
       c ? sb.from("client_otp").select("id", { count: "exact", head: true }).eq("contact_id", c.id).gte("cree_le", ilY15) : Promise.resolve({ count: 0 }),
@@ -148,7 +148,7 @@ const actions: Record<string, (req: Request, b: any) => Promise<Response>> = {
     if (!idt || !/^\d{6}$/.test(String(b.code || ""))) return json(req, refus);
     let q = sb.from("client_contacts").select("id, compte_id").eq("actif", true);
     q = idt.courriel ? q.eq("courriel", idt.courriel) : q.eq("cellulaire", idt.cellulaire);
-    const { data: c } = await q.limit(1).maybeSingle();
+    const { data: c } = await q.order("id").limit(1).maybeSingle(); // plusieurs comptes possibles : toujours le même contact
     if (!c) return json(req, refus);
     const { data: o } = await sb.from("client_otp").select("id, code_hash, expire_le, tentatives, utilise").eq("contact_id", c.id).order("cree_le", { ascending: false }).limit(1).maybeSingle();
     if (!o || o.utilise || new Date(o.expire_le) < new Date() || o.tentatives >= L.OTP_TENTATIVES) { await journal(req, { contact_id: c.id, action: "verification", resultat: "otp_echoue" }); return json(req, refus); }
@@ -165,11 +165,22 @@ const actions: Record<string, (req: Request, b: any) => Promise<Response>> = {
     if (!s) return json(req, { ok: false, session: false }, 401);
     const { data: c } = await sb.from("client_contacts").select("*").eq("id", s.contact_id).maybeSingle();
     if (!c || !c.actif) return json(req, { ok: false, session: false }, 401);
-    const { data: compte } = await sb.from("client_comptes").select("*").eq("id", c.compte_id).maybeSingle();
-    if (!compte) return json(req, { ok: false, session: false }, 401);
-    const out = await charger(compte, L.sitesAutorises(compte, c), c.niveau);
-    await journal(req, { contact_id: c.id, compte_id: compte.id, action: "lecture" + (b.site ? ":" + b.site : ""), resultat: "ok" });
-    return json(req, { ok: true, contact: { nom: c.nom, niveau: c.niveau }, ...out });
+    // Même courriel (ou, sans courriel, même cellulaire) inscrit dans plusieurs comptes clients : toutes ses installations,
+    // chacune avec les droits (niveau, sites) du compte qui la donne. Une seule clé, pour ne pas relier deux personnes.
+    const cle = c.courriel ? ["courriel", c.courriel] : c.cellulaire ? ["cellulaire", c.cellulaire] : null;
+    const { data: autres } = cle ? await sb.from("client_contacts").select("*").eq("actif", true).eq(cle[0], cle[1]).order("id") : { data: null };
+    const contacts = autres && autres.length ? autres : [c];
+    const { data: cps } = await sb.from("client_comptes").select("*").in("id", [...new Set(contacts.map((x: any) => x.compte_id))]);
+    const liens = contacts.map((x: any) => ({ contact: x, compte: (cps || []).find((k: any) => k.id === x.compte_id) })).filter((l: any) => l.compte);
+    if (!liens.length) return json(req, { ok: false, session: false }, 401);
+    const tous = [...new Set(liens.flatMap((l: any) => L.sitesAutorises(l.compte, l.contact)))];
+    const { data: sn } = tous.length ? await sb.from("sites").select("id, nom").in("id", tous) : { data: [] };
+    const installations = L.installationsDe(liens, Object.fromEntries((sn || []).map((x: any) => [x.id, x.nom])));
+    const lien = L.lienPour(liens, b.site || (installations.length === 1 ? installations[0].id : null));
+    if (!lien) return json(req, { ok: true, choisir: true, contact: { nom: c.nom }, installations });
+    const out = await charger(lien.compte, L.sitesAutorises(lien.compte, lien.contact), lien.contact.niveau);
+    await journal(req, { contact_id: lien.contact.id, compte_id: lien.compte.id, action: "lecture" + (b.site ? ":" + b.site : ""), resultat: "ok" });
+    return json(req, { ok: true, contact: { nom: lien.contact.nom, niveau: lien.contact.niveau }, installations, ...out });
   },
   async deconnexion(req) {
     const t = req.headers.get("x-portail-session") || "";

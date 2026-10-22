@@ -19,7 +19,7 @@ const HEADERS = (() => {
 const PH = { key: 'ph', label: 'pH', unit: '', kind: 'range', min: 6.8, max: 8.2, lo: 7.2, hi: 7.6, step: 0.1 };
 const CL = { key: 'cl', label: 'Chlore libre', unit: 'mg/L', kind: 'range', min: 0, max: 5, lo: 1, hi: 3, step: 0.1 };
 
-function serveur(niveau, sitesOk = ['1']) {
+function serveur(niveau, sitesOk = ['1'], multi = false) {
   const hier = iso(addDays(new Date(), -1));
   const src = {
     sites: [{ id: '1', nom: 'Piscine Alpha', addr: '1 rue A', bassins: [{ id: 'b1', nom: 'Grand bassin' }, { id: 'b2', nom: 'Pataugeoire' }] },
@@ -43,6 +43,13 @@ function serveur(niveau, sitesOk = ['1']) {
     if (b.action === 'verifier_code') { if (b.code !== '123456') return ok({ ok: false, message: 'Code incorrect ou expiré.' }); st.sessions.add('S-' + st.sessions.size + '-xxxxxxxxxxxxxxxxxxxx'); return ok({ ok: true, session: [...st.sessions].pop(), jours: b.souvenir ? 90 : 0 }); }
     if (b.action === 'donnees') {
       if (!st.sessions.has(tok)) return route.fulfill({ status: 401, contentType: 'application/json', body: '{"ok":false}' });
+      st.donnees = (st.donnees || []).concat([b.site || null]);
+      if (multi) { // même adresse inscrite dans deux comptes : Piscine Alpha (Ville de Test) et Piscine Beta (Autre client)
+        const installations = [{ id: '1', nom: 'Piscine Alpha', compte: 'Ville de Test' }, { id: '2', nom: 'Piscine Beta', compte: 'Autre client' }];
+        if (!b.site) return ok({ ok: true, choisir: true, contact: { nom: 'Jeanne Gestion' }, installations });
+        return ok({ ok: true, contact: { nom: 'Jeanne Gestion', niveau }, compte: { nom: b.site === '2' ? 'Autre client' : 'Ville de Test', logo: null }, urgence: '', contrats: { 1: 'MI' }, installations,
+          ...L.donneesClient({ ...src, sites: src.sites.filter((x) => x.id === b.site) }, { niveau, sitesOk: [b.site] }) });
+      }
       return ok({ ok: true, contact: { nom: 'Jeanne Gestion', niveau }, compte: { nom: 'Ville de Test', logo: null }, urgence: '418-555-0100', contrats: { 1: 'MI' },
         ...L.donneesClient({ ...src, sites: src.sites.filter((x) => sitesOk.includes(x.id)) }, { niveau, sitesOk }) });
     }
@@ -59,9 +66,9 @@ function serveur(niveau, sitesOk = ['1']) {
   return { st, handler };
 }
 
-async function open(query, niveau = 'gestionnaire', sitesOk) {
+async function open(query, niveau = 'gestionnaire', sitesOk, multi) {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
-  const errors = [], { st, handler } = serveur(niveau, sitesOk);
+  const errors = [], { st, handler } = serveur(niveau, sitesOk, multi);
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   await page.exposeFunction('__csp', (v) => errors.push('csp: ' + v));
   await page.addInitScript(() => document.addEventListener('securitypolicyviolation', (e) => window.__csp(e.violatedDirective + ' ' + e.blockedURI)));
@@ -218,6 +225,41 @@ test('portail : QR → « Personnel Soucy Aquatik » → fiche complète du site
   await page.waitForURL(/apercu=1&site=1/);
   await page.locator('.opere').getByText('Opéré par').waitFor();
   assert.equal(await page.textContent('h1'), 'Piscine Alpha');
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+async function code(page) {
+  await page.fill('#ident', 'jeanne@ville.qc.ca');
+  await page.getByRole('button', { name: 'Recevoir un code' }).click();
+  for (const [i, d] of [...'123456'].entries()) await page.getByLabel('Chiffre ' + (i + 1)).fill(d);
+  await page.getByRole('button', { name: 'Accéder' }).click();
+}
+
+test('portail : adresse inscrite dans plusieurs comptes — on choisit l’installation, puis on passe de l’une à l’autre', async () => {
+  const { page, st, errors } = await open('', 'gestionnaire', undefined, true);
+  await code(page);
+  await page.getByRole('heading', { name: 'Quelle installation ?' }).waitFor();
+  assert.equal(await page.locator('.opere').count(), 0, 'aucune installation ouverte d’office');
+  await page.getByRole('button', { name: /Piscine Beta/ }).click();
+  await page.locator('.opere').getByText('Opéré par').waitFor();
+  assert.equal(await page.textContent('h1'), 'Piscine Beta');
+  // le sélecteur liste les installations des deux comptes ; changer de compte recharge avec ses droits
+  await page.getByLabel('Mes installations').selectOption('1');
+  await page.waitForFunction(() => document.querySelector('h1') && document.querySelector('h1').textContent === 'Piscine Alpha');
+  assert.deepEqual(st.donnees, [null, '2', '1']);
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+test('portail : adresse inscrite dans plusieurs comptes — le QR ouvre directement son installation', async () => {
+  const { page, st, errors } = await open('?q=BETA', 'gestionnaire', undefined, true);
+  await page.getByRole('button', { name: 'Accès client' }).click();
+  await code(page);
+  await page.locator('.opere').getByText('Opéré par').waitFor();
+  assert.equal(await page.textContent('h1'), 'Piscine Beta');
+  assert.equal(await page.getByRole('heading', { name: 'Quelle installation ?' }).count(), 0);
+  assert.deepEqual(st.donnees, ['2']);
   assert.deepEqual(errors, []);
   await page.close();
 });

@@ -66,12 +66,25 @@
      installation au lieu d'ouvrir le portail du client déjà connecté. Ses installations restent accessibles par un lien. */
   function ecranAutreAcces(r) {
     S.ident = '';
-    var noms = r.sites.map(function (s) { return s.nom; }).slice(0, 3).join(', ') + (r.sites.length > 3 ? '…' : '');
+    var L = r.installations || r.sites, noms = L.map(function (s) { return s.nom; }).slice(0, 3).join(', ') + (L.length > 3 ? '…' : '');
     ecranIdent(h('div', { class: 'box', role: 'note' },
       h('p', { text: 'Votre adresse est inscrite pour ' + (noms || 'un autre accès') + ', pas pour ' + S.qr.site + '. Pour cette installation, entrez le courriel ou cellulaire inscrit par son gestionnaire.' }),
       h('div', { class: 'row' },
-        h('button', { class: 'btn', type: 'button', onclick: function () { S.reprise = false; S.horsQr = false; S.site = null; S.data = r; S.site = (r.sites[0] || {}).id || null; rendre(); } }, 'Continuer vers ' + (r.sites.length > 1 ? 'mes installations' : noms)),
+        h('button', { class: 'btn', type: 'button', onclick: function () { S.reprise = false; S.horsQr = false; S.qr = null; S.site = null; if (r.choisir) return ecranChoix(r); S.data = r; S.site = (r.sites[0] || {}).id || null; rendre(); } }, 'Continuer vers ' + (L.length > 1 ? 'mes installations' : noms)),
         h('button', { class: 'btn', type: 'button', onclick: ecranPersonnel }, 'Personnel Soucy Aquatik'))));
+  }
+  /* Adresse inscrite dans plusieurs comptes clients, sans installation précise demandée : on demande laquelle ouvrir */
+  function ecranChoix(r) {
+    var comptes = {}; r.installations.forEach(function (i) { comptes[i.compte] = 1; });
+    var plusieurs = Object.keys(comptes).length > 1;
+    show(h('div', { class: 'stack', style: 'max-width:440px;margin:0 auto' }, marque(),
+      h('h1', { text: 'Quelle installation ?' }),
+      h('p', { class: 'muted', text: 'Votre adresse donne accès à plusieurs installations. Choisissez celle à ouvrir.' }),
+      r.installations.map(function (i) {
+        return h('button', { class: 'btn big', type: 'button', onclick: function () { S.site = i.id; S.bassin = null; charger(); } },
+          i.nom, plusieurs && i.compte && i.compte !== i.nom ? h('span', { class: 'muted', text: ' · ' + i.compte }) : null);
+      }),
+      h('button', { class: 'btn', type: 'button', onclick: function () { call('deconnexion'); clearTok(); S.site = null; ecranIdent(); } }, 'Changer d’adresse')));
   }
   /* Personnel Soucy Aquatik (admin, superviseur) : identifiant et mot de passe de SA Platform → fiche complète du site du QR
      (mode aperçu, comme « Voir comme le client » dans sa-admin ; session de 11 h 30 partagée avec sa-admin sur ce navigateur). */
@@ -144,17 +157,20 @@
 
   /* ---------- données ---------- */
   function charger() {
-    var p = S.apercu ? call('admin_apercu', { compte_id: P.get('compte'), site_id: P.get('site'), niveau: S.niveau }) : call('donnees', {});
+    var qs = S.qr && S.qr.site_id;
+    var p = S.apercu ? call('admin_apercu', { compte_id: P.get('compte'), site_id: P.get('site'), niveau: S.niveau }) : call('donnees', { site: S.site || qs || null });
     show(h('p', { class: 'muted', text: 'Chargement…' }));
     p.then(function (r) {
       if (!r.ok) { if (S.apercu) return erreur('Aperçu impossible : ouvrez-le depuis sa-admin (session administrateur expirée ?).'); clearTok(); return P.get('q') ? ecranQr() : ecranIdent(); }
-      S.data = r; var qs = S.qr && S.qr.site_id;
-      S.horsQr = !!qs && !r.sites.some(function (s) { return s.id === qs; });
+      var L = r.installations || r.sites;
+      S.horsQr = !!qs && !L.some(function (s) { return s.id === qs; });
       /* Adresse inscrite pour d'autres installations que celle du QR (session gardée OU code tout juste reçu) : on n'ouvre
          jamais d'office le portail d'une autre installation — sinon l'affiche de Canotier « ouvrait » Aula. */
       if (S.horsQr && !S.apercu) { S.reprise = false; return ecranAutreAcces(r); }
       S.reprise = false;
-      if (qs && !S.horsQr) S.site = qs;
+      if (r.choisir) return ecranChoix(r);
+      S.data = r;
+      if (qs) S.site = qs;
       if (!S.site || !r.sites.some(function (s) { return s.id === S.site; })) S.site = (r.sites[0] || {}).id || null; rendre();
     }).catch(function () { erreur(); });
   }
@@ -187,8 +203,10 @@
     var head = h('header', { class: 'head' },
       D.compte && D.compte.logo ? h('img', { class: 'logo', src: D.compte.logo, alt: D.compte.nom }) : h('b', { class: 'nomclient', text: (D.compte && D.compte.nom) || site.nom }),
       h('div', { class: 'grow' },
-        D.sites.length > 1 ? h('select', { class: 'input', style: 'max-width:340px', 'aria-label': 'Mes installations', onchange: function (e) { S.site = e.target.value; S.bassin = null; rendre(); } },
-          D.sites.map(function (s) { return h('option', { value: s.id, selected: s.id === site.id }, s.nom); })) : null,
+        (D.installations || D.sites).length > 1 ? h('select', { class: 'input', style: 'max-width:340px', 'aria-label': 'Mes installations', onchange: function (e) {
+          /* une installation d'un autre compte client (même adresse) : on recharge avec les droits de ce compte */
+          var id = e.target.value; S.site = id; S.bassin = null; S.qr = null; if (D.sites.some(function (s) { return s.id === id; })) rendre(); else charger(); } },
+          (D.installations || D.sites).map(function (s) { return h('option', { value: s.id, selected: s.id === site.id }, s.nom); })) : null,
         h('h1', { text: site.nom }), h('div', { class: 'muted', text: lv ? 'Dernière visite : ' + fdate(lv.date) + (lv.r.heure ? ', ' + lv.r.heure : '') : 'Aucune visite publiée' })),
       h('div', { style: 'text-align:right' }, h('div', { text: D.contact.nom }), h('span', { class: 'badge', text: I.NIVEAU_NOM[D.contact.niveau] || '' }), h('div', { class: 'opere' }, h('span', { text: 'Opéré par' }), h('img', { src: LOGO, alt: '' }), h('b', { text: 'Soucy Aquatik' }))));
 

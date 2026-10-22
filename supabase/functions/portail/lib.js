@@ -71,6 +71,22 @@ export function sitesAutorises(compte, contact) {
   const c = Array.isArray(compte && compte.sites) ? compte.sites.map(String) : [];
   return Array.isArray(contact && contact.sites) && contact.sites.length ? c.filter((s) => contact.sites.map(String).includes(s)) : c;
 }
+/** Un même courriel ou cellulaire peut être contact de plusieurs comptes clients (ex. un gestionnaire de plusieurs
+ *  immeubles). liens = [{ contact, compte }] actifs. Liste de toutes ses installations, triée par nom. */
+export function installationsDe(liens, noms = {}) {
+  const vu = new Set(), out = [];
+  for (const l of liens) for (const id of sitesAutorises(l.compte, l.contact)) {
+    if (vu.has(id)) continue;
+    vu.add(id); out.push({ id, nom: noms[id] || id, compte: (l.compte && l.compte.nom) || "" });
+  }
+  return out.sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
+}
+/** Le lien (contact + compte) qui ouvre `site`. Sans site demandé, ou site hors de tous ses accès : le seul lien s'il n'y
+ *  en a qu'un (le portail affiche alors « pas d'accès à … »), sinon null = demander quelle installation ouvrir. */
+export function lienPour(liens, site) {
+  if (site) { const l = liens.find((x) => sitesAutorises(x.compte, x.contact).includes(String(site))); if (l) return l; }
+  return liens.length === 1 ? liens[0] : null;
+}
 /** Limitation : faut-il refuser un nouvel envoi de code ? */
 export function tropDeCodes(nContact15, nIpHeure) {
   return nContact15 >= OTP_PAR_CONTACT_15MIN || nIpHeure >= OTP_PAR_IP_HEURE;

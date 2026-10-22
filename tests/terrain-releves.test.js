@@ -39,7 +39,8 @@ test('saisie au clavier : toucher la valeur, virgule acceptée, 2 décimales, ho
   await page.getByRole('button', { name: 'Saisir pH au clavier' }).click();
   const box = page.getByRole('textbox', { name: 'Saisir pH au clavier' });
   await box.waitFor();
-  assert.equal(await page.evaluate(() => document.activeElement.getAttribute('data-num')), 'ph');
+  // le focus est posé juste après l'affichage (setTimeout 0) : on l'attend au lieu de le lire aussitôt
+  await page.waitForFunction(() => document.activeElement && document.activeElement.getAttribute('data-num') === 'ph', null, { timeout: 2000 });
   await box.fill('7,45');
   await box.press('Enter');
   await page.getByRole('button', { name: 'Saisir pH au clavier' }).waitFor();
