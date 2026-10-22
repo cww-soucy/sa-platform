@@ -25,10 +25,10 @@ function psql(sql, { db = 'replica', file, cwd } = {}) {
   return { ok: r.status === 0, out: (r.stdout || '').trim(), err: (r.stderr || '').trim() };
 }
 // Requête au nom d'un appelant : sans jeton (anon) ou avec le jeton d'un compte SA
-function as(compte, sql) {
+function as(compte, sql, db) {
   const claims = compte ? JSON.stringify({ role: 'authenticated', app_metadata: { compte_id: compte } }) : '';
   const role = compte ? 'authenticated' : 'anon';
-  return psql(`begin; set local role ${role}; set local request.jwt.claims to '${claims}'; ${sql}; commit;`);
+  return psql(`begin; set local role ${role}; set local request.jwt.claims to '${claims}'; ${sql}; commit;`, { db });
 }
 const lignes = (r) => r.out.split('\n').filter(Boolean);
 const refuse = (r) => !r.ok && /permission denied|row-level security/.test(r.err);
@@ -216,4 +216,40 @@ test('retour arrière : droits et politiques exactement comme avant', { skip }, 
   assert.ok(r.ok, r.err);
   assert.equal(snapshot(), avant);
   assert.deepEqual(lignes(as(null, `select count(*) from comptes_publics`)), ['5'], 'la clé publique relit comme avant');
+});
+
+test('MIGRATION_2026-10-22_gabarits_ouvrages : nouvelles tables utilisables (droits explicites), puis couvertes par l’étape 3 et son retour arrière', { skip }, () => {
+  const db = 'ouvrages';
+  assert.ok(psql(`create database ${db}`, { db: 'postgres' }).ok);
+  assert.ok(psql('', { db, file: 'production.sql', cwd: path.join(__dirname, 'sql') }).ok);
+  assert.ok(psql(`insert into comptes(id,prenom,nom,role) values ('kael','Kaël','T','employe'),('chef','Chef','S','superviseur');
+    insert into comptes_secrets(id,mdp_hash) values ('kael',extensions.crypt('Kael-1234',extensions.gen_salt('bf',4))),('chef',extensions.crypt('Chef-1234',extensions.gen_salt('bf',4)));`, { db }).ok);
+  let r = psql('', { db, file: 'docs/sql/MIGRATION_2026-10-22_gabarits_ouvrages.sql' });
+  assert.ok(r.ok, r.err);
+  assert.ok(psql('', { db, file: 'docs/sql/MIGRATION_2026-10-22_gabarits_ouvrages.sql' }).ok, 'réexécutable');
+  const ajout = (id) => `insert into ouvrage_ajustements(id,site_id,domaine,action,ref) values ('${id}','1','hiv','exclure','fontaine:p1-0')`;
+  // avant l'étape 3 : clé publique et jeton (aucun droit automatique sur une table neuve : sans grant, « permission denied »)
+  assert.deepEqual(lignes(as(null, `select count(*) from gabarits_hivernage`, db)), ['3']);
+  assert.deepEqual(lignes(as('kael', `select count(*) from gabarits_hivernage`, db)), ['3']);
+  assert.ok(as(null, ajout('a-anon'), db).ok);
+  assert.ok(as('kael', ajout('a-kael') + `; update ouvrage_ajustements set actif=false where id='a-kael'`, db).ok);
+  assert.ok(psql('', { db, file: 'docs/sql/SECURISATION_ETAPE3_PREPARATION.sql' }).ok);
+  r = psql('', { db, file: 'docs/sql/SECURISATION_ETAPE3.sql' });
+  assert.ok(r.ok, r.err);
+  assert.ok(refuse(as(null, `select * from gabarits_hivernage`, db)), 'sans jeton : gabarits');
+  assert.ok(refuse(as(null, ajout('a-anon2'), db)), 'sans jeton : ajustements');
+  assert.deepEqual(lignes(as('kael', `select count(*) from gabarits_hivernage`, db)), ['3']);
+  assert.ok(as('kael', ajout('a-kael2') + `; update ouvrage_ajustements set actif=false where id='a-kael2'`, db).ok, 'technicien : ajoute et annule');
+  assert.deepEqual(lignes(as('kael', `with x as (update gabarits_hivernage set nom='x' returning 1) select count(*) from x`, db)), ['0'], 'gabarits : supervision');
+  assert.deepEqual(lignes(as('chef', `with x as (update gabarits_hivernage set alerte='' where code='fontaine' returning 1) select count(*) from x`, db)), ['1']);
+  // retour arrière : la clé publique retrouve l'accès de la migration
+  const src = fs.readFileSync(path.join(ROOT, 'docs/sql/SECURISATION_ETAPE3.sql'), 'utf8');
+  const bloc = src.split('RETOUR ARRIÈRE')[1].split('\n').filter((l) => l.startsWith('-- ')).map((l) => l.slice(3)).join('\n');
+  const f = path.join(dir, 'retour-ouvrages.sql');
+  fs.writeFileSync(f, bloc.slice(bloc.indexOf('begin;')));
+  fs.chmodSync(f, 0o644);
+  r = psql('', { db, file: f });
+  assert.ok(r.ok, r.err);
+  assert.ok(as(null, ajout('a-anon3'), db).ok);
+  assert.deepEqual(lignes(as(null, `select count(*) from ouvrage_ajustements`, db)), ['4']);
 });

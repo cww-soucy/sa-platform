@@ -50,6 +50,10 @@ do $$ declare t text; r text; begin
     end loop;
   end loop;
 end $$;
+-- Droits explicites (Supabase ne les donne plus automatiquement aux nouvelles tables depuis le 30/10/2026, voir docs/sql/README.md).
+-- anon tant que SECURISATION_ETAPE3.sql n'est pas appliquée (elle les retire et pose ses politiques « connecté »).
+grant select, insert, update on public.gabarits_hivernage, public.ouvrage_ajustements to anon, authenticated;
+grant select, insert, update, delete on public.gabarits_hivernage, public.ouvrage_ajustements to service_role;
 
 -- Gabarits de départ (Jeux d'eau et Fontaine : premier jet à valider par Soucy Aquatik)
 insert into public.gabarits_hivernage (code, nom, types, sections, conseils, alerte, ordre) values
