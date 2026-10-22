@@ -398,9 +398,12 @@ DE_HV=IF('isHVold',G2(FL('Site',INP('dSite.v','dSite.on','text',' list="deSites"
   +G2(FL('Signataire Soucy Aquatik',INP('dSSA.v','dSSA.on')),FL('Signataire client',INP('dSCl.v','dSCl.on'))))
 # Hivernage : liste de contrôle « Hivernement » (src/hivernage/checklist.js) — même contenu que le formulaire papier
 HVH=lambda t:'<h3 style="margin:0;padding:6px 10px;background:var(--color-text);color:var(--color-bg);font:600 15px var(--font-heading);text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:10px">%s</h3>'%t
-HVBOX=('<label style="display:flex;gap:10px;align-items:flex-start;padding:7px 4px;border-bottom:1px solid var(--color-divider);cursor:pointer;font-size:14px;line-height:1.35;opacity:{{ it.op }}">'
+HVBOX=('<sc-if value="{{ it.isChoix }}"><div role="group" aria-label="{{ it.t }}" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:7px 4px;border-bottom:1px solid var(--color-divider);font-size:14px;line-height:1.35">'
+  '<span style="width:{{ it.nw }};flex:none;font-weight:600;text-align:center;overflow:hidden">{{ it.n }}</span><span style="flex:1;min-width:200px;font-weight:{{ it.fw }}">{{ it.t }}</span><span style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ it.opts }}" as="o">'
+  '<button onClick="{{ o.go }}" aria-pressed="{{ o.pr }}" style="all:unset;cursor:pointer;padding:4px 12px;border:1px solid var(--color-text);background:{{ o.bg }};color:{{ o.fg }};font-size:14px">{{ o.l }}</button></sc-for></span></div></sc-if>'
+  '<sc-if value="{{ it.isCase }}"><label style="display:flex;gap:10px;align-items:flex-start;padding:7px 4px;border-bottom:1px solid var(--color-divider);cursor:pointer;font-size:14px;line-height:1.35;opacity:{{ it.op }}">'
   '<input type="checkbox" checked="{{ it.on }}" onChange="{{ it.go }}" style="width:18px;height:18px;flex:none;margin:1px 0 0">'
-  '<span style="width:{{ it.nw }};flex:none;font-weight:600;text-align:center;overflow:hidden">{{ it.n }}</span><span style="flex:1;font-weight:{{ it.fw }}">{{ it.t }}</span></label>')
+  '<span style="width:{{ it.nw }};flex:none;font-weight:600;text-align:center;overflow:hidden">{{ it.n }}</span><span style="flex:1;font-weight:{{ it.fw }}">{{ it.t }}</span></label></sc-if>')
 DE_HV2=IF('isHV2','<datalist id="deTechs"><sc-for list="{{ hvTechs }}" as="o"><option value="{{ o.v }}"></option></sc-for></datalist>'
   '<div role="status" style="position:sticky;top:-22px;z-index:2;background:var(--color-bg);display:flex;align-items:center;gap:12px;padding:8px 12px;border:1px solid var(--color-text);font-weight:600">'
   '<span>{{ hvProg }}</span><div style="flex:1;height:10px;background:var(--color-divider)"><div style="height:100%;width:{{ hvPct }};background:var(--color-accent-700)"></div></div></div>'
@@ -653,8 +656,32 @@ GBDLG=('<template data-sc="if" value="{{ gbOpen }}"><div class="dialog-backdrop"
   +DLGHEAD('gbTitle','gbClose')
   +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+SEL('gbList','onGbSel').replace('<select class="input"','<select class="input" aria-label="Gabarit" style="max-width:280px"')+'<button class="btn btn-ghost" onClick="{{ gbNew }}">+ Nouveau gabarit</button><span style="flex:1"></span><span style="font-size:13px">{{ gbSrc }}</span></div>'
   +G2(FL('Nom',INP('gbNom.v','gbNom.on')),FL('Ouvrages qui le prennent par défaut (types, séparés par des virgules)',INP('gbTypes.v','gbTypes.on','text',' placeholder="jeuxdeau, JE"')))
-  +FL('Étapes','<div style="font-size:13px;line-height:1.4">« ## Titre » commence une section (« [commun] » : fusionnée quand le site a plusieurs ouvrages). Une ligne par case : « 12. Étape », « — Étape » sans numéro, « - Vérification », « * Pièce de rechange ». « **texte** » en gras, « ! » à la fin = critique.</div>'
-    '<textarea class="input" value="{{ gbTxt.v }}" onInput="{{ gbTxt.on }}" aria-label="Étapes du gabarit" style="min-height:420px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;line-height:1.45"></textarea><div style="font-size:13px;font-weight:600">{{ gbApercu }}</div>')
+  +'<div style="display:flex;flex-direction:column;gap:16px"><div style="font-size:13px;line-height:1.4">Une carte par section, une ligne par étape. « Case à cocher » ou « Choix multiple » (réponses séparées par des virgules, ex. Oui, Non, N/A). '
+    'Une section « commune » est fusionnée quand le site a plusieurs ouvrages. Les flèches changent l’ordre ; rien n’est enregistré avant « Enregistrer ».</div>'
+    '<sc-for list="{{ gbSecs }}" as="s"><div style="border:1px solid var(--color-text);display:flex;flex-direction:column">'
+    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 12px;background:var(--color-surface,transparent);border-bottom:1px solid var(--color-divider)">'
+    '<b style="font-size:16px">{{ s.no }}.</b><input class="input" value="{{ s.titre.v }}" onInput="{{ s.titre.on }}" aria-label="Titre de la section {{ s.no }}" style="flex:1;min-width:200px;font-weight:600">'
+    '<label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" checked="{{ s.commun }}" onChange="{{ s.onCommun }}">Commune</label>'
+    '<sc-if value="{{ s.canUp }}"><button onClick="{{ s.up }}" aria-label="Monter la section {{ s.no }}" style="all:unset;cursor:pointer;min-width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--color-divider);font-size:15px">↑</button></sc-if>'
+    '<sc-if value="{{ s.canDown }}"><button onClick="{{ s.down }}" aria-label="Descendre la section {{ s.no }}" style="all:unset;cursor:pointer;min-width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--color-divider);font-size:15px">↓</button></sc-if>'
+    '<button class="btn btn-ghost" onClick="{{ s.del }}" style="font-size:13px;padding:4px 8px">{{ s.delLbl }}</button></div>'
+    '<sc-for list="{{ s.items }}" as="it"><div role="group" aria-label="{{ it.lbl }}" style="display:flex;flex-direction:column;gap:6px;padding:8px 12px;border-bottom:1px solid var(--color-divider)">'
+    '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
+    '<input class="input" value="{{ it.n.v }}" onInput="{{ it.n.on }}" aria-label="N°" placeholder="N°" style="width:52px;padding:6px">'
+    '<input class="input" value="{{ it.t.v }}" onInput="{{ it.t.on }}" aria-label="Texte de l’étape" placeholder="Texte de l’étape" style="flex:1;min-width:220px;padding:6px 8px">'
+    '<sc-if value="{{ it.canUp }}"><button onClick="{{ it.up }}" aria-label="Monter l’étape" style="all:unset;cursor:pointer;min-width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--color-divider);font-size:15px">↑</button></sc-if>'
+    '<sc-if value="{{ it.canDown }}"><button onClick="{{ it.down }}" aria-label="Descendre l’étape" style="all:unset;cursor:pointer;min-width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--color-divider);font-size:15px">↓</button></sc-if>'
+    '<button onClick="{{ it.del }}" aria-label="Supprimer l’étape" style="all:unset;cursor:pointer;min-width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--color-divider);font-size:15px"><sa-i n="x" s="15"></sa-i></button></div>'
+    '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding-left:58px">'
+    '<select class="input" onChange="{{ it.onType }}" aria-label="Type de réponse" style="max-width:170px;padding:5px 8px"><template data-sc="for" list="{{ it.types }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select>'
+    '<sc-if value="{{ it.isChoix }}"><input class="input" value="{{ it.choix.v }}" onInput="{{ it.choix.on }}" aria-label="Réponses possibles" placeholder="Oui, Non, N/A" style="flex:1;min-width:180px;padding:5px 8px"></sc-if>'
+    '<input class="input" value="{{ it.b.v }}" onInput="{{ it.b.on }}" aria-label="Précision en gras" placeholder="Précision en gras (facultatif)" style="flex:1;min-width:160px;padding:5px 8px">'
+    '<label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" checked="{{ it.crit }}" onChange="{{ it.onCrit }}">Critique</label>'
+    '<sc-if value="{{ s.hasPiece }}"><label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" checked="{{ it.piece }}" onChange="{{ it.onPiece }}">Pièce de rechange</label></sc-if></div>'
+    '</div></sc-for>'
+    '<button class="btn btn-ghost" onClick="{{ s.addItem }}" aria-label="Ajouter une étape à la section {{ s.no }}" style="align-self:flex-start;margin:6px 8px">+ Ajouter une étape</button></div></sc-for>'
+    '<button class="btn btn-secondary" onClick="{{ gbAddSec }}" style="align-self:flex-start">+ Ajouter une section</button>'
+    '<div style="font-size:13px;font-weight:600">{{ gbApercu }}</div></div>'
   +FL('Bon à savoir (un conseil par ligne)',TXT('gbConseils.v','gbConseils.on',''))+FL('Avertissement',INP('gbAlerte.v','gbAlerte.on'))
   +'<div style="font-size:13px">Les listes déjà commencées ou envoyées gardent les étapes qu’elles avaient.</div>'
   +'<div class="dialog-actions" style="margin-top:0;flex-wrap:wrap">'+IF('gbCanDel',BTNX('btn-secondary','gbDel','{{ gbDelLbl }}'))+'<span style="flex:1"></span>'+BTNX('btn-secondary','gbClose','Fermer')+BTNX('btn-primary','gbSave','{{ gbSaveLbl }}')+'</div>'

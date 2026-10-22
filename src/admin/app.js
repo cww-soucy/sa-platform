@@ -879,11 +879,12 @@ Comp.prototype.hvVals=function(de){var self=this,H=window.SAHiv,hv=H.norm(de.hv)
       on:set(function(h,v,d){h.info[f[0]]=v;if(f[0]==='site'){d.f.site_nom=v;var s=self.hvSiteOf(v);if(s&&!h.courriel&&s.email)h.courriel=s.email;
         /* Liste pas encore commencée : étapes selon les ouvrages du site choisi */
         if(!Object.keys(h.c).some(function(k){return h.c[k];}))h.plan=s?window.SAHiv.planPourSite(s,self.D.gab,self.adjDe(s.id)):null;}})};}),
-    hvSecs:H.planDe(hv).sections.map(function(s){var mk=function(it){var on=!!hv.c[it.k];return{t:it.t+(it.b?' '+it.b:''),n:s.num?it.n:'',nw:s.num?'28px':'0',fw:it.crit?'700':'400',op:on?'0.6':'1',on:on,
+    hvSecs:H.planDe(hv).sections.map(function(s){var mk=function(it){var on=!!hv.c[it.k],ch=H.choixDe(it),rep=H.reponse(hv,it);return{t:it.t+(it.b?' '+it.b:''),n:s.num?it.n:'',nw:s.num?'28px':'0',fw:it.crit?'700':'400',op:on&&!ch?'0.6':'1',on:on,
+        isCase:!ch,isChoix:!!ch,opts:(ch||[]).map(function(o){var sel=rep===o;return{l:o,bg:sel?'var(--color-text)':'transparent',fg:sel?'var(--color-bg)':'var(--color-text)',pr:sel?'true':'false',go:function(){self.deHv(function(h){h.c[it.k]=h.c[it.k]===o?false:o;});}};}),
         go:function(){self.deHv(function(h){h.c[it.k]=!h.c[it.k];});}};};
-      var all=s.items.every(function(it){return hv.c[it.k];});
+      var cases=s.items.filter(function(it){return!H.choixDe(it);}),all=cases.length&&cases.every(function(it){return hv.c[it.k];});
       return{titre:s.no+'. '+s.titre,cols:s.col2?'1fr 1fr':'1fr',groups:(s.col2?[[s.col,s.items.filter(function(it){return it.g!==2;})],[s.col2,s.items.filter(function(it){return it.g===2;})]]:[['',s.items]]).map(function(g){return{head:g[0],items:g[1].map(mk)};}),
-        allLbl:all?'Tout décocher':'Tout cocher',all:function(){self.deHv(function(h){s.items.forEach(function(it){h.c[it.k]=!all;});});},
+        allLbl:cases.length?(all?'Tout décocher':'Tout cocher'):'',all:function(){self.deHv(function(h){cases.forEach(function(it){h.c[it.k]=!all;});});},
         tips:!!s.tips,isForm:s.id==='form'};}),
     hvTips:H.planDe(hv).conseils.map(function(t){return{t:t};}),hvAlerte:H.planDe(hv).alerte,hvNoRem:(H.planDe(hv).sections.length+2)+'. Remarques et anomalies',hvNoVal:(H.planDe(hv).sections.length+3)+'. Validation',
     hvOuv:H.planDe(hv).ouvrages.length>1?'Ouvrages : '+H.planDe(hv).ouvrages.map(function(o){return o.nom;}).join(' · '):'',

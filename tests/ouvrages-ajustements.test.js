@@ -112,15 +112,74 @@ test('sa-admin : le bureau voit les ajustements du technicien sur l’ouvrage et
   const n = db.rows('ouvrage_ajustements').find((r) => r.ref === 'fontaine:p1-1');
   assert.deepEqual([n.bassin_id, n.action, n.par_nom], ['bm2', 'exclure', 'Bureau SA']);
   await page.getByRole('button', { name: 'Terminé' }).click();
-  // Gabarits : le premier enregistrement copie aussi les gabarits par défaut
+  // Gabarits (formulaire) : le premier enregistrement copie aussi les gabarits par défaut
   await T(page, () => { window.__admin.setState({ sf: null }); window.__admin.gbOpen('fontaine'); });
-  const ta = page.getByLabel('Étapes du gabarit');
-  await ta.fill((await ta.inputValue()).replace('## Phase 4 — Protection', '## Phase 4 — Protection\n17. Vérifier le clapet anti-retour !'));
+  const sec = page.getByRole('group', { name: /de la section 6$/ }); // Phase 4 — Protection
+  assert.equal(await sec.count(), 3);
+  await page.getByRole('button', { name: 'Ajouter une étape à la section 6' }).click();
+  const e4 = page.getByRole('group', { name: 'Étape 4 de la section 6' });
+  await e4.getByLabel('N°').fill('17');
+  await e4.getByLabel('Texte de l’étape').fill('Vérifier le clapet anti-retour');
+  await e4.getByLabel('Critique').check();
+  await page.getByRole('button', { name: 'Ajouter une étape à la section 6' }).click();
+  const e5 = page.getByRole('group', { name: 'Étape 5 de la section 6' });
+  await e5.getByLabel('Texte de l’étape').fill('Position de la valve principale');
+  await e5.getByLabel('Type de réponse').selectOption('choix');
+  assert.equal(await e5.getByLabel('Réponses possibles').inputValue(), 'Oui, Non, N/A', 'réponses proposées');
+  await e5.getByLabel('Réponses possibles').fill('Ouverte, Fermée, 50 %');
+  // Supprimer la première étape de la section, monter la nouvelle étape 17 d'un rang
+  await page.getByRole('group', { name: 'Étape 1 de la section 6' }).getByRole('button', { name: 'Supprimer l’étape' }).click();
+  await page.getByRole('group', { name: 'Étape 3 de la section 6' }).getByRole('button', { name: 'Monter l’étape' }).click();
+  assert.equal(await page.getByRole('group', { name: 'Étape 2 de la section 6' }).getByLabel('Texte de l’étape').inputValue(), 'Vérifier le clapet anti-retour');
+  await page.getByLabel('Titre de la section 6').fill('Phase 4 — Protection contre le gel');
+  assert.match(await page.locator('.dialog').last().innerText(), /dont \d+ critique\(s\) et 1 à choix multiple/);
   await page.getByRole('button', { name: 'Enregistrer' }).click();
   await page.waitForFunction(() => (window.__admin.D.gab || []).length === 3);
   const f = db.rows('gabarits_hivernage').find((g) => g.code === 'fontaine');
   assert.deepEqual(db.rows('gabarits_hivernage').map((g) => g.code).sort(), ['fontaine', 'jeuxdeau', 'piscine']);
-  assert.deepEqual(f.sections.find((s) => s.id === 'p4').items[0], { n: '17', t: 'Vérifier le clapet anti-retour', crit: true });
+  const p4 = f.sections.find((s) => s.id === 'p4');
+  assert.equal(p4.titre, 'Phase 4 — Protection contre le gel');
+  assert.deepEqual(p4.items.map((it) => [it.id.length > 2 ? 'nouveau' : it.id, it.n || '', it.t.slice(0, 22), !!it.crit, it.choix || null]),
+    [['1', '14', 'Laisser le drain du ba', false, null], ['nouveau', '17', 'Vérifier le clapet ant', true, null], ['2', '15', 'Protéger les éléments ', false, null],
+      ['nouveau', '5', 'Position de la valve p', false, ['Ouverte', 'Fermée', '50 %']]]);
+  // Les retraits existants visent toujours la même étape (référence par identifiant, pas par position)
+  const H = require('../src/hivernage/checklist.js');
+  assert.equal(H.libelleRef('fontaine:p4-2', db.rows('gabarits_hivernage')), '15. Protéger les éléments décoratifs (housse, panneaux) contre le gel et la neige');
+  // Passer une étape à choix multiple en case à cocher
+  await T(page, () => window.__admin.gbOpen('fontaine'));
+  await page.getByRole('group', { name: 'Étape 4 de la section 6' }).getByLabel('Type de réponse').selectOption('case');
+  await page.getByRole('button', { name: 'Enregistrer' }).click();
+  await page.waitForFunction(() => !window.__admin.state.gb);
+  // (le faux Supabase ajoute une ligne au lieu de fusionner sur « code » : la dernière est l'enregistrement)
+  assert.equal(db.rows('gabarits_hivernage').filter((g) => g.code === 'fontaine').pop().sections.find((s) => s.id === 'p4').items[3].choix, undefined);
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+test('étape à choix multiple : sa-terrain enregistre la réponse choisie, le rapport et l’impression la montrent', async () => {
+  const H = require('../src/hivernage/checklist.js');
+  const t = tables();
+  const g = JSON.parse(JSON.stringify(H.GABARITS.find((x) => x.code === 'jeuxdeau')));
+  g.sections.find((s) => s.id === 'p1').items.push({ id: 'ev', n: '4b', t: 'État de la valve d’appoint', choix: ['Ouverte', 'Fermée'], crit: true });
+  t.gabarits_hivernage = H.GABARITS.filter((x) => x.code !== 'jeuxdeau').concat([g]).map((x) => Object.assign({ actif: true }, x));
+  const { page, errors } = await openApp(browser, srv.url, { app: 'terrain', user: TECH, tables: t });
+  await page.waitForFunction(() => window.__terrain && window.__terrain.syncAt);
+  await T(page, () => window.__terrain.setState({ hivSel: '10', screen: 'hivForm' }));
+  assert.match(await text(page), /0 cases sur 39/);
+  const q = page.getByRole('group', { name: /4b\. État de la valve d’appoint/ });
+  await q.getByRole('button', { name: 'Fermée' }).click();
+  assert.equal(await q.getByRole('button', { name: 'Fermée' }).getAttribute('aria-pressed'), 'true');
+  assert.equal(await q.getByRole('button', { name: 'Ouverte' }).getAttribute('aria-pressed'), 'false');
+  assert.match(await text(page), /1 cases sur 39/);
+  // « Tout cocher » ne répond pas à la place du technicien
+  await page.getByRole('button', { name: 'Tout cocher' }).nth(1).click();
+  assert.equal(await q.getByRole('button', { name: 'Fermée' }).getAttribute('aria-pressed'), 'true');
+  // Rapport (SA Platform) et impression
+  const plan = H.planSite(t.sites.find((s) => s.id === 10).bassins, t.gabarits_hivernage), k = plan.sections.find((s) => s.sid === 'p1').items.find((it) => it.choix).k;
+  const saisie = H.norm({ plan, c: { [k]: 'Fermée' } });
+  assert.ok(H.toReport(saisie, {}, []).sections.some((s) => s.items.includes('✔ 4b. État de la valve d’appoint : Fermée')));
+  assert.match(H.html(saisie), /État de la valve d’appoint — <strong>Fermée<\/strong> <span class="choix">\(Ouverte \/ Fermée\)/);
+  assert.deepEqual(H.critiquesManquants(saisie).filter((x) => /État de la valve/.test(x)), []);
   assert.deepEqual(errors, []);
   await page.close();
 });

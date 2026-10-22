@@ -195,6 +195,12 @@
   /* Liste de contrôle d’un site : sections communes fusionnées (une fois), puis les phases de chaque ouvrage.
      Un seul ouvrage : clés « p1-0 » comme avant ; plusieurs : « <id ouvrage>:p1-0 ». Chaque case garde sa référence de gabarit
      (gref « jeuxdeau:p1-0 », celle des retraits) et son ouvrage (ob ; vide pour une section commune au site). */
+  /* Identifiant d’une case dans son gabarit : `id` (posé par l’éditeur de sa-admin, stable quand on déplace ou supprime une étape),
+     sinon sa position — les deux sont identiques pour les gabarits d’origine, donc les retraits et rapports existants restent valides. */
+  function iid(it, j) { return it && it.id != null && it.id !== '' ? String(it.id) : String(j); }
+  /* Étape à choix multiple : `choix` = au moins deux réponses ; la réponse choisie est gardée dans d.c[k] (texte) au lieu de true */
+  function choixDe(it) { return it && Array.isArray(it.choix) && it.choix.length > 1 ? it.choix : null; }
+  function reponse(d, it) { var v = d && d.c ? d.c[it.k] : null; return typeof v === 'string' ? v : ''; }
   function planSite(bassins, rows) {
     var liste = gabarits(rows), ouv = [];
     (bassins || []).forEach(function (b, i) { if (!b || !String(b.nom || '').trim()) return; var g = gabaritDe(b, liste); if (g) ouv.push({ id: String(b.id || 'b' + i), nom: String(b.nom).trim(), g: g, cfg: b.hiv || {} }); });
@@ -205,7 +211,7 @@
       var cur = dest.filter(function (x) { return x.id === s.id; })[0];
       if (!cur) { cur = { id: s.id, titre: s.titre, col: s.col, col2: s.col2, num: s.num, commun: true, ob: '', items: [] }; dest.push(cur); }
       s.items.forEach(function (it, j) {
-        var ref = s.id + '-' + j, gref = o.g.code + ':' + ref, k = (premier[s.id] !== o.g.code ? o.g.code + ':' : '') + ref, ex = exclu(o, gref);
+        var ref = s.id + '-' + iid(it, j), gref = o.g.code + ':' + ref, k = (premier[s.id] !== o.g.code ? o.g.code + ':' : '') + ref, ex = exclu(o, gref);
         var deja = cur.items.filter(function (x) { return x.t === it.t && !!x.b === !!it.b; })[0];
         if (deja) { if (!ex) deja._garde = true; if (deja.grefs.indexOf(gref) < 0) deja.grefs.push(gref); return; }
         cur.items.push(Object.assign(copie(it), { k: k, ref: ref, gref: gref, grefs: [gref], ob: '', _garde: !ex }));
@@ -217,7 +223,7 @@
       secs.forEach(function (s, si) {
         if (s.commun) { if (!premier[s.id]) premier[s.id] = o.g.code; fusion(iCorps < 0 || si < iCorps ? tete : fin, s, o); return; }
         var its = [];
-        s.items.forEach(function (it, j) { var ref = s.id + '-' + j, gref = o.g.code + ':' + ref; if (!exclu(o, gref)) its.push(Object.assign(copie(it), { k: pre + ref, ref: ref, gref: gref, ob: o.id }, multi ? { o: o.nom } : {})); });
+        s.items.forEach(function (it, j) { var ref = s.id + '-' + iid(it, j), gref = o.g.code + ':' + ref; if (!exclu(o, gref)) its.push(Object.assign(copie(it), { k: pre + ref, ref: ref, gref: gref, ob: o.id }, multi ? { o: o.nom } : {})); });
         corps.push({ id: pre + s.id, sid: s.id, titre: s.titre + suf, col: s.col, col2: s.col2, num: s.num, ob: o.id, items: its });
       });
       (o.cfg.ajouts || []).forEach(function (a) {
@@ -237,8 +243,8 @@
   }
   /* Libellé d’une case retirée (gref « jeuxdeau:p1-0 »), pour la liste « Retirées pour ce site » */
   function libelleRef(gref, rows) {
-    var p = String(gref || '').split(':'), g = gabarits(rows).filter(function (x) { return x.code === p[0]; })[0], m = /^(.*)-(\d+)$/.exec(p[1] || '');
-    var s = g && m && (g.sections || []).filter(function (x) { return x.id === m[1]; })[0], it = s && s.items[+m[2]];
+    var p = String(gref || '').split(':'), g = gabarits(rows).filter(function (x) { return x.code === p[0]; })[0], m = /^(.*)-([^-]+)$/.exec(p[1] || '');
+    var s = g && m && (g.sections || []).filter(function (x) { return x.id === m[1]; })[0], it = s && s.items.filter(function (x, j) { return iid(x, j) === m[2]; })[0];
     return it ? (it.n && it.n !== '—' ? it.n + '. ' : '') + it.t + (it.b ? ' ' + it.b : '') : String(gref || '');
   }
   /* Édition d’un gabarit dans sa-admin, en texte : « ## Titre [commun] », puis une ligne par case :
@@ -316,6 +322,7 @@
     return { total: total, done: done, pct: total ? Math.round(done / total * 100) : 0 };
   }
   function label(it) { return it.t + (it.b ? ' ' + it.b : ''); }
+  function labelRep(d, it) { var r = reponse(d, it); return label(it) + (r ? ' : ' + r : ''); }
   function manquants(d) {
     d = norm(d); var out = [];
     planDe(d).sections.forEach(function (s) { if (s.id === 'mat') return; s.items.forEach(function (it) { if (!d.c[it.k]) out.push((it.n && it.n !== '—' ? it.n + '. ' : '') + label(it)); }); });
@@ -334,7 +341,7 @@
       items: ['Avancement : ' + p.done + ' / ' + p.total + ' cases (' + p.pct + ' %)'].concat(INFO.filter(function (f) { return i[f[0]]; }).map(function (f) { return f[1] + ' : ' + i[f[0]]; })),
       photos: photos || [], hivernement: d };
     var secs = [s0].concat(planDe(d).sections.map(function (s) {
-      return { id: 'hv-' + s.id, title: s.no + '. ' + s.titre, tag: '', photos: [], items: s.items.map(function (it) { return (d.c[it.k] ? '✔ ' : '☐ ') + (it.n && it.n !== '—' ? it.n + '. ' : '') + label(it); }) };
+      return { id: 'hv-' + s.id, title: s.no + '. ' + s.titre, tag: '', photos: [], items: s.items.map(function (it) { return (d.c[it.k] ? '✔ ' : '☐ ') + (it.n && it.n !== '—' ? it.n + '. ' : '') + labelRep(d, it); }) };
     }));
     var emp = d.employes.filter(function (e) { return String(e.nom).trim(); });
     if (emp.length) secs.push({ id: 'hv-employes', title: 'Employés formés', tag: '', photos: [], items: emp.map(function (e) { return e.nom + ' — formation ' + (e.formation ? 'complétée' : 'non complétée') + ', démonstration ' + (e.demo ? 'réussie' : 'non réussie'); }) });
@@ -365,7 +372,7 @@
   function html(d, opts) {
     d = norm(d); opts = opts || {}; var p = progress(d), i = d.info, E = esc;
     var box = function (on) { return '<span class="box' + (on ? ' on' : '') + '">' + (on ? '✓' : '') + '</span>'; };
-    var row = function (it, withNum) { var on = !!d.c[it.k]; return '<tr class="' + (on ? 'done' : '') + (it.crit ? ' critical' : '') + '"><td class="cb">' + box(on) + '</td>' + (withNum ? '<td class="num">' + E(it.n) + '</td>' : '') + '<td class="t">' + E(it.t) + (it.b ? ' <strong>' + E(it.b) + '</strong>' : '') + '</td></tr>'; };
+    var row = function (it, withNum) { var on = !!d.c[it.k]; return '<tr class="' + (on ? 'done' : '') + (it.crit ? ' critical' : '') + '"><td class="cb">' + box(on) + '</td>' + (withNum ? '<td class="num">' + E(it.n) + '</td>' : '') + '<td class="t">' + E(it.t) + (it.b ? ' <strong>' + E(it.b) + '</strong>' : '') + (choixDe(it) ? ' — <strong>' + (reponse(d, it) ? E(reponse(d, it)) : '____') + '</strong> <span class="choix">(' + E(choixDe(it).join(' / ')) + ')</span>' : '') + '</td></tr>'; };
     var h = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>' + E(TITRE + ' — ' + (i.site || '')) + '</title><style>' + CSS + '</style></head><body><div class="page">'
       + '<header class="top"><div><h1>' + E(TITRE + ' — ' + (i.site || '')) + '</h1><div class="sub">Liste de contrôle d’intervention · Fermeture avec formation</div></div><img src="' + LOGO + '" alt="Soucy Aquatik"></header><div class="body">'
       + '<div class="kpis"><div class="kpi"><div class="val">' + p.total + '</div><div class="lbl">Cases au total</div></div><div class="kpi"><div class="val">' + p.done + '</div><div class="lbl">Cases cochées</div></div><div class="kpi"><div class="val">' + p.pct + ' %</div><div class="lbl">Avancement</div></div></div>'
@@ -405,7 +412,7 @@
   }
   function fichier(d) { d = norm(d); return ('Hivernement ' + (d.info.site || '') + ' ' + (d.info.date || '')).trim().replace(/[\\/:*?"<>|\s]+/g, '-').replace(/-{2,}/g, '-').replace(/^-|-$/g, '') + '.html'; }
 
-  var api = { SECTIONS: SECTIONS, GABARITS: GABARITS, DEFAUT: DEFAUT, gabarits: gabarits, gabaritDe: gabaritDe, planSite: planSite, planPourSite: planPourSite, avecAjustements: avecAjustements, libelleRef: libelleRef, planDe: planDe, versTexte: versTexte, deTexte: deTexte, INFO: INFO, TIPS: TIPS, ALERTE: ALERTE, LOGO: LOGO, blank: blank, norm: norm, isChecklist: isChecklist, fromReport: fromReport, photosOf: photosOf,
+  var api = { SECTIONS: SECTIONS, GABARITS: GABARITS, DEFAUT: DEFAUT, gabarits: gabarits, gabaritDe: gabaritDe, planSite: planSite, planPourSite: planPourSite, avecAjustements: avecAjustements, libelleRef: libelleRef, iid: iid, choixDe: choixDe, reponse: reponse, planDe: planDe, versTexte: versTexte, deTexte: deTexte, INFO: INFO, TIPS: TIPS, ALERTE: ALERTE, LOGO: LOGO, blank: blank, norm: norm, isChecklist: isChecklist, fromReport: fromReport, photosOf: photosOf,
     progress: progress, manquants: manquants, critiquesManquants: critiquesManquants, toReport: toReport, html: html, texte: texte, fichier: fichier };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.SAHiv = api;
 })(typeof window !== 'undefined' ? window : this);
