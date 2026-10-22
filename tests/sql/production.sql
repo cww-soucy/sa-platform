@@ -444,3 +444,8 @@ CREATE TRIGGER trg_ft_compte_supprime BEFORE INSERT ON public.feuilles_temps FOR
 \i politiques_avant_etape3.sql
 -- Correctif appliqué le 20/10/2026 : mêmes politiques pour les sessions avec jeton
 \i ../../docs/sql/CORRECTIF_2026-10-20_politiques_connectes.sql
+
+-- Supabase, à partir du 30/10/2026 : plus aucun droit automatique sur une NOUVELLE table de public
+-- (les tables ci-dessus gardent les leurs). Les migrations doivent donner leurs droits elles-mêmes (docs/sql/README.md).
+alter default privileges in schema public revoke all on tables from anon, authenticated, service_role;
+alter default privileges in schema public revoke all on sequences from anon, authenticated, service_role;
