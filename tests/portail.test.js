@@ -147,20 +147,35 @@ test('portail : le QR scanné ouvre son installation, pas la première du compte
   await page.close();
 });
 
-test('portail : QR d’une installation hors de l’accès — avertissement clair', async () => {
-  const { page } = await open('?q=AUTRE');
-  await connexion(page);
-  await page.getByText('Votre adresse n’a pas accès à Piscine Gamma.').waitFor();
+test('portail : QR d’une installation hors de l’accès — n’ouvre pas une autre installation (Canotier → Aula)', async () => {
+  const { page, errors } = await open('?q=AUTRE');
+  await page.getByRole('button', { name: 'Accès client' }).click();
+  await page.fill('#ident', 'jeanne@ville.qc.ca');
+  await page.getByRole('button', { name: 'Recevoir un code' }).click();
+  for (const [i, d] of [...'123456'].entries()) await page.getByLabel('Chiffre ' + (i + 1)).fill(d);
+  await page.getByRole('button', { name: 'Accéder' }).click();
+  // l'adresse n'est inscrite que pour Piscine Alpha : on reste sur Piscine Gamma, le portail d'Alpha ne s'ouvre pas tout seul
+  await page.getByText('Votre adresse est inscrite pour Piscine Alpha, pas pour Piscine Gamma.', { exact: false }).waitFor();
+  assert.equal(await page.textContent('h1'), 'Piscine Gamma');
+  assert.equal(await page.locator('.opere').count(), 0);
+  assert.equal(await page.inputValue('#ident'), '', 'l’adresse précédente n’est pas reproposée');
+  // personnel Soucy Aquatik : fiche du site scanné
+  await page.getByRole('button', { name: 'Personnel Soucy Aquatik' }).click();
+  await page.getByRole('button', { name: 'Ouvrir la fiche du site' }).waitFor();
+  assert.equal(await page.textContent('h1'), 'Piscine Gamma');
+  await page.getByRole('button', { name: 'Retour' }).click();
+  // ses propres installations restent à un clic, sur demande
+  await page.getByRole('button', { name: 'Accès client' }).click();
+  await page.getByRole('button', { name: 'Continuer vers Piscine Alpha' }).click();
+  await page.locator('.opere').getByText('Opéré par').waitFor();
   assert.equal(await page.textContent('h1'), 'Piscine Alpha');
-  await page.getByRole('button', { name: 'Changer d’adresse' }).click();
-  await page.locator('#ident').waitFor();
+  assert.deepEqual(errors, []);
   await page.close();
 });
 
 test('portail : QR avec une session client gardée — le choix client / technicien reste proposé', async () => {
-  const { page, errors } = await open('?q=AUTRE');
-  await connexion(page);
-  await page.getByText('Votre adresse n’a pas accès à Piscine Gamma.').waitFor();
+  const { page, errors } = await open('?q=BON');
+  await connexion(page); // session client gardée pour Piscine Alpha seulement
   // le même téléphone scanne le QR d'un autre site : choix d'abord, pas le portail du client déjà connecté
   await page.goto(srv.url + '/portail/?q=BETA');
   await page.getByRole('heading', { name: 'Piscine Beta' }).waitFor();
@@ -169,7 +184,7 @@ test('portail : QR avec une session client gardée — le choix client / technic
   assert.equal(await page.getByRole('link', { name: /Carnet de bord/ }).getAttribute('href'), '../qr-carnet/?site=2');
   // « Accès client » : la session gardée ne donne pas accès à Piscine Beta → on demande l'adresse de CETTE installation
   await page.getByRole('button', { name: 'Accès client' }).click();
-  await page.getByText('Ce téléphone est connecté pour Piscine Alpha. Pour Piscine Beta, entrez le courriel ou cellulaire inscrit pour cette installation.').waitFor();
+  await page.getByText('Votre adresse est inscrite pour Piscine Alpha, pas pour Piscine Beta. Pour cette installation, entrez le courriel ou cellulaire inscrit par son gestionnaire.').waitFor();
   assert.equal(await page.textContent('h1'), 'Piscine Beta');
   await page.locator('#ident').waitFor();
   assert.equal(await page.locator('.opere').count(), 0, 'le portail du client déjà connecté ne s’ouvre pas');
@@ -183,7 +198,7 @@ test('portail : QR avec une session client gardée — le choix client / technic
 });
 
 test('portail : QR → « Personnel Soucy Aquatik » → fiche complète du site scanné, même avec une session client gardée', async () => {
-  const { page, st, errors } = await open('?q=AUTRE');
+  const { page, st, errors } = await open('?q=BON');
   await connexion(page); // session client gardée pour Piscine Alpha seulement
   await page.goto(srv.url + '/portail/?q=BETA');
   await page.getByRole('button', { name: 'Personnel Soucy Aquatik' }).click();

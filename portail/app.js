@@ -62,13 +62,16 @@
         h('p', { class: 'muted', text: 'Accès réservé aux personnes autorisées par le gestionnaire de l’installation. Code ' + r.code + '.' })));
     }).catch(function () { erreur(); });
   }
-  /* Session gardée sur ce téléphone, mais pour d'autres installations que celle du QR : on demande l'adresse de CETTE
+  /* Adresse (session gardée ou code tout juste reçu) inscrite pour d'autres installations que celle du QR : on demande l'adresse de CETTE
      installation au lieu d'ouvrir le portail du client déjà connecté. Ses installations restent accessibles par un lien. */
   function ecranAutreAcces(r) {
+    S.ident = '';
     var noms = r.sites.map(function (s) { return s.nom; }).slice(0, 3).join(', ') + (r.sites.length > 3 ? '…' : '');
     ecranIdent(h('div', { class: 'box', role: 'note' },
-      h('p', { text: 'Ce téléphone est connecté pour ' + (noms || 'un autre accès') + '. Pour ' + S.qr.site + ', entrez le courriel ou cellulaire inscrit pour cette installation.' }),
-      h('button', { class: 'btn', type: 'button', onclick: function () { S.reprise = false; S.horsQr = false; S.site = null; S.data = r; S.site = (r.sites[0] || {}).id || null; rendre(); } }, 'Continuer vers ' + (r.sites.length > 1 ? 'mes installations' : noms))));
+      h('p', { text: 'Votre adresse est inscrite pour ' + (noms || 'un autre accès') + ', pas pour ' + S.qr.site + '. Pour cette installation, entrez le courriel ou cellulaire inscrit par son gestionnaire.' }),
+      h('div', { class: 'row' },
+        h('button', { class: 'btn', type: 'button', onclick: function () { S.reprise = false; S.horsQr = false; S.site = null; S.data = r; S.site = (r.sites[0] || {}).id || null; rendre(); } }, 'Continuer vers ' + (r.sites.length > 1 ? 'mes installations' : noms)),
+        h('button', { class: 'btn', type: 'button', onclick: ecranPersonnel }, 'Personnel Soucy Aquatik'))));
   }
   /* Personnel Soucy Aquatik (admin, superviseur) : identifiant et mot de passe de SA Platform → fiche complète du site du QR
      (mode aperçu, comme « Voir comme le client » dans sa-admin ; session de 11 h 30 partagée avec sa-admin sur ce navigateur). */
@@ -147,7 +150,9 @@
       if (!r.ok) { if (S.apercu) return erreur('Aperçu impossible : ouvrez-le depuis sa-admin (session administrateur expirée ?).'); clearTok(); return P.get('q') ? ecranQr() : ecranIdent(); }
       S.data = r; var qs = S.qr && S.qr.site_id;
       S.horsQr = !!qs && !r.sites.some(function (s) { return s.id === qs; });
-      if (S.reprise && S.horsQr) { S.reprise = false; return ecranAutreAcces(r); }
+      /* Adresse inscrite pour d'autres installations que celle du QR (session gardée OU code tout juste reçu) : on n'ouvre
+         jamais d'office le portail d'une autre installation — sinon l'affiche de Canotier « ouvrait » Aula. */
+      if (S.horsQr && !S.apercu) { S.reprise = false; return ecranAutreAcces(r); }
       S.reprise = false;
       if (qs && !S.horsQr) S.site = qs;
       if (!S.site || !r.sites.some(function (s) { return s.id === S.site; })) S.site = (r.sites[0] || {}).id || null; rendre();
