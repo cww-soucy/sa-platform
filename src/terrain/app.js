@@ -573,6 +573,7 @@ Comp.prototype.vals=function(){
     hivInfo:hd?H.INFO.filter(function(f){return f[0]!=='site'&&f[0]!=='date';}).map(function(f){return{l:f[1],type:f[2],v:hd.info[f[0]]||'',on:hset(function(d,v){d.info[f[0]]=v;})};}):[],
     hivEdit:!!st.hivEdit,hivNoEdit:!st.hivEdit,hivEditLbl:st.hivEdit?'Terminer les modifications':'Modifier la liste pour ce site',hivEditGo:function(){self.setState({hivEdit:!self.state.hivEdit});},
     hivRetirees:hivSel?adjDe(hivSel.id).filter(function(r){return r.domaine==='hiv'&&r.action==='exclure';}).map(function(r){return{l:H.libelleRef(r.ref,REF.gab),par:(r.par_nom||'')+(r.cree_le?' · '+String(r.cree_le).slice(0,10):''),remettre:function(){self.annulerAjust(r.id);self.hivReplan(hivSel.id);}};}):[],
+    hivRetOk:!!(st.hivEdit&&hivSel&&adjDe(hivSel.id).some(function(r){return r.domaine==='hiv'&&r.action==='exclure';})),
     hivSecs:hd?H.planDe(hd).sections.map(function(sc){var all=sc.items.every(function(it){return hd.c[it.k];});
       return{titre:sc.no+'. '+sc.titre,allLbl:all?'Tout décocher':'Tout cocher',all:function(){self.hivSet(hivSel.id,function(d){sc.items.forEach(function(it){d.c[it.k]=!all;});});},
         canAdd:!sc.commun&&!!sc.ob,addV:(st.hivAdd||{})[sc.id]||'',onAdd:function(e){var o=Object.assign({},self.state.hivAdd);o[sc.id]=e.target.value;self.setState({hivAdd:o});},add:function(){self.hivAjouter(hivSel.id,sc);},

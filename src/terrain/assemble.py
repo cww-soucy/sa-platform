@@ -239,7 +239,7 @@ HIVF=('<sc-if value="{{ isHivForm }}"><div style="padding:12px 0 0;display:flex;
   +HVTOG('e.tg','lbl')
   +'</div></sc-for><button class="btn btn-secondary" onClick="{{ addEmp }}" style="min-height:50px;font-size:17px;gap:8px"><sa-i n="plus" s="20"></sa-i>Ajouter un employé</button></div></sc-if>'
   '</div></sc-for>'
-  '<sc-if value="{{ hivEdit }}"><div style="padding:16px 20px 0;display:flex;flex-direction:column;gap:6px"><b style="font-size:17px">Retirées pour ce site</b>'
+  '<sc-if value="{{ hivRetOk }}"><div style="padding:16px 20px 0;display:flex;flex-direction:column;gap:6px"><b style="font-size:17px">Retirées pour ce site</b>'
   '<sc-for list="{{ hivRetirees }}" as="r"><div style="display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--color-divider);padding:6px 0"><span style="flex:1;font-size:15px;line-height:1.3">{{ r.l }}<br><span style="font-size:13px">{{ r.par }}</span></span>'
   '<button onClick="{{ r.remettre }}" style="all:unset;cursor:pointer;min-height:40px;padding:0 10px;border:1px solid var(--color-text);font-size:14px;display:inline-flex;align-items:center">Remettre</button></div></sc-for></div></sc-if>'
   '<div style="padding:18px 20px;display:flex;flex-direction:column;gap:10px"><h2 style="margin:0;font-size:21px">{{ hivNoRem }}. Remarques et anomalies</h2>'
