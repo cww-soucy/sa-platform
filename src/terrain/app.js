@@ -118,20 +118,24 @@ function sig(t){return(t.start||'')+'|'+(t.lieu||'');}
 function findTask(d,op){return(d.tasks||[]).filter(function(t){return(op.k&&t.k===op.k)||sig(t)===op.sig||(t.k0&&t.k0===op.sig);})[0]||null;}
 var HM=/^([01]\d|2[0-3]):[0-5]\d$/;
 function rid(p){return p+Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
+/* Ajustements d'un site (ouvrage_ajustements) : étapes et points retirés ou ajoutés, sur le terrain ou au bureau */
+function adjDe(sid){return(REF.adj||[]).filter(function(r){return String(r.site_id)===String(sid)&&r.actif!==false;});}
+/* Ouvrage d'inspection : le bassin choisi avec ses retraits ; site sans bassin déclaré : « site:<id> » */
+function ouvrageInsp(s,bsel){var a=adjDe(s.id);if(bsel)return window.SAHiv.avecAjustements([bsel],a)[0];return{id:'site:'+s.id,insp:{exclus:a.filter(function(r){return!r.bassin_id&&r.domaine==='insp'&&r.action==='exclure';}).map(function(r){return r.ref;})}};}
 function noBon(prefix){var d=new Date();return prefix+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+(Math.floor(Math.random()*900)+100);}
 function cap(s){s=String(s||'');return s.charAt(0).toUpperCase()+s.slice(1);}
 
 /* ---------- Données de référence (types, sites, contrats) : cache local pour le hors-ligne ---------- */
-var REF={types:{},sites:{},list:[],cat:[]};
+var REF={types:{},sites:{},list:[],cat:[],gab:[],adj:[]};
 function villeOf(addr){var p=String(addr||'').split(',').map(function(x){return x.trim();}).filter(function(x){return x&&!/^(qc|québec|quebec|canada)$/i.test(x)&&!/[a-z]\d[a-z]\s?\d[a-z]\d/i.test(x);});return p.length>1?p[p.length-1].replace(/^Ville de\s+/i,''):'';}
 function buildRef(raw){
-  REF.cat=Array.isArray(raw.cat)?raw.cat:[];
+  REF.cat=Array.isArray(raw.cat)?raw.cat:[];REF.gab=Array.isArray(raw.gab)?raw.gab:[];REF.adj=Array.isArray(raw.adj)?raw.adj:[];
   REF.types={};(raw.types||[]).forEach(function(t){REF.types[t.code]={label:t.label,court:t.court||t.label,norme:t.norme||'',fields:t.fields||[],checks:t.checks||[],produits:t.produits||[],photo:t.photo||'Vue d’ensemble du bassin'};});
   var ct={};(raw.contrats||[]).forEach(function(c){ct[c.site_id]=c;});
   REF.sites={};REF.list=[];
   (raw.sites||[]).forEach(function(s){var c=ct[s.id];var code=(c&&c.type_code&&REF.types[c.type_code])?c.type_code:'GEN';
     /* Bassins déclarés dans la fiche du site (sa-admin / SA Platform) : chacun peut avoir ses propres paramètres de relevé */
-    var bs=(Array.isArray(s.bassins)?s.bassins:[]).filter(function(b){return b&&String(b.nom||'').trim();}).map(function(b,i){return{id:String(b.id||('b'+i)),nom:String(b.nom).trim(),code:(b.type_code&&REF.types[b.type_code])?b.type_code:code,first:i===0};});
+    var bs=(Array.isArray(s.bassins)?s.bassins:[]).filter(function(b){return b&&String(b.nom||'').trim();}).map(function(b,i){return{id:String(b.id||('b'+i)),nom:String(b.nom).trim(),code:(b.type_code&&REF.types[b.type_code])?b.type_code:code,type:b.type||'',type_code:b.type_code||'',hiv:b.hiv||null,insp:b.insp||null,first:i===0};});
     var o={id:String(s.id),nom:s.nom||'(sans nom)',ville:villeOf(s.addr),addr:s.addr||'',type:code,bassin:'',bassins:bs,contrat:(c&&c.code)||'',client:'',interne:s.type==='interne'||isBureau(s.nom)};REF.sites[o.id]=o;if(!/^Fusionné →/.test(s.notes||''))REF.list.push(o);});
 }
 function siteById(id){return REF.sites[String(id)]||null;}
@@ -200,7 +204,9 @@ Comp.prototype.soon=function(t){this.setState({soon:t});this.go('soon');};
 
 /* ---------- Chargements ---------- */
 Comp.prototype.loadRef=function(){var self=this;var cached=jget('sa_terrain_ref',null);if(cached)buildRef(cached);
-  return Promise.all([get('types_bassin?select=*'),get('sites?select=id,nom,addr,notes,bassins,type'),get('contrats?select=*'),get('inspection_points?select=*&actif=eq.true').catch(function(){return null;})]).then(function(r){var raw={types:r[0],sites:r[1],contrats:r[2],cat:r[3]||(cached&&cached.cat)||[]};jset('sa_terrain_ref',raw);buildRef(raw);self.syncAt=new Date();self.okLoad('ref');}).catch(function(e){self.failLoad('ref','sites et contrats'+(cached?' (copie locale utilisée)':''),e);});};
+  return Promise.all([get('types_bassin?select=*'),get('sites?select=id,nom,addr,notes,bassins,type'),get('contrats?select=*'),get('inspection_points?select=*&actif=eq.true').catch(function(){return null;}),get('gabarits_hivernage?select=*').catch(function(){return null;}),get('ouvrage_ajustements?select=*&actif=eq.true').catch(function(){return null;})]).then(function(r){var raw={types:r[0],sites:r[1],contrats:r[2],cat:r[3]||(cached&&cached.cat)||[],gab:r[4]||(cached&&cached.gab)||[],adj:r[5]||(cached&&cached.adj)||[]};
+    /* ajustements faits sur ce téléphone et pas encore envoyés : gardés jusqu’à leur envoi */
+    var enAttente=jget('sa_terrain_queue',[]).filter(function(x){return x._t==='ouvrage_ajustements'||x._t==='inspection_points';});enAttente.forEach(function(x){if(x._t==='inspection_points'){if(!raw.cat.some(function(p){return p.id===x.id;}))raw.cat=raw.cat.concat([x]);}else if(x._m==='PATCH')raw.adj=raw.adj.filter(function(a){return'annul-'+a.id!==x.id;});else if(!raw.adj.some(function(a){return a.id===x.id;}))raw.adj=raw.adj.concat([x]);});jset('sa_terrain_ref',raw);buildRef(raw);self.syncAt=new Date();self.okLoad('ref');}).catch(function(e){self.failLoad('ref','sites et contrats'+(cached?' (copie locale utilisée)':''),e);});};
 Comp.prototype.loadJobs=function(){var self=this,uid=encodeURIComponent(this.user.id),d0=this.today,d6=iso(addDays(new Date(),6));
   var q=[get('workorders?select=id,client,site,type,date,assigne,status,descr,groupe_id&date=gte.'+d0+'&date=lte.'+d6+'&assigne=ilike.*'+uid+'*'),
     get('planning_tasks?select=id,titre,emp,site_id,site_nom,date_debut,date_fin,heure_debut,heure_fin,statut,recurrence,wo_id,plan_id&date_debut=lte.'+d6+'&date_fin=gte.'+d0+'&emp=ilike.*'+uid+'*'),
@@ -393,7 +399,26 @@ Comp.prototype.confirmSig=function(){var b=this.curBon();if(!b)return;var nom=St
    que le bureau complète, imprime ou envoie au client depuis sa-admin ---------- */
 /* Hivernement : sites clients seulement — ni spas (SP), ni piscines intérieures (MI), ni bureau / entrepôt (sites internes) */
 Comp.prototype.hivSites=function(){return REF.list.filter(function(s){return s.type!=='SP'&&s.type!=='MI'&&!s.interne;});};
-Comp.prototype.hivCur=function(sid){var s=siteById(sid),d=this.state.hivData[sid];return window.SAHiv.norm(d||window.SAHiv.blank({site:s?s.nom:'',chef:this.me.nom,date:iso(new Date())}));};
+/* Plan de la liste : gabarit de chaque ouvrage du site (sa-admin › fiche du site), figé dans le brouillon une fois commencé */
+Comp.prototype.hivCur=function(sid){var s=siteById(sid),d=this.state.hivData[sid],H=window.SAHiv;return H.norm(d||H.blank({site:s?s.nom:'',chef:this.me.nom,date:iso(new Date()),plan:H.planPourSite(s,REF.gab,adjDe(sid))}));};
+/* Ajustement mémorisé pour le site : envoyé comme une fiche (file d'attente, hors réseau compris), appliqué tout de suite ici */
+Comp.prototype.refCache=function(){var c=jget('sa_terrain_ref',null);if(c){c.adj=REF.adj;c.cat=REF.cat;jset('sa_terrain_ref',c);}};
+Comp.prototype.ajuster=function(row){var now=new Date().toISOString();row=Object.assign({id:rid('adj'),actif:true,par:this.user.id,par_nom:this.me.nom,cree_le:now},row);
+  REF.adj=(REF.adj||[]).concat([row]);this.refCache();this.enqueue(Object.assign({_t:'ouvrage_ajustements'},row));return row;};
+Comp.prototype.annulerAjust=function(id){REF.adj=(REF.adj||[]).filter(function(r){return r.id!==id;});this.refCache();
+  this.enqueue({_t:'ouvrage_ajustements',_m:'PATCH',_q:'id=eq.'+encodeURIComponent(id),id:'annul-'+id,body:{actif:false,annule_par:this.user.id,annule_par_nom:this.me.nom,annule_le:new Date().toISOString()}});};
+/* Liste en cours refaite avec les ajustements du site : les cases déjà cochées gardent leur clé */
+Comp.prototype.hivReplan=function(sid){var s=siteById(sid);this.hivSet(sid,function(d){d.plan=window.SAHiv.planPourSite(s,REF.gab,adjDe(sid));});};
+Comp.prototype.hivRetirer=function(sid,it){var self=this;if(it.aj)this.annulerAjust(it.aj);else(it.grefs||[it.gref]).forEach(function(g){self.ajuster({site_id:String(sid),bassin_id:it.ob||null,domaine:'hiv',action:'exclure',ref:g});});
+  this.hivReplan(sid);this.flash('Étape retirée pour ce site — le bureau la voit dans sa-admin');};
+Comp.prototype.hivAjouter=function(sid,sec){var t=String((this.state.hivAdd||{})[sec.id]||'').trim();if(!t)return;
+  this.ajuster({site_id:String(sid),bassin_id:sec.ob||null,domaine:'hiv',action:'ajouter',section:sec.sid,texte:t,crit:false});
+  var o=Object.assign({},this.state.hivAdd);delete o[sec.id];this.setState({hivAdd:o});this.hivReplan(sid);this.flash('Étape ajoutée pour ce site');};
+Comp.prototype.ptRetirer=function(s,bsel,sid,p){this.ajuster({site_id:String(s.id),bassin_id:bsel?bsel.id:null,domaine:'insp',action:'exclure',ref:p.id});
+  this.setPt(sid,p.id,{etat:null});this.flash('« '+p.libelle+' » ne sera plus demandé à ce site');};
+Comp.prototype.ptAjouter=function(s,bsel,step){var t=String(this.state.ptAdd||'').trim();if(!t)return;var n=window.SAInsp.propres(REF.cat,bsel?bsel.id:'site:'+s.id).length;
+  var p={id:rid('ouv-'),systeme_code:step,type_code:'_ouvrage',bassin_id:bsel?bsel.id:'site:'+s.id,site_id:String(s.id),libelle:t,mode:step==='securite'?'ouinon':'etat',obligatoire:false,actions_correctives:[],ordre:100+n,actif:true,updated_at:new Date().toISOString()};
+  REF.cat=(REF.cat||[]).concat([p]);this.refCache();this.enqueue(Object.assign({_t:'inspection_points'},p));this.setState({ptAdd:''});this.flash('Point ajouté pour ce site');};
 Comp.prototype.hivSet=function(sid,fn){var d=this.hivCur(sid);fn(d);var o={};o[sid]=d;this.setState(function(s2){return{hivData:Object.assign({},s2.hivData,o)};});this.persist();};
 Comp.prototype.sendHiv=function(){var st=this.state,sid=st.hivSel,s=sid&&siteById(sid);if(!s)return;var now=new Date(),d=this.hivCur(sid);
   d.info.site=s.nom;if(!d.info.date)d.info.date=iso(now);if(!String(d.info.chef||'').trim())d.info.chef=this.me.nom;
@@ -445,7 +470,7 @@ Comp.prototype.vals=function(){
     var pq=st.prods[sid]||{};
     prods=T.produits.map(function(p,i){var q=pq[i]||0;var set=function(n){self.setState(function(s2){var o={};o[sid]=Object.assign({},s2.prods[sid]||{});o[sid][i]=Math.max(0,+(n).toFixed(2));return{prods:Object.assign({},s2.prods,o)};});};return{nom:p[0],unite:p[1],qty:self.fmt(q,p[2]),minus:function(){set(q-p[2]);},plus:function(){set(q+p[2]);}};});
     if(s.interne){fields=[];checks=[];prods=[];}
-    var I=window.SAInsp,PTS=s.interne?[]:I.pointsDuType(bsel?bsel.code:s.type,REF.cat,T.checks),ps=(st.pts||{})[sid]||{},acts=(st.acts||{})[sid]||{},vv0={};
+    var I=window.SAInsp,PTS=s.interne?[]:I.pointsDuType(bsel?bsel.code:s.type,REF.cat,T.checks,ouvrageInsp(s,bsel)),ps=(st.pts||{})[sid]||{},acts=(st.acts||{})[sid]||{},vv0={};
     Object.keys(tch).forEach(function(k){if(vals[k]!=null)vv0[k]=vals[k];});
     var items=I.itemsVisite({type_code:bsel?bsel.code:s.type,vals:vv0,touched:tch,points:ps,actions:acts},T,REF.cat),se=I.etatsSystemes(items);
     var sysL=I.SYSTEMES.filter(function(x){return x.code==='eau'?fields.length>0:PTS.some(function(p){return p.systeme_code===x.code;});});
@@ -462,8 +487,10 @@ Comp.prototype.vals=function(){
         notePh:yn?'Note obligatoire : que manque-t-il ?':'Note (ce qui a été constaté, ce qui reste à faire)',thumbs:(x.photos||[]).map(function(src){return{src:src};}),
         opts:O.map(function(o){var on=x.etat===o[0];return{label:o[1],on:on,bg:on?(o[0]==='action'?'var(--color-accent-900)':'var(--color-text)'):'transparent',fg:on?'#ffffff':'var(--color-text)',go:function(){self.setPt(sid,p.id,{etat:on?null:o[0]});}};}),
         onNote:function(e){self.setPt(sid,p.id,{note:e.target.value});},onVal:function(e){self.setPt(sid,p.id,{valeur:e.target.value.replace(',','.')});},
-        addPhoto:function(){self.ptPhoto(sid,p.id);},toggleWo:function(){self.setPt(sid,p.id,{wo:!x.wo});}};});
-    sysCur=Object.assign({},sysCur,{canAll:step!=='securite'&&sysPts.length>0,allOk:function(){self.setState(function(s2){var o=Object.assign({},s2.pts||{}),q=Object.assign({},o[sid]||{});PTS.filter(function(p){return p.systeme_code===step&&p.mode!=='ouinon';}).forEach(function(p){q[p.id]=Object.assign({},q[p.id]||{},{etat:'ok'});});o[sid]=q;return{pts:o};});}});
+        addPhoto:function(){self.ptPhoto(sid,p.id);},toggleWo:function(){self.setPt(sid,p.id,{wo:!x.wo});},retirer:function(){self.ptRetirer(s,bsel,sid,p);}};});
+    sysCur=Object.assign({},sysCur,{edit:!!st.ptEdit,editLbl:st.ptEdit?'Terminer':'Modifier',editGo:function(){self.setState({ptEdit:!self.state.ptEdit});},
+      addV:st.ptAdd||'',onAdd:function(e){self.setState({ptAdd:e.target.value});},add:function(){self.ptAjouter(s,bsel,step);},
+      canAll:step!=='securite'&&sysPts.length>0,allOk:function(){self.setState(function(s2){var o=Object.assign({},s2.pts||{}),q=Object.assign({},o[sid]||{});PTS.filter(function(p){return p.systeme_code===step&&p.mode!=='ouinon';}).forEach(function(p){q[p.id]=Object.assign({},q[p.id]||{},{etat:'ok'});});o[sid]=q;return{pts:o};});}});
     var ACTS=['Chloration choc','Apport d’eau neuve','Signaler seulement'];
     fields.forEach(function(f){var src=(T.fields.filter(function(x){return x.key===f.key;})[0]||{}),L=Array.isArray(src.actions)&&src.actions.length?src.actions:ACTS;
       f.acts=L.map(function(a){var on=acts[f.key]===a;return{label:a,on:on,bg:on?'var(--color-text)':'transparent',fg:on?'var(--color-bg)':'var(--color-text)',go:function(){self.setState(function(s2){var o=Object.assign({},s2.acts||{}),q=Object.assign({},o[sid]||{});q[f.key]=on?null:a;o[sid]=q;return{acts:o};});}};});});
@@ -544,11 +571,16 @@ Comp.prototype.vals=function(){
     hivSite:hivSel?{nom:hivSel.nom,ville:hivSel.ville||'—'}:{},hivProgress:hpg.done,hivTotal:hpg.total,hivPct:hpg.pct+'%',
     hivCrit:hd&&H.critiquesManquants(hd).length?'Étape(s) critique(s) non cochée(s) : '+H.critiquesManquants(hd).map(function(x){return x.split('.')[0];}).join(', '):'',
     hivInfo:hd?H.INFO.filter(function(f){return f[0]!=='site'&&f[0]!=='date';}).map(function(f){return{l:f[1],type:f[2],v:hd.info[f[0]]||'',on:hset(function(d,v){d.info[f[0]]=v;})};}):[],
-    hivSecs:hd?H.SECTIONS.map(function(sc){var all=sc.items.every(function(it){return hd.c[it.k];});
+    hivEdit:!!st.hivEdit,hivNoEdit:!st.hivEdit,hivEditLbl:st.hivEdit?'Terminer les modifications':'Modifier la liste pour ce site',hivEditGo:function(){self.setState({hivEdit:!self.state.hivEdit});},
+    hivRetirees:hivSel?adjDe(hivSel.id).filter(function(r){return r.domaine==='hiv'&&r.action==='exclure';}).map(function(r){return{l:H.libelleRef(r.ref,REF.gab),par:(r.par_nom||'')+(r.cree_le?' · '+String(r.cree_le).slice(0,10):''),remettre:function(){self.annulerAjust(r.id);self.hivReplan(hivSel.id);}};}):[],
+    hivRetOk:!!(st.hivEdit&&hivSel&&adjDe(hivSel.id).some(function(r){return r.domaine==='hiv'&&r.action==='exclure';})),
+    hivSecs:hd?H.planDe(hd).sections.map(function(sc){var all=sc.items.every(function(it){return hd.c[it.k];});
       return{titre:sc.no+'. '+sc.titre,allLbl:all?'Tout décocher':'Tout cocher',all:function(){self.hivSet(hivSel.id,function(d){sc.items.forEach(function(it){d.c[it.k]=!all;});});},
-        tips:sc.id==='p5',isForm:sc.id==='form',items:sc.items.map(function(it){var on=!!hd.c[it.k];return{label:(sc.num&&it.n!=='—'?it.n+'. ':'')+it.t+(it.b?' '+it.b:'')+(sc.col2?(it.g===2?' (pièce)':''):''),on:on,fw:it.crit?'600':'400',
+        canAdd:!sc.commun&&!!sc.ob,addV:(st.hivAdd||{})[sc.id]||'',onAdd:function(e){var o=Object.assign({},self.state.hivAdd);o[sc.id]=e.target.value;self.setState({hivAdd:o});},add:function(){self.hivAjouter(hivSel.id,sc);},
+        edits:sc.items.map(function(it){return{label:(sc.num&&it.n&&it.n!=='—'?it.n+'. ':'')+it.t+(it.b?' '+it.b:''),aj:!!it.aj,retirer:function(){self.hivRetirer(hivSel.id,it);}};}),
+        tips:!!sc.tips,isForm:sc.id==='form',items:sc.items.map(function(it){var on=!!hd.c[it.k];return{label:(sc.num&&it.n!=='—'?it.n+'. ':'')+it.t+(it.b?' '+it.b:'')+(sc.col2?(it.g===2?' (pièce)':''):''),on:on,fw:it.crit?'600':'400',
           box:on?'var(--color-text)':'transparent',toggle:function(){self.hivSet(hivSel.id,function(d){d.c[it.k]=!d.c[it.k];});}};})};}):[],
-    hivTips:H.TIPS.map(function(t){return{t:t};}),hivAlerte:H.ALERTE,
+    hivTips:(hd?H.planDe(hd).conseils:[]).map(function(t){return{t:t};}),hivAlerte:hd?H.planDe(hd).alerte:'',hivNoRem:(hd?H.planDe(hd).sections.length:8)+2,hivOuv:hd&&H.planDe(hd).ouvrages.length>1?H.planDe(hd).ouvrages.map(function(o){return o.nom;}).join(' · '):'',
     hivEmp:hd?hd.employes.map(function(e,i){var tg=function(key,lbl){return{lbl:lbl,fw:'400',on:!!e[key],box:e[key]?'var(--color-text)':'transparent',toggle:function(){self.hivSet(hivSel.id,function(d){d.employes[i][key]=!d.employes[i][key];});}};};
       return{nom:e.nom,onNom:hset(function(d,v){d.employes[i].nom=v;}),tg:[tg('formation','Formation complétée'),tg('demo','Démonstration réussie')],del:function(){self.hivSet(hivSel.id,function(d){d.employes.splice(i,1);});}};}):[],
     addEmp:function(){self.hivSet(hivSel.id,function(d){d.employes.push({nom:'',formation:false,demo:false});});},

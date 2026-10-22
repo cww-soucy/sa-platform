@@ -22,6 +22,7 @@
 --       - feuilles_temps, punch_gps_log, releves, demandes : lecture par l'équipe, écriture de SES lignes
 --         (uid / tech = son identifiant), admin + superviseur écrivent tout ;
 --       - communication_lectures, preferences_comptes : ses propres lignes ;
+--       - gabarits_hivernage (écriture admin + superviseur), ouvrage_ajustements (équipe) — si la migration du 22/10 est appliquée ;
 --       - communications, types_bassin, inspection_points, contrats, clients, feuilles_temps_envois,
 --         ft_envois, sondages : lecture par l'équipe, écriture admin + superviseur ;
 --       - tables d'exploitation que SA Platform renvoie EN ENTIER depuis chaque appareil (sites, workorders,
@@ -76,7 +77,8 @@ do $$ declare p record; begin
     'facturation','feuilles_temps','feuilles_temps_envois','flotte','ft_envois','inspection_points','inventaire','lieux_alias',
     'logistique_config','outils','outils_mouvements','photos_chantier','plan','plan_match','planning_conflicts','planning_tasks',
     'preferences_comptes','projets_excel','punch_gps_log','rapports_hivernage','releves','site_journal','sites','sites_fusions',
-    'sondage_reponses','sondages','sorties_inventaire','suppressions','tech_calendar_connections','types_bassin','water_logs','workorders'])
+    'sondage_reponses','sondages','sorties_inventaire','suppressions','tech_calendar_connections','types_bassin','water_logs','workorders',
+    'gabarits_hivernage','ouvrage_ajustements'])
   loop execute format('drop policy %I on public.%I', p.policyname, p.tablename); end loop;
 end $$;
 
@@ -122,6 +124,22 @@ do $$ declare t text; c text; begin
     execute format('create policy sa3_modif on public.%I for update to authenticated using (%I = (select public.sa_compte()) and (select public.sa_role()) is not null or (select public.sa_role()) in (''admin'',''superviseur'')) with check (%I = (select public.sa_compte()) and (select public.sa_role()) is not null or (select public.sa_role()) in (''admin'',''superviseur''))', t, c, c);
     execute format('create policy sa3_suppr on public.%I for delete to authenticated using ((select public.sa_role()) in (''admin'',''superviseur''))', t);
   end loop;
+end $$;
+
+-- Inspection / hivernage par ouvrage (MIGRATION_2026-10-22_gabarits_ouvrages.sql, si appliquée) :
+-- gabarits lus par l'équipe, modifiés par admin + superviseur ; ajustements lus, ajoutés et annulés par l'équipe (jamais supprimés)
+do $$ begin
+  if to_regclass('public.gabarits_hivernage') is not null then
+    create policy sa3_lecture on public.gabarits_hivernage for select to authenticated using ((select public.sa_role()) is not null);
+    create policy sa3_ecriture_sup on public.gabarits_hivernage for all to authenticated
+      using ((select public.sa_role()) in ('admin','superviseur')) with check ((select public.sa_role()) in ('admin','superviseur'));
+  end if;
+  if to_regclass('public.ouvrage_ajustements') is not null then
+    create policy sa3_lecture on public.ouvrage_ajustements for select to authenticated using ((select public.sa_role()) is not null);
+    create policy sa3_ajout on public.ouvrage_ajustements for insert to authenticated with check ((select public.sa_role()) is not null);
+    create policy sa3_modif on public.ouvrage_ajustements for update to authenticated
+      using ((select public.sa_role()) is not null) with check ((select public.sa_role()) is not null);
+  end if;
 end $$;
 
 create policy sa3_lecture on public.communication_lectures for select to authenticated using ((select public.sa_role()) is not null);
@@ -276,4 +294,17 @@ commit;
 --       coalesce(' using (' || p.qual || ')', ''), coalesce(' with check (' || p.with_check || ')', ''));
 --   end loop;
 -- end $c$;
+-- -- gabarits_hivernage, ouvrage_ajustements (si MIGRATION_2026-10-22_gabarits_ouvrages.sql est appliquée) : droits et politiques de la migration
+-- do $o$ declare t text; r text; begin
+--   foreach t in array array['gabarits_hivernage','ouvrage_ajustements'] loop
+--     if to_regclass('public.' || t) is not null then
+--       execute format('grant select, insert, update on public.%I to anon', t);
+--       foreach r in array array['anon','authenticated'] loop
+--         execute format('create policy %I on public.%I for select to %I using (true)', t||'_select_'||r, t, r);
+--         execute format('create policy %I on public.%I for insert to %I with check (true)', t||'_insert_'||r, t, r);
+--         execute format('create policy %I on public.%I for update to %I using (true) with check (true)', t||'_update_'||r, t, r);
+--       end loop;
+--     end if;
+--   end loop;
+-- end $o$;
 -- commit;
