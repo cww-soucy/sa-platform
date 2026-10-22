@@ -35,16 +35,29 @@
     if (/(chauff|ventil|échangeur|thermo)/i.test(lib)) return 'chauffage';
     return 'structure';
   }
-  /* Points actifs d'un type de bassin : catalogue (inspection_points) si renseigné, sinon les vérifications du type */
-  function pointsDuType(code, catalogue, checks) {
-    var c = (catalogue || []).filter(function (p) { return p.actif !== false && (!p.type_code || p.type_code === code); });
-    if (!c.length && !(catalogue || []).some(function (p) { return p.type_code === code; })) {
+  /* Points actifs d'un type de bassin : catalogue (inspection_points) si renseigné, sinon les vérifications du type.
+     ouvrage (bassin de sites.bassins, facultatif) : retire ses points exclus (insp.exclus) et ajoute ses points propres (inspection_points.bassin_id). */
+  function pointsDuType(code, catalogue, checks, ouvrage) {
+    var gen = (catalogue || []).filter(function (p) { return !p.bassin_id; });
+    var c = gen.filter(function (p) { return p.actif !== false && (!p.type_code || p.type_code === code); });
+    if (!c.length && !gen.some(function (p) { return p.type_code === code; })) {
       c = (checks || []).map(function (lib, i) {
         var s = systemeDe(lib);
         return { id: code + '-' + i, systeme_code: s, type_code: code, libelle: lib, mode: s === 'securite' ? 'ouinon' : 'etat', obligatoire: s === 'securite', ordre: i + 1 };
       });
     }
+    if (ouvrage) {
+      var ex = (ouvrage.insp && ouvrage.insp.exclus) || [], bid = String(ouvrage.id || '');
+      c = c.filter(function (p) { return ex.indexOf(p.id) < 0; }).sort(function (a, b) { return (a.ordre || 0) - (b.ordre || 0); })
+        .concat(propres(catalogue, bid));
+      return c;
+    }
     return c.slice().sort(function (a, b) { return (a.ordre || 0) - (b.ordre || 0); });
+  }
+  /* Points propres à un ouvrage (ajoutés dans sa fiche), après ceux du type */
+  function propres(catalogue, bid) {
+    return (catalogue || []).filter(function (p) { return p.bassin_id && p.actif !== false && (bid == null || String(p.bassin_id) === bid); })
+      .sort(function (a, b) { return (a.ordre || 0) - (b.ordre || 0); });
   }
 
   /* État d'un paramètre d'eau : hors [lo, hi] → action ; dans les 10 % de la largeur de zone près d'un bord → watch */
@@ -81,7 +94,8 @@
         detail: e === 'action' ? 'Hors zone · zone ' + zone : e === 'watch' ? 'Près de la limite · zone ' + zone : 'Zone ' + zone,
         note: acts[f.key] ? 'Mesure prise : ' + acts[f.key] : '' });
     });
-    var pts = pointsDuType(r.type_code, catalogue, type.checks), P = r.points || null;
+    var P0 = r.points || null;
+    var pts = pointsDuType(r.type_code, catalogue, type.checks).concat(P0 ? propres(catalogue, null).filter(function (p) { return P0[p.id]; }) : []), P = r.points || null;
     pts.forEach(function (p) {
       var x = P ? P[p.id] : null;
       if (!x && !P && r.checks && r.checks[p.libelle] === true) x = { etat: 'ok' };
@@ -151,7 +165,7 @@
   }
 
   var api = { SYSTEMES: SYSTEMES, NOM: NOM, LIB: LIB, LIB_CLIENT: LIB_CLIENT, NIVEAUX: NIVEAUX, NIVEAU_NOM: NIVEAU_NOM, DROITS: DROITS, MARGE: MARGE,
-    systemeDe: systemeDe, pointsDuType: pointsDuType, etatEau: etatEau, pire: pire, itemsVisite: itemsVisite, etatsSystemes: etatsSystemes,
+    systemeDe: systemeDe, pointsDuType: pointsDuType, propres: propres, etatEau: etatEau, pire: pire, itemsVisite: itemsVisite, etatsSystemes: etatsSystemes,
     compteurs: compteurs, score: score, pastilles: pastilles, verdict: verdict, resume: resume, depuis: depuis, droits: droits, visible: visible, masquer: masquer };
   if (typeof module === 'object' && module.exports) module.exports = api; else root.SAInsp = api;
 })(typeof window !== 'undefined' ? window : this);

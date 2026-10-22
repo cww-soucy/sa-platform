@@ -217,6 +217,7 @@ HIVF=('<sc-if value="{{ isHivForm }}"><div style="padding:12px 0 0;display:flex;
   '<button onClick="{{ goHiv }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:4px;height:44px;padding:0 20px;font-size:16px;color:var(--color-accent-700)"><sa-i n="left" s="22"></sa-i>Hivernage</button>'
   '<div style="padding:6px 20px 12px;display:flex;flex-direction:column;gap:4px;border-bottom:1px solid var(--color-divider)"><div style="font-size:14px">Hivernement · fermeture avec formation</div>'
   '<h1 style="margin:0;font-size:32px;line-height:1.02">{{ hivSite.nom }}</h1><div style="font-size:15px">{{ hivSite.ville }} · {{ hivProgress }} cases sur {{ hivTotal }}</div>'
+  '<sc-if value="{{ hivOuv }}"><div style="font-size:15px">Ouvrages : {{ hivOuv }}</div></sc-if>'
   '<div style="height:8px;background:var(--color-divider);margin-top:6px"><div style="height:100%;width:{{ hivPct }};background:var(--color-accent-700)"></div></div></div>'
   '<sc-if value="{{ hivCrit }}"><div role="alert" style="margin:12px 20px 0;padding:10px 12px;border:2px solid var(--color-text);font-size:15px;font-weight:600">{{ hivCrit }}</div></sc-if>'
   '<div style="padding:16px 20px 4px"><h2 style="margin:0;font-size:21px">1. Informations générales</h2></div>'
@@ -224,7 +225,7 @@ HIVF=('<sc-if value="{{ isHivForm }}"><div style="padding:12px 0 0;display:flex;
   '<sc-for list="{{ hivSecs }}" as="s"><div style="display:flex;flex-direction:column">'+HVH
   +HVTOG('s.items','label')
   +'<sc-if value="{{ s.tips }}"><div style="margin:12px 20px 0;padding:10px 12px;border-left:4px solid var(--color-accent-700);font-size:15px;line-height:1.4"><b>Bon à savoir :</b><sc-for list="{{ hivTips }}" as="t"><div style="margin-top:4px">• {{ t.t }}</div></sc-for></div>'
-  '<div style="margin:10px 20px 0;padding:10px 12px;border:2px solid var(--color-text);font-weight:700;font-size:15px">{{ hivAlerte }}</div></sc-if>'
+  '<sc-if value="{{ hivAlerte }}"><div style="margin:10px 20px 0;padding:10px 12px;border:2px solid var(--color-text);font-weight:700;font-size:15px">{{ hivAlerte }}</div></sc-if></sc-if>'
   '<sc-if value="{{ s.isForm }}"><div style="padding:12px 20px 0;display:flex;flex-direction:column;gap:10px"><b style="font-size:17px">Employés formés</b>'
   '<sc-for list="{{ hivEmp }}" as="e"><div style="border:1px solid var(--color-divider);display:flex;flex-direction:column"><div style="display:flex;gap:6px;align-items:center;padding:8px">'
   '<input class="input" value="{{ e.nom }}" onInput="{{ e.onNom }}" placeholder="Employé (nom)" aria-label="Employé (nom)" style="flex:1;min-height:46px;font-size:17px">'
@@ -232,7 +233,7 @@ HIVF=('<sc-if value="{{ isHivForm }}"><div style="padding:12px 0 0;display:flex;
   +HVTOG('e.tg','lbl')
   +'</div></sc-for><button class="btn btn-secondary" onClick="{{ addEmp }}" style="min-height:50px;font-size:17px;gap:8px"><sa-i n="plus" s="20"></sa-i>Ajouter un employé</button></div></sc-if>'
   '</div></sc-for>'
-  '<div style="padding:18px 20px;display:flex;flex-direction:column;gap:10px"><h2 style="margin:0;font-size:21px">10. Remarques et anomalies</h2>'
+  '<div style="padding:18px 20px;display:flex;flex-direction:column;gap:10px"><h2 style="margin:0;font-size:21px">{{ hivNoRem }}. Remarques et anomalies</h2>'
   '<textarea class="input" value="{{ hivNoteTxt }}" onInput="{{ onHivNote }}" placeholder="Bris, pièces à commander, remarques" style="min-height:90px;font-size:17px"></textarea>'
   '<button class="btn btn-secondary" onClick="{{ hivPhoto }}" style="min-height:52px;font-size:18px;gap:10px"><sa-i n="camera" s="20"></sa-i>{{ hivPhotoLbl }}</button>'
   '<button class="btn btn-primary" onClick="{{ sendHiv }}" style="min-height:60px;font-size:21px;margin-top:6px">Envoyer au bureau</button>'

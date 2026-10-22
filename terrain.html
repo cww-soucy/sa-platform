@@ -623,7 +623,7 @@ button{font-family:inherit}
           </div>
         </sc-if>
 
-        <sc-if value="{{ isHivForm }}"><div style="padding:12px 0 0;display:flex;flex-direction:column"><button onClick="{{ goHiv }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:4px;height:44px;padding:0 20px;font-size:16px;color:var(--color-accent-700)"><sa-i n="left" s="22"></sa-i>Hivernage</button><div style="padding:6px 20px 12px;display:flex;flex-direction:column;gap:4px;border-bottom:1px solid var(--color-divider)"><div style="font-size:14px">Hivernement · fermeture avec formation</div><h1 style="margin:0;font-size:32px;line-height:1.02">{{ hivSite.nom }}</h1><div style="font-size:15px">{{ hivSite.ville }} · {{ hivProgress }} cases sur {{ hivTotal }}</div><div style="height:8px;background:var(--color-divider);margin-top:6px"><div style="height:100%;width:{{ hivPct }};background:var(--color-accent-700)"></div></div></div><sc-if value="{{ hivCrit }}"><div role="alert" style="margin:12px 20px 0;padding:10px 12px;border:2px solid var(--color-text);font-size:15px;font-weight:600">{{ hivCrit }}</div></sc-if><div style="padding:16px 20px 4px"><h2 style="margin:0;font-size:21px">1. Informations générales</h2></div><div style="padding:4px 20px 8px;display:flex;flex-direction:column;gap:10px"><sc-for list="{{ hivInfo }}" as="f"><div class="field"><label style="font-size:15px">{{ f.l }}</label><input class="input" type="{{ f.type }}" value="{{ f.v }}" onInput="{{ f.on }}" style="min-height:48px;font-size:17px"></div></sc-for></div><sc-for list="{{ hivSecs }}" as="s"><div style="display:flex;flex-direction:column"><div style="display:flex;align-items:center;gap:10px;padding:16px 20px 8px;border-bottom:1px solid var(--color-divider)"><h2 style="margin:0;flex:1;font-size:21px;line-height:1.1">{{ s.titre }}</h2><button onClick="{{ s.all }}" style="all:unset;cursor:pointer;font-size:15px;color:var(--color-accent-700)">{{ s.allLbl }}</button></div><sc-for list="{{ s.items }}" as="c"><button onClick="{{ c.toggle }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:14px;padding:10px 20px;min-height:58px;box-sizing:border-box;border-bottom:1px solid var(--color-divider)"><span style="width:30px;height:30px;flex:none;box-sizing:border-box;border:1.5px solid var(--color-text);background:{{ c.box }};color:var(--color-bg);display:flex;align-items:center;justify-content:center"><sc-if value="{{ c.on }}"><sa-i n="check" s="20" w="2.5"></sa-i></sc-if></span><span style="font-size:16px;line-height:1.3;font-weight:{{ c.fw }}">{{ c.label }}</span></button></sc-for><sc-if value="{{ s.tips }}"><div style="margin:12px 20px 0;padding:10px 12px;border-left:4px solid var(--color-accent-700);font-size:15px;line-height:1.4"><b>Bon à savoir :</b><sc-for list="{{ hivTips }}" as="t"><div style="margin-top:4px">• {{ t.t }}</div></sc-for></div><div style="margin:10px 20px 0;padding:10px 12px;border:2px solid var(--color-text);font-weight:700;font-size:15px">{{ hivAlerte }}</div></sc-if><sc-if value="{{ s.isForm }}"><div style="padding:12px 20px 0;display:flex;flex-direction:column;gap:10px"><b style="font-size:17px">Employés formés</b><sc-for list="{{ hivEmp }}" as="e"><div style="border:1px solid var(--color-divider);display:flex;flex-direction:column"><div style="display:flex;gap:6px;align-items:center;padding:8px"><input class="input" value="{{ e.nom }}" onInput="{{ e.onNom }}" placeholder="Employé (nom)" aria-label="Employé (nom)" style="flex:1;min-height:46px;font-size:17px"><button onClick="{{ e.del }}" aria-label="Retirer l’employé" style="all:unset;cursor:pointer;width:44px;height:44px;display:flex;align-items:center;justify-content:center"><sa-i n="x" s="20"></sa-i></button></div><sc-for list="{{ e.tg }}" as="c"><button onClick="{{ c.toggle }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:14px;padding:10px 20px;min-height:58px;box-sizing:border-box;border-bottom:1px solid var(--color-divider)"><span style="width:30px;height:30px;flex:none;box-sizing:border-box;border:1.5px solid var(--color-text);background:{{ c.box }};color:var(--color-bg);display:flex;align-items:center;justify-content:center"><sc-if value="{{ c.on }}"><sa-i n="check" s="20" w="2.5"></sa-i></sc-if></span><span style="font-size:16px;line-height:1.3;font-weight:{{ c.fw }}">{{ c.lbl }}</span></button></sc-for></div></sc-for><button class="btn btn-secondary" onClick="{{ addEmp }}" style="min-height:50px;font-size:17px;gap:8px"><sa-i n="plus" s="20"></sa-i>Ajouter un employé</button></div></sc-if></div></sc-for><div style="padding:18px 20px;display:flex;flex-direction:column;gap:10px"><h2 style="margin:0;font-size:21px">10. Remarques et anomalies</h2><textarea class="input" value="{{ hivNoteTxt }}" onInput="{{ onHivNote }}" placeholder="Bris, pièces à commander, remarques" style="min-height:90px;font-size:17px"></textarea><button class="btn btn-secondary" onClick="{{ hivPhoto }}" style="min-height:52px;font-size:18px;gap:10px"><sa-i n="camera" s="20"></sa-i>{{ hivPhotoLbl }}</button><button class="btn btn-primary" onClick="{{ sendHiv }}" style="min-height:60px;font-size:21px;margin-top:6px">Envoyer au bureau</button><div style="font-size:14px;line-height:1.4">Le bureau la vérifie, l’imprime ou l’envoie au client depuis sa-admin.</div></div></div></sc-if>
+        <sc-if value="{{ isHivForm }}"><div style="padding:12px 0 0;display:flex;flex-direction:column"><button onClick="{{ goHiv }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:4px;height:44px;padding:0 20px;font-size:16px;color:var(--color-accent-700)"><sa-i n="left" s="22"></sa-i>Hivernage</button><div style="padding:6px 20px 12px;display:flex;flex-direction:column;gap:4px;border-bottom:1px solid var(--color-divider)"><div style="font-size:14px">Hivernement · fermeture avec formation</div><h1 style="margin:0;font-size:32px;line-height:1.02">{{ hivSite.nom }}</h1><div style="font-size:15px">{{ hivSite.ville }} · {{ hivProgress }} cases sur {{ hivTotal }}</div><sc-if value="{{ hivOuv }}"><div style="font-size:15px">Ouvrages : {{ hivOuv }}</div></sc-if><div style="height:8px;background:var(--color-divider);margin-top:6px"><div style="height:100%;width:{{ hivPct }};background:var(--color-accent-700)"></div></div></div><sc-if value="{{ hivCrit }}"><div role="alert" style="margin:12px 20px 0;padding:10px 12px;border:2px solid var(--color-text);font-size:15px;font-weight:600">{{ hivCrit }}</div></sc-if><div style="padding:16px 20px 4px"><h2 style="margin:0;font-size:21px">1. Informations générales</h2></div><div style="padding:4px 20px 8px;display:flex;flex-direction:column;gap:10px"><sc-for list="{{ hivInfo }}" as="f"><div class="field"><label style="font-size:15px">{{ f.l }}</label><input class="input" type="{{ f.type }}" value="{{ f.v }}" onInput="{{ f.on }}" style="min-height:48px;font-size:17px"></div></sc-for></div><sc-for list="{{ hivSecs }}" as="s"><div style="display:flex;flex-direction:column"><div style="display:flex;align-items:center;gap:10px;padding:16px 20px 8px;border-bottom:1px solid var(--color-divider)"><h2 style="margin:0;flex:1;font-size:21px;line-height:1.1">{{ s.titre }}</h2><button onClick="{{ s.all }}" style="all:unset;cursor:pointer;font-size:15px;color:var(--color-accent-700)">{{ s.allLbl }}</button></div><sc-for list="{{ s.items }}" as="c"><button onClick="{{ c.toggle }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:14px;padding:10px 20px;min-height:58px;box-sizing:border-box;border-bottom:1px solid var(--color-divider)"><span style="width:30px;height:30px;flex:none;box-sizing:border-box;border:1.5px solid var(--color-text);background:{{ c.box }};color:var(--color-bg);display:flex;align-items:center;justify-content:center"><sc-if value="{{ c.on }}"><sa-i n="check" s="20" w="2.5"></sa-i></sc-if></span><span style="font-size:16px;line-height:1.3;font-weight:{{ c.fw }}">{{ c.label }}</span></button></sc-for><sc-if value="{{ s.tips }}"><div style="margin:12px 20px 0;padding:10px 12px;border-left:4px solid var(--color-accent-700);font-size:15px;line-height:1.4"><b>Bon à savoir :</b><sc-for list="{{ hivTips }}" as="t"><div style="margin-top:4px">• {{ t.t }}</div></sc-for></div><sc-if value="{{ hivAlerte }}"><div style="margin:10px 20px 0;padding:10px 12px;border:2px solid var(--color-text);font-weight:700;font-size:15px">{{ hivAlerte }}</div></sc-if></sc-if><sc-if value="{{ s.isForm }}"><div style="padding:12px 20px 0;display:flex;flex-direction:column;gap:10px"><b style="font-size:17px">Employés formés</b><sc-for list="{{ hivEmp }}" as="e"><div style="border:1px solid var(--color-divider);display:flex;flex-direction:column"><div style="display:flex;gap:6px;align-items:center;padding:8px"><input class="input" value="{{ e.nom }}" onInput="{{ e.onNom }}" placeholder="Employé (nom)" aria-label="Employé (nom)" style="flex:1;min-height:46px;font-size:17px"><button onClick="{{ e.del }}" aria-label="Retirer l’employé" style="all:unset;cursor:pointer;width:44px;height:44px;display:flex;align-items:center;justify-content:center"><sa-i n="x" s="20"></sa-i></button></div><sc-for list="{{ e.tg }}" as="c"><button onClick="{{ c.toggle }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:14px;padding:10px 20px;min-height:58px;box-sizing:border-box;border-bottom:1px solid var(--color-divider)"><span style="width:30px;height:30px;flex:none;box-sizing:border-box;border:1.5px solid var(--color-text);background:{{ c.box }};color:var(--color-bg);display:flex;align-items:center;justify-content:center"><sc-if value="{{ c.on }}"><sa-i n="check" s="20" w="2.5"></sa-i></sc-if></span><span style="font-size:16px;line-height:1.3;font-weight:{{ c.fw }}">{{ c.lbl }}</span></button></sc-for></div></sc-for><button class="btn btn-secondary" onClick="{{ addEmp }}" style="min-height:50px;font-size:17px;gap:8px"><sa-i n="plus" s="20"></sa-i>Ajouter un employé</button></div></sc-if></div></sc-for><div style="padding:18px 20px;display:flex;flex-direction:column;gap:10px"><h2 style="margin:0;font-size:21px">{{ hivNoRem }}. Remarques et anomalies</h2><textarea class="input" value="{{ hivNoteTxt }}" onInput="{{ onHivNote }}" placeholder="Bris, pièces à commander, remarques" style="min-height:90px;font-size:17px"></textarea><button class="btn btn-secondary" onClick="{{ hivPhoto }}" style="min-height:52px;font-size:18px;gap:10px"><sa-i n="camera" s="20"></sa-i>{{ hivPhotoLbl }}</button><button class="btn btn-primary" onClick="{{ sendHiv }}" style="min-height:60px;font-size:21px;margin-top:6px">Envoyer au bureau</button><div style="font-size:14px;line-height:1.4">Le bureau la vérifie, l’imprime ou l’envoie au client depuis sa-admin.</div></div></div></sc-if>
 
         <!-- ═════ DEMANDES ═════ -->
         <sc-if value="{{ isDem }}">
@@ -849,16 +849,29 @@ button{font-family:inherit}
     if (/(chauff|ventil|échangeur|thermo)/i.test(lib)) return 'chauffage';
     return 'structure';
   }
-  /* Points actifs d'un type de bassin : catalogue (inspection_points) si renseigné, sinon les vérifications du type */
-  function pointsDuType(code, catalogue, checks) {
-    var c = (catalogue || []).filter(function (p) { return p.actif !== false && (!p.type_code || p.type_code === code); });
-    if (!c.length && !(catalogue || []).some(function (p) { return p.type_code === code; })) {
+  /* Points actifs d'un type de bassin : catalogue (inspection_points) si renseigné, sinon les vérifications du type.
+     ouvrage (bassin de sites.bassins, facultatif) : retire ses points exclus (insp.exclus) et ajoute ses points propres (inspection_points.bassin_id). */
+  function pointsDuType(code, catalogue, checks, ouvrage) {
+    var gen = (catalogue || []).filter(function (p) { return !p.bassin_id; });
+    var c = gen.filter(function (p) { return p.actif !== false && (!p.type_code || p.type_code === code); });
+    if (!c.length && !gen.some(function (p) { return p.type_code === code; })) {
       c = (checks || []).map(function (lib, i) {
         var s = systemeDe(lib);
         return { id: code + '-' + i, systeme_code: s, type_code: code, libelle: lib, mode: s === 'securite' ? 'ouinon' : 'etat', obligatoire: s === 'securite', ordre: i + 1 };
       });
     }
+    if (ouvrage) {
+      var ex = (ouvrage.insp && ouvrage.insp.exclus) || [], bid = String(ouvrage.id || '');
+      c = c.filter(function (p) { return ex.indexOf(p.id) < 0; }).sort(function (a, b) { return (a.ordre || 0) - (b.ordre || 0); })
+        .concat(propres(catalogue, bid));
+      return c;
+    }
     return c.slice().sort(function (a, b) { return (a.ordre || 0) - (b.ordre || 0); });
+  }
+  /* Points propres à un ouvrage (ajoutés dans sa fiche), après ceux du type */
+  function propres(catalogue, bid) {
+    return (catalogue || []).filter(function (p) { return p.bassin_id && p.actif !== false && (bid == null || String(p.bassin_id) === bid); })
+      .sort(function (a, b) { return (a.ordre || 0) - (b.ordre || 0); });
   }
 
   /* État d'un paramètre d'eau : hors [lo, hi] → action ; dans les 10 % de la largeur de zone près d'un bord → watch */
@@ -895,7 +908,8 @@ button{font-family:inherit}
         detail: e === 'action' ? 'Hors zone · zone ' + zone : e === 'watch' ? 'Près de la limite · zone ' + zone : 'Zone ' + zone,
         note: acts[f.key] ? 'Mesure prise : ' + acts[f.key] : '' });
     });
-    var pts = pointsDuType(r.type_code, catalogue, type.checks), P = r.points || null;
+    var P0 = r.points || null;
+    var pts = pointsDuType(r.type_code, catalogue, type.checks).concat(P0 ? propres(catalogue, null).filter(function (p) { return P0[p.id]; }) : []), P = r.points || null;
     pts.forEach(function (p) {
       var x = P ? P[p.id] : null;
       if (!x && !P && r.checks && r.checks[p.libelle] === true) x = { etat: 'ok' };
@@ -965,7 +979,7 @@ button{font-family:inherit}
   }
 
   var api = { SYSTEMES: SYSTEMES, NOM: NOM, LIB: LIB, LIB_CLIENT: LIB_CLIENT, NIVEAUX: NIVEAUX, NIVEAU_NOM: NIVEAU_NOM, DROITS: DROITS, MARGE: MARGE,
-    systemeDe: systemeDe, pointsDuType: pointsDuType, etatEau: etatEau, pire: pire, itemsVisite: itemsVisite, etatsSystemes: etatsSystemes,
+    systemeDe: systemeDe, pointsDuType: pointsDuType, propres: propres, etatEau: etatEau, pire: pire, itemsVisite: itemsVisite, etatsSystemes: etatsSystemes,
     compteurs: compteurs, score: score, pastilles: pastilles, verdict: verdict, resume: resume, depuis: depuis, droits: droits, visible: visible, masquer: masquer };
   if (typeof module === 'object' && module.exports) module.exports = api; else root.SAInsp = api;
 })(typeof window !== 'undefined' ? window : this);
@@ -976,8 +990,9 @@ button{font-family:inherit}
 (function (root) {
   'use strict';
   var LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAF0AAABdCAMAAADwr5rxAAAABGdBTUEAALGPC/xhBQAAAAFzUkdCAK7OHOkAAAA/UExURQBIh////4Clw0N5pzZuoQBIhwBIh7PJ3W6ZvRJWkcDS4fH1+RBUj6G709Dd6R5gl2CPtZGxyzBqn+Hp8Q5UjwM7wskAAAAKdFJOU8H////Fk//5/cHnDczVAAADKUlEQVRo3u2Y6ZbbIAyFR6i1Gfbt/Z+1EuAttadxG6enp+bH2GHwh7i6Aicfw4Xt4+Om3/SbftNv+k2/6Tf9pt/0m37Tb/p/R0c0V9FN1Epp5a+hW1vor9D+CrrXpV6jvYKOql9dvRTE/cz8Hj3loWM5B5ZzIPgztO56EaBUpt4YW6bAPK27GhfFFeeguLilR9d7fYtE2hOeEdqJ1Nbfni6c4YXudQ3V062rAmU85/eYeeGDld1GYk0XsY8yQ7ArLU/UKjp6UPWgmLfQR7GskxW34kRWu+osx0wf13S1ovHqDipjlz5HQuiZvlEm9hHJVN8GdcKRwfUbnWYzcPIaHWEZkTnmnFQ4QTe5pVI4dkf1jmRcrpAR5tvaS6LpU/tMykqiVM5XS0ZEW+dAHTEoxfSkbUBbQydfxnM7sAlW2b5cL0crWyX6qCIOVfMi7dQ7HO52rzg90F15Nh3l9BV0YQ9DH779MR0PIx/CeEhHyGcnAt6BYC7jCMf0EQCfl6cyt3QL+lAZDwDjSTqfVhPdKNDp84hOy9Iw+RiFQOPRz8ddwtL7A49JFiz9d0U3DqgWjzxjCG17DaZM6wDt+Dloe41i1Vo/BP5ITayUSRqcOXZkADUk0H0iJ0Osz6/pXlPASP2e9khQAhc6we1XfnctpFCzMzYPPdBlW5rlQdusBujiH9CbHQNwoUzyj4/KNNlq94Yuq1pf0MlNihpAopNNr3yxphupdBN8Q9fwC7qHqVlahtunk7iQlVWPdNCCo9qjlw4asTaAMgHJo1t6hvq2GR/p5EQJ7cyZ6WU9h+5zk9ayJZgG5EY3bQBOE7mfdG/KpsNzdRKjZhdBk8hlrAJXVrFQY6dZfeuWJKFZ7wQNv0tXMO97mTC2llJLH2mla+0g+65WGbTS0GKzz1T8Ht2r5QUi8JsLFQs4EdteQsHmaFXiV2UCSz4NSX1N5zg/F6azZKRqPXF6rPbWZxrvNJ+X0Rk/Xkcn/JV0+nJ3JX2YdC87NfVoJTz9FfBvfZMv/+TvBOUNyhxNVN6jTHkRvfytrJZl9vLYsaaXt/r9FQq91+/lqTDL0/Qr2/cfwZfNOgkFMZkAAAAASUVORK5CYII=';
-  var SECTIONS = [
-    { id: 'secu', titre: 'Sécurité et préparation', col: 'Vérification', items: [
+  /* Gabarit « Piscine » : le formulaire papier d’origine (clés p1-0… inchangées pour les rapports déjà faits) */
+  var PISCINE = [
+    { id: 'secu', titre: 'Sécurité et préparation', col: 'Vérification', commun: true, items: [
       { t: 'EPI portés par toute l’équipe (bottes, gants, lunettes, protection auditive si compresseur)' },
       { t: 'Alimentation électrique des pompes, chauffe-eau et système de traitement coupée et verrouillée' },
       { t: 'Zone de travail délimitée et accès public bloqué (cônes, ruban)' },
@@ -1020,12 +1035,12 @@ button{font-family:inherit}
       { n: '—', t: 'Système de traitement remisé, sondes dans liquide de remisage' },
       { n: '—', t: 'Photos prises : salle mécanique, valves, bouchons, niveau d’eau du bassin' },
       { n: '—', t: 'Zone nettoyée, matériel rangé, aucun déchet chimique laissé sur place' }] },
-    { id: 'mat', titre: 'Matériel et pièces', col: 'Matériel', col2: 'Pièces de rechange', items: [
+    { id: 'mat', titre: 'Matériel et pièces', col: 'Matériel', col2: 'Pièces de rechange', commun: true, items: [
       { t: 'Antigel biodégradable' }, { t: 'Pinces et tournevis divers' }, { t: 'Téflon' }, { t: 'Pompe à puisard et boyau' },
       { t: 'Ensembles styromousse (écumoires et drains de fond)' }, { t: 'Corde pour fichier (lumières)' }, { t: 'Aspirateur de chantier (shop-vac)' },
       { t: 'Clapet de tige hydrostatique (si piscine l’exige)', g: 2 }, { t: 'Bouchons 1 ½ po NPT', g: 2 }, { t: 'Bouchons 2 po NPT', g: 2 },
       { t: 'Bouchons expansibles (drains de fond)', g: 2 }, { t: 'Lubrigel (lubrifiant tamis de pompes)', g: 2 }, { t: 'Couvercles de tamis', g: 2 }, { t: 'Bouchons de drainage de tamis', g: 2 }] },
-    { id: 'form', titre: 'Formation des employés', col: 'Sujet de formation', items: [
+    { id: 'form', titre: 'Formation des employés', col: 'Sujet de formation', commun: true, items: [
       { t: 'Séquence complète de l’hivernement (phases 1 à 5) et logique de l’ordre des étapes' },
       { t: 'Identification des valves : celles qui se ferment et celles qui restent à 50 %' },
       { t: 'Installation des bouchons filetés et expansibles, dont les bouchons 1 ½ po et 2 po' },
@@ -1034,8 +1049,6 @@ button{font-family:inherit}
       { t: 'Manipulation sécuritaire de l’antigel, des produits chimiques et de l’air comprimé' },
       { t: 'Démonstration pratique réalisée sur le site, avec évaluation des participants' }] }
   ];
-  /* Numéro affiché de chaque section (1 = informations générales, 10 = remarques, 11 = validation) */
-  SECTIONS.forEach(function (s, i) { s.no = i + 2; s.items.forEach(function (it, j) { it.k = s.id + '-' + j; }); });
   var INFO = [['date', 'Date', 'date'], ['site', 'Site', 'text'], ['heure_debut', 'Heure début', 'time'], ['heure_fin', 'Heure fin', 'time'],
     ['chef', 'Chef d’équipe', 'text'], ['temperature', 'Température', 'text'], ['equipe', 'Équipe présente', 'text', true], ['bassins', 'Bassin(s) / autres équipements', 'text', true]];
   var TIPS = ['L’idée de base d’un hivernement est d’éviter que les tuyaux gèlent et se cassent, et que le gel du sol soulève la piscine.',
@@ -1043,15 +1056,215 @@ button{font-family:inherit}
   var ALERTE = 'L’HIVERNEMENT N’EST PAS UNE COURSE. UNE MAUVAISE EXÉCUTION PEUT AVOIR DES CONSÉQUENCES DE PLUSIEURS MILLIERS DE DOLLARS.';
   var TITRE = 'Hivernement';
 
+  /* Sections communes à tous les ouvrages (fusionnées quand un site en a plusieurs) : mêmes libellés que la piscine quand c’est la même vérification */
+  var SECU_EXT = function (plan) {
+    return { id: 'secu', titre: 'Sécurité et préparation', col: 'Vérification', commun: true, items: [
+      { t: PISCINE[0].items[0].t },
+      { t: 'Alimentation électrique des pompes, du contrôleur et du système de traitement coupée et verrouillée' },
+      { t: PISCINE[0].items[2].t },
+      { t: plan },
+      { t: PISCINE[0].items[5].t }] };
+  };
+  /* PREMIER JET (2026-10-22) à valider par Soucy Aquatik — modifiable dans sa-admin › Hivernage › Gabarits */
+  var JEUXDEAU = [
+    SECU_EXT('Plan du site revu : bassin d’équilibre, salle mécanique, collecteurs, valves et lignes d’alimentation de chaque jeu'),
+    { id: 'p1', titre: 'Phase 1 — Arrêt et isolement', col: 'Tâche', num: true, items: [
+      { n: '1', t: 'Mettre le contrôleur des jeux (séquenceur) hors service et désactiver le bouton d’activation ou le détecteur' },
+      { n: '2', t: 'Fermer l’entrée d’eau potable et la valve d’appoint du bassin d’équilibre', crit: true },
+      { n: '3', t: 'Isoler, drainer et retirer le dispositif antirefoulement (DAR) et le réducteur de pression, puis les ranger hors du gel', crit: true },
+      { n: '4', t: 'Couper et cadenasser les pompes, le système UV et le contrôleur de chimie' }] },
+    { id: 'p2', titre: 'Phase 2 — Vidange', col: 'Tâche', num: true, items: [
+      { n: '5', t: 'Vidanger le bassin d’équilibre au complet (pompe submersible) et retirer les débris et le sable' },
+      { n: '6', t: 'Ouvrir les drains bas des collecteurs et toutes les valves (manuelles et solénoïdes) des jeux' },
+      { n: '7', t: 'Vidanger les filtres, les tamis de pompes, la chambre UV et l’échangeur (retirer les bouchons de drainage)' },
+      { n: '8', t: 'Retirer la lampe UV et le manchon de quartz (si présents) et les ranger hors du gel' },
+      { n: '9', t: 'Vidanger les réservoirs de produits chimiques, rincer les conduites d’injection. Sondes ORP et pH dans un liquide de remisage' }] },
+    { id: 'p3', titre: 'Phase 3 — Purge des conduites', col: 'Tâche', num: true, items: [
+      { n: '10', t: 'Souffler chaque ligne de jeu à l’air comprimé, une à la fois, jusqu’à ce qu’il ne sorte plus que de l’air.', b: 'Respecter la pression maximale du fabricant', crit: true },
+      { n: '11', t: 'Souffler les conduites des drains de surface vers le bassin d’équilibre' },
+      { n: '12', t: 'Ajouter de l’antigel biodégradable dans les siphons et les points bas qui ne se vident pas' },
+      { n: '13', t: 'Laisser les valves des collecteurs dans la position d’hiver prévue (ouvertes ou à 50 %)' }] },
+    { id: 'p4', titre: 'Phase 4 — Protection des équipements de surface', col: 'Tâche', num: true, items: [
+      { n: '14', t: 'Retirer ou capuchonner les buses et gicleurs démontables, les ranger identifiés pour le printemps' },
+      { n: '15', t: 'Couvrir les drains de surface (sable, feuilles, débris)' },
+      { n: '16', t: 'Refermer et verrouiller les trappes du bassin d’équilibre et de la chambre des valves' },
+      { n: '17', t: 'Installer l’affiche « Jeux d’eau fermés pour l’hiver »' }] },
+    { id: 'p5', titre: 'Phase 5 — Vérifications finales', col: 'Vérification', num: true, items: [
+      { n: '18', t: 'Revérifier tout le système : eau potable fermée, aucune ligne pleine, valves dans la position d’hiver', crit: true },
+      { n: '—', t: 'Contrôleur programmé hors saison, disjoncteurs identifiés' },
+      { n: '—', t: 'Photos prises : salle mécanique, collecteurs, bassin d’équilibre vide, valves' },
+      { n: '—', t: PISCINE[5].items[6].t }] },
+    { id: 'mat', titre: 'Matériel et pièces', col: 'Matériel', col2: 'Pièces de rechange', commun: true, items: [
+      { t: 'Compresseur, boyaux et raccords de soufflage' }, { t: 'Pompe à puisard et boyau' }, { t: 'Antigel biodégradable' }, { t: 'Pinces et tournevis divers' }, { t: 'Téflon' },
+      { t: 'Capuchons de buses', g: 2 }, { t: 'Couvercles de drains de surface', g: 2 }, { t: 'Joints et bouchons de drainage', g: 2 }] },
+    { id: 'form', titre: 'Formation des employés', col: 'Sujet de formation', commun: true, items: [
+      { t: 'Séquence complète de l’hivernement des jeux d’eau (phases 1 à 5)' },
+      { t: 'Identification des lignes de chaque jeu et des valves du collecteur' },
+      { t: 'Soufflage sécuritaire à l’air comprimé (pression, protection des yeux et des oreilles)' },
+      { t: PISCINE[7].items[6].t }] }
+  ];
+  var FONTAINE = [
+    SECU_EXT('Plan du site revu : bassin ou vasque, réservoir, salle mécanique, valves et alimentation des buses'),
+    { id: 'p1', titre: 'Phase 1 — Arrêt et isolement', col: 'Tâche', num: true, items: [
+      { n: '1', t: 'Arrêter les pompes, l’éclairage et la minuterie, puis couper et cadenasser l’alimentation électrique' },
+      { n: '2', t: 'Fermer l’appoint d’eau automatique (flotteur ou solénoïde) et l’entrée d’eau potable', crit: true },
+      { n: '3', t: 'Isoler, drainer et retirer le dispositif antirefoulement (DAR) et le ranger hors du gel', crit: true }] },
+    { id: 'p2', titre: 'Phase 2 — Vidange et nettoyage', col: 'Tâche', num: true, items: [
+      { n: '4', t: 'Vidanger le bassin (ou la vasque) et le réservoir au complet' },
+      { n: '5', t: 'Nettoyer le fond et les parois : débris, algues et dépôts de calcaire' },
+      { n: '6', t: 'Vidanger les pompes, les filtres et les tamis (retirer les bouchons de drainage)' },
+      { n: '7', t: 'Retirer la pompe submersible (si présente), la nettoyer et la remiser selon les directives du fabricant' },
+      { n: '8', t: 'Vidanger les réservoirs de produits chimiques et rincer les conduites d’injection (si présents)' }] },
+    { id: 'p3', titre: 'Phase 3 — Démontage et purge', col: 'Tâche', num: true, items: [
+      { n: '9', t: 'Retirer les buses et les jets, les nettoyer et les ranger identifiés pour le printemps' },
+      { n: '10', t: 'Souffler à l’air comprimé chaque conduite d’alimentation des buses jusqu’à ce qu’il ne sorte plus que de l’air', crit: true },
+      { n: '11', t: 'Retirer les luminaires submersibles ou vérifier leur étanchéité selon le fabricant' },
+      { n: '12', t: 'Ajouter de l’antigel biodégradable dans les siphons et les points bas qui ne se vident pas' }] },
+    { id: 'p4', titre: 'Phase 4 — Protection', col: 'Tâche', num: true, items: [
+      { n: '13', t: 'Installer les bouchons sur les sorties de buses et sur l’appoint d’eau' },
+      { n: '14', t: 'Laisser le drain du bassin ouvert (eau de pluie et de fonte) ou installer la couverture d’hiver, selon la fontaine' },
+      { n: '15', t: 'Protéger les éléments décoratifs (housse, panneaux) contre le gel et la neige' }] },
+    { id: 'p5', titre: 'Phase 5 — Vérifications finales', col: 'Vérification', num: true, items: [
+      { n: '16', t: 'Revérifier tout le système : eau fermée, aucune conduite pleine, valves dans la position d’hiver', crit: true },
+      { n: '—', t: 'Photos prises : salle mécanique, valves, bassin vide, buses remisées' },
+      { n: '—', t: PISCINE[5].items[6].t }] },
+    { id: 'mat', titre: 'Matériel et pièces', col: 'Matériel', col2: 'Pièces de rechange', commun: true, items: [
+      { t: 'Compresseur, boyaux et raccords de soufflage' }, { t: 'Pompe à puisard et boyau' }, { t: 'Antigel biodégradable' }, { t: 'Pinces et tournevis divers' }, { t: 'Téflon' },
+      { t: 'Bouchons de sorties de buses', g: 2 }, { t: 'Joints de buses et de luminaires', g: 2 }] },
+    { id: 'form', titre: 'Formation des employés', col: 'Sujet de formation', commun: true, items: [
+      { t: 'Séquence complète de l’hivernement de la fontaine (phases 1 à 5)' },
+      { t: 'Démontage, nettoyage et remisage des buses et de la pompe' },
+      { t: 'Soufflage sécuritaire à l’air comprimé (pression, protection des yeux et des oreilles)' },
+      { t: PISCINE[7].items[6].t }] }
+  ];
+  /* types : codes de types_bassin et valeurs de bassin.type qui prennent ce gabarit par défaut */
+  var GABARITS = [
+    { code: 'piscine', nom: 'Piscine', types: ['piscine', 'RE', 'ME', 'PA', 'GEN'], sections: PISCINE, conseils: TIPS, alerte: ALERTE, ordre: 1 },
+    { code: 'jeuxdeau', nom: 'Jeux d’eau', types: ['jeuxdeau', 'JE'], sections: JEUXDEAU, ordre: 2, alerte: ALERTE,
+      conseils: ['Une ligne de jeu qui garde de l’eau peut éclater au premier gel : on souffle jusqu’à ce qu’il ne sorte plus que de l’air, une ligne à la fois.'] },
+    { code: 'fontaine', nom: 'Fontaine', types: ['fontaine', 'FO'], sections: FONTAINE, ordre: 3, alerte: ALERTE,
+      conseils: ['Les buses, la pompe submersible et les luminaires se remisent selon les directives de leur fabricant : vérifier la fiche de la fontaine.'] }
+  ];
+  function copie(x) { return JSON.parse(JSON.stringify(x)); }
+  /* Gabarits en service : table gabarits_hivernage si elle est remplie, sinon ceux ci-dessus */
+  function gabarits(rows) {
+    var g = (rows || []).filter(function (r) { return r && r.actif !== false && Array.isArray(r.sections) && r.sections.length; });
+    return (g.length ? g : GABARITS).slice().sort(function (a, b) { return (a.ordre || 0) - (b.ordre || 0); });
+  }
+  /* Gabarit d’un ouvrage (bassin de sites.bassins) : choix de la fiche (hiv.gabarit), sinon son type, sinon son nom */
+  function gabaritDe(b, liste) {
+    liste = gabarits(liste); b = b || {};
+    var cfg = b.hiv || {}, par = function (c) { return liste.filter(function (g) { return g.code === c; })[0] || null; };
+    if (cfg.gabarit === 'aucun') return null;
+    if (cfg.gabarit && par(cfg.gabarit)) return par(cfg.gabarit);
+    /* type de relevé propre au bassin, puis sa nature (piscine, jeux d’eau, fontaine…), puis son nom, puis le type de relevé du site */
+    var de = function (t) { return t ? liste.filter(function (g) { return (g.types || []).indexOf(t) >= 0; })[0] || null : null; }, nom = String(b.nom || '');
+    return de(b.type_code) || (b.type !== 'autre' && de(b.type)) || (/fontaine/i.test(nom) && par('fontaine')) || (/jeux? d.?eaux?/i.test(nom) && par('jeuxdeau'))
+      || de(b.code) || par('piscine') || liste[0] || null;
+  }
+  /* Liste de contrôle d’un site : sections communes fusionnées (une fois), puis les phases de chaque ouvrage.
+     Un seul ouvrage : clés « p1-0 » comme avant ; plusieurs : « <id ouvrage>:p1-0 ». Retraits (hiv.exclus) et ajouts (hiv.ajouts) de la fiche de l’ouvrage. */
+  function planSite(bassins, rows) {
+    var liste = gabarits(rows), ouv = [];
+    (bassins || []).forEach(function (b, i) { if (!b || !String(b.nom || '').trim()) return; var g = gabaritDe(b, liste); if (g) ouv.push({ id: String(b.id || 'b' + i), nom: String(b.nom).trim(), g: g, cfg: b.hiv || {} }); });
+    if (!(bassins || []).length) ouv.push({ id: '', nom: '', g: gabaritDe({}, liste), cfg: {} });
+    var multi = ouv.length > 1, tete = [], corps = [], fin = [], vus = {}, conseils = [], alerte = '';
+    var fusion = function (dest, s, o, premier) {
+      var cur = dest.filter(function (x) { return x.id === s.id; })[0];
+      if (!cur) { cur = { id: s.id, titre: s.titre, col: s.col, col2: s.col2, num: s.num, commun: true, items: [] }; dest.push(cur); }
+      s.items.forEach(function (it, j) {
+        var ref = s.id + '-' + j, k = (premier[s.id] && premier[s.id] !== o.g.code ? o.g.code + ':' : '') + ref, ex = (o.cfg.exclus || []).indexOf(ref) >= 0;
+        var deja = cur.items.filter(function (x) { return x.t === it.t && !!x.b === !!it.b; })[0];
+        if (deja) { if (!ex) deja._garde = true; return; }
+        cur.items.push(Object.assign(copie(it), { k: k, ref: ref, _garde: !ex }));
+      });
+    };
+    var premier = {};
+    ouv.forEach(function (o) {
+      var secs = o.g.sections || [], pre = multi ? o.id + ':' : '', suf = multi ? ' — ' + o.nom : '';
+      var iCorps = secs.map(function (s) { return !s.commun; }).indexOf(true);
+      secs.forEach(function (s, si) {
+        if (s.commun) { if (!premier[s.id]) premier[s.id] = o.g.code; fusion(iCorps < 0 || si < iCorps ? tete : fin, s, o, premier); return; }
+        var its = [];
+        s.items.forEach(function (it, j) { var ref = s.id + '-' + j; if ((o.cfg.exclus || []).indexOf(ref) < 0) its.push(Object.assign(copie(it), { k: pre + ref, ref: ref }, multi ? { o: o.nom } : {})); });
+        corps.push({ id: pre + s.id, titre: s.titre + suf, col: s.col, col2: s.col2, num: s.num, ouvrage: o.id, items: its });
+      });
+      (o.cfg.ajouts || []).forEach(function (a) {
+        if (!a || !String(a.t || '').trim()) return;
+        var cible = corps.filter(function (x) { return x.ouvrage === o.id && x.id === pre + (a.section || ''); })[0] || corps.filter(function (x) { return x.ouvrage === o.id; }).slice(-1)[0];
+        var it = Object.assign({ n: '—', t: String(a.t).trim(), crit: !!a.crit, k: pre + 'aj-' + a.id, ref: 'aj-' + a.id, ajout: true }, multi ? { o: o.nom } : {});
+        if (cible) cible.items.push(it); else corps.push({ id: pre + 'aj', titre: 'Étapes propres au site' + suf, col: 'Tâche', num: true, ouvrage: o.id, items: [it] });
+      });
+      (o.g.conseils || []).forEach(function (t) { if (conseils.indexOf(t) < 0) conseils.push(t); });
+      if (!alerte && o.g.alerte) alerte = o.g.alerte;
+    });
+    var secs = tete.concat(corps, fin).map(function (s) { s.items = s.items.filter(function (it) { var g = it._garde !== false; delete it._garde; return g; }); return s; })
+      .filter(function (s) { return s.items.length; });
+    var dernier = corps.filter(function (s) { return s.items.length; }).slice(-1)[0];
+    secs.forEach(function (s, i) { s.no = i + 2; s.tips = !!dernier && s.id === dernier.id; delete s.ouvrage; });
+    return { v: 1, ouvrages: ouv.filter(function (o) { return o.id; }).map(function (o) { return { id: o.id, nom: o.nom, gabarit: o.g.code }; }), sections: secs, conseils: conseils, alerte: alerte };
+  }
+  /* Édition d’un gabarit dans sa-admin, en texte : « ## Titre [commun] », puis une ligne par case :
+     « 12. Étape », « — Étape » (sans numéro), « - Vérification », « * Pièce de rechange ». « **texte** » = en gras ; « ! » à la fin = étape critique. */
+  function versTexte(secs) {
+    return (secs || []).map(function (s) {
+      return '## ' + s.titre + (s.commun ? ' [commun]' : '') + '\n' + s.items.map(function (it) {
+        var p = it.g === 2 ? '* ' : it.n === '—' ? '— ' : it.n ? it.n + '. ' : '- ';
+        return p + it.t + (it.b ? ' **' + it.b + '**' : '') + (it.crit ? ' !' : '');
+      }).join('\n');
+    }).join('\n\n');
+  }
+  function deTexte(txt, ancien) {
+    var secs = [], cur = null, vus = {};
+    var idDe = function (titre) {
+      var a = (ancien || []).filter(function (s) { return s.titre === titre; })[0], id = a ? a.id : /formation/i.test(titre) ? 'form' : /mat[ée]riel/i.test(titre) ? 'mat' : /s[ée]curit[ée]/i.test(titre) ? 'secu' : '';
+      if (!id || vus[id]) { var n = 1; while (vus['s' + n]) n++; id = 's' + n; }
+      vus[id] = 1; return id;
+    };
+    String(txt || '').split(/\r?\n/).forEach(function (l) {
+      l = l.trim(); if (!l) return;
+      var h = /^#+\s*(.+?)\s*(\[commun\])?$/i.exec(l);
+      if (h) { cur = { id: idDe(h[1]), titre: h[1], commun: !!h[2], items: [] }; secs.push(cur); return; }
+      if (!cur) { cur = { id: idDe('Étapes'), titre: 'Étapes', items: [] }; secs.push(cur); }
+      var it = {}, m;
+      if ((m = /^(\d+)[.)]\s+(.*)$/.exec(l))) { it.n = m[1]; l = m[2]; }
+      else if ((m = /^—\s*(.*)$/.exec(l))) { it.n = '—'; l = m[1]; }
+      else if ((m = /^\*\s+(.*)$/.exec(l))) { it.g = 2; l = m[1]; }
+      else if ((m = /^[-•]\s*(.*)$/.exec(l))) l = m[1];
+      if (/\s!$/.test(l) || l === '!') { it.crit = true; l = l.replace(/\s*!$/, ''); }
+      if ((m = /^(.*?)\s*\*\*(.+)\*\*$/.exec(l))) { l = m[1]; it.b = m[2]; }
+      it.t = l.trim(); if (it.t) cur.items.push(it);
+    });
+    return secs.filter(function (s) { return s.items.length; }).map(function (s) {
+      var num = s.items.some(function (it) { return it.n; }), deux = s.items.some(function (it) { return it.g === 2; });
+      var a = (ancien || []).filter(function (x) { return x.id === s.id; })[0], o = { id: s.id, titre: s.titre };
+      o.col = a && a.col ? a.col : s.id === 'form' ? 'Sujet de formation' : deux ? 'Matériel' : num ? 'Tâche' : 'Vérification';
+      if (deux) o.col2 = a && a.col2 ? a.col2 : 'Pièces de rechange';
+      if (num) o.num = true; if (s.commun) o.commun = true;
+      o.items = s.items.map(function (it) { var x = {}; ['n', 't', 'b', 'crit', 'g'].forEach(function (k) { if (it[k] != null) x[k] = it[k]; }); return x; });
+      return o;
+    });
+  }
+  /* Site sans bassin déclaré : un seul ouvrage, du type de relevé du site */
+  function planPourSite(site, rows) {
+    site = site || {};
+    var bs = (site.bassins || []).filter(function (b) { return b && String(b.nom || '').trim(); });
+    return planSite(bs.length ? bs : [{ id: '', nom: site.nom || 'Site', type_code: site.type || '' }], rows);
+  }
+  /* Plan par défaut (anciens rapports et brouillons sans plan) : la piscine, telle que le formulaire papier */
+  var DEFAUT = planSite([], GABARITS);
+  var SECTIONS = DEFAUT.sections;
+  function planDe(d) { return d && d.plan && Array.isArray(d.plan.sections) ? d.plan : DEFAUT; }
+
   function blank(o) {
     o = o || {};
     return { v: 1, info: { date: o.date || '', site: o.site || '', heure_debut: '', heure_fin: '', chef: o.chef || '', temperature: '', equipe: '', bassins: '' },
-      c: {}, employes: [], remarques: '', responsable: o.responsable == null ? 'Maxime' : o.responsable, courriel: o.courriel || '', envois: [] };
+      c: {}, employes: [], remarques: '', responsable: o.responsable == null ? 'Maxime' : o.responsable, courriel: o.courriel || '', envois: [], plan: o.plan || null };
   }
   function norm(d) {
     var b = blank(); d = d || {};
     return { v: 1, info: Object.assign(b.info, d.info || {}), c: Object.assign({}, d.c || {}), employes: (d.employes || []).map(function (e) { return { nom: e.nom || '', formation: !!e.formation, demo: !!e.demo }; }),
-      remarques: d.remarques || '', responsable: d.responsable == null ? b.responsable : d.responsable, courriel: d.courriel || '', envois: (d.envois || []).slice() };
+      remarques: d.remarques || '', responsable: d.responsable == null ? b.responsable : d.responsable, courriel: d.courriel || '', envois: (d.envois || []).slice(), plan: d.plan && Array.isArray(d.plan.sections) ? d.plan : null };
   }
   /* Un rapport d'hivernage est-il une liste de contrôle « Hivernement » ? */
   function isChecklist(r) { return !!(r && Array.isArray(r.sections) && r.sections[0] && r.sections[0].hivernement); }
@@ -1061,19 +1274,19 @@ button{font-family:inherit}
   /* Avancement : toutes les cases, comme le formulaire papier (formation des employés nommés comprise) */
   function progress(d) {
     d = norm(d); var total = 0, done = 0;
-    SECTIONS.forEach(function (s) { s.items.forEach(function (it) { total++; if (d.c[it.k]) done++; }); });
+    planDe(d).sections.forEach(function (s) { s.items.forEach(function (it) { total++; if (d.c[it.k]) done++; }); });
     d.employes.forEach(function (e) { if (!String(e.nom).trim()) return; total += 2; if (e.formation) done++; if (e.demo) done++; });
     return { total: total, done: done, pct: total ? Math.round(done / total * 100) : 0 };
   }
   function label(it) { return it.t + (it.b ? ' ' + it.b : ''); }
   function manquants(d) {
     d = norm(d); var out = [];
-    SECTIONS.forEach(function (s) { if (s.id === 'mat') return; s.items.forEach(function (it) { if (!d.c[it.k]) out.push((it.n && it.n !== '—' ? it.n + '. ' : '') + label(it)); }); });
+    planDe(d).sections.forEach(function (s) { if (s.id === 'mat') return; s.items.forEach(function (it) { if (!d.c[it.k]) out.push((it.n && it.n !== '—' ? it.n + '. ' : '') + label(it)); }); });
     return out;
   }
   function critiquesManquants(d) {
     d = norm(d); var out = [];
-    SECTIONS.forEach(function (s) { s.items.forEach(function (it) { if (it.crit && !d.c[it.k]) out.push(it.n + '. ' + label(it)); }); });
+    planDe(d).sections.forEach(function (s) { s.items.forEach(function (it) { if (it.crit && !d.c[it.k]) out.push((it.o ? it.o + ' ' : '') + (it.n && it.n !== '—' ? it.n : '★') + '. ' + label(it)); }); });
     return out;
   }
 
@@ -1083,7 +1296,7 @@ button{font-family:inherit}
     var s0 = { id: 'hivernement', title: 'Liste de contrôle d’hivernement', tag: critiquesManquants(d).length ? 'urgent' : '',
       items: ['Avancement : ' + p.done + ' / ' + p.total + ' cases (' + p.pct + ' %)'].concat(INFO.filter(function (f) { return i[f[0]]; }).map(function (f) { return f[1] + ' : ' + i[f[0]]; })),
       photos: photos || [], hivernement: d };
-    var secs = [s0].concat(SECTIONS.map(function (s) {
+    var secs = [s0].concat(planDe(d).sections.map(function (s) {
       return { id: 'hv-' + s.id, title: s.no + '. ' + s.titre, tag: '', photos: [], items: s.items.map(function (it) { return (d.c[it.k] ? '✔ ' : '☐ ') + (it.n && it.n !== '—' ? it.n + '. ' : '') + label(it); }) };
     }));
     var emp = d.employes.filter(function (e) { return String(e.nom).trim(); });
@@ -1120,14 +1333,15 @@ button{font-family:inherit}
       + '<header class="top"><div><h1>' + E(TITRE + ' — ' + (i.site || '')) + '</h1><div class="sub">Liste de contrôle d’intervention · Fermeture avec formation</div></div><img src="' + LOGO + '" alt="Soucy Aquatik"></header><div class="body">'
       + '<div class="kpis"><div class="kpi"><div class="val">' + p.total + '</div><div class="lbl">Cases au total</div></div><div class="kpi"><div class="val">' + p.done + '</div><div class="lbl">Cases cochées</div></div><div class="kpi"><div class="val">' + p.pct + ' %</div><div class="lbl">Avancement</div></div></div>'
       + '<h2>1. Informations générales</h2><div class="info-grid">' + INFO.map(function (f) { return '<div class="field' + (f[3] ? ' wide' : '') + '"><label>' + E(f[1]) + ' :</label><span>' + E(i[f[0]]) + '</span></div>'; }).join('') + '</div>';
-    SECTIONS.forEach(function (s) {
+    var P = planDe(d), N = P.sections.length;
+    P.sections.forEach(function (s) {
       h += '<h2>' + s.no + '. ' + E(s.titre) + '</h2>';
       if (s.col2) {
         var a = s.items.filter(function (it) { return it.g !== 2; }), b = s.items.filter(function (it) { return it.g === 2; }), n = Math.max(a.length, b.length), r = '';
         for (var j = 0; j < n; j++) r += '<tr>' + [a[j], b[j]].map(function (it) { return it ? '<td class="cb">' + box(!!d.c[it.k]) + '</td><td>' + E(it.t) + '</td>' : '<td class="cb"></td><td></td>'; }).join('') + '</tr>';
         h += '<table><tr><th class="cb">✔</th><th>' + E(s.col) + '</th><th class="cb">✔</th><th>' + E(s.col2) + '</th></tr>' + r + '</table>';
       } else h += '<table><tr><th class="cb">✔</th>' + (s.num ? '<th class="num">#</th>' : '') + '<th>' + E(s.col) + '</th></tr>' + s.items.map(function (it) { return row(it, s.num); }).join('') + '</table>';
-      if (s.id === 'p5') h += '<div class="tip"><strong>Bon à savoir :</strong><ul class="clean">' + TIPS.map(function (t) { return '<li>' + E(t) + '</li>'; }).join('') + '</ul></div><div class="alert">' + E(ALERTE) + '</div>';
+      if (s.tips) h += (P.conseils.length ? '<div class="tip"><strong>Bon à savoir :</strong><ul class="clean">' + P.conseils.map(function (t) { return '<li>' + E(t) + '</li>'; }).join('') + '</ul></div>' : '') + (P.alerte ? '<div class="alert">' + E(P.alerte) + '</div>' : '');
       if (s.id === 'form') {
         var emp = d.employes.filter(function (e) { return String(e.nom).trim(); });
         while (emp.length < (opts.blankRows == null ? 2 : opts.blankRows)) emp.push(null);
@@ -1136,9 +1350,9 @@ button{font-family:inherit}
       }
     });
     var ph = (opts.photos || []).filter(function (x) { return x && /^data:image|^https?:/.test(x.data || x.url || ''); });
-    h += '<h2>10. Remarques et anomalies</h2><table><tr><td class="notes">' + E(d.remarques) + '</td></tr></table>'
+    h += '<h2>' + (N + 2) + '. Remarques et anomalies</h2><table><tr><td class="notes">' + E(d.remarques) + '</td></tr></table>'
       + (ph.length ? '<div class="photos">' + ph.map(function (x) { return '<img src="' + E(x.data || x.url) + '" alt="' + E(x.name || 'Photo') + '">'; }).join('') + '</div>' : '')
-      + '<h2>11. Validation</h2><div class="sign-row"><div class="sign-box">Chef d’équipe — Signature et date<b>' + E(i.chef) + '</b></div><div class="sign-box">Responsable' + (d.responsable ? ' (' + E(d.responsable) + ')' : '') + ' — Signature et date</div></div>'
+      + '<h2>' + (N + 3) + '. Validation</h2><div class="sign-row"><div class="sign-box">Chef d’équipe — Signature et date<b>' + E(i.chef) + '</b></div><div class="sign-box">Responsable' + (d.responsable ? ' (' + E(d.responsable) + ')' : '') + ' — Signature et date</div></div>'
       + '<div class="foot">Soucy Aquatik · liste de contrôle générée par SA Platform</div></div></div></body></html>';
     return h;
   }
@@ -1154,7 +1368,7 @@ button{font-family:inherit}
   }
   function fichier(d) { d = norm(d); return ('Hivernement ' + (d.info.site || '') + ' ' + (d.info.date || '')).trim().replace(/[\\/:*?"<>|\s]+/g, '-').replace(/-{2,}/g, '-').replace(/^-|-$/g, '') + '.html'; }
 
-  var api = { SECTIONS: SECTIONS, INFO: INFO, TIPS: TIPS, ALERTE: ALERTE, LOGO: LOGO, blank: blank, norm: norm, isChecklist: isChecklist, fromReport: fromReport, photosOf: photosOf,
+  var api = { SECTIONS: SECTIONS, GABARITS: GABARITS, DEFAUT: DEFAUT, gabarits: gabarits, gabaritDe: gabaritDe, planSite: planSite, planPourSite: planPourSite, planDe: planDe, versTexte: versTexte, deTexte: deTexte, INFO: INFO, TIPS: TIPS, ALERTE: ALERTE, LOGO: LOGO, blank: blank, norm: norm, isChecklist: isChecklist, fromReport: fromReport, photosOf: photosOf,
     progress: progress, manquants: manquants, critiquesManquants: critiquesManquants, toReport: toReport, html: html, texte: texte, fichier: fichier };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.SAHiv = api;
 })(typeof window !== 'undefined' ? window : this);
@@ -1340,16 +1554,16 @@ function noBon(prefix){var d=new Date();return prefix+d.getFullYear()+pad(d.getM
 function cap(s){s=String(s||'');return s.charAt(0).toUpperCase()+s.slice(1);}
 
 /* ---------- Données de référence (types, sites, contrats) : cache local pour le hors-ligne ---------- */
-var REF={types:{},sites:{},list:[],cat:[]};
+var REF={types:{},sites:{},list:[],cat:[],gab:[]};
 function villeOf(addr){var p=String(addr||'').split(',').map(function(x){return x.trim();}).filter(function(x){return x&&!/^(qc|québec|quebec|canada)$/i.test(x)&&!/[a-z]\d[a-z]\s?\d[a-z]\d/i.test(x);});return p.length>1?p[p.length-1].replace(/^Ville de\s+/i,''):'';}
 function buildRef(raw){
-  REF.cat=Array.isArray(raw.cat)?raw.cat:[];
+  REF.cat=Array.isArray(raw.cat)?raw.cat:[];REF.gab=Array.isArray(raw.gab)?raw.gab:[];
   REF.types={};(raw.types||[]).forEach(function(t){REF.types[t.code]={label:t.label,court:t.court||t.label,norme:t.norme||'',fields:t.fields||[],checks:t.checks||[],produits:t.produits||[],photo:t.photo||'Vue d’ensemble du bassin'};});
   var ct={};(raw.contrats||[]).forEach(function(c){ct[c.site_id]=c;});
   REF.sites={};REF.list=[];
   (raw.sites||[]).forEach(function(s){var c=ct[s.id];var code=(c&&c.type_code&&REF.types[c.type_code])?c.type_code:'GEN';
     /* Bassins déclarés dans la fiche du site (sa-admin / SA Platform) : chacun peut avoir ses propres paramètres de relevé */
-    var bs=(Array.isArray(s.bassins)?s.bassins:[]).filter(function(b){return b&&String(b.nom||'').trim();}).map(function(b,i){return{id:String(b.id||('b'+i)),nom:String(b.nom).trim(),code:(b.type_code&&REF.types[b.type_code])?b.type_code:code,first:i===0};});
+    var bs=(Array.isArray(s.bassins)?s.bassins:[]).filter(function(b){return b&&String(b.nom||'').trim();}).map(function(b,i){return{id:String(b.id||('b'+i)),nom:String(b.nom).trim(),code:(b.type_code&&REF.types[b.type_code])?b.type_code:code,type:b.type||'',type_code:b.type_code||'',hiv:b.hiv||null,insp:b.insp||null,first:i===0};});
     var o={id:String(s.id),nom:s.nom||'(sans nom)',ville:villeOf(s.addr),addr:s.addr||'',type:code,bassin:'',bassins:bs,contrat:(c&&c.code)||'',client:'',interne:s.type==='interne'||isBureau(s.nom)};REF.sites[o.id]=o;if(!/^Fusionné →/.test(s.notes||''))REF.list.push(o);});
 }
 function siteById(id){return REF.sites[String(id)]||null;}
@@ -1418,7 +1632,7 @@ Comp.prototype.soon=function(t){this.setState({soon:t});this.go('soon');};
 
 /* ---------- Chargements ---------- */
 Comp.prototype.loadRef=function(){var self=this;var cached=jget('sa_terrain_ref',null);if(cached)buildRef(cached);
-  return Promise.all([get('types_bassin?select=*'),get('sites?select=id,nom,addr,notes,bassins,type'),get('contrats?select=*'),get('inspection_points?select=*&actif=eq.true').catch(function(){return null;})]).then(function(r){var raw={types:r[0],sites:r[1],contrats:r[2],cat:r[3]||(cached&&cached.cat)||[]};jset('sa_terrain_ref',raw);buildRef(raw);self.syncAt=new Date();self.okLoad('ref');}).catch(function(e){self.failLoad('ref','sites et contrats'+(cached?' (copie locale utilisée)':''),e);});};
+  return Promise.all([get('types_bassin?select=*'),get('sites?select=id,nom,addr,notes,bassins,type'),get('contrats?select=*'),get('inspection_points?select=*&actif=eq.true').catch(function(){return null;}),get('gabarits_hivernage?select=*').catch(function(){return null;})]).then(function(r){var raw={types:r[0],sites:r[1],contrats:r[2],cat:r[3]||(cached&&cached.cat)||[],gab:r[4]||(cached&&cached.gab)||[]};jset('sa_terrain_ref',raw);buildRef(raw);self.syncAt=new Date();self.okLoad('ref');}).catch(function(e){self.failLoad('ref','sites et contrats'+(cached?' (copie locale utilisée)':''),e);});};
 Comp.prototype.loadJobs=function(){var self=this,uid=encodeURIComponent(this.user.id),d0=this.today,d6=iso(addDays(new Date(),6));
   var q=[get('workorders?select=id,client,site,type,date,assigne,status,descr,groupe_id&date=gte.'+d0+'&date=lte.'+d6+'&assigne=ilike.*'+uid+'*'),
     get('planning_tasks?select=id,titre,emp,site_id,site_nom,date_debut,date_fin,heure_debut,heure_fin,statut,recurrence,wo_id,plan_id&date_debut=lte.'+d6+'&date_fin=gte.'+d0+'&emp=ilike.*'+uid+'*'),
@@ -1611,7 +1825,8 @@ Comp.prototype.confirmSig=function(){var b=this.curBon();if(!b)return;var nom=St
    que le bureau complète, imprime ou envoie au client depuis sa-admin ---------- */
 /* Hivernement : sites clients seulement — ni spas (SP), ni piscines intérieures (MI), ni bureau / entrepôt (sites internes) */
 Comp.prototype.hivSites=function(){return REF.list.filter(function(s){return s.type!=='SP'&&s.type!=='MI'&&!s.interne;});};
-Comp.prototype.hivCur=function(sid){var s=siteById(sid),d=this.state.hivData[sid];return window.SAHiv.norm(d||window.SAHiv.blank({site:s?s.nom:'',chef:this.me.nom,date:iso(new Date())}));};
+/* Plan de la liste : gabarit de chaque ouvrage du site (sa-admin › fiche du site), figé dans le brouillon une fois commencé */
+Comp.prototype.hivCur=function(sid){var s=siteById(sid),d=this.state.hivData[sid],H=window.SAHiv;return H.norm(d||H.blank({site:s?s.nom:'',chef:this.me.nom,date:iso(new Date()),plan:H.planPourSite(s,REF.gab)}));};
 Comp.prototype.hivSet=function(sid,fn){var d=this.hivCur(sid);fn(d);var o={};o[sid]=d;this.setState(function(s2){return{hivData:Object.assign({},s2.hivData,o)};});this.persist();};
 Comp.prototype.sendHiv=function(){var st=this.state,sid=st.hivSel,s=sid&&siteById(sid);if(!s)return;var now=new Date(),d=this.hivCur(sid);
   d.info.site=s.nom;if(!d.info.date)d.info.date=iso(now);if(!String(d.info.chef||'').trim())d.info.chef=this.me.nom;
@@ -1663,7 +1878,7 @@ Comp.prototype.vals=function(){
     var pq=st.prods[sid]||{};
     prods=T.produits.map(function(p,i){var q=pq[i]||0;var set=function(n){self.setState(function(s2){var o={};o[sid]=Object.assign({},s2.prods[sid]||{});o[sid][i]=Math.max(0,+(n).toFixed(2));return{prods:Object.assign({},s2.prods,o)};});};return{nom:p[0],unite:p[1],qty:self.fmt(q,p[2]),minus:function(){set(q-p[2]);},plus:function(){set(q+p[2]);}};});
     if(s.interne){fields=[];checks=[];prods=[];}
-    var I=window.SAInsp,PTS=s.interne?[]:I.pointsDuType(bsel?bsel.code:s.type,REF.cat,T.checks),ps=(st.pts||{})[sid]||{},acts=(st.acts||{})[sid]||{},vv0={};
+    var I=window.SAInsp,PTS=s.interne?[]:I.pointsDuType(bsel?bsel.code:s.type,REF.cat,T.checks,bsel),ps=(st.pts||{})[sid]||{},acts=(st.acts||{})[sid]||{},vv0={};
     Object.keys(tch).forEach(function(k){if(vals[k]!=null)vv0[k]=vals[k];});
     var items=I.itemsVisite({type_code:bsel?bsel.code:s.type,vals:vv0,touched:tch,points:ps,actions:acts},T,REF.cat),se=I.etatsSystemes(items);
     var sysL=I.SYSTEMES.filter(function(x){return x.code==='eau'?fields.length>0:PTS.some(function(p){return p.systeme_code===x.code;});});
@@ -1762,11 +1977,11 @@ Comp.prototype.vals=function(){
     hivSite:hivSel?{nom:hivSel.nom,ville:hivSel.ville||'—'}:{},hivProgress:hpg.done,hivTotal:hpg.total,hivPct:hpg.pct+'%',
     hivCrit:hd&&H.critiquesManquants(hd).length?'Étape(s) critique(s) non cochée(s) : '+H.critiquesManquants(hd).map(function(x){return x.split('.')[0];}).join(', '):'',
     hivInfo:hd?H.INFO.filter(function(f){return f[0]!=='site'&&f[0]!=='date';}).map(function(f){return{l:f[1],type:f[2],v:hd.info[f[0]]||'',on:hset(function(d,v){d.info[f[0]]=v;})};}):[],
-    hivSecs:hd?H.SECTIONS.map(function(sc){var all=sc.items.every(function(it){return hd.c[it.k];});
+    hivSecs:hd?H.planDe(hd).sections.map(function(sc){var all=sc.items.every(function(it){return hd.c[it.k];});
       return{titre:sc.no+'. '+sc.titre,allLbl:all?'Tout décocher':'Tout cocher',all:function(){self.hivSet(hivSel.id,function(d){sc.items.forEach(function(it){d.c[it.k]=!all;});});},
-        tips:sc.id==='p5',isForm:sc.id==='form',items:sc.items.map(function(it){var on=!!hd.c[it.k];return{label:(sc.num&&it.n!=='—'?it.n+'. ':'')+it.t+(it.b?' '+it.b:'')+(sc.col2?(it.g===2?' (pièce)':''):''),on:on,fw:it.crit?'600':'400',
+        tips:!!sc.tips,isForm:sc.id==='form',items:sc.items.map(function(it){var on=!!hd.c[it.k];return{label:(sc.num&&it.n!=='—'?it.n+'. ':'')+it.t+(it.b?' '+it.b:'')+(sc.col2?(it.g===2?' (pièce)':''):''),on:on,fw:it.crit?'600':'400',
           box:on?'var(--color-text)':'transparent',toggle:function(){self.hivSet(hivSel.id,function(d){d.c[it.k]=!d.c[it.k];});}};})};}):[],
-    hivTips:H.TIPS.map(function(t){return{t:t};}),hivAlerte:H.ALERTE,
+    hivTips:(hd?H.planDe(hd).conseils:[]).map(function(t){return{t:t};}),hivAlerte:hd?H.planDe(hd).alerte:'',hivNoRem:(hd?H.planDe(hd).sections.length:8)+2,hivOuv:hd&&H.planDe(hd).ouvrages.length>1?H.planDe(hd).ouvrages.map(function(o){return o.nom;}).join(' · '):'',
     hivEmp:hd?hd.employes.map(function(e,i){var tg=function(key,lbl){return{lbl:lbl,fw:'400',on:!!e[key],box:e[key]?'var(--color-text)':'transparent',toggle:function(){self.hivSet(hivSel.id,function(d){d.employes[i][key]=!d.employes[i][key];});}};};
       return{nom:e.nom,onNom:hset(function(d,v){d.employes[i].nom=v;}),tg:[tg('formation','Formation complétée'),tg('demo','Démonstration réussie')],del:function(){self.hivSet(hivSel.id,function(d){d.employes.splice(i,1);});}};}):[],
     addEmp:function(){self.hivSet(hivSel.id,function(d){d.employes.push({nom:'',formation:false,demo:false});});},

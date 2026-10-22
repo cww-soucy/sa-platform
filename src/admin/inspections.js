@@ -56,7 +56,7 @@ Comp.prototype.isfNew=function(site,draft){var r=draft||null,b=(site.bassins||[]
   return f;};
 Comp.prototype.isfSave=function(site,statut){var self=this,I=window.SAInsp,f=this.state.isf,D=this.D;if(!f||this.state.isfBusy)return;
   var b=(site.bassins||[]).filter(function(x){return x.nom===f.bassin;})[0]||null,code=b&&b.type_code&&D.types[b.type_code]?b.type_code:site.type,T=this.T(code);
-  var PTS=I.pointsDuType(code,D.cat||[],T.checks),vals={},tch={},pts={},ch={};
+  var PTS=I.pointsDuType(code,D.cat||[],T.checks,b),vals={},tch={},pts={},ch={};
   (T.fields||[]).forEach(function(x){var v=num(f.vals[x.key]);if(v!=null){vals[x.key]=v;tch[x.key]=true;}});
   PTS.forEach(function(p){var x=f.pts[p.id];ch[p.libelle]=!!(x&&x.etat==='ok');if(x&&x.etat){pts[p.id]={etat:x.etat};if(x.note)pts[p.id].note=x.note;}});
   if(statut==='publiee'){var miss=PTS.filter(function(p){return p.obligatoire&&!pts[p.id];});if(miss.length){this.flash(miss.length+' point(s) obligatoire(s) à répondre : '+miss.map(function(p){return p.libelle;}).join(', '));return;}
@@ -178,7 +178,7 @@ Comp.prototype.inspVals=function(){
     else iq.v={sections:[],photos:[],prods:[]};}
   /* ----- 5a-2 Saisie bureau ----- */
   var f=st.isf;
-  if(view==='saisie'&&f){var b=(site.bassins||[]).filter(function(x){return x.nom===f.bassin;})[0]||null,code=b&&b.type_code&&D.types[b.type_code]?b.type_code:site.type,TT=this.T(code),PTS=I.pointsDuType(code,D.cat||[],TT.checks);
+  if(view==='saisie'&&f){var b=(site.bassins||[]).filter(function(x){return x.nom===f.bassin;})[0]||null,code=b&&b.type_code&&D.types[b.type_code]?b.type_code:site.type,TT=this.T(code),PTS=I.pointsDuType(code,D.cat||[],TT.checks,b);
     var setF=function(p){self.setState(function(s2){return{isf:Object.assign({},s2.isf,p)};});},setP=function(id,p){var o=Object.assign({},f.pts);o[id]=Object.assign({},o[id]||{},p);setF({pts:o});};
     var vals={},tch={};(TT.fields||[]).forEach(function(x){var v=num(f.vals[x.key]);if(v!=null){vals[x.key]=v;tch[x.key]=true;}});
     var items=I.itemsVisite({type_code:code,vals:vals,touched:tch,points:f.pts},TT,D.cat||[]),se2=I.etatsSystemes(items);
@@ -260,7 +260,7 @@ Comp.prototype.inspVals=function(){
     iq.envoiTxt=(adm.envoi?'Envoi des codes par courriel : actif.':'Envoi des codes : aucun fournisseur de courriel configuré sur le serveur (RESEND_API_KEY) — les contacts ne peuvent pas encore recevoir leur code.');}
   else{iq.cp={};iq.qrs=[];iq.droits=[];iq.contacts=[];iq.nc={nivs:[]};iq.journal=[];}
   /* ----- Catalogue des points de contrôle ----- */
-  if(view==='points'){var tc=st.pcType||site.type,TP=this.T(tc),cat=(D.cat||[]).filter(function(p){return p.type_code===tc||!p.type_code;}),derive=!(D.cat||[]).some(function(p){return p.type_code===tc;});
+  if(view==='points'){var tc=st.pcType||site.type,TP=this.T(tc),cat=(D.cat||[]).filter(function(p){return!p.bassin_id&&(p.type_code===tc||!p.type_code);}),derive=!(D.cat||[]).some(function(p){return!p.bassin_id&&p.type_code===tc;});
     var rows=derive?I.pointsDuType(tc,[],TP.checks):cat.slice().sort(function(a,b){return(a.ordre||0)-(b.ordre||0);});
     var put=function(p,patch){var all=derive?rows:[p];Promise.all(all.map(function(x){return self.savePoint(Object.assign({id:x.id,systeme_code:x.systeme_code,type_code:x.type_code,libelle:x.libelle,mode:x.mode,obligatoire:!!x.obligatoire,ordre:x.ordre||0,actif:x.actif!==false},x===p?patch:{}));})).then(function(){self.flash('Point enregistré');});};
     iq.pc={types:Object.keys(D.types).map(function(k){return{v:k,l:D.types[k].label,sel:k===tc};}),onType:function(e){self.setState({pcType:e.target.value});},

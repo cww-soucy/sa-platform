@@ -468,7 +468,9 @@
     "actions_correctives",
     "ordre",
     "actif",
-    "updated_at"
+    "updated_at",
+    "bassin_id",
+    "site_id"
   ],
   "clients": [
     "id",
@@ -483,5 +485,16 @@
     "site_id",
     "cree_par",
     "cree_le"
+  ],
+  "gabarits_hivernage": [
+    "code",
+    "nom",
+    "types",
+    "sections",
+    "conseils",
+    "alerte",
+    "ordre",
+    "actif",
+    "updated_at"
   ]
 }

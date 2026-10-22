@@ -359,7 +359,7 @@ DOCLIST=lambda flag,head:('<sc-if value="{{ %s }}"><div style="display:flex;flex
   +'<td style="padding:4px 18px 4px 8px;text-align:right;white-space:nowrap"><sc-for list="{{ r.acts }}" as="x"><button class="btn btn-ghost" onClick="{{ x.go }}" style="margin-right:4px">{{ x.l }}</button></sc-for><button class="btn btn-secondary" onClick="{{ r.open }}">Ouvrir</button></td></tr></sc-for></tbody></table>','overflow-x:auto')
   +'</div></sc-if>\n')
 LOGI=DOCLIST('isLogi',SEG('logTabs'))
-HIVB=DOCLIST('isHivB','')
+HIVB=DOCLIST('isHivB','<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="font-size:14px">Les étapes de chaque liste viennent du gabarit de chaque ouvrage (piscine, jeux d’eau, fontaine…), ajusté dans la fiche du site.</span><span style="flex:1"></span><button class="btn btn-secondary" onClick="{{ gbGo }}" style="gap:8px"><sa-i n="settings" s="16"></sa-i>Gabarits d’hivernage</button></div>')
 bs=block(M,'isStats')
 if bs: M=M.replace(bs,bs+LOGI+HIVB,1)
 else: print('!! ancre isStats (Logistique)')
@@ -405,6 +405,7 @@ DE_HV2=IF('isHV2','<datalist id="deTechs"><sc-for list="{{ hvTechs }}" as="o"><o
   '<div role="status" style="position:sticky;top:-22px;z-index:2;background:var(--color-bg);display:flex;align-items:center;gap:12px;padding:8px 12px;border:1px solid var(--color-text);font-weight:600">'
   '<span>{{ hvProg }}</span><div style="flex:1;height:10px;background:var(--color-divider)"><div style="height:100%;width:{{ hvPct }};background:var(--color-accent-700)"></div></div></div>'
   '<sc-if value="{{ hvCrit }}"><div role="alert" style="padding:8px 12px;border:2px solid var(--color-accent-900);font-size:14px;font-weight:600">{{ hvCrit }}</div></sc-if>'
+  '<sc-if value="{{ hvOuv }}"><div style="font-size:14px">{{ hvOuv }}</div></sc-if>'
   +HVH('1. Informations générales')
   +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 14px"><sc-for list="{{ hvInfo }}" as="f"><div class="field" style="grid-column:{{ f.span }}"><label>{{ f.l }}</label>'
   '<input class="input" type="{{ f.type }}" value="{{ f.v }}" onInput="{{ f.on }}" list="{{ f.list }}"></div></sc-for></div>'
@@ -413,15 +414,15 @@ DE_HV2=IF('isHV2','<datalist id="deTechs"><sc-for list="{{ hvTechs }}" as="o"><o
   +'<div style="display:grid;grid-template-columns:{{ s.cols }};gap:0 18px"><sc-for list="{{ s.groups }}" as="g"><div style="display:flex;flex-direction:column"><sc-if value="{{ g.head }}"><b style="font-size:13px;padding:6px 4px 2px">{{ g.head }}</b></sc-if>'
   '<sc-for list="{{ g.items }}" as="it">'+HVBOX+'</sc-for></div></sc-for></div>'
   '<sc-if value="{{ s.tips }}"><div style="border-left:4px solid var(--color-accent-700);padding:8px 12px;margin-top:8px;font-size:14px"><b>Bon à savoir :</b><ul style="margin:4px 0 0 18px;padding:0"><sc-for list="{{ hvTips }}" as="t"><li>{{ t.t }}</li></sc-for></ul></div>'
-  '<div style="border:2px solid var(--color-accent-900);padding:10px 12px;font-weight:700;font-size:14px;margin-top:6px">{{ hvAlerte }}</div></sc-if>'
+  '<sc-if value="{{ hvAlerte }}"><div style="border:2px solid var(--color-accent-900);padding:10px 12px;font-weight:700;font-size:14px;margin-top:6px">{{ hvAlerte }}</div></sc-if></sc-if>'
   '<sc-if value="{{ s.isForm }}"><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px"><b>Employés formés</b><sc-for list="{{ hvEmp }}" as="e"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
   '<input class="input" value="{{ e.nom }}" onInput="{{ e.onNom }}" placeholder="Employé (nom)" aria-label="Employé (nom)" style="flex:1;min-width:160px;padding:6px 8px">'
   '<label style="display:flex;gap:6px;align-items:center;font-size:14px"><input type="checkbox" checked="{{ e.formation }}" onChange="{{ e.onForm }}">Formation complétée</label>'
   '<label style="display:flex;gap:6px;align-items:center;font-size:14px"><input type="checkbox" checked="{{ e.demo }}" onChange="{{ e.onDemo }}">Démonstration réussie</label>'+DELB('e.del')+'</div></sc-for>'
   '<button class="btn btn-ghost" onClick="{{ addEmp }}" style="align-self:flex-start">+ Ajouter un employé</button></div></sc-if>'
   '</div></sc-for>'
-  +HVH('10. Remarques et anomalies')+FL('Remarques et anomalies',TXT('hvRem.v','hvRem.on','Bris, pièces à commander, anomalies constatées'))+FL('Photos',PHOTOS('hvPhotos','addHvPhoto'))
-  +HVH('11. Validation')+G2(FL('Responsable',INP('hvResp.v','hvResp.on')),FL('Client',INP('dClient.v','dClient.on')))
+  +HVH('{{ hvNoRem }}')+FL('Remarques et anomalies',TXT('hvRem.v','hvRem.on','Bris, pièces à commander, anomalies constatées'))+FL('Photos',PHOTOS('hvPhotos','addHvPhoto'))
+  +HVH('{{ hvNoVal }}')+G2(FL('Responsable',INP('hvResp.v','hvResp.on')),FL('Client',INP('dClient.v','dClient.on')))
   +FL('Courriel du client',INP('hvMail.v','hvMail.on','text',' placeholder="courriel@client.ca (plusieurs : séparer par des virgules)"'))
   +'<sc-if value="{{ hvEnvoisTxt }}"><div style="font-size:14px">{{ hvEnvoisTxt }}</div></sc-if>')
 DEDLG=('<template data-sc="if" value="{{ deOpen }}"><div class="dialog-backdrop" onClick="{{ deCloseBg }}" style="z-index:60"><div class="dialog" onClick="{{ stop }}" style="width:min(860px,100%);background:var(--color-bg);max-height:calc(100vh - 40px);overflow-y:auto;gap:14px;padding:22px 24px;border:1px solid var(--color-text)">'
@@ -606,10 +607,11 @@ SF=('<template data-sc="if" value="{{ sfOpen }}"><div class="dialog-backdrop" on
     +G2(G2(FL('Téléphone',SFIN('sfTel','tel')),FL('Courriel',SFIN('sfEmail','email'))),G2(FL('Site web',SFIN('sfWeb','url')),FL('Année',SFIN('sfAnnee'))))
     +G2(G2(FL('Relevé par défaut',SEL('sfRelTypes','onSfRelType')),FL('N° de contrat',INP('sfCode','onSfCode'))),G2(FL('Latitude',INP('sfLat','onSfLat','text',' placeholder="46.81"')),FL('Longitude',INP('sfLng','onSfLng','text',' placeholder="-71.21"'))))
     +'<div style="display:flex;flex-direction:column;gap:6px"><b>Bassins</b><sc-if value="{{ sfNoBassin }}"><div style="font-size:13px">Aucun bassin déclaré — le site compte pour un seul bassin, avec le relevé par défaut.</div></sc-if>'
-    '<sc-for list="{{ sfBassins }}" as="b"><div style="display:grid;grid-template-columns:2fr 1.2fr 1.6fr 0.9fr 2fr auto;gap:6px;align-items:center">'
+    '<sc-for list="{{ sfBassins }}" as="b"><div style="display:grid;grid-template-columns:2fr 1.2fr 1.6fr 0.9fr 2fr auto auto;gap:6px;align-items:center">'
     '<input class="input" value="{{ b.nom }}" onInput="{{ b.onNom }}" placeholder="Nom (ex. Bassin principal)" aria-label="Nom du bassin">'
     +SEL('b.types','b.onType').replace('<select class="input"','<select class="input" aria-label="Type de bassin"')+SEL('b.rel','b.onRel').replace('<select class="input"','<select class="input" aria-label="Paramètres de relevé"')
     +'<input class="input" value="{{ b.vol }}" onInput="{{ b.onVol }}" placeholder="Volume" aria-label="Volume"><input class="input" value="{{ b.notes }}" onInput="{{ b.onNotes }}" placeholder="Notes" aria-label="Notes du bassin">'
+    '<button class="btn btn-ghost" onClick="{{ b.cfg }}" style="white-space:nowrap;font-size:13px">{{ b.cfgLbl }}</button>'
     '<button class="btn btn-ghost btn-icon" onClick="{{ b.del }}" aria-label="Retirer le bassin"><sa-i n="x" s="16"></sa-i></button></div></sc-for>'
     '<button class="btn btn-ghost" onClick="{{ sfAddBassin }}" style="align-self:flex-start">+ Ajouter un bassin</button></div>'
     +FL('Équipements','<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><sc-for list="{{ sfEquips }}" as="e"><span style="display:flex;align-items:center;gap:4px;border:1px solid var(--color-divider);padding:2px 4px 2px 8px;font-size:13px">{{ e.l }}<button class="btn btn-ghost btn-icon" onClick="{{ e.del }}" aria-label="Retirer"><sa-i n="x" s="14"></sa-i></button></span></sc-for>'
@@ -626,6 +628,38 @@ SF=('<template data-sc="if" value="{{ sfOpen }}"><div class="dialog-backdrop" on
     +'<div class="dialog-actions" style="margin-top:0;flex-wrap:wrap">'+IF('sfCanDel',BTNX('btn-secondary','sfDel','{{ sfDelLbl }}'))+'<span style="flex:1"></span>'+BTNX('btn-secondary','sfClose','Fermer')+BTNX('btn-primary','sfSave','{{ sfSaveLbl }}')+'</div>')
   +'</div></div></template>\n')
 M=M.rstrip()+'\n'+SF
+
+# ---------- Fiche du site › bassin › Inspection et hivernage (ouvrages.js) ----------
+OCROW=lambda lst:('<sc-for list="{{ %s }}" as="it"><label style="display:flex;gap:10px;align-items:flex-start;padding:5px 4px;border-bottom:1px solid var(--color-divider);cursor:pointer;font-size:14px;line-height:1.35">'
+  '<input type="checkbox" checked="{{ it.on }}" onChange="{{ it.go }}" style="width:18px;height:18px;flex:none;margin:1px 0 0"><span style="flex:1;font-weight:{{ it.fw }}">{{ it.l }}</span><span style="font-size:12px">{{ it.sys }}</span></label></sc-for>')%lst
+OCDLG=('<template data-sc="if" value="{{ ocOpen }}"><div class="dialog-backdrop" onClick="{{ ocCloseBg }}" style="z-index:70"><div class="dialog" onClick="{{ stop }}" style="width:min(820px,100%);background:var(--color-bg);max-height:calc(100vh - 40px);overflow-y:auto;gap:14px;padding:22px 24px;border:1px solid var(--color-text)">'
+  +DLGHEAD('ocTitle','ocClose')
+  +HVH('Inspection')+'<div style="font-size:14px">{{ ocInspTxt }}</div><sc-if value="{{ ocNoPts }}"><div style="font-size:13px">Aucun point pour ce type.</div></sc-if>'+OCROW('ocPts')
+  +'<b style="font-size:14px">Points propres à cet ouvrage</b><sc-if value="{{ ocNoPropre }}"><div style="font-size:13px">Aucun.</div></sc-if>'
+  '<sc-for list="{{ ocPropres }}" as="p"><div style="display:flex;gap:8px;align-items:center;font-size:14px;border-bottom:1px solid var(--color-divider);padding:3px 4px"><span style="flex:1">{{ p.l }}</span><span style="font-size:12px">{{ p.sys }}</span>'+DELB('p.del')+'</div></sc-for>'
+  '<div style="display:flex;gap:8px;flex-wrap:wrap"><input class="input" value="{{ ocPt.v }}" onInput="{{ ocPt.on }}" placeholder="ex. Buses de la fontaine dégagées" aria-label="Nouveau point d’inspection" style="flex:1;min-width:220px">'
+  +SEL('ocSys','onOcSys').replace('<select class="input"','<select class="input" aria-label="Système" style="max-width:240px"')+'<button class="btn btn-ghost" onClick="{{ ocAddPt }}">Ajouter le point</button></div>'
+  +HVH('Hivernage')+FL('Gabarit d’hivernage',SEL('ocGabs','onOcGab'))+'<div style="font-size:14px">{{ ocGabTxt }}</div>'
+  +'<sc-for list="{{ ocSecs }}" as="s"><div style="display:flex;flex-direction:column"><b style="font-size:13px;padding:8px 4px 2px">{{ s.titre }}</b>'+OCROW('s.items')+'</div></sc-for>'
+  +IF('ocHasGab','<b style="font-size:14px">Étapes ajoutées pour cet ouvrage</b><sc-if value="{{ ocNoAjout }}"><div style="font-size:13px">Aucune.</div></sc-if>'
+    '<sc-for list="{{ ocAjouts }}" as="a"><div style="display:flex;gap:8px;align-items:center;font-size:14px;border-bottom:1px solid var(--color-divider);padding:3px 4px"><span style="flex:1">{{ a.l }}</span><span style="font-size:12px">{{ a.sec }}</span>'+DELB('a.del')+'</div></sc-for>'
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input class="input" value="{{ ocEt.v }}" onInput="{{ ocEt.on }}" placeholder="ex. Vider la cuve de rétention des buses" aria-label="Nouvelle étape d’hivernage" style="flex:1;min-width:220px">'
+    +SEL('ocEtSecs','onOcEtSec').replace('<select class="input"','<select class="input" aria-label="Section" style="max-width:260px"')
+    +'<label style="display:flex;gap:6px;align-items:center;font-size:14px"><input type="checkbox" checked="{{ ocCrit }}" onChange="{{ onOcCrit }}">Critique</label><button class="btn btn-ghost" onClick="{{ ocAddEt }}">Ajouter l’étape</button></div>')
+  +'<div style="font-size:13px">{{ ocNote }}</div><div class="dialog-actions" style="margin-top:0"><span style="flex:1"></span>'+BTNX('btn-primary','ocClose','Terminé')+'</div>'
+  +'</div></div></template>\n')
+# ---------- Hivernage › Gabarits d'hivernage (ouvrages.js) ----------
+GBDLG=('<template data-sc="if" value="{{ gbOpen }}"><div class="dialog-backdrop" onClick="{{ gbCloseBg }}" style="z-index:60"><div class="dialog" onClick="{{ stop }}" style="width:min(900px,100%);background:var(--color-bg);max-height:calc(100vh - 40px);overflow-y:auto;gap:14px;padding:22px 24px;border:1px solid var(--color-text)">'
+  +DLGHEAD('gbTitle','gbClose')
+  +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+SEL('gbList','onGbSel').replace('<select class="input"','<select class="input" aria-label="Gabarit" style="max-width:280px"')+'<button class="btn btn-ghost" onClick="{{ gbNew }}">+ Nouveau gabarit</button><span style="flex:1"></span><span style="font-size:13px">{{ gbSrc }}</span></div>'
+  +G2(FL('Nom',INP('gbNom.v','gbNom.on')),FL('Ouvrages qui le prennent par défaut (types, séparés par des virgules)',INP('gbTypes.v','gbTypes.on','text',' placeholder="jeuxdeau, JE"')))
+  +FL('Étapes','<div style="font-size:13px;line-height:1.4">« ## Titre » commence une section (« [commun] » : fusionnée quand le site a plusieurs ouvrages). Une ligne par case : « 12. Étape », « — Étape » sans numéro, « - Vérification », « * Pièce de rechange ». « **texte** » en gras, « ! » à la fin = critique.</div>'
+    '<textarea class="input" value="{{ gbTxt.v }}" onInput="{{ gbTxt.on }}" aria-label="Étapes du gabarit" style="min-height:420px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;line-height:1.45"></textarea><div style="font-size:13px;font-weight:600">{{ gbApercu }}</div>')
+  +FL('Bon à savoir (un conseil par ligne)',TXT('gbConseils.v','gbConseils.on',''))+FL('Avertissement',INP('gbAlerte.v','gbAlerte.on'))
+  +'<div style="font-size:13px">Les listes déjà commencées ou envoyées gardent les étapes qu’elles avaient.</div>'
+  +'<div class="dialog-actions" style="margin-top:0;flex-wrap:wrap">'+IF('gbCanDel',BTNX('btn-secondary','gbDel','{{ gbDelLbl }}'))+'<span style="flex:1"></span>'+BTNX('btn-secondary','gbClose','Fermer')+BTNX('btn-primary','gbSave','{{ gbSaveLbl }}')+'</div>'
+  +'</div></div></template>\n')
+M=M.rstrip()+'\n'+OCDLG+GBDLG
 
 # ---------- INSPECTIONS : bassins, rapport, Excel, paramètres de relevé ----------
 rep('<div style="display:flex;gap:8px"><button class="btn btn-secondary" onClick="{{ exportMsg }}" style="white-space:nowrap"><sa-i n="download" s="16"></sa-i><span>Exporter le rapport</span></button></div>',
@@ -876,6 +910,7 @@ rt=open(os.path.join(HERE,'runtime.js'),encoding='utf-8').read(); app=open(os.pa
 _k=app.rindex('})();'); app=app[:_k]+open(os.path.join(HERE,'inspections.js'),encoding='utf-8').read()+'\n'+app[_k:]
 _k=app.rindex('})();'); app=app[:_k]+open(os.path.join(HERE,'clients.js'),encoding='utf-8').read()+'\n'+app[_k:]
 _k=app.rindex('})();'); app=app[:_k]+open(os.path.join(HERE,'sondages.js'),encoding='utf-8').read()+'\n'+app[_k:]
+_k=app.rindex('})();'); app=app[:_k]+open(os.path.join(HERE,'ouvrages.js'),encoding='utf-8').read()+'\n'+app[_k:]
 import base64
 LOGO='data:image/png;base64,'+base64.b64encode(open(os.path.join(SRC,'design','logo-soucy-aquatik.png'),'rb').read()).decode()
 html='''<!DOCTYPE html>

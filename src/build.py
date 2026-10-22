@@ -33,6 +33,7 @@ def main():
         subprocess.run(['node', '--check', os.path.join(SRC, app, 'app.js')], check=True)
     subprocess.run(['node', '--check', os.path.join(SRC, 'admin', 'inspections.js')], check=True)
     subprocess.run(['node', '--check', os.path.join(SRC, 'admin', 'sondages.js')], check=True)
+    subprocess.run(['node', '--check', os.path.join(SRC, 'admin', 'ouvrages.js')], check=True)
     subprocess.run(['node', '--check', os.path.join(SRC, 'inspection', 'model.js')], check=True)
     subprocess.run(['node', '--check', os.path.join(SRC, 'hivernage', 'checklist.js')], check=True)
     extract()
