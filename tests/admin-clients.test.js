@@ -106,3 +106,31 @@ test('clients : base pas encore mise à jour → message clair, Répertoire touj
   assert.deepEqual(errors.filter((e) => !/404/.test(e)), []);
   await page.close();
 });
+
+test('clients et sites : « Nouveau site » et « + Ajouter un site » ouvrent la fiche à configurer, client rattaché', async () => {
+  const { page, db, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: tables() });
+  await page.waitForFunction(() => window.__admin && window.__admin.D);
+  await page.evaluate(() => window.__admin.go('sites'));
+  const ccnq = page.locator('section[data-client="CCNQ"]');
+  await ccnq.getByRole('button', { name: '+ Ajouter un site' }).click();
+  await dlg(page).getByText('Nouveau site').first().waitFor();
+  const fl = (label) => dlg(page).locator('.field').filter({ has: page.locator('label', { hasText: new RegExp('^' + label + '$') }) }).locator('input,select,textarea').first();
+  assert.equal(await fl('Client').inputValue(), 'ccnq', 'client prérempli');
+  await fl('Nom du site').fill('CCNQ - Piscine extérieure');
+  await dlg(page).getByRole('button', { name: /^Créer/ }).click();
+  await toast(page, /Site créé/);
+  const s = db.rows('sites').find((x) => x.nom === 'CCNQ - Piscine extérieure');
+  assert.ok(s, 'site créé (colonnes valides)');
+  assert.equal(s.client_id, 'ccnq');
+  // bouton général : fiche vide, client au choix
+  await page.getByRole('button', { name: 'Nouveau site', exact: true }).click();
+  await dlg(page).getByText('Nouveau site').first().waitFor();
+  assert.equal(await fl('Client').inputValue(), '');
+  await fl('Client').selectOption('sa');
+  await fl('Nom du site').fill('Soucy Aquatik - Garage');
+  await dlg(page).getByRole('button', { name: /^Créer/ }).click();
+  await toast(page, /Site créé/);
+  assert.equal(db.rows('sites').find((x) => x.nom === 'Soucy Aquatik - Garage').client_id, 'sa');
+  assert.deepEqual(errors, []);
+  await page.close();
+});

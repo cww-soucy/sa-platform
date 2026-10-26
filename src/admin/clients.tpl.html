@@ -6,7 +6,8 @@
   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
     <input class="input" type="search" placeholder="Rechercher un client ou un site…" aria-label="Rechercher un client ou un site" value="{{ cl.q }}" onInput="{{ cl.onQ }}" style="max-width:320px">
     <span style="flex:1;font-size:13px">{{ cl.resume }}</span>
-    <button class="btn btn-primary" onClick="{{ cl.nouveau }}" style="white-space:nowrap">Nouveau client</button>
+    <button class="btn btn-secondary" onClick="{{ cl.nouveau }}" style="white-space:nowrap">Nouveau client</button>
+    <button class="btn btn-primary" onClick="{{ cl.nouveauSite }}" style="white-space:nowrap">Nouveau site</button>
   </div>
   <sc-for list="{{ cl.groupes }}" as="g">
     <section class="blueprint" data-client="{{ g.nom }}" style="display:flex;flex-direction:column">
@@ -15,9 +16,10 @@
         <h3 style="margin:0;font-size:22px;flex:1;min-width:0">{{ g.nom }}</h3>
         <sc-if value="{{ g.interne }}"><span style="font-size:12px;padding:2px 8px;border:1px solid var(--color-text)">Soucy Aquatik · interne</span></sc-if>
         <span style="font-size:13px">{{ g.sous }}</span>
+        <sc-if value="{{ g.addSite }}"><button class="btn btn-ghost" onClick="{{ g.addSite }}" style="white-space:nowrap">+ Ajouter un site</button></sc-if>
         <sc-if value="{{ g.edit }}"><button class="btn btn-ghost" onClick="{{ g.edit }}" style="white-space:nowrap">Modifier</button></sc-if>
       </div>
-      <sc-if value="{{ g.vide }}"><div style="padding:12px 18px;font-size:14px">Aucun site rattaché. Choisissez ce client dans la colonne « Client » d’un site.</div></sc-if>
+      <sc-if value="{{ g.vide }}"><div style="padding:12px 18px;font-size:14px">Aucun site rattaché. « + Ajouter un site », ou choisissez ce client dans la colonne « Client » d’un site.</div></sc-if>
       <div style="overflow-x:auto">
       <table class="table" style="font-size:14px">
         <thead><tr><th style="text-transform:none;letter-spacing:0;font-size:12px;padding-left:18px">Site</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Bassins et installations</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Inspection</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Punchs</th><th style="text-transform:none;letter-spacing:0;font-size:12px">Client</th><th style="text-transform:none;letter-spacing:0;font-size:12px;padding-right:18px">Fusionner dans…</th></tr></thead>
