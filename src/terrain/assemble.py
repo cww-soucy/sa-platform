@@ -203,6 +203,21 @@ else: print('!! bloc isBon')
 rep('<span style="font:600 24px var(--font-heading)">BL-26-0932</span>','<span style="font:600 24px var(--font-heading)">{{ bon.no }}</span>',1)
 rep('<span style="font-size:15px">{{ logClient }} · {{ logSite }}</span>','<span style="font-size:15px">{{ bon.client }} · {{ bon.addr }}</span>',1)
 rep('— copie envoyée au client','— bon marqué livré',1)
+# Sortie enregistrée : on propose tout de suite de passer en bon de livraison (signature du client sur le téléphone)
+rep('<div style="font-size:15px;padding-bottom:10px">Pour : {{ logSite }}</div>',
+  '<sc-if value="{{ soAsk }}"><div role="status" style="border:2px solid var(--color-text);padding:14px;margin-bottom:14px;display:flex;flex-direction:column;gap:10px">'
+  '<b style="font-size:17px">{{ soAskTxt }}</b><span style="font-size:15px;line-height:1.4">Passer en bon de livraison ? Le client signe sur le téléphone — ou validez la livraison sans signature. Pas de papier.</span>'
+  '<button class="btn btn-primary" onClick="{{ soAskGo }}" style="min-height:56px;font-size:18px">Passer au bon de livraison</button>'
+  '<button class="btn btn-secondary" onClick="{{ soAskLater }}" style="min-height:48px;font-size:16px">Plus tard</button></div></sc-if>'
+  '<div style="font-size:15px;padding-bottom:10px">Pour : {{ logSite }}</div>',1)
+# Livraison validée sans signature (au besoin : client absent, dépôt convenu)
+rep('<button class="btn btn-primary" onClick="{{ confirmSig }}" style="min-height:56px;font-size:18px">Confirmer la signature</button>\n                  </div>',
+  '<button class="btn btn-primary" onClick="{{ confirmSig }}" style="min-height:56px;font-size:18px">Confirmer la signature</button>\n                  </div>'
+  '<button class="btn btn-secondary" onClick="{{ validerSansSig }}" style="min-height:52px;font-size:17px;width:100%;margin-top:10px">{{ noSigLbl }}</button>',1)
+rep('<sc-if value="{{ isSigned }}">','<sc-if value="{{ isNoSig }}"><div style="padding:14px;border:1px solid var(--color-accent);display:flex;gap:10px;align-items:center;font-size:16px"><sa-i n="check" s="22" w="2"></sa-i><span>Livraison validée à {{ signedAt }}, sans signature — bon marqué livré</span></div></sc-if><sc-if value="{{ isSigned }}">',1)
+# Tuile Logistique : nombre de bons à livrer assignés à l'employé
+rep('<sa-i n="truck" s="28"></sa-i><span style="font:600 20px/1.1 var(--font-heading)">Logistique</span>',
+  '<sa-i n="truck" s="28"></sa-i><span style="display:flex;flex-direction:column;gap:2px"><span style="font:600 20px/1.1 var(--font-heading)">Logistique</span><sc-if value="{{ bonsMoiTxt }}"><span style="font-size:14px;font-weight:600">{{ bonsMoiTxt }}</span></sc-if></span>',1)
 # légende hivernage : pas de planification « cette semaine » dans les données → deux états réels seulement
 rep(r'<span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;box-sizing:border-box;border:1px solid var\(--color-text\);background:repeating-linear-gradient[^"]*"></span>Cette semaine</span>','',1,regex=True)
 rep('>À planifier</span>','>À faire</span>',1)

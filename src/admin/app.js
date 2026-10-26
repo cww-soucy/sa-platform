@@ -761,17 +761,17 @@ Comp.prototype.deHv=function(fn){var de=JSON.parse(JSON.stringify(this.state.de)
 /* Site choisi : rattache le site, son client et son courriel (destinataire de « Envoyer au client ») */
 Comp.prototype.hvSiteOf=function(nom){return this.D.sites.filter(function(x){return norm(x.nom)===norm(nom);})[0]||null;};
 Comp.prototype.deMut=function(fn){var de=JSON.parse(JSON.stringify(this.state.de));fn(de.f,de);de.confirm=false;this.setState({de:de});};
-Comp.prototype.saveDoc=function(extra,msg,hvOver){var self=this,de=this.state.de;if(!de||de.busy)return;var k=de.kind,tb=DOC[k].t,f=Object.assign({},de.f,extra||{});
+Comp.prototype.saveDoc=function(extra,msg,hvOver,apres){var self=this,de=this.state.de;if(!de||de.busy)return;var k=de.kind,tb=DOC[k].t,f=Object.assign({},de.f,extra||{});
   if(de.hv)f=Object.assign(window.SAHiv.toReport(hvOver||de.hv,f,de.hvPh),{status:f.status||'brouillon'});
   if(k==='bl'&&!String(f.client||'').trim()){this.flash('Le client est requis');return;}
   if(k==='hv'&&!String(f.site_nom||'').trim()){this.flash('Le site est requis');return;}
   if(k==='bl'){f.items_liv=f.items_liv.filter(function(r){return String(r.item||'').trim();});f.items_ret=f.items_ret.filter(function(r){return String(r.item||'').trim();});}
   if(k==='so'){f.lignes=f.lignes.filter(function(r){return String(r.desc||r.code||'').trim();});if(!f.date)f.date=null;}
   if(k==='hv'){var s=this.D.sites.filter(function(x){return norm(x.nom)===norm(f.site_nom);})[0];if(s){f.site_id=s.id;if(de.hv&&!f.client){var cl=this.clientById&&this.clientById(s.client_id);if(cl)f.client=cl.nom;}}f.plan=f.plan.filter(function(r){return String(r.element||r.travaux||'').trim();});f.suivi=f.suivi.filter(function(r){return String(r.element||'').trim();});}
-  f.updated_at=nowIso();delete f.id;
-  var fin=function(){auditT(self,de.id?'MODIFICATION':'CREATION',tb,de.id||'nouveau');self.setState({de:null});self.flash(msg||(DOC[k].lbl+' enregistré'));self.loadDocs(k,true);};
+  f.updated_at=nowIso();delete f.id;var nid=de.id||pmmId();
+  var fin=function(){auditT(self,de.id?'MODIFICATION':'CREATION',tb,de.id||'nouveau');self.setState({de:null});self.flash(msg||(DOC[k].lbl+' enregistré'));self.loadDocs(k,true);if(apres)apres(Object.assign({},f,{id:nid}));};
   this.setState({de:Object.assign({},de,{busy:true})});
-  (de.id?rest('PATCH',tb+'?id=eq.'+encodeURIComponent(de.id),f):postRows(tb,[Object.assign({id:pmmId(),created_by:this.user.id,created_at:nowIso()},f)]))
+  (de.id?rest('PATCH',tb+'?id=eq.'+encodeURIComponent(de.id),f):postRows(tb,[Object.assign({id:nid,created_by:this.user.id,created_at:nowIso()},f)]))
     .then(fin).catch(function(e){self.setState({de:Object.assign({},self.state.de,{busy:false})});self.flash('Échec — rien n’a été modifié : '+netMsg(e));});};
 Comp.prototype.deleteDoc=function(){var self=this,de=this.state.de;if(!de||!de.id)return;if(!de.confirm){this.setState({de:Object.assign({},de,{confirm:true})});return;}
   rest('DELETE',DOC[de.kind].t+'?id=eq.'+encodeURIComponent(de.id)).then(function(){auditT(self,'SUPPRESSION',DOC[de.kind].t,de.id);self.setState({de:null});self.flash('Supprimé');self.loadDocs(de.kind,true);}).catch(function(e){self.flash('Échec : '+netMsg(e));});};
@@ -783,7 +783,7 @@ Comp.prototype.docHtml=function(k,f){var E=escH,h='<!doctype html><meta charset=
     h+='<h1>Bon de livraison '+E(f.no_bon)+(f.urgent?' <span class="t">URGENT</span>':'')+'</h1><div class="m"><span><b>Client :</b> '+E(f.client)+'</span><span><b>Adresse :</b> '+E(f.adresse||'—')+'</span><span><b>Tél. :</b> '+E(f.tel||'—')+'</span><span><b>Date :</b> '+E(f.date||'—')+' '+E(f.heure||'')+'</span><span><b>Technicien :</b> '+E(f.technicien||'—')+'</span></div>'
       +'<h2>Articles livrés</h2>'+tbl(ROWS.items_liv,f.items_liv||[])+((f.items_ret||[]).length?'<h2>Articles récupérés</h2>'+tbl(ROWS.items_ret,f.items_ret):'')
       +(f.status==='livre'?'<p><b>Livré</b> le '+E(f.livre_at?new Date(f.livre_at).toLocaleString('fr-CA'):'')+' par '+E(f.livre_par_nom||'')+'</p>':'')
-      +(sigs.length?sigs.map(function(p){return'<div><img class="sig" src="'+p.data+'"><div>'+E(p.name)+'</div></div>';}).join(''):'<div class="s"><div>Signature du client</div><div>Date</div></div>');}
+      +(sigs.length?sigs.map(function(p){return'<div><img class="sig" src="'+p.data+'"><div>'+E(p.name)+'</div></div>';}).join(''):f.status==='livre'?'<p>Livraison validée sans signature du client.</p>':'<div class="s"><div>Signature du client</div><div>Date</div></div>');}
   else if(k==='so')h+='<h1>Sortie d’inventaire '+E(f.no_bon)+'</h1><div class="m"><span><b>Client / projet :</b> '+E(f.client||'—')+'</span><span><b>Employé :</b> '+E(f.nom||'')+' ('+E(f.no_employe||'')+')</span><span><b>Département :</b> '+E(f.departement||'—')+'</span><span><b>Date :</b> '+E(f.date||'—')+'</span></div>'+tbl(ROWS.lignes,f.lignes||[])+'<div class="s"><div>Signature de l’employé</div><div>Signature du superviseur</div></div>';
   else{var tg={};HIV_TAGS.forEach(function(t){tg[t[0]]=t[1];});
     h+='<h1>'+E(f.titre||'Rapport de pré-hivernage')+' — '+E(f.site_nom)+'</h1><div>'+E(f.objet||'')+'</div><div class="m"><span><b>Client :</b> '+E(f.client||'—')+'</span><span><b>Inspection :</b> '+E(f.date_inspection||'—')+'</span><span><b>Rapport :</b> '+E(f.date_rapport||'—')+'</span><span><b>Préparé par :</b> '+E(f.prepare_par||'—')+'</span><span><b>Technicien :</b> '+E(f.technicien||'—')+'</span></div>'
@@ -818,20 +818,89 @@ Comp.prototype.hvEnvoyer=function(r){var H=window.SAHiv,hv=H.isChecklist(r)?H.fr
 Comp.prototype.hvEnvoyerLigne=function(r){var self=this,H=window.SAHiv,trace=this.hvEnvoyer(r);if(!trace||!H.isChecklist(r))return;
   var hv=H.fromReport(r);hv.envois.push(trace);var sec=H.toReport(hv,r,H.photosOf(r)).sections;
   rest('PATCH','rapports_hivernage?id=eq.'+encodeURIComponent(r.id),{sections:sec,updated_at:nowIso()}).then(function(){auditT(self,'EXPORT','rapports_hivernage',r.id,{envoi_client:trace.a||'—'});self.loadDocs('hv',true);}).catch(function(e){self.flash('Envoyé, mais la trace n’a pas été enregistrée : '+netMsg(e));});};
-Comp.prototype.docsVals=function(){var self=this,st=this.state,D=this.D,mod=st.mod,lt=st.logTab,kind=mod==='hivernage'?'hv':(mod==='logistique'?(lt==='so'?'so':'bl'):null);
-  if(kind&&this.docs[kind]===undefined)this.loadDocs(kind);var L=kind&&Array.isArray(this.docs[kind])?this.docs[kind]:[],q=norm(st.docQ),flt=st.docF||'tous';
+/* ═════════════ Sortie d'inventaire → bon de livraison, et courriels automatiques à l'entrepôt ═════════════
+   Le bon créé depuis une sortie reprend son numéro (SA-INV-AAAAMMJJ-NNN → SA-AAAAMMJJ-NNN) : c'est le lien entre les deux, sans colonne de plus.
+   Il est « brouillon », assigné au livreur : sa-terrain le montre dans « Bons à livrer », où le client signe au doigt (ou l'employé valide sans signature). */
+function blNoDeSortie(no){return /^SA-INV-/.test(no||'')?String(no).replace(/^SA-INV-/,'SA-'):'';}
+function blDeSortie(so,tech,site){return{no_bon:blNoDeSortie(so.no_bon)||docNo('SA-'),urgent:false,date:iso(new Date()),heure:'',technicien:tech||'',client:so.client||'',tel:'',adresse:(site&&site.addr)||'',
+  items_liv:(so.lignes||[]).filter(function(l){return String(l.desc||l.code||'').trim();}).map(function(l){var q=String(l.qteSortie==null?'':l.qteSortie);return{item:String(l.desc||l.code),qteSortie:q,unite:l.unite||'',qteLivree:q,statut:''};}),items_ret:[],photos:[],status:'brouillon'};}
+Comp.prototype.blDe=function(so){var no=blNoDeSortie(so.no_bon),L=Array.isArray(this.docs.bl)?this.docs.bl:[];return no?L.filter(function(b){return b.no_bon===no;})[0]||null:null;};
+Comp.prototype.openSoBl=function(so){if(this.docs.bl===undefined)this.loadDocs('bl');this.setState({sb:{so:so,tech:so.nom||'',busy:false}});};
+Comp.prototype.creerBlDeSortie=function(){var self=this,sb=this.state.sb;if(!sb||sb.busy)return;var so=sb.so;
+  if(this.blDe(so)){this.flash('Un bon de livraison existe déjà pour cette sortie');this.setState({sb:null});return;}
+  if(!(so.lignes||[]).some(function(l){return String(l.desc||l.code||'').trim();})){this.flash('La sortie n’a aucun article à livrer');return;}
+  var b=Object.assign({id:pmmId(),created_by:this.user.id,created_at:nowIso(),updated_at:nowIso()},blDeSortie(so,sb.tech,this.hvSiteOf(so.client)));
+  this.setState({sb:Object.assign({},sb,{busy:true})});
+  postRows('bons_livraison',[b]).then(function(){auditT(self,'CREATION','bons_livraison',b.id,{depuis_sortie:so.no_bon||so.id});self.setState({sb:null,logTab:'bl',docF:'tous',docQ:''});self.loadDocs('bl',true);
+    self.flash('Bon '+b.no_bon+' créé'+(b.technicien?' — à livrer par '+b.technicien+' (sa-terrain : Logistique › Bon de livraison)':' — choisissez le livreur'));})
+    .catch(function(e){self.setState({sb:Object.assign({},self.state.sb,{busy:false})});self.flash('Échec — bon non créé : '+netMsg(e));});};
+Comp.prototype.soBlVals=function(){var self=this,sb=this.state.sb;if(!sb)return{sbOpen:false};var so=sb.so,n=(so.lignes||[]).filter(function(l){return String(l.desc||l.code||'').trim();}).length;
+  var techs=this.D.comptes.filter(function(c){return c.role!=='admin'&&self.D.statut[c.id]!=='inactif';}).map(function(c){var v=(c.prenom+' '+c.nom).trim();return{v:v,l:v,sel:sb.tech===v};});
+  return{sbOpen:true,sbTitle:'Sortie '+(so.no_bon||'')+' émise',sbTxt:'Passer en bon de livraison ? '+n+' article(s) pour '+(so.client||'client à préciser')+'. Le bon apparaît dans sa-terrain : le livreur fait signer le client au doigt sur son téléphone, ou valide la livraison sans signature — pas de papier.',
+    sbTechs:[{v:'',l:'— à choisir —',sel:!sb.tech}].concat(techs),onSbTech:function(e){self.setState({sb:Object.assign({},self.state.sb,{tech:e.target.value})});},
+    sbGo:function(){self.creerBlDeSortie();},sbGoLbl:sb.busy?'Création…':'Créer le bon de livraison',sbLater:function(){self.setState({sb:null});},sbCloseBg:function(e){if(e.target===e.currentTarget)self.setState({sb:null});}};};
+/* Courriels à l'entrepôt : responsables et événements dans logistique_config (clé entrepot_courriels), envoi par la fonction serveur
+   logistique-courriel (elle relit la ligne et les destinataires ; le navigateur n'envoie qu'un identifiant). Sans service de courriel :
+   « Courriel à l'entrepôt » ouvre le logiciel de courriel avec un message prêt. */
+var ENT_KEY='entrepot_courriels',LCF=SB+'/functions/v1/logistique-courriel',COURRIEL_RE=/^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+function entCfg(v){v=v&&typeof v==='object'?v:{};return{responsables:(Array.isArray(v.responsables)?v.responsables:[]).map(function(r){return{nom:String(r&&r.nom||''),courriel:String(r&&r.courriel||'')};}),sortie:v.sortie!==false,livraison:!!v.livraison};}
+function entDest(c){var out=[];c.responsables.forEach(function(r){var e=r.courriel.trim().toLowerCase();if(COURRIEL_RE.test(e)&&out.indexOf(e)<0)out.push(e);});return out;}
+Comp.prototype.loadEnt=function(force){var self=this;if(!force&&this.entSrv!==undefined)return;this.entSrv=null;
+  get('logistique_config?select=*&id=eq.'+ENT_KEY).then(function(r){self.entSrv=entCfg(r[0]&&r[0].value);self.update();}).catch(function(e){self.entSrv='err';self.entErr=netMsg(e);self.update();});};
+Comp.prototype.entNotifier=function(ev,id){return jetonFrais().catch(function(){}).then(function(){return window.fetch(LCF,avecJeton({method:'POST',headers:Object.assign({'Content-Type':'application/json'},H),body:JSON.stringify({evenement:ev,id:id})}));})
+  .then(function(r){return r.json().catch(function(){return{};}).then(function(j){return Object.assign({ok:false,raison:'HTTP '+r.status},j&&typeof j==='object'?j:{});});},function(){return{ok:false,raison:'reseau'};});};
+/* Suite d'un événement : courriel automatique, puis message (le toast de l'enregistrement est complété) */
+Comp.prototype.entApres=function(ev,row,msg){var self=this,c=this.entSrv&&typeof this.entSrv==='object'?this.entSrv:null;
+  return this.entNotifier(ev,row.id).then(function(j){var x='';
+    if(j.ok)x=' — courriel envoyé à l’entrepôt ('+(j.a||[]).join(', ')+')';
+    else if(j.raison==='aucun_destinataire'&&ev==='sortie')x=' — aucun responsable d’entrepôt à prévenir (Logistique › Entrepôt)';
+    else if(j.raison!=='desactive'&&c&&entDest(c).length&&(ev==='sortie'?c.sortie:c.livraison))x=' — courriel à l’entrepôt non envoyé (service de courriel indisponible : utilisez « Courriel à l’entrepôt »)';
+    if(x)self.flash(msg+x);if(j.ok)auditT(self,'EXPORT',ev==='sortie'?'sorties_inventaire':'bons_livraison',row.id,{courriel_entrepot:(j.a||[]).join(', ')});return j;});};
+/* Envoi manuel : par le service s'il répond, sinon courriel préparé dans le logiciel de courriel */
+Comp.prototype.entCourriel=function(so){var self=this,c=this.entSrv&&typeof this.entSrv==='object'?this.entSrv:entCfg(null),dest=entDest(c);
+  this.entNotifier('sortie',so.id).then(function(j){if(j.ok){self.flash('Courriel envoyé à l’entrepôt ('+(j.a||[]).join(', ')+')');auditT(self,'EXPORT','sorties_inventaire',so.id,{courriel_entrepot:(j.a||[]).join(', ')});return;}
+    var L=(so.lignes||[]).filter(function(l){return String(l.desc||l.code||'').trim();});
+    mailto(dest.join(','),'Sortie d’inventaire '+(so.no_bon||'')+' — '+(so.client||'sans projet'),'Bonjour,\n\nSortie d’inventaire émise'+(so.nom?' par '+so.nom:'')+'.\n\nN° : '+(so.no_bon||'—')+'\nDate : '+(so.date||'—')+'\nClient / projet : '+(so.client||'—')+'\n\nArticles :\n'
+      +(L.length?L.map(function(l){return'  • '+(l.desc||l.code)+' — '+(l.qteSortie||'?')+(l.unite?' '+l.unite:'')+(l.loc?' (empl. '+l.loc+')':'');}).join('\n'):'  (aucun article)')+'\n\nSoucy Aquatik');
+    self.flash(dest.length?'Courriel préparé pour '+dest.join(', '):'Aucun responsable d’entrepôt réglé (Logistique › Entrepôt) — courriel préparé sans destinataire');});};
+Comp.prototype.entVals=function(){var self=this,st=this.state;if(this.entSrv===undefined)this.loadEnt();
+  var srv=this.entSrv&&typeof this.entSrv==='object'?this.entSrv:null,e=st.ent||(srv?JSON.parse(JSON.stringify(srv)):null);
+  var mut=function(fn){var x=JSON.parse(JSON.stringify(self.state.ent||srv||entCfg(null)));fn(x);self.setState({ent:x});};
+  var known={};if(e)e.responsables.forEach(function(r){known[r.courriel.trim().toLowerCase()]=1;});
+  var cpt=this.D.comptes.filter(function(c){return c.email&&COURRIEL_RE.test(c.email)&&!known[String(c.email).toLowerCase()]&&self.D.statut[c.id]!=='inactif';});
+  return{entLoading:this.entSrv===null,entErr:this.entSrv==='err'?'Lecture impossible : '+(this.entErr||''):'',entReady:!!e,
+    entRows:e?e.responsables.map(function(r,i){return{nom:r.nom,courriel:r.courriel,bad:!!r.courriel.trim()&&!COURRIEL_RE.test(r.courriel.trim()),
+      onNom:function(ev){var v=ev.target.value;mut(function(x){x.responsables[i].nom=v;});},onCourriel:function(ev){var v=ev.target.value;mut(function(x){x.responsables[i].courriel=v;});},
+      del:function(){mut(function(x){x.responsables.splice(i,1);});}};}):[],
+    entNone:!!e&&!e.responsables.length,entAdd:function(){mut(function(x){x.responsables.push({nom:'',courriel:''});});},
+    entComptes:[{v:'',l:'Ajouter depuis les comptes…'}].concat(cpt.map(function(c){return{v:c.id,l:(c.prenom+' '+c.nom).trim()+' — '+c.email};})),hasEntComptes:cpt.length>0,
+    onEntCompte:function(ev){var c=cpt.filter(function(x){return x.id===ev.target.value;})[0];ev.target.value='';if(c)mut(function(x){x.responsables.push({nom:(c.prenom+' '+c.nom).trim(),courriel:c.email});});},
+    entSortie:!!(e&&e.sortie),onEntSortie:function(ev){var v=ev.target.checked;mut(function(x){x.sortie=v;});},
+    entLiv:!!(e&&e.livraison),onEntLiv:function(ev){var v=ev.target.checked;mut(function(x){x.livraison=v;});},
+    entDirty:!!st.ent,entSaveLbl:st.entBusy?'Enregistrement…':'Enregistrer',entSave:function(){self.saveEnt();},entCancel:function(){self.setState({ent:null});}};};
+Comp.prototype.saveEnt=function(){var self=this,e=this.state.ent;if(!e||this.state.entBusy)return;
+  var bad=e.responsables.filter(function(r){return r.courriel.trim()&&!COURRIEL_RE.test(r.courriel.trim());});if(bad.length){this.flash('Courriel invalide : '+bad[0].courriel);return;}
+  var v={responsables:e.responsables.map(function(r){return{nom:r.nom.trim(),courriel:r.courriel.trim().toLowerCase()};}).filter(function(r){return r.courriel;}),sortie:!!e.sortie,livraison:!!e.livraison};
+  this.setState({entBusy:true});
+  rest('POST','logistique_config?on_conflict=id',[{id:ENT_KEY,value:v,updated_at:nowIso()}],'resolution=merge-duplicates,return=representation').then(function(){auditT(self,'MODIFICATION','logistique_config',ENT_KEY,{responsables:v.responsables.map(function(r){return r.courriel;}).join(', '),sortie:v.sortie,livraison:v.livraison});
+    self.entSrv=entCfg(v);self.setState({ent:null,entBusy:false});self.flash('Responsables de l’entrepôt enregistrés');})
+    .catch(function(err){self.setState({entBusy:false});self.flash('Échec — rien n’a été modifié : '+netMsg(err));});};
+Comp.prototype.docsVals=function(){var self=this,st=this.state,D=this.D,mod=st.mod,lt=st.logTab,kind=mod==='hivernage'?'hv':(mod==='logistique'?(lt==='so'?'so':lt==='ent'?null:'bl'):null);
+  if(kind&&this.docs[kind]===undefined)this.loadDocs(kind);if(kind==='so'&&this.docs.bl===undefined)this.loadDocs('bl');if(mod==='logistique'&&this.entSrv===undefined)this.loadEnt();var L=kind&&Array.isArray(this.docs[kind])?this.docs[kind]:[],q=norm(st.docQ),flt=st.docF||'tous';
   var rows=L.filter(function(r){var hay=norm([r.no_bon,r.client,r.technicien,r.site_nom,r.nom,r.adresse].join(' '));if(q&&hay.indexOf(q)<0)return false;
     var done=kind==='bl'?r.status==='livre':kind==='so'?r.status==='envoye':r.status==='complete';return flt==='tous'||(flt==='faits'?done:!done);}).map(function(r){
     var done=kind==='bl'?r.status==='livre':kind==='so'?r.status==='envoye':r.status==='complete',H=window.SAHiv,hv=kind==='hv'&&H.isChecklist(r)?H.fromReport(r):null,pg=hv&&H.progress(hv),env=hv&&hv.envois.length?hv.envois[hv.envois.length-1]:null;
-    var acts=kind==='hv'?[{l:'Imprimer',go:function(){self.printHtml(self.hvDocHtml(r));}},{l:'Envoyer au client',go:function(){self.hvEnvoyerLigne(r);}}]:[];
+    var acts=kind==='hv'?[{l:'Imprimer',go:function(){self.printHtml(self.hvDocHtml(r));}},{l:'Envoyer au client',go:function(){self.hvEnvoyerLigne(r);}}]:[],bl=kind==='so'?self.blDe(r):null;
+    if(kind==='so'){if(done&&!bl)acts.push({l:'Bon de livraison',go:function(){self.openSoBl(r);}});acts.push({l:'Courriel à l’entrepôt',go:function(){self.entCourriel(r);}});}
     return{acts:acts,a:kind==='hv'?r.site_nom||'—':r.no_bon||'—',b:kind==='hv'?(r.client||r.objet||''):(r.client||'—'),c:kind==='hv'?(r.date_inspection||'—')+' · '+(r.technicien||'—'):(r.date||'—')+' · '+(kind==='bl'?(r.technicien||'—'):(r.nom||'—')),
       d:(kind==='bl'?(r.items_liv||[]).length+' article(s)':kind==='so'?(r.lignes||[]).length+' ligne(s)':hv?'Hivernement · '+pg.done+' / '+pg.total+' cases ('+pg.pct+' %)':(r.sections||[]).length+' section(s)')+(r.urgent?' · URGENT':''),
-      etat:(done?(kind==='bl'?'Livré':kind==='so'?'Envoyée':'Complété'):'Brouillon')+(env?' · envoyé le '+String(env.le).slice(0,10):''),open:function(){self.openDoc(kind,r.id);}};});
+      etat:(done?(kind==='bl'?'Livré':kind==='so'?'Envoyée':'Complété'):'Brouillon')+(env?' · envoyé le '+String(env.le).slice(0,10):'')+(bl?' · bon '+bl.no_bon+(bl.status==='livre'?' livré':' à livrer'):''),open:function(){self.openDoc(kind,r.id);}};});
   var FL3=[['attente',kind==='bl'?'À livrer':'Brouillons'],['faits',kind==='bl'?'Livrés':kind==='so'?'Envoyées':'Complétés'],['tous','Tous']];
-  var out={isLogi:mod==='logistique',isHivB:mod==='hivernage',logTabs:[['bl','Bons de livraison'],['so','Sorties d’inventaire']].map(function(x){return Object.assign({label:x[1],go:function(){self.setState({logTab:x[0],docF:'tous',docQ:''});}},segS((lt||'bl')===x[0]));}),
+  var out={isLogi:mod==='logistique',isLogDocs:mod==='logistique'&&lt!=='ent',isLogEnt:mod==='logistique'&&lt==='ent',isHivB:mod==='hivernage',logTabs:[['bl','Bons de livraison'],['so','Sorties d’inventaire'],['ent','Entrepôt · courriels']].map(function(x){return Object.assign({label:x[1],go:function(){self.setState({logTab:x[0],docF:'tous',docQ:''});}},segS((lt||'bl')===x[0]));}),
     docFilters:FL3.map(function(x){return Object.assign({label:x[1],go:function(){self.setState({docF:x[0]});}},segS(flt===x[0]));}),docQ:st.docQ||'',onDocQ:function(e){self.setState({docQ:e.target.value});},
     docRows:rows,docNone:!!kind&&Array.isArray(this.docs[kind])&&!rows.length,docLoading:!!kind&&this.docs[kind]===null,docErr:kind&&this.docs[kind]==='err'?'Lecture impossible : '+(this.docErr||''):'',
     docNew:function(){self.openDoc(kind);},docNewLbl:kind==='bl'?'Nouveau bon de livraison':kind==='so'?'Nouvelle sortie':'Nouvel hivernement'};
+  Object.assign(out,this.soBlVals(),mod==='logistique'&&lt==='ent'?this.entVals():{});
   var de=st.de;out.deOpen=!!de;if(!de)return out;var f=de.f,k=de.kind;
   var fld=function(key){return{v:f[key]==null?'':f[key],on:function(e){var v=e.target.type==='checkbox'?e.target.checked:e.target.value;self.deMut(function(ff){ff[key]=v;if(key==='client'||key==='site_nom'){var s=D.sites.filter(function(x){return norm(x.nom)===norm(v);})[0];if(s&&k==='bl'&&!ff.adresse)ff.adresse=s.addr;}});}};};
   var rowsV=function(key){return(f[key]||[]).map(function(r,i){return{cells:ROWS[key].map(function(c){return{v:r[c[0]]==null?'':r[c[0]],ph:c[1],w:c[2],on:function(e){var v=e.target.value;self.deMut(function(ff){ff[key][i][c[0]]=v;});}};}),
@@ -859,7 +928,10 @@ Comp.prototype.docsVals=function(){var self=this,st=this.state,D=this.D,mod=st.m
     blPhotos:photos(f.photos,function(fn){self.deMut(function(ff){fn(ff.photos);});}),addBlPhoto:function(){pick(function(p){self.deMut(function(ff){ff.photos=(ff.photos||[]).concat([p]);});});},
     deDone:done,deNotDone:!done,deDoneTxt:k==='bl'&&done?'Livré le '+(f.livre_at?new Date(f.livre_at).toLocaleString('fr-CA'):'')+' — '+(f.livre_par_nom||''):(k==='so'&&done?'Envoyée au superviseur':(done?'Rapport complété':'')),
     deFinalLbl:k==='bl'?'Marquer livré':k==='so'?'Envoyer au superviseur':'Marquer complété',
-    deFinal:function(){var x=k==='bl'?{status:'livre',livre_at:nowIso(),livre_by:self.user.id,livre_par_nom:me}:k==='so'?{status:'envoye',sent_at:nowIso()}:{status:'complete'};self.saveDoc(x,k==='bl'?'Bon marqué livré':k==='so'?'Sortie envoyée':'Rapport complété');},
+    deFinal:function(){var x=k==='bl'?{status:'livre',livre_at:nowIso(),livre_by:self.user.id,livre_par_nom:me}:k==='so'?{status:'envoye',sent_at:nowIso()}:{status:'complete'},m=k==='bl'?'Bon marqué livré':k==='so'?'Sortie envoyée':'Rapport complété';
+      /* Sortie émise : courriel à l'entrepôt, puis proposition de passer en bon de livraison. Bon livré : courriel à l'entrepôt (si activé). */
+      self.saveDoc(x,m,null,k==='so'?function(row){self.entApres('sortie',row,m);if(!self.blDe(row))self.openSoBl(row);}:k==='bl'?function(row){self.entApres('livraison',row,m);}:null);},
+    deCanBL:k==='so'&&done&&!!de.id&&!self.blDe(f),deBL:function(){var so=Object.assign({},f,{id:de.id});self.setState({de:null});self.openSoBl(so);},
     deReopen:function(){self.saveDoc({status:'brouillon'},'Remis en brouillon');},
     deSave:function(){self.saveDoc();},deSaveLbl:de.busy?'Enregistrement…':'Enregistrer',deCanDel:!!de.id,deDelLbl:de.confirm?'Confirmer la suppression':'Supprimer',deDel:function(){self.deleteDoc();},dePrint:function(){self.printDoc();},
     deClose:function(){self.setState({de:null});},deCloseBg:function(e){if(e.target===e.currentTarget)self.setState({de:null});}};
