@@ -81,6 +81,97 @@ test('logistique : sortie d’inventaire créée par le bureau puis envoyée', a
   await page.close();
 });
 
+test('logistique : sortie émise → courriel automatique à l’entrepôt, puis proposition de passer en bon de livraison (visible dans sa-terrain)', async () => {
+  const tables = Object.assign(base(), { logistique_config: [{ id: 'entrepot_courriels', value: { responsables: [{ nom: 'Entrepôt', courriel: 'entrepot@soucyaquatik.com' }], sortie: true, livraison: false } }] });
+  const { page, db, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables });
+  db.fnReply['logistique-courriel'] = { body: { ok: true, a: ['entrepot@soucyaquatik.com'] } };
+  await ready(page);
+  await A(page, () => window.__admin.go('logistique'));
+  await page.getByRole('button', { name: 'Sorties d’inventaire' }).click();
+  await page.getByRole('button', { name: /Nouvelle sortie/ }).click();
+  await field(page, 'Client / projet').fill('Piscine Alpha');
+  await field(page, 'Employé').selectOption('Kaël Test');
+  await dlg(page).getByLabel('Description').first().fill('Filtre à cartouche');
+  await dlg(page).getByLabel('Qté sortie').first().fill('3');
+  await dlg(page).getByRole('button', { name: 'Envoyer au superviseur' }).click();
+  await toast(page, /Sortie envoyée — courriel envoyé à l’entrepôt \(entrepot@soucyaquatik\.com\)/);
+  const s = db.rows('sorties_inventaire')[0];
+  assert.deepEqual(db.fns.map((f) => [f.fn, f.body, f.jeton]), [['logistique-courriel', { evenement: 'sortie', id: s.id }, true]], 'le navigateur n’envoie que l’identifiant, avec le jeton de session');
+  // proposition : passer en bon de livraison, livreur = employé de la sortie
+  await page.getByText(/Passer en bon de livraison \? 1 article\(s\) pour Piscine Alpha/).waitFor();
+  assert.equal(await A(page, () => window.__admin.vals().sbTechs.find((t) => t.sel).v), 'Kaël Test');
+  await page.getByRole('button', { name: 'Créer le bon de livraison' }).click();
+  await toast(page, /Bon SA-\d{8}-\d{3} créé — à livrer par Kaël Test/);
+  const b = db.rows('bons_livraison').find((x) => x.client === 'Piscine Alpha');
+  assert.ok(b, 'bon créé (colonnes valides)');
+  assert.equal(b.no_bon, s.no_bon.replace('SA-INV-', 'SA-'), 'même numéro que la sortie');
+  assert.equal(b.status, 'brouillon');
+  assert.equal(b.technicien, 'Kaël Test');
+  assert.equal(b.adresse, '1 rue A, Québec');
+  assert.deepEqual(b.items_liv, [{ item: 'Filtre à cartouche', qteSortie: '3', unite: '', qteLivree: '3', statut: '' }]);
+  // la sortie montre son bon, et ne propose plus d'en créer un autre
+  await page.getByRole('button', { name: 'Sorties d’inventaire' }).click();
+  const row = page.getByRole('row', { name: new RegExp(s.no_bon) });
+  await row.getByText(new RegExp('bon ' + b.no_bon + ' à livrer')).waitFor();
+  assert.equal(await row.getByRole('button', { name: 'Bon de livraison' }).count(), 0);
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+test('logistique : sortie émise sans service de courriel → avertissement, puis « Courriel à l’entrepôt » prépare le message', async () => {
+  const tables = Object.assign(base(), { logistique_config: [{ id: 'entrepot_courriels', value: { responsables: [{ nom: 'Entrepôt', courriel: 'entrepot@soucyaquatik.com' }], sortie: true } }] });
+  const { page, db, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables });
+  await ready(page);
+  await page.evaluate(() => { window.__mails = []; window.__openMail = (u) => window.__mails.push(u); });
+  await A(page, () => window.__admin.go('logistique'));
+  await page.getByRole('button', { name: 'Sorties d’inventaire' }).click();
+  await page.getByRole('button', { name: /Nouvelle sortie/ }).click();
+  await field(page, 'Employé').selectOption('Kaël Test');
+  await dlg(page).getByLabel('Description').first().fill('Pompe 1 HP');
+  await dlg(page).getByRole('button', { name: 'Envoyer au superviseur' }).click();
+  await toast(page, /courriel à l’entrepôt non envoyé/);
+  await page.getByRole('button', { name: 'Plus tard' }).click();
+  assert.equal(db.rows('bons_livraison').length, 2, 'aucun bon créé');
+  const s = db.rows('sorties_inventaire')[0];
+  await page.getByRole('row', { name: new RegExp(s.no_bon) }).getByRole('button', { name: 'Courriel à l’entrepôt' }).click();
+  await toast(page, /Courriel préparé pour entrepot@soucyaquatik\.com/);
+  const m = await page.evaluate(() => window.__mails[0]);
+  assert.match(m, /^mailto:entrepot@soucyaquatik\.com\?/);
+  assert.match(decodeURIComponent(m), /Pompe 1 HP/);
+  // « Bon de livraison » reste proposé sur la ligne
+  await page.getByRole('row', { name: new RegExp(s.no_bon) }).getByRole('button', { name: 'Bon de livraison' }).click();
+  await page.getByRole('button', { name: 'Créer le bon de livraison' }).click();
+  await toast(page, /créé — à livrer par Kaël Test/);
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+test('logistique : responsables de l’entrepôt réglés (depuis les comptes ou saisis), événements choisis', async () => {
+  const tables = base();
+  tables.comptes.find((c) => c.id === 'kael').email = 'kael@soucyaquatik.com';
+  const { page, db, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables });
+  await ready(page);
+  await A(page, () => window.__admin.go('logistique'));
+  await page.getByRole('button', { name: 'Entrepôt · courriels' }).click();
+  await page.getByText('Aucun responsable : aucun courriel n’est envoyé.').waitFor();
+  await page.getByLabel('Ajouter depuis les comptes').selectOption({ label: 'Kaël Test — kael@soucyaquatik.com' });
+  await page.getByRole('button', { name: '+ Ajouter un responsable' }).click();
+  await page.getByLabel('Nom du responsable').last().fill('Réception');
+  await page.getByLabel('Courriel du responsable').last().fill('pas-valide');
+  await page.getByText('Courriel invalide').waitFor();
+  await page.getByRole('button', { name: 'Enregistrer' }).click();
+  await toast(page, /Courriel invalide : pas-valide/);
+  await page.getByLabel('Courriel du responsable').last().fill('Reception@SoucyAquatik.com');
+  await page.getByLabel('À chaque livraison confirmée (bon signé ou validé sur le terrain)').check();
+  await page.getByRole('button', { name: 'Enregistrer' }).click();
+  await toast(page, /Responsables de l’entrepôt enregistrés/);
+  const c = db.rows('logistique_config').find((x) => x.id === 'entrepot_courriels');
+  assert.deepEqual(c.value, { responsables: [{ nom: 'Kaël Test', courriel: 'kael@soucyaquatik.com' }, { nom: 'Réception', courriel: 'reception@soucyaquatik.com' }], sortie: true, livraison: true });
+  assert.ok(await attendre(page, () => db.rows('audit_log').some((a) => a.ressource === 'logistique_config')));
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
 test('hivernage : compléter un rapport existant (constats, priorité, plan, suivi) et imprimer', async () => {
   const { page, db, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: base() });
   await ready(page);

@@ -358,7 +358,25 @@ DOCLIST=lambda flag,head:('<sc-if value="{{ %s }}"><div style="display:flex;flex
   +CARD('<table class="table" style="font-size:14px"><tbody><sc-for list="{{ docRows }}" as="r"><tr><td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px;font-weight:600">{{ r.a }}</td>'+TD%('','{{ r.b }}')+TD%('','{{ r.c }}')+TD%('','{{ r.d }}')+TD%('font-weight:600','{{ r.etat }}')
   +'<td style="padding:4px 18px 4px 8px;text-align:right;white-space:nowrap"><sc-for list="{{ r.acts }}" as="x"><button class="btn btn-ghost" onClick="{{ x.go }}" style="margin-right:4px">{{ x.l }}</button></sc-for><button class="btn btn-secondary" onClick="{{ r.open }}">Ouvrir</button></td></tr></sc-for></tbody></table>','overflow-x:auto')
   +'</div></sc-if>\n')
-LOGI=DOCLIST('isLogi',SEG('logTabs'))
+LOGI=DOCLIST('isLogDocs',SEG('logTabs'))
+# Entrepôt : responsables qui reçoivent les courriels automatiques (logistique_config, clé entrepot_courriels)
+LOGI+=('<sc-if value="{{ isLogEnt }}"><div style="display:flex;flex-direction:column;gap:18px">'+SEG('logTabs')
+  +'<sc-if value="{{ entLoading }}"><div>Chargement…</div></sc-if><sc-if value="{{ entErr }}"><div role="alert" style="padding:10px 14px;border:2px solid var(--color-accent-900)">{{ entErr }}</div></sc-if>'
+  +'<sc-if value="{{ entReady }}">'+CARD('<div style="padding:16px 18px;display:flex;flex-direction:column;gap:14px;max-width:820px">'
+    '<span style="font:600 20px var(--font-heading)">Responsables de l’entrepôt</span>'
+    '<div style="font-size:14px;line-height:1.45">Ils reçoivent un courriel automatique, envoyé par le serveur, quand une sortie d’inventaire est émise (depuis sa-admin ou sa-terrain) et, si coché, quand une livraison est confirmée sur le terrain.</div>'
+    '<sc-if value="{{ entNone }}"><div style="font-size:14px;border:1px dashed var(--color-text);padding:10px 14px">Aucun responsable : aucun courriel n’est envoyé.</div></sc-if>'
+    '<sc-for list="{{ entRows }}" as="r"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+    '<input class="input" value="{{ r.nom }}" onInput="{{ r.onNom }}" placeholder="Nom" aria-label="Nom du responsable" style="flex:1;min-width:160px">'
+    '<input class="input" type="email" value="{{ r.courriel }}" onInput="{{ r.onCourriel }}" placeholder="courriel@soucyaquatik.com" aria-label="Courriel du responsable" style="flex:1.4;min-width:200px">'
+    '<sc-if value="{{ r.bad }}"><span role="alert" style="font-size:13px;font-weight:600">Courriel invalide</span></sc-if>'
+    '<button class="btn btn-ghost btn-icon" onClick="{{ r.del }}" aria-label="Retirer le responsable"><sa-i n="x" s="16"></sa-i></button></div></sc-for>'
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><button class="btn btn-ghost" onClick="{{ entAdd }}">+ Ajouter un responsable</button>'
+    '<sc-if value="{{ hasEntComptes }}">'+SEL('entComptes','onEntCompte').replace('<select class="input"','<select class="input" aria-label="Ajouter depuis les comptes" style="width:auto"')+'</sc-if></div>'
+    +CBX('entSortie','onEntSortie','À chaque sortie d’inventaire émise')+CBX('entLiv','onEntLiv','À chaque livraison confirmée (bon signé ou validé sur le terrain)')
+    +'<sc-if value="{{ entDirty }}"><div style="display:flex;gap:8px;justify-content:flex-end">'+BTNX('btn-secondary','entCancel','Annuler')+BTNX('btn-primary','entSave','{{ entSaveLbl }}')+'</div></sc-if>'
+    '<div style="font-size:12px">Envoi par la fonction serveur « logistique-courriel » (service Resend, comme les codes du portail). Sans service de courriel : bouton « Courriel à l’entrepôt » sur chaque sortie.</div></div>')+'</sc-if>'
+  +'</div></sc-if>\n')
 HIVB=DOCLIST('isHivB','<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="font-size:14px">Les étapes de chaque liste viennent du gabarit de chaque ouvrage (piscine, jeux d’eau, fontaine…), ajusté dans la fiche du site.</span><span style="flex:1"></span><button class="btn btn-secondary" onClick="{{ gbGo }}" style="gap:8px"><sa-i n="settings" s="16"></sa-i>Gabarits d’hivernage</button></div>')
 bs=block(M,'isStats')
 if bs: M=M.replace(bs,bs+LOGI+HIVB,1)
@@ -432,9 +450,13 @@ DEDLG=('<template data-sc="if" value="{{ deOpen }}"><div class="dialog-backdrop"
   +DLGHEAD('deTitle','deClose')+'<datalist id="deSites"><sc-for list="{{ sitesList2 }}" as="o"><option value="{{ o.v }}"></option></sc-for></datalist>'
   +'<sc-if value="{{ deDone }}"><div style="padding:8px 12px;border:1px solid var(--color-text);font-weight:600;display:flex;align-items:center;gap:10px">{{ deDoneTxt }}<span style="flex:1"></span><button class="btn btn-ghost" onClick="{{ deReopen }}">Remettre en brouillon</button></div></sc-if>'
   +DE_BL+DE_SO+DE_HV+DE_HV2
-  +'<div class="dialog-actions" style="margin-top:0;flex-wrap:wrap">'+IF('deCanDel',BTNX('btn-secondary','deDel','{{ deDelLbl }}'))+BTNX('btn-secondary','dePrint','Imprimer')+IF('deCanSend',BTNX('btn-secondary','deSend','Envoyer au client'))+'<span style="flex:1"></span>'+BTNX('btn-secondary','deClose','Fermer')
+  +'<div class="dialog-actions" style="margin-top:0;flex-wrap:wrap">'+IF('deCanDel',BTNX('btn-secondary','deDel','{{ deDelLbl }}'))+BTNX('btn-secondary','dePrint','Imprimer')+IF('deCanSend',BTNX('btn-secondary','deSend','Envoyer au client'))+IF('deCanBL',BTNX('btn-secondary','deBL','Passer en bon de livraison'))+'<span style="flex:1"></span>'+BTNX('btn-secondary','deClose','Fermer')
   +IF('deNotDone',BTNX('btn-secondary','deFinal','{{ deFinalLbl }}'))+BTNX('btn-primary','deSave','{{ deSaveLbl }}')+'</div></div></div></template>\n')
 M=M.rstrip()+'\n'+DEDLG
+SBDLG=WRAP('sbOpen','sbCloseBg',DLGHEAD('sbTitle','sbLater')+'<div style="font-size:15px;line-height:1.45">{{ sbTxt }}</div>'
+  +FL('Livreur (voit le bon dans sa-terrain)',SEL('sbTechs','onSbTech'))
+  +'<div class="dialog-actions" style="margin-top:0"><span style="flex:1"></span>'+BTNX('btn-secondary','sbLater','Plus tard')+BTNX('btn-primary','sbGo','{{ sbGoLbl }}')+'</div>')
+M=M.rstrip()+'\n'+SBDLG
 
 # ---------- STOCK + FLOTTE ----------
 STKHEAD=lambda extra:('<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><input class="input" type="search" placeholder="Rechercher…" value="{{ stkQ }}" onInput="{{ onStkQ }}" style="max-width:280px">%s</div>'

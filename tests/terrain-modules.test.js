@@ -155,6 +155,62 @@ test('logistique : nouveau bon créé à partir de la sortie, signé et livré',
   await page.close();
 });
 
+test('logistique : sortie enregistrée → proposition immédiate du bon de livraison, courriel à l’entrepôt par la file d’attente', async () => {
+  const { page, db, errors } = await openApp(browser, srv.url, { app: 'terrain', user: USER, tables: base() });
+  db.fnReply['logistique-courriel'] = { body: { ok: true, a: ['entrepot@soucyaquatik.com'] } };
+  await ready(page);
+  await page.getByText('1 bon à livrer').waitFor(); // tuile Logistique de l'accueil
+  await T(page, () => window.__terrain.vals().goLog());
+  await page.waitForFunction(() => window.__terrain.inv.length === 3);
+  await page.getByRole('button', { name: 'Plus' }).first().click();
+  await page.getByRole('button', { name: /Enregistrer la sortie · 1 article/ }).click();
+  await page.getByText(/Sortie SA-INV-\d{8}-\d{3} enregistrée · 1 article\(s\)/).waitFor();
+  await noQueue(page);
+  const s = db.rows('sorties_inventaire')[0];
+  assert.deepEqual(db.fns.map((f) => [f.fn, f.body, f.jeton]), [['logistique-courriel', { evenement: 'sortie', id: s.id }, true]], 'après la sortie, avec le jeton de session');
+  await page.getByRole('button', { name: 'Passer au bon de livraison' }).click();
+  assert.match(await text(page), /Chlore liquide 20 L\s*1 bidon/);
+  await page.getByPlaceholder('Ex. responsable de la piscine').fill('Marc Roy');
+  await sign(page);
+  await page.getByRole('button', { name: 'Confirmer la signature' }).click();
+  await noQueue(page);
+  const b = db.rows('bons_livraison').find((x) => x.id !== 'bl-a' && x.id !== 'bl-b');
+  assert.equal(b.no_bon, s.no_bon.replace('SA-INV-', 'SA-'), 'même numéro que la sortie : le bureau relie les deux');
+  assert.equal(b.status, 'livre');
+  assert.deepEqual(db.fns.map((f) => f.body.evenement), ['sortie', 'livraison']);
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+test('logistique : « Plus tard » garde le bon proposé ; livraison validée sans signature (deux touches)', async () => {
+  const { page, db, errors } = await openApp(browser, srv.url, { app: 'terrain', user: USER, tables: base() });
+  await ready(page);
+  await T(page, () => window.__terrain.vals().goLog());
+  await page.waitForFunction(() => window.__terrain.inv.length === 3);
+  await page.getByRole('button', { name: 'Plus' }).nth(2).click();
+  await page.getByRole('button', { name: /Enregistrer la sortie/ }).click();
+  await page.getByRole('button', { name: 'Plus tard' }).click();
+  assert.doesNotMatch(await text(page), /Passer au bon de livraison/);
+  await T(page, () => window.__terrain.setState({ logTab: 'bon' }));
+  await page.getByRole('button', { name: /SA-20260928-111/ }).click();
+  await page.getByRole('button', { name: 'Valider sans signature' }).click();
+  assert.equal(db.writes('bons_livraison').length, 0, 'première touche : confirmation demandée');
+  await page.getByRole('button', { name: 'Confirmer : livré sans signature' }).click();
+  await page.getByText(/Livraison validée à \d\d:\d\d, sans signature — bon marqué livré/).waitFor();
+  await noQueue(page);
+  const w = db.writes('bons_livraison')[0];
+  assert.equal(w.method, 'PATCH');
+  assert.match(w.query, /status=neq\.livre/);
+  const b = db.rows('bons_livraison').find((x) => x.id === 'bl-a');
+  assert.equal(b.status, 'livre');
+  assert.equal(b.livre_par_nom, 'Kaël Test');
+  assert.deepEqual(b.photos, [], 'aucune signature');
+  // fonction non déployée (404) : l'appel est retiré de la file, rien n'est bloqué
+  assert.deepEqual(db.fns.map((f) => f.body.evenement), ['sortie', 'livraison']);
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
 test('hivernage : liste réelle des sites, liste de contrôle « Hivernement » envoyée au bureau', async () => {
   const { page, db, errors } = await openApp(browser, srv.url, { app: 'terrain', user: USER, tables: base() });
   await ready(page);

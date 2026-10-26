@@ -415,7 +415,7 @@ button{font-family:inherit}
             </div>
 
             <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--color-divider);border:1px solid var(--color-divider)">
-              <button onClick="{{ goLog }}" style="all:unset;cursor:pointer;background:var(--color-bg);padding:16px;min-height:96px;display:flex;flex-direction:column;justify-content:space-between" data-hv="2"><sa-i n="truck" s="28"></sa-i><span style="font:600 20px/1.1 var(--font-heading)">Logistique</span></button>
+              <button onClick="{{ goLog }}" style="all:unset;cursor:pointer;background:var(--color-bg);padding:16px;min-height:96px;display:flex;flex-direction:column;justify-content:space-between" data-hv="2"><sa-i n="truck" s="28"></sa-i><span style="display:flex;flex-direction:column;gap:2px"><span style="font:600 20px/1.1 var(--font-heading)">Logistique</span><sc-if value="{{ bonsMoiTxt }}"><span style="font-size:14px;font-weight:600">{{ bonsMoiTxt }}</span></sc-if></span></button>
               <button onClick="{{ goHiv }}" style="all:unset;cursor:pointer;background:var(--color-bg);padding:16px;min-height:96px;display:flex;flex-direction:column;justify-content:space-between" data-hv="3"><sa-i n="snow" s="28"></sa-i><span style="font:600 20px/1.1 var(--font-heading)">Hivernage <span style="font-weight:400">{{ hivDoneCount }}/{{ hivTotalSites }}</span></span></button>
               <button onClick="{{ goDemandes }}" style="all:unset;cursor:pointer;background:var(--color-bg);padding:16px;min-height:96px;display:flex;flex-direction:column;justify-content:space-between" data-hv="4"><sa-i n="message" s="28"></sa-i><span style="font:600 20px/1.1 var(--font-heading)">Demande</span></button>
               <a href="tel:{{ bureauTel }}" style="text-decoration:none;color:inherit;background:var(--color-bg);padding:16px;min-height:96px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between" data-hv="5"><sa-i n="phone" s="28"></sa-i><span style="font:600 20px/1.1 var(--font-heading)">Appeler le bureau</span></a>
@@ -547,7 +547,7 @@ button{font-family:inherit}
             </div>
             <sc-if value="{{ isSortie }}">
               <div style="display:flex;flex-direction:column;gap:0">
-                <div style="font-size:15px;padding-bottom:10px">Pour : {{ logSite }}</div>
+                <sc-if value="{{ soAsk }}"><div role="status" style="border:2px solid var(--color-text);padding:14px;margin-bottom:14px;display:flex;flex-direction:column;gap:10px"><b style="font-size:17px">{{ soAskTxt }}</b><span style="font-size:15px;line-height:1.4">Passer en bon de livraison ? Le client signe sur le téléphone — ou validez la livraison sans signature. Pas de papier.</span><button class="btn btn-primary" onClick="{{ soAskGo }}" style="min-height:56px;font-size:18px">Passer au bon de livraison</button><button class="btn btn-secondary" onClick="{{ soAskLater }}" style="min-height:48px;font-size:16px">Plus tard</button></div></sc-if><div style="font-size:15px;padding-bottom:10px">Pour : {{ logSite }}</div>
                 <input class="input" value="{{ invQ }}" onInput="{{ onInvQ }}" placeholder="Chercher un article…" style="min-height:48px;font-size:17px;margin-bottom:8px"><sc-if value="{{ noInv }}"><div style="font-size:15px;padding:8px 0">Inventaire en chargement ou indisponible.</div></sc-if><sc-for list="{{ inventaire }}" as="p">
                   <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--color-divider)">
                     <div style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:16px;line-height:1.25">{{ p.nom }}</span><span style="font-size:13px">En stock : {{ p.reste }} {{ p.unite }}</span></div>
@@ -579,9 +579,9 @@ button{font-family:inherit}
                   <div style="display:grid;grid-template-columns:1fr 2fr;gap:10px">
                     <button class="btn btn-secondary" onClick="{{ clearSig }}" style="min-height:56px;font-size:18px">Effacer</button>
                     <button class="btn btn-primary" onClick="{{ confirmSig }}" style="min-height:56px;font-size:18px">Confirmer la signature</button>
-                  </div>
+                  </div><button class="btn btn-secondary" onClick="{{ validerSansSig }}" style="min-height:52px;font-size:17px;width:100%;margin-top:10px">{{ noSigLbl }}</button>
                 </sc-if>
-                <sc-if value="{{ isSigned }}">
+                <sc-if value="{{ isNoSig }}"><div style="padding:14px;border:1px solid var(--color-accent);display:flex;gap:10px;align-items:center;font-size:16px"><sa-i n="check" s="22" w="2"></sa-i><span>Livraison validée à {{ signedAt }}, sans signature — bon marqué livré</span></div></sc-if><sc-if value="{{ isSigned }}">
                   <div style="padding:14px;border:1px solid var(--color-accent);display:flex;gap:10px;align-items:center;font-size:16px"><sa-i n="check" s="22" w="2"></sa-i><span>Signé par {{ signedBy }} à {{ signedAt }} — bon marqué livré</span></div>
                 </sc-if>
               </div>
@@ -1761,9 +1761,12 @@ Comp.prototype.failLoad=function(k,label,e){var first=!Object.keys(this.loadErr)
 Comp.prototype.loadDem=function(){var self=this;return get('demandes?tech=eq.'+encodeURIComponent(this.user.id)+'&select=id,type,motif,texte,statut,created_at&order=created_at.desc&limit=15').then(function(r){self.dem=r;self.okLoad('dem');self.update();}).catch(function(e){self.failLoad('dem','demandes',e);});};
 Comp.prototype.loadLog=function(){var self=this;return Promise.all([get('inventaire?select=id,nom,unite,qte,categorie&order=nom.asc'),
     get('bons_livraison?select=id,no_bon,client,tel,adresse,date,heure,technicien,urgent,status,items_liv,photos&status=neq.livre&order=date.asc')])
-  .then(function(r){var cur=self.curBon();self.inv=r[0];self.bons=r[1].filter(function(b){return b.status!=='livre';});
+  .then(function(r){var cur=self.curBon();self.inv=r[0];self.bons=r[1].filter(function(b){return b.status!=='livre';});self.bonsMoi=self.compteBons(self.bons);
     // le bon qu'on vient de faire signer reste affiché (avec sa confirmation) jusqu'au retour à la liste
     if(cur&&cur.status==='livre'&&!self.bons.some(function(b){return b.id===cur.id;}))self.bons.unshift(cur);self.okLoad('log');self.update();}).catch(function(e){self.failLoad('log','logistique',e);self.update();});};
+/* Bons à livrer assignés à l'employé : compte affiché sur la tuile Logistique de l'accueil */
+Comp.prototype.compteBons=function(L){var me=norm(this.me.nom);return L.filter(function(b){return b.status!=='livre'&&norm(b.technicien)===me;}).length;};
+Comp.prototype.loadBonsMoi=function(){var self=this;return get('bons_livraison?select=id,technicien,status&status=neq.livre').then(function(r){self.bonsMoi=self.compteBons(r);self.update();}).catch(function(){});};
 Comp.prototype.loadHiv=function(){var self=this,y=new Date().getFullYear();
   return get('rapports_hivernage?select=id,site_id,site_nom,status,date_inspection,technicien&date_inspection=gte.'+y+'-01-01&order=date_inspection.desc')
   .then(function(r){self.hivRep={};r.filter(function(x){return String(x.date_inspection||'').slice(0,4)===String(y);}).forEach(function(x){if(x.site_id&&!self.hivRep[x.site_id])self.hivRep[x.site_id]=x;});self.okLoad('hiv');self.update();})
@@ -1781,13 +1784,18 @@ Comp.prototype.commRead=function(c){if(!this.commUnread(c))return;var now=new Da
   jset('sa_terrain_comm_'+this.user.id,{l:this.comm||[],r:this.commLus});
   this.enqueue({_t:'communication_lectures',id:c.id+'_'+this.user.id,comm_id:c.id,uid:this.user.id,emp_nom:this.me.nom,version:v,lu_at:now,updated_at:now});};
 Comp.prototype.loadBureau=function(){var self=this;return get('comptes_publics?id=eq.cwweil&select=tel').then(function(r){self.bureau=(r[0]&&r[0].tel)||'';}).catch(function(){});};
-Comp.prototype.refresh=function(){var self=this;this.loadComm();return Promise.all([this.loadRef(),this.loadBureau(),this.loadDem()]).then(function(){return Promise.all([self.loadJobs(),self.loadPunch()]);}).then(function(){var c=self.curJob();if(c)self.loadLast(c.site);self.flush();self.flushOps();self.update();});};
+Comp.prototype.refresh=function(){var self=this;this.loadComm();this.loadBonsMoi();return Promise.all([this.loadRef(),this.loadBureau(),this.loadDem()]).then(function(){return Promise.all([self.loadJobs(),self.loadPunch()]);}).then(function(){var c=self.curJob();if(c)self.loadLast(c.site);self.flush();self.flushOps();self.update();});};
 
 /* ---------- File d'attente : rien n'est perdu si le réseau tombe ---------- */
 Comp.prototype.flush=function(){var self=this,q=jget('sa_terrain_queue',[]);if(!q.length||!navigator.onLine||this._fq){self.queueN=q.length;return;}
   var item=q[0],tbl=item._t||'releves',body0=Object.assign({},item);delete body0._t;delete body0._sk;this._fq=true;
   /* Sous-sol : le réseau peut sembler présent sans rien laisser passer ; on abandonne après 45 s et on réessaie plus tard */
   var ac=window.AbortController?new AbortController():null,to=setTimeout(function(){if(ac)ac.abort();},45000);
+  /* _m:'FN' → appel d'une fonction serveur (courriel à l'entrepôt) : retiré de la file dès que le serveur répond, même par un refus
+     (service non déployé ou non configuré) — un courriel ne bloque jamais les fiches qui suivent */
+  if(item._m==='FN'){jetonFrais().catch(function(){}).then(function(){return window.fetch(SB+'/functions/v1/'+tbl,avecJeton({method:'POST',headers:Object.assign({'Content-Type':'application/json'},H),body:JSON.stringify(item.body),signal:ac&&ac.signal}));})
+    .then(function(){clearTimeout(to);self._fq=false;var cur=jget('sa_terrain_queue',[]).filter(function(x){return x.id!==item.id;});jset('sa_terrain_queue',cur);self.queueN=cur.length;self.update();if(cur.length)self.flush();})
+    .catch(function(){clearTimeout(to);self._fq=false;self.queueN=q.length;self.update();});return;}
   phIn(item._m==='PATCH'?item.body:body0).then(function(body){
   /* _m:'PATCH' → mise à jour partielle (ex. bon de livraison validé) : on ne réécrit jamais toute la ligne,
      pour ne pas écraser ce que le bureau a modifié entre-temps. */
@@ -1826,15 +1834,21 @@ Comp.prototype.deletePunch=function(){var e=this.state.pe;if(!e)return;if(!e.con
 /* ---------- Logistique : sortie d'inventaire → bon de livraison signé (mêmes tables et formats que SA Platform) ---------- */
 Comp.prototype.logSiteObj=function(){var cj=this.curJob();return cj?(siteById(cj.site)||pseudoSite(cj.site,'')):null;};
 Comp.prototype.saveSortie=function(){var self=this,sel=this.state.sortie,items=this.inv.filter(function(p){return sel[p.id]>0;}).map(function(p){return{nom:p.nom,qty:sel[p.id],unite:p.unite||''};});
-  if(!items.length){this.flash('Choisissez au moins un article');return;}var s=this.logSiteObj(),dest=s?s.nom:'',now=new Date();
-  this.enqueue({_t:'sorties_inventaire',id:rid('so'),no_bon:noBon('SA-INV-'),nom:this.me.nom,no_employe:this.user.id,departement:this.user.dept||'',date:iso(now),client:dest,
+  if(!items.length){this.flash('Choisissez au moins un article');return;}var s=this.logSiteObj(),dest=s?s.nom:'',now=new Date(),id=rid('so'),no=noBon('SA-INV-');
+  this.enqueue({_t:'sorties_inventaire',id:id,no_bon:no,nom:this.me.nom,no_employe:this.user.id,departement:this.user.dept||'',date:iso(now),client:dest,
     lignes:items.map(function(i){return{code:'',loc:'',desc:i.nom,qteSortie:String(i.qty),qteRetour:'',projet:dest,unite:i.unite};}),status:'envoye',sent_at:now.toISOString(),created_by:this.user.id,created_at:now.toISOString(),updated_at:now.toISOString()});
-  this.lastSortie={site:s,items:items};this.setState({sortie:{}});this.flash('Sortie enregistrée · '+items.length+' article(s)');};
+  this.notifier('sortie',id);
+  /* On propose tout de suite de passer en bon de livraison (signature du client sur le téléphone, ou livraison validée sans signature) */
+  this.lastSortie={site:s,items:items,no:no};this.setState({sortie:{},soAsk:true});this.flash('Sortie enregistrée · '+items.length+' article(s)');};
+/* Courriel automatique aux responsables de l'entrepôt (fonction serveur logistique-courriel) : passe par la file d'attente,
+   après la ligne qu'il annonce ; le serveur relit la ligne et les destinataires réglés dans sa-admin › Logistique › Entrepôt. */
+Comp.prototype.notifier=function(ev,id){this.enqueue({_t:'logistique-courriel',_m:'FN',id:'ce-'+ev+'-'+id,body:{evenement:ev,id:id}});};
 Comp.prototype.newBonFromSortie=function(){var L=this.lastSortie;if(!L)return;var s=L.site,now=new Date();
-  var b={id:rid('bl'),no_bon:noBon('SA-'),client:s?s.nom:'',tel:'',adresse:s?s.addr:'',date:iso(now),heure:hhmm(now),technicien:this.me.nom,urgent:false,status:'brouillon',
+  /* même numéro que la sortie (SA-INV-AAAAMMJJ-NNN → SA-AAAAMMJJ-NNN) : le bureau relie ainsi le bon à sa sortie */
+  var b={id:rid('bl'),no_bon:L.no?String(L.no).replace(/^SA-INV-/,'SA-'):noBon('SA-'),client:s?s.nom:'',tel:'',adresse:s?s.addr:'',date:iso(now),heure:hhmm(now),technicien:this.me.nom,urgent:false,status:'brouillon',
     items_liv:L.items.map(function(i){return{item:i.nom,qteSortie:String(i.qty),unite:i.unite,qteLivree:String(i.qty),statut:''};}),items_ret:[],photos:[],created_by:this.user.id,created_at:now.toISOString(),_new:true};
   this.bons=[b].concat(this.bons);this.lastSortie=null;this.openBon(b.id);};
-Comp.prototype.openBon=function(id){this._sig={strokes:[],w:0};this.setState({bonSel:id,signer:'',logTab:'bon'});};
+Comp.prototype.openBon=function(id){this._sig={strokes:[],w:0};this.setState({bonSel:id,signer:'',logTab:'bon',soAsk:false,noSig:false});};
 Comp.prototype.curBon=function(){var id=this.state.bonSel;return id?this.bons.filter(function(b){return b.id===id;})[0]||null:null;};
 Comp.prototype.clearSig=function(){this._sig.strokes=[];this.drawSig(true);this.update();};
 Comp.prototype.drawSig=function(force){var c=this.sigRef.current;if(!c)return;var w=c.clientWidth,h=c.clientHeight;if(!w||!h)return;
@@ -1851,10 +1865,15 @@ Comp.prototype.confirmSig=function(){var b=this.curBon();if(!b)return;var nom=St
   if(!nom){this.flash('Inscrivez le nom du signataire');return;}if(!this._sig.strokes.some(function(s){return s.length>1;})){this.flash('Faites signer dans le cadre');return;}
   var c=this.sigRef.current,out=document.createElement('canvas');out.width=c.width;out.height=c.height;var g=out.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,out.width,out.height);g.drawImage(c,0,0);
   var now=new Date(),ph={data:out.toDataURL('image/jpeg',0.7),name:'Signature — '+nom,addedBy:this.user.id,addedAt:now.toISOString()};
-  var patch={status:'livre',livre_at:now.toISOString(),livre_by:this.user.id,livre_par_nom:this.me.nom,photos:(b.photos||[]).concat([ph]),updated_at:now.toISOString()};
-  if(b._new){var full=Object.assign({},b,patch,{_t:'bons_livraison'});delete full._new;delete full._signedBy;delete full._signedAt;this.enqueue(full);}
+  this.livrer(b,now,{photos:(b.photos||[]).concat([ph])},{_signedBy:nom});};
+/* Livraison validée sans signature (client absent, dépôt convenu) : deux touches, pour ne pas le faire par erreur */
+Comp.prototype.validerSansSig=function(){var b=this.curBon();if(!b||b.status==='livre')return;if(!this.state.noSig){this.setState({noSig:true});return;}
+  this.setState({noSig:false});this.livrer(b,new Date(),{},{_noSig:true});};
+Comp.prototype.livrer=function(b,now,extra,local){var patch=Object.assign({status:'livre',livre_at:now.toISOString(),livre_by:this.user.id,livre_par_nom:this.me.nom,updated_at:now.toISOString()},extra);
+  if(b._new){var full=Object.assign({},b,patch,{_t:'bons_livraison'});delete full._new;delete full._signedBy;delete full._signedAt;delete full._noSig;this.enqueue(full);}
   else this.enqueue({_t:'bons_livraison',_m:'PATCH',_q:'id=eq.'+encodeURIComponent(b.id)+'&status=neq.livre',id:'bl-'+b.id,body:patch});
-  Object.assign(b,patch,{_signedBy:nom,_signedAt:hhmm(now)});delete b._new;this.update();this.flash('Bon '+b.no_bon+' marqué livré');};
+  this.notifier('livraison',b.id);
+  Object.assign(b,patch,local,{_signedAt:hhmm(now)});delete b._new;this.update();this.flash('Bon '+b.no_bon+' marqué livré');};
 
 /* ---------- Hivernage : liste de contrôle « Hivernement » (src/hivernage/checklist.js, la même que sa-admin) → rapport (brouillon)
    que le bureau complète, imprime ou envoie au client depuis sa-admin ---------- */
@@ -2013,11 +2032,15 @@ Comp.prototype.vals=function(){
   var logV={isLog:scr==='logistique',isSortie:st.logTab==='sortie',isBon:st.logTab==='bon',tabSortie:function(){self.setState({logTab:'sortie'});},tabBon:function(){self.setState({logTab:'bon'});},
     sortieTabBg:segStyle(st.logTab==='sortie').bg,sortieTabFg:segStyle(st.logTab==='sortie').fg,bonTabBg:segStyle(st.logTab==='bon').bg,bonTabFg:segStyle(st.logTab==='bon').fg,
     logSite:ls?ls.nom:'aucun site (pas de punch en cours)',inventaire:inventaire,noInv:!this.inv.length,sortieCount:sortieCount,saveSortie:function(){self.saveSortie();},invQ:st.invQ,onInvQ:function(e){self.setState({invQ:e.target.value});},
+    soAsk:!!(st.soAsk&&this.lastSortie),soAskTxt:this.lastSortie?('Sortie '+(this.lastSortie.no||'')+' enregistrée · '+this.lastSortie.items.length+' article(s)'+(this.lastSortie.site?' pour '+this.lastSortie.site.nom:'')):'',
+    soAskGo:function(){self.newBonFromSortie();},soAskLater:function(){self.setState({soAsk:false});},
+    noSigLbl:st.noSig?'Confirmer : livré sans signature':'Valider sans signature',validerSansSig:function(){self.validerSansSig();},
     bonPick:!bon,bonOpen:!!bon,bonList:bonList,noBons:!bonList.length,hasLastSortie:!!this.lastSortie,lastSortieTxt:this.lastSortie?(this.lastSortie.items.length+' article(s) · '+(this.lastSortie.site?this.lastSortie.site.nom:'hors site')):'',newBon:function(){self.newBonFromSortie();},
     bon:bon?{no:bon.no_bon||'—',client:bon.client||'—',addr:bon.adresse||''}:{},bonBack:function(){self.setState({bonSel:null});self.loadLog();},
     bonItems:bon?(bon.items_liv||[]).filter(function(i){return i.item;}).map(function(i){return{nom:i.item,qty:i.qteLivree||i.qteSortie||'—',unite:i.unite||''};}):[],
     signer:st.signer,onSigner:function(e){self.setState({signer:e.target.value});},clearSig:function(){self.clearSig();},confirmSig:function(){self.confirmSig();},
-    isSigned:!!(bon&&bon.status==='livre'),notSigned:!!(bon&&bon.status!=='livre'),signedBy:bon?(bon._signedBy||''):'',signedAt:bon?(bon._signedAt||''):''};
+    isSigned:!!(bon&&bon.status==='livre'&&!bon._noSig),isNoSig:!!(bon&&bon.status==='livre'&&bon._noSig),notSigned:!!(bon&&bon.status!=='livre'),signedBy:bon?(bon._signedBy||''):'',signedAt:bon?(bon._signedAt||''):'',
+    bonsMoiTxt:this.bonsMoi?this.bonsMoi+' bon'+(this.bonsMoi>1?'s':'')+' à livrer':''};
   // ---- Hivernage
   var hs=this.hivSites(),rep=this.hivRep,sent=st.hivSent,y=String(new Date().getFullYear());
   var hivDone=function(s){var r=rep[s.id];return r?(r.date_inspection||''):(sent[s.id]&&String(sent[s.id]).slice(0,4)===y?sent[s.id]:'');};

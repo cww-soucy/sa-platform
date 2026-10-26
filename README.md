@@ -22,7 +22,7 @@ pour que les tests vérifient tout avant la mise en ligne.
 |---|---|
 | `src/` | Sources de sa-admin et sa-terrain (`app.js`, `assemble.py`), design, bibliothèques. `python3 src/build.py` régénère `admin.html` et `terrain.html` |
 | `tests/` | Tests automatiques (`npm test`), lancés par GitHub à chaque envoi |
-| `supabase/functions/` | Fonctions serveur (lien calendrier `planning-ics`, portail client `portail`) |
+| `supabase/functions/` | Fonctions serveur (lien calendrier `planning-ics`, portail client `portail`, courriels à l'entrepôt `logistique-courriel`) |
 | `src/inspection/model.js` | Règles des inspections (états, 6 systèmes, gravité, résumé) partagées par sa-admin, sa-terrain et le portail |
 | `src/hivernage/checklist.js` | Liste de contrôle « Hivernement » (sections, cases, document imprimable / envoyé au client) partagée par sa-admin et sa-terrain |
 | `docs/` | Passation (`HANDOFF-CLAUDE-CODE.md`), brief de design initial, historique SQL (`docs/sql/`) |

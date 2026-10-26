@@ -53,6 +53,8 @@ class FakeDB {
     this.t = JSON.parse(JSON.stringify(tables || {})); this.log = []; this.fail = {}; this.rpc = {};
     // Jetons de session (Supabase Auth) : comme après SECURISATION_ETAPE3.sql, une table n'est servie qu'avec un jeton valide.
     this.jetons = new Set(); this.renouv = new Set(); this.sansJeton = []; this.n = 0; this.authLog = []; this.refusAuth = false;
+    // Fonctions serveur (/functions/v1/…) : appels gardés dans fns ; réponse par fnReply[nom] (sinon 404, comme une fonction non déployée)
+    this.fns = []; this.fnReply = {};
     // carnet QR : nom d'un site par la fonction publique carnet_site_nom (null si inconnu)
     this.rpc.carnet_site_nom = (b) => { const x = this.rows('sites').find((r) => String(r.id) === String(b.p_site)); return x ? x.nom : null; };
   }
@@ -80,6 +82,13 @@ class FakeDB {
   async handle(route) {
     const req = route.request(), u = new URL(req.url()), m = req.method();
     if (u.pathname.startsWith('/auth/v1/')) return this.handleAuth(route, u);
+    if (u.pathname.startsWith('/functions/v1/')) {
+      const fn = u.pathname.slice('/functions/v1/'.length), jeton = (req.headers()['authorization'] || '').replace(/^Bearer /, '');
+      this.fns.push({ fn, body: req.postData() ? JSON.parse(req.postData()) : null, jeton: this.jetons.has(jeton) });
+      if (this.fail[fn] === 'network') return route.abort('failed');
+      const r = typeof this.fnReply[fn] === 'function' ? this.fnReply[fn](this.fns[this.fns.length - 1].body, this) : this.fnReply[fn];
+      return route.fulfill({ status: (r && r.status) || (r ? 200 : 404), contentType: 'application/json', body: JSON.stringify(r ? r.body : { message: 'Function not found' }) });
+    }
     const name = u.pathname.replace('/rest/v1/', '');
     const body = req.postData() ? JSON.parse(req.postData()) : null;
     this.log.push({ method: m, table: name, query: u.search, body });
