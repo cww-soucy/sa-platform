@@ -209,7 +209,9 @@ rep('<div style="font-size:15px;padding-bottom:10px">Pour : {{ logSite }}</div>'
   '<b style="font-size:17px">{{ soAskTxt }}</b><span style="font-size:15px;line-height:1.4">Passer en bon de livraison ? Le client signe sur le téléphone — ou validez la livraison sans signature. Pas de papier.</span>'
   '<button class="btn btn-primary" onClick="{{ soAskGo }}" style="min-height:56px;font-size:18px">Passer au bon de livraison</button>'
   '<button class="btn btn-secondary" onClick="{{ soAskLater }}" style="min-height:48px;font-size:16px">Plus tard</button></div></sc-if>'
-  '<div style="font-size:15px;padding-bottom:10px">Pour : {{ logSite }}</div>',1)
+  '<div style="font-size:15px;padding-bottom:10px">Pour : {{ logSite }}</div>'
+  '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding-bottom:12px"><div class="field"><label style="font-size:14px">ODT</label><input class="input" value="{{ soOdt }}" onInput="{{ onSoOdt }}" placeholder="N° d’ODT" style="min-height:48px;font-size:17px"></div>'
+  '<div class="field"><label style="font-size:14px">Emplacement</label><input class="input" value="{{ soLoc }}" onInput="{{ onSoLoc }}" placeholder="Ex. ENT, camion" style="min-height:48px;font-size:17px"></div></div>',1)
 # Livraison validée sans signature (au besoin : client absent, dépôt convenu)
 rep('<button class="btn btn-primary" onClick="{{ confirmSig }}" style="min-height:56px;font-size:18px">Confirmer la signature</button>\n                  </div>',
   '<button class="btn btn-primary" onClick="{{ confirmSig }}" style="min-height:56px;font-size:18px">Confirmer la signature</button>\n                  </div>'

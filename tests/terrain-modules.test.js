@@ -163,10 +163,13 @@ test('logistique : sortie enregistrée → proposition immédiate du bon de livr
   await T(page, () => window.__terrain.vals().goLog());
   await page.waitForFunction(() => window.__terrain.inv.length === 3);
   await page.getByRole('button', { name: 'Plus' }).first().click();
+  await page.getByPlaceholder('N° d’ODT').fill('ODT-4512');
+  await page.getByPlaceholder('Ex. ENT, camion').fill('CWW');
   await page.getByRole('button', { name: /Enregistrer la sortie · 1 article/ }).click();
   await page.getByText(/Sortie SA-INV-\d{8}-\d{3} enregistrée · 1 article\(s\)/).waitFor();
   await noQueue(page);
   const s = db.rows('sorties_inventaire')[0];
+  assert.deepEqual(s.lignes.map((l) => [l.desc, l.odt, l.loc]), [['Chlore liquide 20 L', 'ODT-4512', 'CWW']], 'ODT et emplacement dans les lignes (colonnes valides)');
   assert.deepEqual(db.fns.map((f) => [f.fn, f.body, f.jeton]), [['logistique-courriel', { evenement: 'sortie', id: s.id }, true]], 'après la sortie, avec le jeton de session');
   await page.getByRole('button', { name: 'Passer au bon de livraison' }).click();
   assert.match(await text(page), /Chlore liquide 20 L\s*1 bidon/);

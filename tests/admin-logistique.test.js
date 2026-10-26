@@ -127,7 +127,10 @@ test('logistique : sortie émise sans service de courriel → avertissement, pui
   await page.getByRole('button', { name: 'Sorties d’inventaire' }).click();
   await page.getByRole('button', { name: /Nouvelle sortie/ }).click();
   await field(page, 'Employé').selectOption('Kaël Test');
+  await field(page, 'ODT').fill('ODT-4512');
   await dlg(page).getByLabel('Description').first().fill('Pompe 1 HP');
+  await dlg(page).getByLabel('Emplacement').first().fill('CWW');
+  await dlg(page).getByLabel('Qté sortie').first().fill('4');
   await dlg(page).getByRole('button', { name: 'Envoyer au superviseur' }).click();
   await toast(page, /courriel à l’entrepôt non envoyé/);
   await page.getByRole('button', { name: 'Plus tard' }).click();
@@ -137,7 +140,14 @@ test('logistique : sortie émise sans service de courriel → avertissement, pui
   await toast(page, /Courriel préparé pour entrepot@soucyaquatik\.com/);
   const m = await page.evaluate(() => window.__mails[0]);
   assert.match(m, /^mailto:entrepot@soucyaquatik\.com\?/);
-  assert.match(decodeURIComponent(m), /Pompe 1 HP/);
+  const corps = decodeURIComponent(m.split('body=')[1]);
+  assert.match(corps, /^Bonjour,\n\nSortie d’inventaire émise par Kaël Test\.\n\nN° : SA-INV-\d{8}-\d{3}\nDate : \d{4}-\d\d-\d\d \d\d:\d\d\nClient \/ projet : —\nODT : ODT-4512\n\nArticles :\s+Quantités :\s+Emp :\n• Pompe 1 HP \/\s+4\s+CWW\n\nSoucy Aquatik$/);
+  assert.match(decodeURIComponent(m.split('body=')[0]), /ODT ODT-4512/, 'ODT dans le sujet');
+  assert.deepEqual(s.lignes.map((l) => l.odt), ['ODT-4512'], 'ODT rangé dans les lignes (pas de colonne odt)');
+  // rouvert : l'ODT revient dans le formulaire
+  await page.getByRole('row', { name: new RegExp(s.no_bon) }).getByRole('button', { name: 'Ouvrir' }).click();
+  assert.equal(await field(page, 'ODT').inputValue(), 'ODT-4512');
+  await dlg(page).getByRole('button', { name: 'Fermer' }).last().click();
   // « Bon de livraison » reste proposé sur la ligne
   await page.getByRole('row', { name: new RegExp(s.no_bon) }).getByRole('button', { name: 'Bon de livraison' }).click();
   await page.getByRole('button', { name: 'Créer le bon de livraison' }).click();

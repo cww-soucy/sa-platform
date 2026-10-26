@@ -25,27 +25,48 @@ export function actif(cfg, evenement) {
   return evenement === "sortie" ? cfg.sortie : evenement === "livraison" ? cfg.livraison : false;
 }
 
+/** Date et heure d'émission (sent_at, sinon date seule) : AAAA-MM-JJ HH:MM */
+export function quand(r, opts = {}) {
+  if (r.sent_at) {
+    const d = new Date(r.sent_at);
+    if (!isNaN(d)) {
+      const p = Object.fromEntries(new Intl.DateTimeFormat("fr-CA", { ...opts, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(d).map((x) => [x.type, x.value]));
+      return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}`;
+    }
+  }
+  return r.date || "—";
+}
+/** ODT de la sortie : rangé dans ses lignes (colonne absente de sorties_inventaire) */
+export function odtDe(r) { return String(((r.lignes || []).find((l) => l && l.odt) || {}).odt || "").trim(); }
+const qte = (l) => String(l.qteSortie == null || l.qteSortie === "" ? "?" : l.qteSortie) + (l.unite ? " " + l.unite : "");
+/** Courriel texte d'une sortie — même format que « Courriel à l'entrepôt » de sa-admin */
+export function sortieTexte(r, opts = {}) {
+  const lignes = (r.lignes || []).filter((l) => l && (l.desc || l.code)), odt = odtDe(r), q = quand(r, opts);
+  const w = Math.max(30, ...lignes.map((l) => String(l.desc || l.code).length + 8));
+  const texte = [
+    "Bonjour,", "",
+    `Sortie d’inventaire émise${r.nom ? " par " + r.nom : ""}.`, "",
+    `N° : ${r.no_bon || "—"}`, `Date : ${q}`, `Client / projet : ${r.client || "—"}`, `ODT : ${odt || "—"}`, "",
+    "Articles :".padEnd(w) + "Quantités :".padEnd(14) + "Emp :",
+    ...(lignes.length ? lignes.map((l) => ("• " + (l.desc || l.code) + " /").padEnd(w) + qte(l).padEnd(14) + (l.loc || "—")) : ["(aucun article)"]),
+    "", "Soucy Aquatik",
+  ].join("\n");
+  return { sujet: `Sortie d’inventaire ${r.no_bon || ""} — ${r.client || "sans projet"}${odt ? " — ODT " + odt : ""}`, texte, quand: q, odt };
+}
+
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
 /** Message pour une sortie d'inventaire (ligne sorties_inventaire) ou une livraison confirmée (ligne bons_livraison) */
 export function message(evenement, r) {
   if (evenement === "sortie") {
     const lignes = (r.lignes || []).filter((l) => l && (l.desc || l.code));
-    const sujet = `Sortie d'inventaire ${r.no_bon || ""} — ${r.client || "sans projet"}`.trim();
-    const texte = [
-      "Bonjour,", "",
-      `Une sortie d'inventaire vient d'être émise${r.nom ? " par " + r.nom : ""}.`, "",
-      `N° : ${r.no_bon || "—"}`, `Date : ${r.date || "—"}`, `Client / projet : ${r.client || "—"}`, `Employé : ${r.nom || "—"}${r.no_employe ? " (" + r.no_employe + ")" : ""}`, "",
-      "Articles :",
-      ...(lignes.length ? lignes.map((l) => `  • ${l.desc || l.code} — ${l.qteSortie || "?"}${l.unite ? " " + l.unite : ""}${l.loc ? " (empl. " + l.loc + ")" : ""}`) : ["  (aucun article)"]),
-      "", "Message automatique — SA Platform, Soucy Aquatik",
-    ].join("\n");
-    const html = `<p>Une sortie d'inventaire vient d'être émise${r.nom ? " par <b>" + esc(r.nom) + "</b>" : ""}.</p>`
-      + `<p><b>N° :</b> ${esc(r.no_bon || "—")}<br><b>Date :</b> ${esc(r.date || "—")}<br><b>Client / projet :</b> ${esc(r.client || "—")}</p>`
-      + `<table cellpadding="4" style="border-collapse:collapse" border="1"><tr><th align="left">Article</th><th>Qté</th><th>Unité</th><th>Emplacement</th></tr>`
-      + lignes.map((l) => `<tr><td>${esc(l.desc || l.code)}</td><td align="center">${esc(l.qteSortie)}</td><td>${esc(l.unite)}</td><td>${esc(l.loc)}</td></tr>`).join("")
-      + `</table><p style="color:#666;font-size:12px">Message automatique — SA Platform, Soucy Aquatik</p>`;
-    return { sujet, texte, html };
+    const t = sortieTexte(r, { timeZone: "America/Toronto" });
+    const html = `<p>Bonjour,</p><p>Sortie d’inventaire émise${r.nom ? " par <b>" + esc(r.nom) + "</b>" : ""}.</p>`
+      + `<p><b>N° :</b> ${esc(r.no_bon || "—")}<br><b>Date :</b> ${esc(t.quand)}<br><b>Client / projet :</b> ${esc(r.client || "—")}<br><b>ODT :</b> ${esc(t.odt || "—")}</p>`
+      + `<table cellpadding="5" style="border-collapse:collapse" border="1"><tr><th align="left">Articles</th><th>Quantités</th><th>Emp</th></tr>`
+      + lignes.map((l) => `<tr><td>${esc(l.desc || l.code)}</td><td align="center">${esc(qte(l))}</td><td align="center">${esc(l.loc || "—")}</td></tr>`).join("")
+      + `</table><p>Soucy Aquatik</p>`;
+    return { sujet: t.sujet, texte: t.texte, html };
   }
   const items = (r.items_liv || []).filter((i) => i && i.item);
   const signe = (r.photos || []).some((p) => p && /^Signature/.test(p.name || ""));
