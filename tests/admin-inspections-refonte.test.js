@@ -336,3 +336,24 @@ test('accès client : contact « Employé — tests d’eau » limité au site, 
   assert.deepEqual(errors, []);
   await page.close();
 });
+
+test('accès client : « Lien de saisie sans connexion » du code QR (même code, ouvert sur le formulaire de test)', async () => {
+  const { page, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: tables() });
+  const S = { comptes: [], contacts: [], qr: [{ id: 'qr1', site_id: '1', bassin_id: null, jeton: 'JETON-QR', code_affiche: 'SA-0001', actif: true, cree_le: new Date().toISOString() }], journal: [], documents: [] };
+  await page.route(FN, async (route) => {
+    const b = JSON.parse(route.request().postData()), ok = (o) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(o) });
+    if (b.action === 'admin_ouvrir') return ok({ ok: true, session: 'ADM-TOKEN-xxxxxxxxxxxxxxxx', role: 'admin' });
+    if (b.action === 'admin_lire') return ok({ ok: true, role: 'admin', ...S, portail: 'https://sa-platform.pages.dev/portail/', envoi: true });
+    return ok({ ok: false });
+  });
+  await page.addInitScript(() => { window.__copie = []; });
+  await open(page, 'acces');
+  await page.evaluate(() => { window.__copie = []; Object.defineProperty(navigator, 'clipboard', { value: { writeText: (t) => { window.__copie.push(t); return Promise.resolve(); } }, configurable: true }); });
+  await page.getByLabel('Mot de passe').fill('bon');
+  await page.getByRole('button', { name: 'Ouvrir la gestion' }).click();
+  await page.getByRole('button', { name: 'Lien de saisie sans connexion' }).click();
+  await toast(page, /Lien de saisie sans connexion copié/);
+  assert.deepEqual(await page.evaluate(() => window.__copie), ['https://sa-platform.pages.dev/portail/?q=JETON-QR&test=1']);
+  assert.deepEqual(errors, []);
+  await page.close();
+});

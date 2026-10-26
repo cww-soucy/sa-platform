@@ -161,3 +161,20 @@ test('inspections du site : « Nouvel hivernement » à côté de « Nouvelle in
   assert.deepEqual(errors, []);
   await page.close();
 });
+
+test('visites du site : test d’eau sans connexion (BECSys compris), jamais compté comme brouillon ni comme visite publiée', async () => {
+  const t = tables();
+  t.releves = (t.releves || []).concat([{ id: 'tl1', site_id: '2', site_nom: 'Piscine Beta', date: new Date().toISOString().slice(0, 10), heure: '09:05', type_code: 'GEN', statut: 'client', source: 'carnet', tech: 'carnet', tech_nom: 'Paul Tremblay',
+    vals: { ph: 7.4, cl: 1.6, becsys_mv: 720, becsys_ppm: 1.4, becsys_ph: 7.5 }, touched: { ph: 1, cl: 1 } }]);
+  const { page, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: t });
+  await page.waitForFunction(() => window.__admin && window.__admin.D);
+  await page.evaluate(() => window.__admin.go('inspections', { inspSite: 2, inspView: 'visite' }));
+  await page.waitForFunction(() => (window.__admin.vals().iq.visites || []).some((v) => /BECSys/.test(v.txt)));
+  const v = await page.evaluate(() => window.__admin.vals().iq.visites.find((x) => /BECSys/.test(x.txt)));
+  assert.equal(v.txt, 'pH 7,4 · Cl 1,6 · BECSys 720 mV / 1,4 ppm / pH 7,5');
+  assert.match(v.tech, /Paul Tremblay · test sans connexion/);
+  assert.equal(v.brouillon, false);
+  assert.equal(await page.evaluate(() => { const s = window.__admin.D.byId[2]; return window.__admin.inspSummary(s).lastV; }), null, 'pas une visite publiée');
+  assert.deepEqual(errors, []);
+  await page.close();
+});

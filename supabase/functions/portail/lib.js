@@ -103,6 +103,43 @@ export function releveClient(T, e, { contact, site, maintenant = new Date(), id 
     tech: "client:" + contact.id, tech_nom: contact.nom || "", source: "client", saisi_par: contact.id, statut: "client", created_at: iso, updated_at: iso,
   } };
 }
+/** Test d'eau sans connexion (lien du code QR) : mesures permises et bornes */
+export const TEST_LIBRE = [
+  ["ph", "pH", 0, 14], ["cl", "Chlore libre", 0, 20],
+  ["becsys_mv", "BECSys — potentiel (mV)", 0, 1500], ["becsys_ppm", "BECSys — chlore (ppm)", 0, 20], ["becsys_ph", "BECSys — pH lu", 0, 14],
+];
+export const TEST_LIBRE_PAR_IP_HEURE = 30;
+/**
+ * Test d'eau saisi SANS connexion depuis le lien du code QR : nom de l'employé, bassin, pH, chlore et lecture du BECSys
+ * (mV, ppm, pH lu) ; date et heure mises par le serveur. → ligne de « releves » (statut « client », source « carnet »).
+ * cles = clés des champs du type de relevé (le chlore va sous « clr » pour les jeux d'eau, sinon « cl »).
+ */
+export function testLibre(e, { site, cles = [], maintenant = new Date(), id, typeCode = "GEN" }) {
+  const employe = String((e && e.employe) || "").replace(/\s+/g, " ").trim();
+  if (employe.length < 2) return { erreur: "Entrez le nom de l’employé qui fait le test" };
+  if (employe.length > 80) return { erreur: "Nom trop long" };
+  const bassins = (Array.isArray(site.bassins) ? site.bassins : []).filter((b) => b && b.nom);
+  const bassin = bassins.find((b) => b.nom === (e && e.bassin)) || (bassins.length === 1 ? bassins[0] : null);
+  if (bassins.length > 1 && !bassin) return { erreur: "Choisissez le bassin testé" };
+  const vals = {}, touched = {};
+  for (const [k, lib, min, max] of TEST_LIBRE) {
+    const brut = e && e.mesures ? e.mesures[k] : undefined;
+    if (brut == null || String(brut).trim() === "") continue;
+    const n = Number(String(brut).replace(",", "."));
+    if (!isFinite(n) || n < min || n > max) return { erreur: `Valeur invalide : ${lib} (${min} à ${max})` };
+    const cle = k === "cl" && !cles.includes("cl") && cles.includes("clr") ? "clr" : k;
+    vals[cle] = Math.round(n * 1000) / 1000; touched[cle] = 1;
+  }
+  if (!Object.keys(vals).length) return { erreur: "Entrez au moins une mesure" };
+  const loc = new Date(maintenant.toLocaleString("en-US", { timeZone: "America/Toronto" }));
+  const pad = (x) => String(x).padStart(2, "0"), iso = maintenant.toISOString();
+  return { row: {
+    id, site_id: String(site.id), site_nom: site.nom || "", bassin: bassin ? bassin.nom : null,
+    date: `${loc.getFullYear()}-${pad(loc.getMonth() + 1)}-${pad(loc.getDate())}`, heure: `${pad(loc.getHours())}:${pad(loc.getMinutes())}`,
+    type_code: typeCode, vals, touched, tech: "carnet", tech_nom: employe, source: "carnet", source_detail: "Test sans connexion (code QR)",
+    statut: "client", created_at: iso, updated_at: iso,
+  } };
+}
 /** Limitation : faut-il refuser un nouvel envoi de code ? */
 export function tropDeCodes(nContact15, nIpHeure) {
   return nContact15 >= OTP_PAR_CONTACT_15MIN || nIpHeure >= OTP_PAR_IP_HEURE;
