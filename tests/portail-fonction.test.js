@@ -130,3 +130,17 @@ test('portail : test d’eau sans connexion — employé, bassin, trousse et BEC
   const je = L.testLibre({ employe: 'Paul', mesures: { cl: 0.8 } }, { site: { id: 's2', nom: 'Jeux', bassins: [{ nom: 'Jeux d’eau' }] }, cles: ['clr', 'ph'], id: 'x' }).row;
   assert.deepEqual([je.vals, je.bassin], [{ clr: 0.8 }, 'Jeux d’eau'], 'jeux d’eau : chlore résiduel ; un seul bassin choisi d’office');
 });
+
+test('portail : code donné par le bureau — tous les codes encore valides du contact sont acceptés', async () => {
+  const L = await mod();
+  assert.equal(L.OTP_MANUEL_MINUTES, 60);
+  const now = new Date('2026-10-26T20:00:00Z');
+  const otps = [
+    { id: 'courriel', cree_le: '2026-10-26T19:58:00Z', expire_le: '2026-10-26T20:08:00Z', tentatives: 0, utilise: false },
+    { id: 'manuel', cree_le: '2026-10-26T19:30:00Z', expire_le: '2026-10-26T20:30:00Z', tentatives: 1, utilise: false },
+    { id: 'expire', cree_le: '2026-10-26T19:00:00Z', expire_le: '2026-10-26T19:10:00Z', tentatives: 0, utilise: false },
+    { id: 'utilise', cree_le: '2026-10-26T19:50:00Z', expire_le: '2026-10-26T20:50:00Z', tentatives: 0, utilise: true },
+    { id: 'epuise', cree_le: '2026-10-26T19:55:00Z', expire_le: '2026-10-26T20:55:00Z', tentatives: 5, utilise: false },
+  ];
+  assert.deepEqual(L.otpValides(otps, now).map((o) => o.id), ['courriel', 'manuel'], 'un nouveau code par courriel n’annule pas celui donné par le bureau');
+});

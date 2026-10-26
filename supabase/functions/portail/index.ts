@@ -173,11 +173,16 @@ const actions: Record<string, (req: Request, b: any) => Promise<Response>> = {
     q = idt.courriel ? q.eq("courriel", idt.courriel) : q.eq("cellulaire", idt.cellulaire);
     const { data: c } = await q.limit(1).maybeSingle();
     if (!c) return json(req, refus);
-    const { data: o } = await sb.from("client_otp").select("id, code_hash, expire_le, tentatives, utilise").eq("contact_id", c.id).order("cree_le", { ascending: false }).limit(1).maybeSingle();
-    if (!o || o.utilise || new Date(o.expire_le) < new Date() || o.tentatives >= L.OTP_TENTATIVES) { await journal(req, { contact_id: c.id, action: "verification", resultat: "otp_echoue" }); return json(req, refus); }
-    const bon = L.egal(await L.sha256(c.id + "|" + b.code), o.code_hash);
-    await sb.from("client_otp").update({ tentatives: o.tentatives + 1, utilise: bon }).eq("id", o.id);
-    if (!bon) { await journal(req, { contact_id: c.id, action: "verification", resultat: "otp_echoue" }); return json(req, refus); }
+    /* Tous les codes encore valides du contact sont essayés (code reçu par courriel ET code donné par le bureau) */
+    const { data: lst } = await sb.from("client_otp").select("id, code_hash, expire_le, tentatives, utilise, cree_le").eq("contact_id", c.id).order("cree_le", { ascending: false }).limit(5);
+    const valides = L.otpValides(lst || []);
+    if (!valides.length) { await journal(req, { contact_id: c.id, action: "verification", resultat: "otp_echoue" }); return json(req, refus); }
+    const h = await L.sha256(c.id + "|" + b.code), o = valides.find((x: any) => L.egal(h, x.code_hash));
+    if (!o) {
+      await Promise.all(valides.map((x: any) => sb.from("client_otp").update({ tentatives: (x.tentatives || 0) + 1 }).eq("id", x.id)));
+      await journal(req, { contact_id: c.id, action: "verification", resultat: "otp_echoue" }); return json(req, refus);
+    }
+    await sb.from("client_otp").update({ tentatives: (o.tentatives || 0) + 1, utilise: true }).eq("id", o.id);
     const t = await nouvelleSession("client", c.id, b.souvenir ? L.SESSION_LONGUE_J * 24 : L.SESSION_COURTE_H);
     await sb.from("client_contacts").update({ dernier_acces: new Date().toISOString() }).eq("id", c.id);
     await journal(req, { contact_id: c.id, compte_id: c.compte_id, action: "connexion", resultat: "ok" });
@@ -260,6 +265,18 @@ const actions: Record<string, (req: Request, b: any) => Promise<Response>> = {
     const { error } = await sb.from(table).upsert(row);
     await journal(req, { identifiant: "sa-admin:" + s.contact_id, action: "ecriture:" + table + ":" + row.id, resultat: error ? "refuse" : "ok" });
     return json(req, { ok: !error, message: error?.message });
+  },
+  /* Code de connexion généré par le bureau pour un contact (à lui transmettre par téléphone) : valide 60 minutes, usage unique */
+  async admin_code(req, b) {
+    const s = await session(req, "admin");
+    if (!s) return json(req, { ok: false, session: false }, 401);
+    const { data: c } = await sb.from("client_contacts").select("id, compte_id, nom, courriel, cellulaire, actif").eq("id", String(b.contact_id || "")).maybeSingle();
+    if (!c || !c.actif) return json(req, { ok: false, message: "Contact introuvable ou inactif." }, 404);
+    const code = L.code6(), expire = new Date(Date.now() + L.OTP_MANUEL_MINUTES * 6e4).toISOString();
+    const { error } = await sb.from("client_otp").insert({ contact_id: c.id, code_hash: await L.sha256(c.id + "|" + code), expire_le: expire, ip_hash: await ipHash(req) });
+    await journal(req, { contact_id: c.id, compte_id: c.compte_id, identifiant: "sa-admin:" + s.contact_id, action: "code_manuel", resultat: error ? "refuse" : "ok" });
+    if (error) return json(req, { ok: false, message: error.message }, 500);
+    return json(req, { ok: true, code, expire_le: expire, minutes: L.OTP_MANUEL_MINUTES, identifiant: c.courriel || c.cellulaire || "" });
   },
   async admin_qr(req, b) {
     const s = await session(req, "admin");

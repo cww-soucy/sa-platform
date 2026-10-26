@@ -778,10 +778,13 @@ html.nav-repli .sa-shell{grid-template-columns:72px minmax(0,1fr)!important}html
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:14px"><span>Lien d’accès client (sans code QR) :</span><input class="input" readonly value="{{ iq.lien }}" aria-label="Lien d’accès client" style="flex:1;min-width:240px;font-size:13px"><button class="btn btn-secondary" onClick="{{ iq.copierLien }}">Copier</button></div>
           <span style="font-size:13px">La personne entre son courriel ou cellulaire, reçoit un code, et son accès s’ouvre selon son niveau : « Employé — tests d’eau » arrive directement sur le formulaire de saisie des tests (enregistrés dans les relevés du site). Un même courriel peut suivre plusieurs sites.</span>
           <table class="table" style="font-size:14px"><thead><tr><th>Nom</th><th>Compte</th><th>Niveau</th><th>Courriel</th><th>Cellulaire</th><th>Dernier accès</th><th></th></tr></thead><tbody>
-            <template data-sc="for" list="{{ iq.contacts }}" as="c"><tr><td>{{ c.nom }}</td><td style="font-size:13px">{{ c.compte }}</td><td>{{ c.niveau }}</td><td>{{ c.courriel }}</td><td>{{ c.cel }}</td><td>{{ c.acces }}</td><td style="white-space:nowrap"><button class="btn btn-ghost" onClick="{{ c.lien }}">Envoyer le lien</button><button class="btn btn-ghost" onClick="{{ c.del }}">{{ c.delLbl }}</button></td></tr></template>
+            <template data-sc="for" list="{{ iq.contacts }}" as="c"><tr><td>{{ c.nom }}</td><td style="font-size:13px">{{ c.compte }}</td><td>{{ c.niveau }}</td><td>{{ c.courriel }}</td><td>{{ c.cel }}</td><td>{{ c.acces }}</td><td style="white-space:nowrap"><button class="btn btn-ghost" onClick="{{ c.code }}">Générer un code</button><button class="btn btn-ghost" onClick="{{ c.lien }}">Envoyer le lien</button><button class="btn btn-ghost" onClick="{{ c.del }}">{{ c.delLbl }}</button></td></tr></template>
             <tr><td><input class="input" aria-label="Nom du contact" value="{{ iq.nc.nom }}" onInput="{{ iq.nc.onNom }}"></td><td></td><td><select class="input" aria-label="Niveau du contact" onChange="{{ iq.nc.onNiv }}"><template data-sc="for" list="{{ iq.nc.nivs }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select></td>
               <td><input class="input" type="email" aria-label="Courriel du contact" value="{{ iq.nc.courriel }}" onInput="{{ iq.nc.onMail }}"></td><td><input class="input" aria-label="Cellulaire du contact" value="{{ iq.nc.cel }}" onInput="{{ iq.nc.onCel }}"></td><td></td><td><button class="btn btn-primary" onClick="{{ iq.nc.add }}">Ajouter</button></td></tr>
           </tbody></table>
+          <template data-sc="if" value="{{ iq.codeOn }}"><div role="status" style="border:2px solid var(--color-text);padding:12px 14px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+            <span style="font:600 34px var(--font-heading);letter-spacing:3px" aria-label="Code de connexion">{{ iq.codeVal }}</span><span style="flex:1;min-width:240px;font-size:14px">{{ iq.codeTxt }}</span>
+            <button class="btn btn-secondary" onClick="{{ iq.codeFermer }}">Fermer</button></div></template>
           <template data-sc="if" value="{{ iq.dup }}"><div role="alert" style="border:2px solid var(--color-text);padding:12px 14px;display:flex;flex-direction:column;gap:10px"><span style="font-size:14px">{{ iq.dupTxt }}</span>
             <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary" onClick="{{ iq.dupGo }}">Donner accès à ce site</button><button class="btn btn-secondary" onClick="{{ iq.dupNo }}">Annuler</button></div></div></template>
         </section>
@@ -5134,6 +5137,10 @@ Comp.prototype.inspVals=function(){
       var corps='Bonjour '+c.nom+',\n\n'+(c.niveau==='saisie'?'Voici votre lien pour saisir les tests d’eau de '+site.nom+' :':'Voici votre lien d’accès au portail client de Soucy Aquatik ('+site.nom+') :')+'\n\n'+lien+'\n\n'
         +'Entrez votre '+(c.courriel?'courriel ('+c.courriel+')':'numéro de cellulaire')+' : vous recevrez un code à 6 chiffres. Votre accès s’ouvre ensuite automatiquement'+(c.niveau==='saisie'?' sur le formulaire de saisie.':'.')+'\n\nSoucy Aquatik';
       return{nom:c.nom,compte:(co?co.nom:'—')+' · '+es.length+' site'+(es.length>1?'s':''),niveau:I.NIVEAU_NOM[c.niveau]||c.niveau,courriel:c.courriel||'—',cel:c.cellulaire||'—',acces:c.dernier_acces?fdate(c.dernier_acces):'jamais',delLbl:seul?'Retirer':'Retirer de ce site',
+        /* Code de connexion donné par le bureau (par téléphone), quand le courriel ou le texto ne part pas */
+        code:function(){var t=self.admTok();if(!t){self.flash('Session de gestion expirée — rouvrez-la');return;}
+          pfn('admin_code',{contact_id:c.id},t).then(function(r){if(!r.ok){self.flash('Refusé : '+(r.message||'erreur'));return;}
+            self.setState({iqCode:{site:site.id,nom:c.nom,code:r.code,ident:r.identifiant||c.courriel||c.cellulaire||'',exp:String(r.expire_le||'')}});}).catch(function(){self.flash('Service injoignable — réessayez');});},
         lien:function(){mailto(c.courriel||'',(c.niveau==='saisie'?'Saisie des tests d’eau — ':'Portail client — ')+site.nom,corps);self.flash(c.courriel?'Courriel préparé pour '+c.courriel:'Aucun courriel pour ce contact — le message est prêt, ajoutez l’adresse');},
         del:function(){if(seul){if(window.confirm('Retirer l’accès de '+c.nom+' ?'))self.admWrite('client_contacts',{id:c.id},true);return;}
           /* Ses autres sites restent : l'accès est limité aux sites du compte sauf celui-ci */
@@ -5145,6 +5152,9 @@ Comp.prototype.inspVals=function(){
     iq.dupGo=function(){if(!iq.dup)return;self.admWrite('client_contacts',Object.assign({},dupC,{sites:sitesDe(dupC).filter(function(x){return x!==sid;}).concat([sid])}))
       .then(function(ok){if(ok){self.setState({iqDup:null,iqNc:null});self.flash(dupC.nom+' a maintenant accès à ce site — même courriel, même code de connexion');}});};
     iq.dupNo=function(){self.setState({iqDup:null});};
+    var cd=st.iqCode&&st.iqCode.site===site.id?st.iqCode:null,hm=function(x){var d=new Date(x);return isNaN(d)?'':pad(d.getHours())+':'+pad(d.getMinutes());};
+    iq.codeOn=!!cd;iq.codeVal=cd?cd.code.slice(0,3)+' '+cd.code.slice(3):'';iq.codeTxt=cd?'Code pour '+cd.nom+' — valide jusqu’à '+hm(cd.exp)+', une seule fois. Dites-lui d’ouvrir le portail, d’entrer '+(cd.ident||'son courriel')+', de toucher « J’ai déjà un code de Soucy Aquatik », puis de taper ce code.':'';
+    iq.codeFermer=function(){self.setState({iqCode:null});};
     iq.lien=lien;iq.copierLien=function(){(navigator.clipboard?navigator.clipboard.writeText(lien):Promise.reject()).then(function(){self.flash('Lien copié');}).catch(function(){self.flash('Copie impossible — sélectionnez le lien');});};
     var ncf=st.iqNc||{nom:'',niveau:'gestionnaire',courriel:'',cel:''},setNc=function(p){self.setState({iqNc:Object.assign({},ncf,p)});};
     iq.nc={nom:ncf.nom,courriel:ncf.courriel,cel:ncf.cel,nivs:['operateur','gestionnaire','direction','saisie'].map(function(n){return{v:n,l:I.NIVEAU_NOM[n],sel:n===ncf.niveau};}),

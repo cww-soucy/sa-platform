@@ -357,3 +357,25 @@ test('accès client : « Lien de saisie sans connexion » du code QR (même code
   assert.deepEqual(errors, []);
   await page.close();
 });
+
+test('accès client : « Générer un code » pour un contact (transmis par téléphone), affiché avec les consignes', async () => {
+  const { page, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: tables() });
+  const S = { comptes: [{ id: 'cl-a', nom: 'Ville de Test', sites: ['1'], niveaux: {} }], contacts: [{ id: 'ct-1', compte_id: 'cl-a', nom: 'Jeanne', courriel: 'jeanne@ville.qc.ca', niveau: 'gestionnaire', actif: true }], qr: [], journal: [], documents: [] }, appels = [];
+  await page.route(FN, async (route) => {
+    const b = JSON.parse(route.request().postData()), ok = (o) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(o) });
+    if (b.action === 'admin_ouvrir') return ok({ ok: true, session: 'ADM-TOKEN-xxxxxxxxxxxxxxxx', role: 'admin' });
+    if (b.action === 'admin_lire') return ok({ ok: true, role: 'admin', ...S, portail: 'https://sa-platform.pages.dev/portail/', envoi: true });
+    if (b.action === 'admin_code') { appels.push(b); return ok({ ok: true, code: '482913', expire_le: new Date(Date.now() + 36e5).toISOString(), minutes: 60, identifiant: 'jeanne@ville.qc.ca' }); }
+    return ok({ ok: false });
+  });
+  await open(page, 'acces');
+  await page.getByLabel('Mot de passe').fill('bon');
+  await page.getByRole('button', { name: 'Ouvrir la gestion' }).click();
+  await page.getByRole('row', { name: /Jeanne/ }).getByRole('button', { name: 'Générer un code' }).click();
+  await page.getByLabel('Code de connexion').waitFor();
+  assert.equal(await page.getByLabel('Code de connexion').textContent(), '482 913');
+  assert.match(await page.getByRole('status').filter({ hasText: '482 913' }).textContent(), /d’entrer jeanne@ville\.qc\.ca, de toucher « J’ai déjà un code de Soucy Aquatik »/);
+  assert.deepEqual(appels.map((a) => a.contact_id), ['ct-1']);
+  assert.deepEqual(errors, []);
+  await page.close();
+});
