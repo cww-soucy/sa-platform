@@ -627,7 +627,7 @@ rep('<select class="input" value="{{ siteType }}" onChange="{{ onSiteType }}" st
 SFIN=lambda o,t='text',x='':'<input class="input" type="%s" value="{{ %s.v }}" onInput="{{ %s.on }}"%s>'%(t,o,o,x)
 SF=('<template data-sc="if" value="{{ sfOpen }}"><div class="dialog-backdrop" onClick="{{ sfCloseBg }}" style="z-index:60"><div class="dialog" onClick="{{ stop }}" style="width:min(900px,100%);background:var(--color-bg);max-height:calc(100vh - 40px);overflow-y:auto;gap:14px;padding:22px 24px;border:1px solid var(--color-text)">'
   +DLGHEAD('sfTitle','sfClose')+IF('sfLoading','<div>Chargement de la fiche…</div>')
-  +IF('sfReady',G2(FL('Nom du site',SFIN('sfNom')),FL('Type',SEL('sfTypes','onSfType')))
+  +IF('sfReady',G2(FL('Nom du site',SFIN('sfNom')),FL('Type',SEL('sfTypes','onSfType')))+IF('sfHasClient',FL('Client',SEL('sfClients','onSfClient')))
     +FL('Adresse','<div style="display:flex;gap:8px">'+SFIN('sfAddr').replace('>',' style="flex:1">',1)+'<sc-if value="{{ sfHasAddr }}"><a class="btn btn-ghost" href="{{ sfGeoMaps }}" target="_blank" rel="noopener">Voir sur la carte</a></sc-if></div>')
     +G2(G2(FL('Téléphone',SFIN('sfTel','tel')),FL('Courriel',SFIN('sfEmail','email'))),G2(FL('Site web',SFIN('sfWeb','url')),FL('Année',SFIN('sfAnnee'))))
     +G2(G2(FL('Relevé par défaut',SEL('sfRelTypes','onSfRelType')),FL('N° de contrat',INP('sfCode','onSfCode'))),G2(FL('Latitude',INP('sfLat','onSfLat','text',' placeholder="46.81"')),FL('Longitude',INP('sfLng','onSfLng','text',' placeholder="-71.21"'))))
