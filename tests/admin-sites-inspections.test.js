@@ -141,3 +141,23 @@ test('fiche du site : plusieurs courriels acceptés, « Contacts autorisés » o
   assert.deepEqual(errors, []);
   await page.close();
 });
+
+test('inspections du site : « Nouvel hivernement » à côté de « Nouvelle inspection », hivernements dans l’historique des visites', async () => {
+  const { page, db, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: tables() });
+  await page.waitForFunction(() => window.__admin && window.__admin.D);
+  await page.evaluate(() => window.__admin.go('inspections', { inspSite: 2, inspView: 'visite' }));
+  // l'hivernement existant du site figure dans les visites
+  await page.waitForFunction(() => (window.__admin.vals().iq.visites || []).some((v) => v.hiv));
+  await page.getByRole('button', { name: /Hivernement/ }).filter({ hasText: 'Kaël Test' }).first().click();
+  await page.waitForFunction(() => window.__admin.state.de && window.__admin.state.de.id === 'hv-old');
+  await page.evaluate(() => window.__admin.setState({ de: null }));
+  // nouvel hivernement depuis l'en-tête du site : enregistré, il rejoint l'historique
+  await page.getByRole('button', { name: 'Nouvel hivernement', exact: true }).click();
+  await page.waitForFunction(() => window.__admin.state.de && window.__admin.state.de.hv && window.__admin.state.de.hv.info.site === 'Piscine Beta');
+  await page.locator('.dialog').getByRole('button', { name: 'Enregistrer' }).click();
+  await page.waitForFunction(() => /enregistré/.test(window.__admin.state.toast || ''));
+  assert.equal(String(db.rows('rapports_hivernage').find((x) => x.id !== 'hv-old').site_id), '2');
+  await page.waitForFunction(() => window.__admin.vals().iq.visites.filter((v) => v.hiv).length === 2);
+  assert.deepEqual(errors, []);
+  await page.close();
+});

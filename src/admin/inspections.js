@@ -140,7 +140,7 @@ Comp.prototype.inspVals=function(){
       upDis:i===0,downDis:i===ordre.length-1};}),
     persoReset:function(){savePref([],[]);self.flash('Onglets réinitialisés');},isBilan:view==='bilan',isVisite:view==='visite',isSaisie:view==='saisie',isBassins:view==='bassins',isHiver:view==='hiver',isAcces:view==='acces',isPoints:view==='points',
     h:{nom:site.nom,type:T.label,contrat:site.contrat||'—',logo:cp&&cp.logo_url?cp.logo_url:'',sub:[cp?cp.nom:site.ville,nb>1?nb+' bassins':(nb?site.bassins[0].nom:'1 bassin'),lv?'dernière visite le '+fdateL(lv.date)+' par '+(lv.r.tech_nom||lv.r.tech):'aucune visite publiée'].filter(Boolean).join(' · ')},
-    goRapport:go('visite'),goTend:go('tendances'),goSaisie:function(){self.setState({inspView:'saisie',isf:self.isfNew(site)});},voirClient:function(){self.voirClient(site);},ficheSite:function(){self.openSiteFiche(site.id);},
+    goRapport:go('visite'),goTend:go('tendances'),goSaisie:function(){self.setState({inspView:'saisie',isf:self.isfNew(site)});},goHivNew:function(){self.hvNouveauSite(site);},voirClient:function(){self.voirClient(site);},ficheSite:function(){self.openSiteFiche(site.id);},
     hasVisit:!!(view==='visite'?S.vis.length:lv),noVisit:!(view==='visite'?S.vis.length:lv)};
   /* ----- Hivernement du site : listes de contrôle (créer, reprendre, imprimer, envoyer) et configuration par ouvrage ----- */
   if(view==='hiver')iq.hiv=this.hivSiteVals(site);
@@ -164,7 +164,13 @@ Comp.prototype.inspVals=function(){
     var idx=list.map(function(x){return x.nom;}),sl=sites.slice().sort(function(a,b){return a.nom.localeCompare(b.nom,'fr');}),si=sl.indexOf(site);
     iq.prevSite=function(){var s=sl[(si-1+sl.length)%sl.length];self.setState({inspSite:s.id,inspVisite:null});};iq.nextSite=function(){var s=sl[(si+1)%sl.length];self.setState({inspSite:s.id,inspVisite:null});};
     iq.visites=S.vis.map(function(v){var on=v===cur,c=I.compteurs(v.items);return{date:fdate(v.date)+' '+(v.r.heure||''),txt:(c.action||c.watch?[c.action?c.action+' action'+(c.action>1?'s':''):'',c.watch?c.watch+' à surveiller':''].filter(Boolean).join(' · '):'Tout conforme')+(nb>1?' · '+v.bassin:''),
-      tech:(v.r.tech_nom||v.r.tech||'')+(v.r.source==='bureau'?' · saisie bureau':''),brouillon:!v.pub,pz:pzSt(I.pire(v.items.map(function(i){return i.etat;}))),bg:on?'var(--color-accent-100)':'transparent',bar:on?'inset 3px 0 0 var(--color-accent-700)':'none',go:function(){self.setState({inspVisite:v.r.id});}};});
+      tech:(v.r.tech_nom||v.r.tech||'')+(v.r.source==='bureau'?' · saisie bureau':''),brouillon:!v.pub,pz:pzSt(I.pire(v.items.map(function(i){return i.etat;}))),bg:on?'var(--color-accent-100)':'transparent',bar:on?'inset 3px 0 0 var(--color-accent-700)':'none',go:function(){self.setState({inspVisite:v.r.id});},_k:String(v.date||'')+(v.r.heure||'')};});
+    /* Les hivernements du site entrent dans le même historique (ouverts dans la liste de contrôle) */
+    if(this.docs.hv===undefined)this.loadDocs('hv');var H=window.SAHiv;
+    iq.visites=iq.visites.concat(this.hvDuSite(site).map(function(r){var hv=H.isChecklist(r)?H.fromReport(r):null,pg=hv&&H.progress(hv);
+      return{hiv:true,date:fdate(r.date_inspection)||'—',txt:hv?pg.done+' / '+pg.total+' cases ('+pg.pct+' %)':'Rapport de pré-hivernage',tech:r.technicien||'',brouillon:r.status!=='complete',pz:'display:none',bg:'transparent',bar:'none',
+        go:function(){self.openDoc('hv',r.id);},_k:String(r.date_inspection||'')+'~'};})).sort(function(a,b){return String(b._k).localeCompare(String(a._k));});
+    iq.noVisit=!iq.visites.length;
     if(cur){var prev=S.vis.filter(function(v){return v.bassin===cur.bassin&&v.pub&&(v.date+(v.r.heure||''))<(cur.date+(cur.r.heure||''));}),se=I.etatsSystemes(cur.items),R2={action:3,watch:2,ok:1,na:0},r=cur.r;
       var saisi=r.source==='bureau'?' · saisie bureau par '+(r.saisi_par||'?')+(r.source_detail?' ('+((SRCS.filter(function(x){return x[0]===r.source_detail;})[0]||[0,r.source_detail])[1])+')':''):'';
       var photos=[];if(r.photo)photos.push({src:r.photo,leg:'Vue d’ensemble'});cur.items.forEach(function(i){(i.photos||[]).forEach(function(p){photos.push({src:p,leg:i.libelle});});});

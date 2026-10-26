@@ -47,6 +47,7 @@
         <button class="btn btn-primary" onClick="{{ iq.goRapport }}"><sa-i n="file" s="16"></sa-i>Rapport client</button>
         <button class="btn btn-secondary" onClick="{{ iq.goTend }}"><sa-i n="chart" s="16"></sa-i>Tendances de l’eau</button>
         <button class="btn btn-secondary" onClick="{{ iq.goSaisie }}"><sa-i n="plus" s="16"></sa-i>Nouvelle inspection</button>
+        <button class="btn btn-secondary" onClick="{{ iq.goHivNew }}"><sa-i n="snow" s="16"></sa-i>Nouvel hivernement</button>
         <button class="btn btn-secondary" onClick="{{ iq.ficheSite }}"><sa-i n="building" s="16"></sa-i>Fiche du site</button><button class="btn btn-secondary" onClick="{{ iq.voirClient }}"><sa-i n="eye" s="16"></sa-i>Voir comme le client</button>
       </div>
     </div>
@@ -101,7 +102,7 @@
         <div style="padding:10px 12px;display:flex;gap:6px"><button class="btn btn-ghost" onClick="{{ iq.prevSite }}" aria-label="Site précédent"><sa-i n="left" s="16"></sa-i></button><span style="flex:1;font-size:13px;align-self:center">Visites</span><button class="btn btn-ghost" onClick="{{ iq.nextSite }}" aria-label="Site suivant"><sa-i n="right" s="16"></sa-i></button></div>
         <sc-if value="{{ iq.noVisit }}"><div style="padding:12px;font-size:14px">Aucune visite.</div></sc-if>
         <sc-for list="{{ iq.visites }}" as="v"><button onClick="{{ v.go }}" style="all:unset;cursor:pointer;box-sizing:border-box;width:100%;display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-top:1px solid var(--color-divider);background:{{ v.bg }};box-shadow:{{ v.bar }}">
-          <span style="display:flex;justify-content:space-between;gap:6px"><b>{{ v.date }}</b><i style="{{ v.pz }}"></i></span><span style="font-size:13px">{{ v.txt }}</span><span style="font-size:12px;color:var(--color-neutral-700)">{{ v.tech }}</span><sc-if value="{{ v.brouillon }}"><span style="font-size:12px;font-weight:600">Brouillon</span></sc-if>
+          <span style="display:flex;justify-content:space-between;gap:6px"><b>{{ v.date }}</b><i style="{{ v.pz }}"></i></span><span style="font-size:13px">{{ v.txt }}</span><span style="font-size:12px;color:var(--color-neutral-700)">{{ v.tech }}</span><sc-if value="{{ v.hiv }}"><span style="font-size:12px;font-weight:600;display:flex;align-items:center;gap:4px"><sa-i n="snow" s="12"></sa-i>Hivernement</span></sc-if><sc-if value="{{ v.brouillon }}"><span style="font-size:12px;font-weight:600">Brouillon</span></sc-if>
         </button></sc-for>
       </div>
       <article style="padding:18px 22px;display:flex;flex-direction:column;gap:14px;min-width:0">
