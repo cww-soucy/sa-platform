@@ -20,9 +20,10 @@
   var NIVEAUX = {
     operateur: { etat: true, releves: true, rqep: true, plans: true, historique: false, rapports: false, interventions: false, exports: false, factures: false },
     gestionnaire: { etat: true, releves: true, rqep: true, plans: true, historique: true, rapports: true, interventions: true, exports: true, factures: false },
-    direction: { etat: true, releves: true, rqep: true, plans: true, historique: true, rapports: true, interventions: true, exports: true, factures: true }
+    direction: { etat: true, releves: true, rqep: true, plans: true, historique: true, rapports: true, interventions: true, exports: true, factures: true },
+    saisie: { etat: false, releves: false, rqep: false, plans: false, historique: false, rapports: false, interventions: false, exports: false, factures: false }
   };
-  var NIVEAU_NOM = { operateur: 'Opérateur', gestionnaire: 'Gestionnaire', direction: 'Direction' };
+  var NIVEAU_NOM = { operateur: 'Opérateur', gestionnaire: 'Gestionnaire', direction: 'Direction', saisie: 'Employé — tests d’eau' };
   var VIS_RANG = { operateur: 1, gestionnaire: 2, direction: 3, interne: 9 };
 
   /* Répartition d'un point existant (libellé de types_bassin.checks) dans un système — même règle que la migration SQL */

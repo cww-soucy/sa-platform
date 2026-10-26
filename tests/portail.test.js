@@ -53,6 +53,13 @@ function serveur(niveau, sitesOk = ['1']) {
       return ok({ ok: true, apercu: true, contact: { nom: 'Aperçu', niveau: b.niveau }, compte: { nom: 'Aperçu', logo: null }, urgence: '', contrats: { 1: 'MI' },
         ...L.donneesClient({ ...src, sites: src.sites.filter((x) => x.id === b.site_id) }, { niveau: b.niveau, sitesOk: [b.site_id] }) });
     }
+    if (b.action === 'saisir_releve') {
+      if (!st.sessions.has(tok)) return route.fulfill({ status: 401, contentType: 'application/json', body: '{"ok":false}' });
+      st.saisies = (st.saisies || []).concat([b]);
+      const site = src.sites.find((x) => x.id === b.site_id), r = L.releveClient({ code: 'MI', ...src.types.MI }, b, { contact: { id: 'ct-9', nom: 'Jeanne Gestion' }, site, id: 'cl' + st.saisies.length });
+      if (r.erreur) return ok({ ok: false, message: r.erreur });
+      src.releves.push(r.row); return ok({ ok: true, id: r.row.id, date: r.row.date, heure: r.row.heure });
+    }
     if (b.action === 'deconnexion') return ok({ ok: true });
     return ok({ ok: false });
   };
@@ -218,6 +225,29 @@ test('portail : QR → « Personnel Soucy Aquatik » → fiche complète du site
   await page.waitForURL(/apercu=1&site=1/);
   await page.locator('.opere').getByText('Opéré par').waitFor();
   assert.equal(await page.textContent('h1'), 'Piscine Alpha');
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+test('portail : lien d’accès sans QR, employé « tests d’eau » → formulaire de saisie, test enregistré et listé', async () => {
+  const { page, st, errors } = await open('', 'saisie');
+  await page.fill('#ident', 'paul@ville.qc.ca');
+  await page.getByRole('button', { name: 'Recevoir un code' }).click();
+  for (const [i, d] of [...'123456'].entries()) await page.getByLabel('Chiffre ' + (i + 1)).fill(d);
+  await page.getByRole('button', { name: 'Accéder' }).click();
+  await page.getByText('Saisie des tests d’eau').waitFor();
+  const txt = await page.textContent('main');
+  assert.match(txt, /Employé — tests d’eau/);
+  assert.doesNotMatch(txt, /interventions en cours|Opéré par/, 'aucune donnée de lecture du portail');
+  await page.getByRole('button', { name: 'Enregistrer le test' }).click();
+  await page.getByText('Choisissez le bassin.').waitFor();
+  await page.getByRole('button', { name: 'Pataugeoire' }).click();
+  await page.getByLabel('pH').fill('7,3');
+  await page.getByLabel('Chlore libre (mg/L)').fill('1.8');
+  await page.getByRole('button', { name: 'Enregistrer le test' }).click();
+  await page.getByText(/Test enregistré à \d\d:\d\d — merci/).waitFor();
+  assert.deepEqual(st.saisies.map((x) => [x.site_id, x.bassin, x.vals]), [['1', 'Pataugeoire', { ph: '7,3', cl: '1.8' }]]);
+  await page.getByText(/Pataugeoire · pH 7,3 · Chlore libre 1,8 mg\/L/).waitFor();
   assert.deepEqual(errors, []);
   await page.close();
 });

@@ -70,3 +70,46 @@ test('portail : sa-admin n’écrit que les colonnes permises', async () => {
   assert.equal(L.filtrerLigne('client_sessions', { id: 'x' }), null);
   assert.equal(L.nomFichier('Plan salle mécanique (v2).pdf'), 'Plan_salle_mecanique_v2_.pdf');
 });
+
+test('portail : un même courriel suit des sites de plusieurs comptes (sa liste de sites fait foi)', async () => {
+  const L = await mod();
+  assert.deepEqual(L.sitesAutorises({ sites: ['s1'] }, { sites: ['s1', 'x9'] }), ['s1', 'x9'], 'site d’un autre compte donné à la personne');
+  assert.deepEqual(L.sitesAutorises({ sites: ['s1', 's2'] }, { sites: [] }), ['s1', 's2'], 'sans liste : les sites du compte');
+  assert.deepEqual(L.sitesAutorises(null, { sites: [] }), []);
+});
+
+test('portail : niveau « saisie » (employé du client) — aucun droit de lecture, saisie permise, ses tests visibles', async () => {
+  const L = await mod();
+  assert.equal(L.peutSaisir('saisie'), true);
+  assert.equal(L.peutSaisir('gestionnaire'), false);
+  assert.ok(Object.values(L.droits('saisie', {})).every((v) => v === false));
+  const src = { sites: [{ id: 's1', nom: 'A', bassins: [] }], releves: [
+    { id: 'r1', site_id: 's1', date: '2026-10-20', statut: 'publiee', vals: { ph: 7.4 } },
+    { id: 'r2', site_id: 's1', date: '2026-10-25', heure: '09:10', statut: 'client', vals: { ph: 7.2 }, tech_nom: 'Paul' },
+    { id: 'r3', site_id: 'autre', date: '2026-10-25', statut: 'client', vals: {} }], documents: [{ id: 'd', visibilite: 'operateur', site_id: 's1', type: 'rapport' }] };
+  const d = L.donneesClient(src, { niveau: 'saisie', droitsCompte: {}, sitesOk: ['s1'], maintenant: new Date('2026-10-26T12:00:00Z') });
+  assert.equal(d.saisie, true);
+  assert.deepEqual(d.tests.map((t) => t.id), ['r2'], 'ses tests, sur ses sites seulement');
+  assert.deepEqual(d.releves.map((r) => r.vals), [{}], 'les relevés publiés ne montrent aucune valeur');
+  assert.deepEqual(d.documents, [], 'aucun document');
+  const g = L.donneesClient(src, { niveau: 'gestionnaire', droitsCompte: {}, sitesOk: ['s1'], maintenant: new Date('2026-10-26T12:00:00Z') });
+  assert.equal(g.saisie, false);
+  assert.deepEqual(g.tests.map((t) => t.id), ['r2'], 'le gestionnaire voit les tests de ses employés');
+  assert.ok(!g.releves.some((r) => r.id === 'r2'), 'un test client n’est jamais une visite publiée');
+});
+
+test('portail : test d’eau saisi → ligne « releves » au statut client, valeurs contrôlées', async () => {
+  const L = await mod();
+  const T = { code: 'GEN', fields: [{ key: 'ph', label: 'pH' }, { key: 'cl', label: 'Chlore libre' }] };
+  const contact = { id: 'ct-1', nom: 'Paul' }, site = { id: 's1', nom: 'Piscine A', bassins: [{ nom: 'Grand bassin' }, { nom: 'Pataugeoire' }] };
+  const t0 = new Date('2026-10-26T13:05:00Z');
+  assert.match(L.releveClient(T, { vals: { ph: '7,4' } }, { contact, site, maintenant: t0, id: 'x' }).erreur, /bassin/);
+  assert.match(L.releveClient(T, { bassin: 'Pataugeoire', vals: {} }, { contact, site, maintenant: t0, id: 'x' }).erreur, /au moins une mesure/);
+  assert.match(L.releveClient(T, { bassin: 'Pataugeoire', vals: { ph: 'abc' } }, { contact, site, maintenant: t0, id: 'x' }).erreur, /pH/);
+  const { row } = L.releveClient(T, { bassin: 'Pataugeoire', vals: { ph: '7,4', cl: '1.5', inconnu: '9' }, note: 'ok' }, { contact, site, maintenant: t0, id: 'x' });
+  assert.deepEqual(row.vals, { ph: 7.4, cl: 1.5 }, 'seuls les champs du type, en nombres');
+  assert.deepEqual([row.statut, row.source, row.tech_nom, row.saisi_par, row.bassin, row.site_id], ['client', 'client', 'Paul', 'ct-1', 'Pataugeoire', 's1']);
+  assert.deepEqual([row.date, row.heure], ['2026-10-26', '09:05'], 'date et heure de Montréal');
+  const un = L.releveClient(T, { vals: { ph: 7 } }, { contact, site: { id: 's2', nom: 'B', bassins: [{ nom: 'Seul' }] }, maintenant: t0, id: 'y' }).row;
+  assert.equal(un.bassin, 'Seul', 'un seul bassin : choisi d’office');
+});

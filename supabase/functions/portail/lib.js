@@ -14,8 +14,12 @@ const NIVEAUX = {
   operateur: { etat: true, releves: true, rqep: true, plans: true, historique: false, rapports: false, interventions: false, exports: false, factures: false },
   gestionnaire: { etat: true, releves: true, rqep: true, plans: true, historique: true, rapports: true, interventions: true, exports: true, factures: false },
   direction: { etat: true, releves: true, rqep: true, plans: true, historique: true, rapports: true, interventions: true, exports: true, factures: true },
+  /* Employé du client qui saisit les tests d'eau : son formulaire de saisie et ses tests récents, rien d'autre */
+  saisie: { etat: false, releves: false, rqep: false, plans: false, historique: false, rapports: false, interventions: false, exports: false, factures: false },
 };
 const VIS = { operateur: 1, gestionnaire: 2, direction: 3 };
+/** Niveaux qui saisissent des tests d'eau dans le portail */
+export function peutSaisir(niveau) { return niveau === "saisie"; }
 
 export function b64url(bytes) {
   let s = "";
@@ -66,10 +70,38 @@ export function droits(niveau, surcharge) {
 export function visible(visibilite, niveau) {
   return visibilite !== "interne" && (VIS[niveau] || 0) >= (VIS[visibilite] || 9);
 }
-/** Sites autorisés pour un contact : ceux de son compte, restreints à sa liste s'il en a une */
+/** Sites autorisés pour un contact : sa propre liste s'il en a une (un même courriel peut suivre des sites de plusieurs comptes),
+ *  sinon tous les sites de son compte. Seul sa-admin écrit ces listes (admin_ecrire). */
 export function sitesAutorises(compte, contact) {
-  const c = Array.isArray(compte && compte.sites) ? compte.sites.map(String) : [];
-  return Array.isArray(contact && contact.sites) && contact.sites.length ? c.filter((s) => contact.sites.map(String).includes(s)) : c;
+  if (Array.isArray(contact && contact.sites) && contact.sites.length) return [...new Set(contact.sites.map(String))];
+  return Array.isArray(compte && compte.sites) ? compte.sites.map(String) : [];
+}
+/**
+ * Test d'eau saisi par un employé du client → ligne de « releves » (statut « client » : jamais compté comme une visite publiée).
+ * T = type de relevé (champs) ; e = { site_id, bassin, vals: {clé: valeur}, note } ; renvoie { row } ou { erreur }.
+ */
+export function releveClient(T, e, { contact, site, maintenant = new Date(), id }) {
+  const champs = (T && Array.isArray(T.fields) ? T.fields : []).filter((f) => f && f.key);
+  const vals = {}, touched = {};
+  for (const f of champs) {
+    const brut = e && e.vals ? e.vals[f.key] : undefined;
+    if (brut == null || String(brut).trim() === "") continue;
+    const n = Number(String(brut).replace(",", "."));
+    if (!isFinite(n) || n < -50 || n > 100000) return { erreur: `Valeur invalide pour ${f.label || f.key}` };
+    vals[f.key] = Math.round(n * 1000) / 1000; touched[f.key] = 1;
+  }
+  if (!Object.keys(vals).length) return { erreur: "Entrez au moins une mesure" };
+  const bassins = (Array.isArray(site.bassins) ? site.bassins : []).filter((b) => b && b.nom);
+  const bassin = bassins.length ? (bassins.find((b) => b.nom === (e && e.bassin)) || null) : null;
+  if (bassins.length > 1 && !bassin) return { erreur: "Choisissez le bassin" };
+  const loc = new Date(maintenant.toLocaleString("en-US", { timeZone: "America/Toronto" }));
+  const pad = (x) => String(x).padStart(2, "0"), iso = maintenant.toISOString();
+  return { row: {
+    id, site_id: String(site.id), site_nom: site.nom || "", bassin: bassin ? bassin.nom : (bassins[0] ? bassins[0].nom : null),
+    date: `${loc.getFullYear()}-${pad(loc.getMonth() + 1)}-${pad(loc.getDate())}`, heure: `${pad(loc.getHours())}:${pad(loc.getMinutes())}`,
+    type_code: (T && T.code) || "GEN", vals, touched, note: String((e && e.note) || "").slice(0, 500),
+    tech: "client:" + contact.id, tech_nom: contact.nom || "", source: "client", saisi_par: contact.id, statut: "client", created_at: iso, updated_at: iso,
+  } };
 }
 /** Limitation : faut-il refuser un nouvel envoi de code ? */
 export function tropDeCodes(nContact15, nIpHeure) {
@@ -106,6 +138,12 @@ export function donneesClient(src, { niveau, droitsCompte, sitesOk, maintenant =
         vals: d.releves ? r.vals || {} : {}, touched: d.releves ? r.touched || null : {}, checks: r.checks || null, points: r.points ? points : null,
         actions: d.rapports ? r.actions || null : null, tech_nom: d.rapports ? r.tech_nom || "" : "", resume: d.rapports ? r.resume || "" : "" };
     });
+  /* Tests d'eau saisis par les employés du client (statut « client ») : vus par eux et par les niveaux qui voient les relevés */
+  const depuisT = new Date(maintenant.getTime() - Math.max(jours, 31) * 864e5).toISOString().slice(0, 10);
+  const tests = d.releves || peutSaisir(niveau) ? (src.releves || [])
+    .filter((r) => ok.has(String(r.site_id)) && r.statut === "client" && String(r.date) >= depuisT)
+    .map((r) => ({ id: r.id, site_id: String(r.site_id), bassin: r.bassin || null, date: r.date, heure: r.heure, type_code: r.type_code, vals: r.vals || {}, tech_nom: r.tech_nom || "", note: r.note || "" }))
+    .sort((a, b) => String(b.date + (b.heure || "")).localeCompare(String(a.date + (a.heure || "")))) : [];
   const noms = sites.map((s) => norm(s.nom));
   const ilim = new Date(maintenant.getTime() - 30 * 864e5).toISOString().slice(0, 10);
   const interventions = d.interventions ? (src.workorders || [])
@@ -118,7 +156,7 @@ export function donneesClient(src, { niveau, droitsCompte, sitesOk, maintenant =
     && (x.type !== "plan" || d.plans) && (x.portee === "client" || ok.has(String(x.site_id))))
     .map((x) => ({ id: x.id, titre: x.titre, type: x.type, niveau_plan: x.niveau_plan || "", site_id: x.site_id || null, bassin_id: x.bassin_id || null,
       mime: x.mime || "", taille: x.taille || 0, storage_path: x.storage_path }));
-  return { droits: d, sites, releves, interventions, documents, types: src.types || {}, catalogue: src.catalogue || [] };
+  return { droits: d, saisie: peutSaisir(niveau), sites, releves, tests, interventions, documents, types: src.types || {}, catalogue: src.catalogue || [] };
 }
 
 /** Colonnes modifiables depuis sa-admin (tout le reste est ignoré) */

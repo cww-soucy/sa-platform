@@ -144,6 +144,10 @@ Passation de design : `docs/design_handoff_inspections_portail/README.md`. Réal
 - [x] Tests automatisés : `npm test` (vérification du build + 115 tests Playwright avec une fausse base PostgREST qui refuse les colonnes inconnues d'après `tests/schema.json`, + tests d'interopérabilité qui exécutent les fonctions de conversion de `index.html`). Lancés par la CI à chaque PR
 - [x] Gestion d'erreur réseau : `soft()` consigne chaque échec de lecture et sa-admin l'affiche dans un bandeau (plus d'écran vide silencieux)
 
+### Portail client — 26/10 : une personne, plusieurs sites ; niveau « saisie »
+- **Sites d'un contact** : sa liste `client_contacts.sites` fait foi quand elle n'est pas vide (elle peut couvrir des sites de plusieurs comptes) ; sinon les sites de son compte (`L.sitesAutorises`, même règle dans sa-admin). Le courriel reste unique (`client_contacts_courriel`) : on ajoute des sites à la personne au lieu de créer un 2e contact.
+- **Niveau « saisie »** (« Employé — tests d’eau ») : lien `portail/` sans QR → code → formulaire de saisie (action `saisir_releve`) → `releves` au statut `client`, source `client` (jamais compté comme visite publiée). Aucun droit de lecture. Migration : `docs/sql/MIGRATION_2026-10-26_niveau_saisie.sql` (contrainte `niveau`). Déployer la fonction `portail` avant d'appliquer la migration.
+
 ### Priorité 2 — modules absents dans sa-terrain
 - [x] **Logistique** (sortie d'inventaire, bon de livraison depuis le terrain) — 29/09 : sortie au format de SA Platform, bons en attente + nouveau bon depuis la sortie, signature au doigt (stockée comme photo du bon, validation en PATCH partiel)
   - 26/10 : **sortie → bon de livraison sans papier**. sa-terrain propose « Passer au bon de livraison » dès la sortie enregistrée ; le client signe au doigt, ou l'employé « Valide sans signature » (deux touches). sa-admin : sortie émise → proposition de créer le bon (livreur choisi) qui apparaît dans « Bons à livrer » de sa-terrain ; tuile Logistique = nombre de bons à livrer. Lien sortie ↔ bon par le numéro (`SA-INV-AAAAMMJJ-NNN` → `SA-AAAAMMJJ-NNN`), sans colonne ajoutée.

@@ -164,7 +164,7 @@ Comp.prototype.inspVals=function(){
     var idx=list.map(function(x){return x.nom;}),sl=sites.slice().sort(function(a,b){return a.nom.localeCompare(b.nom,'fr');}),si=sl.indexOf(site);
     iq.prevSite=function(){var s=sl[(si-1+sl.length)%sl.length];self.setState({inspSite:s.id,inspVisite:null});};iq.nextSite=function(){var s=sl[(si+1)%sl.length];self.setState({inspSite:s.id,inspVisite:null});};
     iq.visites=S.vis.map(function(v){var on=v===cur,c=I.compteurs(v.items);return{date:fdate(v.date)+' '+(v.r.heure||''),txt:(c.action||c.watch?[c.action?c.action+' action'+(c.action>1?'s':''):'',c.watch?c.watch+' à surveiller':''].filter(Boolean).join(' · '):'Tout conforme')+(nb>1?' · '+v.bassin:''),
-      tech:(v.r.tech_nom||v.r.tech||'')+(v.r.source==='bureau'?' · saisie bureau':''),brouillon:!v.pub,pz:pzSt(I.pire(v.items.map(function(i){return i.etat;}))),bg:on?'var(--color-accent-100)':'transparent',bar:on?'inset 3px 0 0 var(--color-accent-700)':'none',go:function(){self.setState({inspVisite:v.r.id});},_k:String(v.date||'')+(v.r.heure||'')};});
+      tech:(v.r.tech_nom||v.r.tech||'')+(v.r.source==='bureau'?' · saisie bureau':v.r.source==='client'?' · test saisi par le client':''),brouillon:!v.pub&&v.r.source!=='client',pz:pzSt(I.pire(v.items.map(function(i){return i.etat;}))),bg:on?'var(--color-accent-100)':'transparent',bar:on?'inset 3px 0 0 var(--color-accent-700)':'none',go:function(){self.setState({inspVisite:v.r.id});},_k:String(v.date||'')+(v.r.heure||'')};});
     /* Les hivernements du site entrent dans le même historique (ouverts dans la liste de contrôle) */
     if(this.docs.hv===undefined)this.loadDocs('hv');var H=window.SAHiv;
     iq.visites=iq.visites.concat(this.hvDuSite(site).map(function(r){var hv=H.isChecklist(r)?H.fromReport(r):null,pg=hv&&H.progress(hv);
@@ -176,7 +176,7 @@ Comp.prototype.inspVals=function(){
       var photos=[];if(r.photo)photos.push({src:r.photo,leg:'Vue d’ensemble'});cur.items.forEach(function(i){(i.photos||[]).forEach(function(p){photos.push({src:p,leg:i.libelle});});});
       iq.v={titre:'Visite du '+fdateL(r.date)+(r.heure?', '+r.heure:''),sub:(r.tech_nom||r.tech||'')+(r.publiee_le?' · validée à '+String(r.publiee_le).slice(11,16):'')+(nb>1?' · '+cur.bassin:'')+saisi+(cur.pub?'':' · BROUILLON'),
         resume:I.resume(cur.items)+(r.note?' Note : '+r.note:''),photos:photos,noPhoto:!photos.length,prods:Object.keys(r.prods||{}).map(function(k){return{nom:k,q:fr(r.prods[k],0.01)};}),noProd:!Object.keys(r.prods||{}).length,
-        envoye:r.envoyee_le?'Envoyé au client le '+fdateL(r.envoyee_le)+' à '+String(r.envoyee_le).slice(11,16)+' (UTC)':'',brouillon:!cur.pub,
+        envoye:r.envoyee_le?'Envoyé au client le '+fdateL(r.envoyee_le)+' à '+String(r.envoyee_le).slice(11,16)+' (UTC)':'',brouillon:!cur.pub&&cur.r.source!=='client',
         envoyer:function(){self.envoyerClient(site,r.id);},pdf:function(){self.printVisite(site,cur);},editer:function(){self.setState({inspView:'saisie',isf:self.isfNew(site,r)});},
         sections:I.SYSTEMES.filter(function(s){return se[s.code]!=='na';}).sort(function(a,b){return R2[se[b.code]]-R2[se[a.code]];}).map(function(s){var its=cur.items.filter(function(i){return i.systeme===s.code;}),bad=its.filter(function(i){return i.etat!=='ok';}),e=se[s.code];
           var nOk=its.length-bad.length;
@@ -259,29 +259,37 @@ Comp.prototype.inspVals=function(){
     iq.droits=I.DROITS.map(function(k){return{l:DROIT_LIB[k],c:['operateur','gestionnaire','direction'].map(function(n){var on=I.droits(n,cp&&cp.niveaux)[k];
       return{on:on,aria:DROIT_LIB[k]+' — '+I.NIVEAU_NOM[n],go:function(e){if(!cp)return;var nv=JSON.parse(JSON.stringify(cp.niveaux||{}));nv[n]=Object.assign({},nv[n]||{});nv[n][k]=e.target.checked;self.admWrite('client_comptes',Object.assign({},cp,{niveaux:nv}));}};})};});
     var cpt=function(id){return(adm.comptes||[]).filter(function(x){return x.id===id;})[0]||null;},sid=String(site.id);
-    var aAcces=function(x){var c=cpt(x.compte_id),cs=c?(c.sites||[]).map(String):[];return x.actif!==false&&cs.indexOf(sid)>=0&&(!(x.sites||[]).length||x.sites.map(String).indexOf(sid)>=0);};
+    /* Sites d'un contact : sa propre liste s'il en a une (elle peut couvrir des sites de plusieurs comptes), sinon ceux de son compte — même règle que la fonction portail */
+    var sitesDe=function(x){if((x.sites||[]).length)return x.sites.map(String);var c=cpt(x.compte_id);return c?(c.sites||[]).map(String):[];};
+    var aAcces=function(x){return x.actif!==false&&sitesDe(x).indexOf(sid)>=0;};
     var cts=(adm.contacts||[]).filter(aAcces);
-    iq.contacts=cts.map(function(c){var co=cpt(c.compte_id),cs=(co&&co.sites||[]).map(String),seul=(c.sites||[]).length?c.sites.length<=1:cs.length<=1;
-      return{nom:c.nom,compte:co?co.nom+(cs.length>1?' · '+cs.length+' sites':''):'—',niveau:I.NIVEAU_NOM[c.niveau]||c.niveau,courriel:c.courriel||'—',cel:c.cellulaire||'—',acces:c.dernier_acces?fdate(c.dernier_acces):'jamais',delLbl:seul?'Retirer':'Retirer de ce site',
+    var lien=adm.portail||'https://sa-platform.pages.dev/portail/';
+    iq.contacts=cts.map(function(c){var co=cpt(c.compte_id),es=sitesDe(c),seul=es.length<=1;
+      var corps='Bonjour '+c.nom+',\n\n'+(c.niveau==='saisie'?'Voici votre lien pour saisir les tests d’eau de '+site.nom+' :':'Voici votre lien d’accès au portail client de Soucy Aquatik ('+site.nom+') :')+'\n\n'+lien+'\n\n'
+        +'Entrez votre '+(c.courriel?'courriel ('+c.courriel+')':'numéro de cellulaire')+' : vous recevrez un code à 6 chiffres. Votre accès s’ouvre ensuite automatiquement'+(c.niveau==='saisie'?' sur le formulaire de saisie.':'.')+'\n\nSoucy Aquatik';
+      return{nom:c.nom,compte:(co?co.nom:'—')+' · '+es.length+' site'+(es.length>1?'s':''),niveau:I.NIVEAU_NOM[c.niveau]||c.niveau,courriel:c.courriel||'—',cel:c.cellulaire||'—',acces:c.dernier_acces?fdate(c.dernier_acces):'jamais',delLbl:seul?'Retirer':'Retirer de ce site',
+        lien:function(){mailto(c.courriel||'',(c.niveau==='saisie'?'Saisie des tests d’eau — ':'Portail client — ')+site.nom,corps);self.flash(c.courriel?'Courriel préparé pour '+c.courriel:'Aucun courriel pour ce contact — le message est prêt, ajoutez l’adresse');},
         del:function(){if(seul){if(window.confirm('Retirer l’accès de '+c.nom+' ?'))self.admWrite('client_contacts',{id:c.id},true);return;}
           /* Ses autres sites restent : l'accès est limité aux sites du compte sauf celui-ci */
-          if(window.confirm('Retirer l’accès de '+c.nom+' à ce site seulement ?'))self.admWrite('client_contacts',Object.assign({},c,{sites:((c.sites||[]).length?c.sites.map(String):cs).filter(function(x){return x!==sid;})})).then(function(ok){if(ok)self.flash('Accès à ce site retiré — '+c.nom+' garde ses autres sites');});}};});
+          if(window.confirm('Retirer l’accès de '+c.nom+' à ce site seulement ?'))self.admWrite('client_contacts',Object.assign({},c,{sites:es.filter(function(x){return x!==sid;})})).then(function(ok){if(ok)self.flash('Accès à ce site retiré — '+c.nom+' garde ses autres sites');});}};});
     /* Courriel déjà autorisé ailleurs : on propose de donner accès à ce site à cette personne (son compte reçoit le site) */
     var dupSt=st.iqDup&&st.iqDup.site===site.id?st.iqDup:null,dupC=dupSt&&(adm.contacts||[]).filter(function(x){return x.id===dupSt.id;})[0],dupCo=dupC&&cpt(dupC.compte_id);
-    iq.dup=!!(dupC&&dupCo);iq.dupTxt=iq.dup?'« '+(dupC.courriel||dupC.nom)+' » a déjà un accès client : '+dupC.nom+', compte « '+dupCo.nom+' » ('+(dupCo.sites||[]).length+' site(s)). Un courriel n’appartient qu’à un seul compte : on peut ajouter ce site à son accès.':'';
-    iq.dupGo=function(){if(!iq.dup)return;var p=self.admWrite('client_comptes',Object.assign({},dupCo,{sites:(dupCo.sites||[]).map(String).filter(function(x){return x!==sid;}).concat([sid])}));
-      if((dupC.sites||[]).length)p=p.then(function(ok){return ok&&self.admWrite('client_contacts',Object.assign({},dupC,{sites:dupC.sites.map(String).filter(function(x){return x!==sid;}).concat([sid])}));});
-      p.then(function(ok){if(ok){self.setState({iqDup:null,iqNc:null});self.flash(dupC.nom+' a maintenant accès à ce site (compte « '+dupCo.nom+' »)');}});};
+    iq.dup=!!dupC;iq.dupTxt=iq.dup?'« '+(dupC.courriel||dupC.nom)+' » a déjà un accès client : '+dupC.nom+(dupCo?', compte « '+dupCo.nom+' »':'')+', '+sitesDe(dupC).length+' site(s). Un même courriel peut suivre plusieurs sites : ajoutez celui-ci à son accès (ses autres sites et son compte ne changent pas).':'';
+    /* Seule la liste de sites de la personne change : les autres contacts de son compte n'obtiennent rien de plus */
+    iq.dupGo=function(){if(!iq.dup)return;self.admWrite('client_contacts',Object.assign({},dupC,{sites:sitesDe(dupC).filter(function(x){return x!==sid;}).concat([sid])}))
+      .then(function(ok){if(ok){self.setState({iqDup:null,iqNc:null});self.flash(dupC.nom+' a maintenant accès à ce site — même courriel, même code de connexion');}});};
     iq.dupNo=function(){self.setState({iqDup:null});};
+    iq.lien=lien;iq.copierLien=function(){(navigator.clipboard?navigator.clipboard.writeText(lien):Promise.reject()).then(function(){self.flash('Lien copié');}).catch(function(){self.flash('Copie impossible — sélectionnez le lien');});};
     var ncf=st.iqNc||{nom:'',niveau:'gestionnaire',courriel:'',cel:''},setNc=function(p){self.setState({iqNc:Object.assign({},ncf,p)});};
-    iq.nc={nom:ncf.nom,courriel:ncf.courriel,cel:ncf.cel,nivs:['operateur','gestionnaire','direction'].map(function(n){return{v:n,l:I.NIVEAU_NOM[n],sel:n===ncf.niveau};}),
+    iq.nc={nom:ncf.nom,courriel:ncf.courriel,cel:ncf.cel,nivs:['operateur','gestionnaire','direction','saisie'].map(function(n){return{v:n,l:I.NIVEAU_NOM[n],sel:n===ncf.niveau};}),
       onNom:function(e){setNc({nom:e.target.value});},onNiv:function(e){setNc({niveau:e.target.value});},onMail:function(e){setNc({courriel:e.target.value});},onCel:function(e){setNc({cel:e.target.value});},
       add:function(){if(!String(ncf.nom).trim()||(!String(ncf.courriel).trim()&&!String(ncf.cel).trim())){self.flash('Nom et courriel (ou cellulaire) requis');return;}
         var mail=String(ncf.courriel).trim().toLowerCase(),dup=mail&&(adm.contacts||[]).filter(function(x){return x.actif!==false&&String(x.courriel||'').toLowerCase()===mail;})[0];
         if(dup){if(aAcces(dup)){self.flash(dup.nom+' a déjà accès à ce site');return;}self.setState({iqDup:{site:site.id,id:dup.id}});return;}
         /* Pas encore de compte pour ce site : créé au nom du client (ou du site), puis le contact */
         var cid=cp?cp.id:rid('cl-'),pre=cp?Promise.resolve(true):self.admWrite('client_comptes',{id:cid,nom:String(cpn||'').trim()||site.nom,sites:[site.id],niveaux:{}});
-        pre.then(function(ok){return ok&&self.admWrite('client_contacts',{id:rid('ct-'),compte_id:cid,nom:String(ncf.nom).trim(),courriel:String(ncf.courriel).trim()||null,cellulaire:String(ncf.cel).trim()||null,niveau:ncf.niveau,actif:true});})
+        /* Employé « tests d'eau » : limité à ce site (on lui en ajoute d'autres au besoin) ; les autres niveaux suivent les sites du compte */
+        pre.then(function(ok){return ok&&self.admWrite('client_contacts',{id:rid('ct-'),compte_id:cid,nom:String(ncf.nom).trim(),courriel:String(ncf.courriel).trim()||null,cellulaire:String(ncf.cel).trim()||null,niveau:ncf.niveau,sites:ncf.niveau==='saisie'?[site.id]:[],actif:true});})
           .then(function(ok){if(ok){self.setState({iqNc:null});self.flash(cp?'Contact autorisé':'Compte client créé et contact autorisé');}});}};
     var ids={};cts.forEach(function(c){ids[c.id]=c.nom;});var qids={};qrs.forEach(function(q){if(q.site_id===site.id)qids[q.id]=1;});
     var RES={ok:'Accès',refuse:'Refusé',otp_echoue:'Code erroné',otp_envoye:'Code envoyé',envoi_impossible:'Envoi impossible',revoque:'Code QR révoqué'};

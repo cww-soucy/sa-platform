@@ -93,14 +93,14 @@ async function charger(compte: Record<string, any>, sitesOk: string[], niveau: s
     sb.from("contrats").select("site_id, type_code").in("site_id", ids),
     sb.from("types_bassin").select("code, label, court, fields, checks"),
     sb.from("inspection_points").select("*").eq("actif", true),
-    sb.from("releves").select("id, site_id, bassin, date, heure, type_code, vals, touched, checks, points, actions, statut, resume, tech_nom")
+    sb.from("releves").select("id, site_id, bassin, date, heure, type_code, vals, touched, checks, points, actions, statut, resume, tech_nom, note")
       .in("site_id", ids).gte("date", new Date(Date.now() - 400 * 864e5).toISOString().slice(0, 10)).order("date", { ascending: true }),
     sb.from("documents").select("*").or(`compte_id.eq.${compte.id},site_id.in.(${ids.map((x) => `"${x}"`).join(",")})`),
   ]);
   const noms = (sites.data || []).map((s: any) => s.nom).filter(Boolean);
   const wo = noms.length ? await sb.from("workorders").select("date, type, status, priorite, site, client").or(noms.map((n: string) => `site.eq."${n.replace(/"/g, "")}",client.eq."${n.replace(/"/g, "")}"`).join(",")) : { data: [] };
   const T: Record<string, unknown> = {};
-  (types.data || []).forEach((t: any) => { T[t.code] = { label: t.label, court: t.court, fields: t.fields || [], checks: t.checks || [] }; });
+  (types.data || []).forEach((t: any) => { T[t.code] = { code: t.code, label: t.label, court: t.court, fields: t.fields || [], checks: t.checks || [] }; });
   const ct: Record<string, string> = {};
   (contrats.data || []).forEach((c: any) => { ct[c.site_id] = c.type_code; });
   const out = L.donneesClient({ sites: (sites.data || []).map((s: any) => ({ ...s, type_code: ct[s.id] || "GEN" })), types: T, catalogue: cat.data || [], releves: rel.data || [], workorders: wo.data || [], documents: docs.data || [] },
@@ -170,6 +170,31 @@ const actions: Record<string, (req: Request, b: any) => Promise<Response>> = {
     const out = await charger(compte, L.sitesAutorises(compte, c), c.niveau);
     await journal(req, { contact_id: c.id, compte_id: compte.id, action: "lecture" + (b.site ? ":" + b.site : ""), resultat: "ok" });
     return json(req, { ok: true, contact: { nom: c.nom, niveau: c.niveau }, ...out });
+  },
+  /* Employé du client (niveau « saisie ») : test d'eau saisi dans le portail → releves (statut « client », source « client ») */
+  async saisir_releve(req, b) {
+    const s = await session(req, "client");
+    if (!s) return json(req, { ok: false, session: false }, 401);
+    const { data: c } = await sb.from("client_contacts").select("*").eq("id", s.contact_id).maybeSingle();
+    if (!c || !c.actif) return json(req, { ok: false, session: false }, 401);
+    if (!L.peutSaisir(c.niveau)) return json(req, { ok: false, message: "Votre accès ne permet pas de saisir des tests." }, 403);
+    const { data: compte } = await sb.from("client_comptes").select("*").eq("id", c.compte_id).maybeSingle();
+    const siteId = String(b.site_id || "");
+    if (!L.sitesAutorises(compte, c).includes(siteId)) return json(req, { ok: false, message: "Installation non autorisée." }, 403);
+    const [{ data: site }, { data: ct }] = await Promise.all([
+      sb.from("sites").select("id, nom, bassins").eq("id", siteId).maybeSingle(),
+      sb.from("contrats").select("type_code").eq("site_id", siteId).maybeSingle(),
+    ]);
+    if (!site) return json(req, { ok: false, message: "Installation introuvable." }, 404);
+    const bassin = (site.bassins || []).find((x: any) => x && x.nom === b.bassin);
+    const code = (bassin && bassin.type_code) || ct?.type_code || "GEN";
+    const { data: t } = await sb.from("types_bassin").select("code, fields").eq("code", code).maybeSingle();
+    const r = L.releveClient(t || { code, fields: [] }, b, { contact: c, site, id: "cl" + L.jeton(9) });
+    if (r.erreur) return json(req, { ok: false, message: r.erreur }, 400);
+    const { error } = await sb.from("releves").insert(r.row);
+    await journal(req, { contact_id: c.id, compte_id: c.compte_id, action: "saisie:" + siteId, resultat: error ? "refuse" : "ok" });
+    if (error) { console.error("saisir_releve", error.message); return json(req, { ok: false, message: "Enregistrement impossible — réessayez." }, 500); }
+    return json(req, { ok: true, id: r.row.id, date: r.row.date, heure: r.row.heure });
   },
   async deconnexion(req) {
     const t = req.headers.get("x-portail-session") || "";
