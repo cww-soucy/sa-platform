@@ -274,6 +274,10 @@ Comp.prototype.inspVals=function(){
       var corps='Bonjour '+c.nom+',\n\n'+(c.niveau==='saisie'?'Voici votre lien pour saisir les tests d’eau de '+site.nom+' :':'Voici votre lien d’accès au portail client de Soucy Aquatik ('+site.nom+') :')+'\n\n'+lien+'\n\n'
         +'Entrez votre '+(c.courriel?'courriel ('+c.courriel+')':'numéro de cellulaire')+' : vous recevrez un code à 6 chiffres. Votre accès s’ouvre ensuite automatiquement'+(c.niveau==='saisie'?' sur le formulaire de saisie.':'.')+'\n\nSoucy Aquatik';
       return{nom:c.nom,compte:(co?co.nom:'—')+' · '+es.length+' site'+(es.length>1?'s':''),niveau:I.NIVEAU_NOM[c.niveau]||c.niveau,courriel:c.courriel||'—',cel:c.cellulaire||'—',acces:c.dernier_acces?fdate(c.dernier_acces):'jamais',delLbl:seul?'Retirer':'Retirer de ce site',
+        /* Code de connexion donné par le bureau (par téléphone), quand le courriel ou le texto ne part pas */
+        code:function(){var t=self.admTok();if(!t){self.flash('Session de gestion expirée — rouvrez-la');return;}
+          pfn('admin_code',{contact_id:c.id},t).then(function(r){if(!r.ok){self.flash('Refusé : '+(r.message||'erreur'));return;}
+            self.setState({iqCode:{site:site.id,nom:c.nom,code:r.code,ident:r.identifiant||c.courriel||c.cellulaire||'',exp:String(r.expire_le||'')}});}).catch(function(){self.flash('Service injoignable — réessayez');});},
         lien:function(){mailto(c.courriel||'',(c.niveau==='saisie'?'Saisie des tests d’eau — ':'Portail client — ')+site.nom,corps);self.flash(c.courriel?'Courriel préparé pour '+c.courriel:'Aucun courriel pour ce contact — le message est prêt, ajoutez l’adresse');},
         del:function(){if(seul){if(window.confirm('Retirer l’accès de '+c.nom+' ?'))self.admWrite('client_contacts',{id:c.id},true);return;}
           /* Ses autres sites restent : l'accès est limité aux sites du compte sauf celui-ci */
@@ -285,6 +289,9 @@ Comp.prototype.inspVals=function(){
     iq.dupGo=function(){if(!iq.dup)return;self.admWrite('client_contacts',Object.assign({},dupC,{sites:sitesDe(dupC).filter(function(x){return x!==sid;}).concat([sid])}))
       .then(function(ok){if(ok){self.setState({iqDup:null,iqNc:null});self.flash(dupC.nom+' a maintenant accès à ce site — même courriel, même code de connexion');}});};
     iq.dupNo=function(){self.setState({iqDup:null});};
+    var cd=st.iqCode&&st.iqCode.site===site.id?st.iqCode:null,hm=function(x){var d=new Date(x);return isNaN(d)?'':pad(d.getHours())+':'+pad(d.getMinutes());};
+    iq.codeOn=!!cd;iq.codeVal=cd?cd.code.slice(0,3)+' '+cd.code.slice(3):'';iq.codeTxt=cd?'Code pour '+cd.nom+' — valide jusqu’à '+hm(cd.exp)+', une seule fois. Dites-lui d’ouvrir le portail, d’entrer '+(cd.ident||'son courriel')+', de toucher « J’ai déjà un code de Soucy Aquatik », puis de taper ce code.':'';
+    iq.codeFermer=function(){self.setState({iqCode:null});};
     iq.lien=lien;iq.copierLien=function(){(navigator.clipboard?navigator.clipboard.writeText(lien):Promise.reject()).then(function(){self.flash('Lien copié');}).catch(function(){self.flash('Copie impossible — sélectionnez le lien');});};
     var ncf=st.iqNc||{nom:'',niveau:'gestionnaire',courriel:'',cel:''},setNc=function(p){self.setState({iqNc:Object.assign({},ncf,p)});};
     iq.nc={nom:ncf.nom,courriel:ncf.courriel,cel:ncf.cel,nivs:['operateur','gestionnaire','direction','saisie'].map(function(n){return{v:n,l:I.NIVEAU_NOM[n],sel:n===ncf.niveau};}),

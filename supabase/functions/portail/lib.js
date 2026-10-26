@@ -9,6 +9,13 @@ export const OTP_PAR_IP_HEURE = 10;
 export const SESSION_COURTE_H = 12;
 export const SESSION_LONGUE_J = 90;
 export const ADMIN_H = 12;
+/* Code généré par le bureau (sa-admin) et transmis par téléphone quand le courriel ou le texto ne part pas */
+export const OTP_MANUEL_MINUTES = 60;
+/** Codes encore utilisables d'un contact (le plus récent d'abord) : un code reçu par courriel et un code donné par le bureau restent tous deux valides */
+export function otpValides(otps, maintenant = new Date()) {
+  return (otps || []).filter((o) => o && !o.utilise && new Date(o.expire_le) >= maintenant && (o.tentatives || 0) < OTP_TENTATIVES)
+    .sort((a, b) => String(b.cree_le || "").localeCompare(String(a.cree_le || "")));
+}
 
 const NIVEAUX = {
   operateur: { etat: true, releves: true, rqep: true, plans: true, historique: false, rapports: false, interventions: false, exports: false, factures: false },

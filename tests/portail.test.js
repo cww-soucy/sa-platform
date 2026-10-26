@@ -292,3 +292,18 @@ test('portail : lien « ?test=1 » ouvre directement le formulaire de test sans 
   assert.deepEqual(errors, []);
   await page.close();
 });
+
+test('portail : « J’ai déjà un code de Soucy Aquatik » — aucun nouveau code demandé, connexion avec le code donné', async () => {
+  const { page, st, errors } = await open('');
+  await page.getByRole('button', { name: 'J’ai déjà un code de Soucy Aquatik' }).click();
+  assert.equal(await page.locator('#ident').count(), 1, 'courriel requis d’abord');
+  await page.fill('#ident', 'jeanne@ville.qc.ca');
+  await page.getByRole('button', { name: 'J’ai déjà un code de Soucy Aquatik' }).click();
+  await page.getByText('Entrez le code à 6 chiffres que Soucy Aquatik vous a donné pour jeanne@ville.qc.ca.').waitFor();
+  for (const [i, d] of [...'123456'].entries()) await page.getByLabel('Chiffre ' + (i + 1)).fill(d);
+  await page.getByRole('button', { name: 'Accéder' }).click();
+  await page.locator('.opere').getByText('Opéré par').waitFor();
+  assert.deepEqual(st.codes, [], 'aucun code envoyé par courriel');
+  assert.deepEqual(errors, []);
+  await page.close();
+});

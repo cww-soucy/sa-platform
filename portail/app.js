@@ -158,10 +158,12 @@
       h('div', { class: 'row muted' }, icon('eye', 18), 'Connexion sécurisée'),
       h('h1', { text: S.qr ? S.qr.site : 'Portail client' }), note && note.nodeType ? note : null,
       h('label', { for: 'ident', text: 'Votre courriel ou cellulaire inscrit auprès de Soucy Aquatik' }), inp, btn,
+      /* Code donné par Soucy Aquatik (par téléphone) : on l'entre sans en demander un nouveau */
+      h('button', { class: 'btn big', type: 'button', onclick: function () { if (!inp.value.trim()) { inp.focus(); return; } S.ident = inp.value.trim(); ecranCode(S.ident, 60, true); } }, 'J’ai déjà un code de Soucy Aquatik'),
       h('p', { class: 'muted', text: 'Pas encore inscrit ? Demandez l’accès à votre gestionnaire.' })));
     inp.focus();
   }
-  function ecranCode(masque, minutes) {
+  function ecranCode(masque, minutes, manuel) {
     var cases = [], err = h('div', { role: 'alert', style: 'min-height:22px' }), rem = h('input', { type: 'checkbox', id: 'rem' });
     for (var i = 0; i < 6; i++) (function (i) {
       cases.push(h('input', { inputmode: 'numeric', maxlength: '1', 'aria-label': 'Chiffre ' + (i + 1), autocomplete: i ? 'off' : 'one-time-code',
@@ -180,7 +182,7 @@
     show(h('form', { class: 'stack', style: 'max-width:440px;margin:0 auto', onsubmit: go }, marque(),
       h('div', { class: 'row muted' }, icon('eye', 18), 'Connexion sécurisée'),
       S.qr ? h('div', null, h('div', { class: 'muted', text: 'Installation reconnue' }), h('h2', { text: S.qr.site })) : null,
-      h('p', { text: 'Si cette adresse est autorisée, nous avons envoyé un code à ' + masque + '. Il est valide ' + minutes + ' minutes.' }),
+      h('p', { text: manuel ? 'Entrez le code à 6 chiffres que Soucy Aquatik vous a donné pour ' + masque + '.' : 'Si cette adresse est autorisée, nous avons envoyé un code à ' + masque + '. Il est valide ' + minutes + ' minutes.' }),
       h('div', { class: 'otp' }, cases), h('label', { class: 'row' }, rem, 'Se souvenir de cet appareil 90 jours'), err,
       h('button', { class: 'btn primary big', type: 'submit' }, 'Accéder'),
       h('div', { class: 'row' }, h('button', { class: 'btn', type: 'button', onclick: function () { call('demander_code', { identifiant: S.ident }); err.textContent = 'Nouveau code demandé.'; } }, 'Renvoyer le code'),
