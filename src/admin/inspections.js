@@ -11,6 +11,10 @@ var DROIT_LIB={etat:'État des systèmes',releves:'Relevés du jour',rqep:'Regis
 var SRCS=[['telephone','Relevé transmis par téléphone'],['correction','Correction'],['sans_reseau','Visite sans réseau'],['bureau','Saisie au bureau']];
 function rid(p){return p+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 function fdateL(s){if(!s)return'—';var p=String(s).slice(0,10).split('-');return(+p[2])+' '+MOIS[+p[1]-1]+' '+p[0];}
+/* Test d'eau saisi par le client (connecté ou sans connexion) : résumé lisible, lecture du BECSys comprise */
+function testClient(r){return r&&(r.source==='client'||r.source==='carnet');}
+function testTxt(r){var v=r.vals||{},f=function(x){return String(x).replace('.',',');},o=[];if(v.ph!=null)o.push('pH '+f(v.ph));if(v.cl!=null)o.push('Cl '+f(v.cl));if(v.clr!=null)o.push('Cl '+f(v.clr));
+  var b=[v.becsys_mv!=null?f(v.becsys_mv)+' mV':'',v.becsys_ppm!=null?f(v.becsys_ppm)+' ppm':'',v.becsys_ph!=null?'pH '+f(v.becsys_ph):''].filter(Boolean);if(b.length)o.push('BECSys '+b.join(' / '));return o.join(' · ')||'Test d’eau';}
 function num(v){if(v==null||v==='')return null;var n=parseFloat(String(v).replace(',','.'));return isNaN(n)?null:n;}
 
 Comp.prototype.admTok=function(){var o=jget('sa_portail_admin',null);if(o&&o.t&&o.exp>Date.now())return o.t;return null;};
@@ -163,8 +167,8 @@ Comp.prototype.inspVals=function(){
   if(view==='visite'){var cur=S.vis.filter(function(v){return v.r.id===st.inspVisite;})[0]||S.vis[0];
     var idx=list.map(function(x){return x.nom;}),sl=sites.slice().sort(function(a,b){return a.nom.localeCompare(b.nom,'fr');}),si=sl.indexOf(site);
     iq.prevSite=function(){var s=sl[(si-1+sl.length)%sl.length];self.setState({inspSite:s.id,inspVisite:null});};iq.nextSite=function(){var s=sl[(si+1)%sl.length];self.setState({inspSite:s.id,inspVisite:null});};
-    iq.visites=S.vis.map(function(v){var on=v===cur,c=I.compteurs(v.items);return{date:fdate(v.date)+' '+(v.r.heure||''),txt:(c.action||c.watch?[c.action?c.action+' action'+(c.action>1?'s':''):'',c.watch?c.watch+' à surveiller':''].filter(Boolean).join(' · '):'Tout conforme')+(nb>1?' · '+v.bassin:''),
-      tech:(v.r.tech_nom||v.r.tech||'')+(v.r.source==='bureau'?' · saisie bureau':v.r.source==='client'?' · test saisi par le client':''),brouillon:!v.pub&&v.r.source!=='client',pz:pzSt(I.pire(v.items.map(function(i){return i.etat;}))),bg:on?'var(--color-accent-100)':'transparent',bar:on?'inset 3px 0 0 var(--color-accent-700)':'none',go:function(){self.setState({inspVisite:v.r.id});},_k:String(v.date||'')+(v.r.heure||'')};});
+    iq.visites=S.vis.map(function(v){var on=v===cur,c=I.compteurs(v.items);return{date:fdate(v.date)+' '+(v.r.heure||''),txt:testClient(v.r)?testTxt(v.r)+(nb>1&&v.bassin?' · '+v.bassin:''):((c.action||c.watch?[c.action?c.action+' action'+(c.action>1?'s':''):'',c.watch?c.watch+' à surveiller':''].filter(Boolean).join(' · '):'Tout conforme')+(nb>1?' · '+v.bassin:'')),
+      tech:(v.r.tech_nom||v.r.tech||'')+(v.r.source==='bureau'?' · saisie bureau':v.r.source==='client'?' · test saisi par le client':v.r.source==='carnet'?' · test sans connexion':''),brouillon:!v.pub&&!testClient(v.r),pz:pzSt(I.pire(v.items.map(function(i){return i.etat;}))),bg:on?'var(--color-accent-100)':'transparent',bar:on?'inset 3px 0 0 var(--color-accent-700)':'none',go:function(){self.setState({inspVisite:v.r.id});},_k:String(v.date||'')+(v.r.heure||'')};});
     /* Les hivernements du site entrent dans le même historique (ouverts dans la liste de contrôle) */
     if(this.docs.hv===undefined)this.loadDocs('hv');var H=window.SAHiv;
     iq.visites=iq.visites.concat(this.hvDuSite(site).map(function(r){var hv=H.isChecklist(r)?H.fromReport(r):null,pg=hv&&H.progress(hv);
@@ -176,7 +180,7 @@ Comp.prototype.inspVals=function(){
       var photos=[];if(r.photo)photos.push({src:r.photo,leg:'Vue d’ensemble'});cur.items.forEach(function(i){(i.photos||[]).forEach(function(p){photos.push({src:p,leg:i.libelle});});});
       iq.v={titre:'Visite du '+fdateL(r.date)+(r.heure?', '+r.heure:''),sub:(r.tech_nom||r.tech||'')+(r.publiee_le?' · validée à '+String(r.publiee_le).slice(11,16):'')+(nb>1?' · '+cur.bassin:'')+saisi+(cur.pub?'':' · BROUILLON'),
         resume:I.resume(cur.items)+(r.note?' Note : '+r.note:''),photos:photos,noPhoto:!photos.length,prods:Object.keys(r.prods||{}).map(function(k){return{nom:k,q:fr(r.prods[k],0.01)};}),noProd:!Object.keys(r.prods||{}).length,
-        envoye:r.envoyee_le?'Envoyé au client le '+fdateL(r.envoyee_le)+' à '+String(r.envoyee_le).slice(11,16)+' (UTC)':'',brouillon:!cur.pub&&cur.r.source!=='client',
+        envoye:r.envoyee_le?'Envoyé au client le '+fdateL(r.envoyee_le)+' à '+String(r.envoyee_le).slice(11,16)+' (UTC)':'',brouillon:!cur.pub&&!testClient(cur.r),
         envoyer:function(){self.envoyerClient(site,r.id);},pdf:function(){self.printVisite(site,cur);},editer:function(){self.setState({inspView:'saisie',isf:self.isfNew(site,r)});},
         sections:I.SYSTEMES.filter(function(s){return se[s.code]!=='na';}).sort(function(a,b){return R2[se[b.code]]-R2[se[a.code]];}).map(function(s){var its=cur.items.filter(function(i){return i.systeme===s.code;}),bad=its.filter(function(i){return i.etat!=='ok';}),e=se[s.code];
           var nOk=its.length-bad.length;
@@ -253,7 +257,9 @@ Comp.prototype.inspVals=function(){
     iq.qrs=lignes.map(function(l){var bid=l.bid,q=l.q,bi=bid&&bns[bid],nom=bid?(bi?bi.b.nom:'Bassin retiré'):site.nom,url=q?(adm.portail||'')+'?q='+q.jeton:'',img=q?(self._qrc=self._qrc||{},self._qrc[url]=self._qrc[url]||qrData(url)):'';
       var code='SA-'+String(site.id).slice(-4).toUpperCase()+(bi?'-B'+(bi.b.numero||bi.i+1):'');
       return{nom:nom,code:q?q.code_affiche:code,etat:q?'actif depuis le '+fdate(q.cree_le):'aucun code',img:img,regenLbl:q?'Remplacer (code perdu)':'Créer le code',
-        print:function(){self.printAffiche(site,q,bid?nom:'',img);},
+        print:function(){self.printAffiche(site,q,bid?nom:'',img);},hasTest:!!q,
+        /* Lien de saisie des tests d'eau sans connexion (le même code QR, ouvert directement sur le formulaire) */
+        copierTest:function(){var u=url+'&test=1';(navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(function(){self.flash('Lien de saisie sans connexion copié');}).catch(function(){window.prompt('Lien de saisie sans connexion :',u);});},
         regen:function(){if(q&&!window.confirm('Remplacer ce code QR ?\n\nLes affiches déjà imprimées cesseront de fonctionner et devront être réimprimées. Pour réimprimer le même code, utilisez plutôt « Imprimer l’affiche ».'))return;var t=self.admTok();
           pfn('admin_qr',{site_id:site.id,bassin_id:bid,code_affiche:code,remplacer:!!q},t).then(function(r){if(!r.ok){self.flash('Refusé : '+(r.message||'erreur'));return;}self.flash(q?'Nouveau code créé — l’ancien est désactivé':'Code créé');self.admLoad();});}};});
     iq.droits=I.DROITS.map(function(k){return{l:DROIT_LIB[k],c:['operateur','gestionnaire','direction'].map(function(n){var on=I.droits(n,cp&&cp.niveaux)[k];

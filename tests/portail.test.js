@@ -38,7 +38,13 @@ function serveur(niveau, sitesOk = ['1']) {
     const ok = (o) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(o) });
     const QR = { BETA: ['2', 'Piscine Beta'], AUTRE: ['9', 'Piscine Gamma'] };
     if (b.action === 'qr' && QR[b.jeton]) return ok({ ok: true, site_id: QR[b.jeton][0], site: QR[b.jeton][1], bassin: '', code: 'SA', carnet: '../qr-carnet/?site=' + QR[b.jeton][0] });
-    if (b.action === 'qr') return ok(b.jeton === 'BON' ? { ok: true, site_id: '1', site: 'Piscine Alpha', bassin: 'Grand bassin', code: 'SA-S01-B1', carnet: '../qr-carnet/?site=1' } : { ok: false, desactive: true });
+    if (b.action === 'qr') return ok(b.jeton === 'BON' ? { ok: true, site_id: '1', site: 'Piscine Alpha', bassin: 'Grand bassin', code: 'SA-S01-B1', carnet: '../qr-carnet/?site=1', bassins: ['Grand bassin', 'Pataugeoire'] } : { ok: false, desactive: true });
+    if (b.action === 'test_libre') {
+      if (b.jeton !== 'BON') return ok({ ok: false, message: 'Ce lien n’est plus valide.' });
+      const r = L.testLibre(b, { site: src.sites[0], cles: ['ph', 'cl'], id: 'tl' + ((st.libres || []).length + 1), typeCode: 'MI' });
+      if (r.erreur) return ok({ ok: false, message: r.erreur });
+      st.libres = (st.libres || []).concat([r.row]); return ok({ ok: true, date: r.row.date, heure: r.row.heure, employe: r.row.tech_nom, bassin: r.row.bassin });
+    }
     if (b.action === 'demander_code') { st.codes.push(b.identifiant); return ok({ ok: true, masque: L.masquer(b.identifiant), minutes: 10 }); }
     if (b.action === 'verifier_code') { if (b.code !== '123456') return ok({ ok: false, message: 'Code incorrect ou expiré.' }); st.sessions.add('S-' + st.sessions.size + '-xxxxxxxxxxxxxxxxxxxx'); return ok({ ok: true, session: [...st.sessions].pop(), jours: b.souvenir ? 90 : 0 }); }
     if (b.action === 'donnees') {
@@ -239,15 +245,50 @@ test('portail : lien d’accès sans QR, employé « tests d’eau » → formul
   const txt = await page.textContent('main');
   assert.match(txt, /Employé — tests d’eau/);
   assert.doesNotMatch(txt, /interventions en cours|Opéré par/, 'aucune donnée de lecture du portail');
+  await page.getByLabel('pH').fill('7,3');
   await page.getByRole('button', { name: 'Enregistrer le test' }).click();
   await page.getByText('Choisissez le bassin.').waitFor();
   await page.getByRole('button', { name: 'Pataugeoire' }).click();
-  await page.getByLabel('pH').fill('7,3');
+  assert.equal(await page.getByLabel('pH').inputValue(), '7,3', 'la valeur tapée reste après le choix du bassin');
   await page.getByLabel('Chlore libre (mg/L)').fill('1.8');
   await page.getByRole('button', { name: 'Enregistrer le test' }).click();
   await page.getByText(/Test enregistré à \d\d:\d\d — merci/).waitFor();
   assert.deepEqual(st.saisies.map((x) => [x.site_id, x.bassin, x.vals]), [['1', 'Pataugeoire', { ph: '7,3', cl: '1.8' }]]);
   await page.getByText(/Pataugeoire · pH 7,3 · Chlore libre 1,8 mg\/L/).waitFor();
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+test('portail : test d’eau sans connexion depuis le code QR (employé, bassin, trousse, BECSys), nom retenu', async () => {
+  const { page, st, errors } = await open('?q=BON');
+  await page.getByRole('button', { name: 'Saisir un test d’eau (sans connexion)' }).click();
+  await page.getByText(/Date et heure : .* \(ajoutées automatiquement\)/).waitFor();
+  assert.equal(await page.getByRole('button', { name: 'Grand bassin' }).getAttribute('aria-pressed'), 'true', 'bassin du code QR présélectionné');
+  await page.getByRole('button', { name: 'Enregistrer le test' }).click();
+  await page.getByText('Entrez le nom de l’employé qui fait le test.').waitFor();
+  await page.getByLabel('Employé qui fait le test').fill('Paul Tremblay');
+  await page.getByRole('button', { name: 'Pataugeoire' }).click();
+  await page.getByLabel('pH', { exact: true }).fill('7,4');
+  await page.getByLabel('Chlore libre (mg/L)').fill('1,6');
+  await page.getByLabel('Potentiel (mV)').fill('720');
+  await page.getByLabel('Chlore (ppm)').fill('1,4');
+  await page.getByLabel('pH lu').fill('7,5');
+  await page.getByRole('button', { name: 'Enregistrer le test' }).click();
+  await page.getByText('Test enregistré — merci !').waitFor();
+  assert.match(await page.textContent('main'), /Pataugeoire · Paul Tremblay/);
+  assert.deepEqual(st.libres[0].vals, { ph: 7.4, cl: 1.6, becsys_mv: 720, becsys_ppm: 1.4, becsys_ph: 7.5 });
+  assert.ok(!st.calls.includes('demander_code'), 'aucune connexion demandée');
+  await page.getByRole('button', { name: 'Saisir un autre test' }).click();
+  assert.equal(await page.getByLabel('Employé qui fait le test').inputValue(), 'Paul Tremblay', 'nom retenu sur l’appareil');
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+test('portail : lien « ?test=1 » ouvre directement le formulaire de test sans connexion', async () => {
+  const { page, errors } = await open('?q=BON&test=1');
+  await page.getByText('Test d’eau · sans connexion').waitFor();
+  await page.getByRole('button', { name: 'Retour' }).click();
+  await page.getByRole('button', { name: 'Accès client' }).waitFor();
   assert.deepEqual(errors, []);
   await page.close();
 });

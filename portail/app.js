@@ -52,15 +52,62 @@
     call('qr', { jeton: P.get('q') }).then(function (r) {
       if (!r.ok) return show(h('div', { class: 'stack card' }, h('h1', { text: 'Lien désactivé' }), h('p', { text: 'Ce code QR n’est plus valide. Demandez la nouvelle affiche à Soucy Aquatik.' })));
       S.qr = r;
+      if (P.get('test') === '1' && !S.testVu) { S.testVu = true; return ecranTestLibre(); }
       show(h('div', { class: 'stack', style: 'max-width:440px;margin:0 auto' }, marque(),
         h('div', { class: 'muted', text: 'Relevés et rapports de cette installation' }),
         h('h1', { text: r.site }), r.bassin ? h('div', { text: r.bassin }) : null,
         h('button', { class: 'btn primary big', onclick: function () { if (getTok()) { S.reprise = true; charger(); } else ecranIdent(); } }, 'Accès client'),
+        h('button', { class: 'btn big', onclick: function () { ecranTestLibre(); } }, 'Saisir un test d’eau (sans connexion)'),
         h('a', { class: 'btn big', href: '../terrain.html?site=' + encodeURIComponent(r.site_id) }, 'Je suis technicien'),
         h('button', { class: 'btn big', onclick: ecranPersonnel }, 'Personnel Soucy Aquatik'),
         r.carnet ? h('a', { class: 'muted', href: r.carnet, style: 'text-align:center' }, 'Carnet de bord de la salle (sans connexion)') : null,
         h('p', { class: 'muted', text: 'Accès réservé aux personnes autorisées par le gestionnaire de l’installation. Code ' + r.code + '.' })));
     }).catch(function () { erreur(); });
+  }
+  /* Test d'eau sans connexion (lien du code QR, ou ?test=1) : nom de l'employé, bassin, pH, chlore et lecture du BECSys ;
+     date et heure mises par le serveur. Le nom est retenu sur cet appareil pour le prochain test. */
+  var CHAMPS_TEST = [['ph', 'pH', 'Trousse'], ['cl', 'Chlore libre (mg/L)', 'Trousse'], ['becsys_mv', 'Potentiel (mV)', 'BECSys'], ['becsys_ppm', 'Chlore (ppm)', 'BECSys'], ['becsys_ph', 'pH lu', 'BECSys']];
+  function ecranTestLibre(fait) {
+    var q = S.qr, bns = q.bassins || [], err = h('div', { role: 'alert', style: 'min-height:22px;font-weight:600' }), inputs = {};
+    if (!S.tBassin) S.tBassin = q.bassin && bns.indexOf(q.bassin) >= 0 ? q.bassin : (bns.length === 1 ? bns[0] : '');
+    var memo = ''; try { memo = localStorage.getItem('sa_portail_employe') || ''; } catch (e) { }
+    var nom = h('input', { class: 'input', id: 'tl-nom', type: 'text', autocomplete: 'name', value: memo, placeholder: 'Prénom et nom' });
+    var now = new Date(), pad = function (x) { return (x < 10 ? '0' : '') + x; }, quand = fdate(now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate())) + ' à ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+    var btn = h('button', { class: 'btn primary big', type: 'submit' }, 'Enregistrer le test');
+    var go = function (e) {
+      e.preventDefault(); var n = nom.value.trim();
+      if (n.length < 2) { err.textContent = 'Entrez le nom de l’employé qui fait le test.'; nom.focus(); return; }
+      if (bns.length > 1 && !S.tBassin) { err.textContent = 'Choisissez le bassin testé.'; return; }
+      var m = {}; Object.keys(inputs).forEach(function (k) { if (inputs[k].value.trim()) m[k] = inputs[k].value.trim(); });
+      if (!Object.keys(m).length) { err.textContent = 'Entrez au moins une mesure.'; return; }
+      btn.disabled = true; err.textContent = 'Enregistrement…';
+      call('test_libre', { jeton: P.get('q'), employe: n, bassin: S.tBassin || null, mesures: m }).then(function (r) {
+        btn.disabled = false;
+        if (!r.ok) { err.textContent = r.message || 'Enregistrement impossible.'; return; }
+        try { localStorage.setItem('sa_portail_employe', n); } catch (x) { }
+        ecranTestLibre(r);
+      }).catch(function () { btn.disabled = false; err.textContent = 'Réseau indisponible — réessayez.'; });
+    };
+    if (fait) return show(h('div', { class: 'stack', style: 'max-width:440px;margin:0 auto' }, marque(), h('h1', { text: q.site }),
+      h('div', { class: 'box', role: 'status' }, h('b', { text: 'Test enregistré — merci !' }), h('div', { text: fdate(fait.date) + ' à ' + fait.heure + (fait.bassin ? ' · ' + fait.bassin : '') + ' · ' + fait.employe })),
+      h('button', { class: 'btn primary big', onclick: function () { ecranTestLibre(); } }, 'Saisir un autre test'),
+      h('button', { class: 'btn big', onclick: ecranQr }, 'Retour')));
+    /* Choix du bassin sans réafficher le formulaire (ce qui est déjà tapé reste en place) */
+    var boutonsBassin = h('div', { class: 'row', role: 'group', 'aria-label': 'Bassin testé' }), marquer = function () {
+      Array.prototype.forEach.call(boutonsBassin.children, function (x) { var on = x.textContent === S.tBassin; x.className = 'btn' + (on ? ' primary' : ''); x.setAttribute('aria-pressed', String(on)); }); };
+    bns.forEach(function (b) { boutonsBassin.appendChild(h('button', { type: 'button', class: 'btn', onclick: function () { S.tBassin = b; marquer(); } }, b)); }); marquer();
+    var groupe = function (g) { return h('fieldset', { class: 'stack', style: 'border:1px solid var(--color-divider);padding:10px 12px;margin:0;gap:8px' }, h('legend', { text: g === 'BECSys' ? 'Lecture du BECSys' : 'Test à la trousse' }),
+      CHAMPS_TEST.filter(function (c) { return c[2] === g; }).map(function (c) { var id = 'tl-' + c[0], inp = h('input', { class: 'input', id: id, type: 'text', inputmode: 'decimal', autocomplete: 'off' }); inputs[c[0]] = inp;
+        return h('div', { class: 'stack', style: 'gap:4px' }, h('label', { for: id, text: c[1] }), inp); })); };
+    show(h('form', { class: 'stack', style: 'max-width:440px;margin:0 auto', onsubmit: go }, marque(),
+      h('div', { class: 'muted', text: 'Test d’eau · sans connexion' }), h('h1', { text: q.site }),
+      h('div', { class: 'muted', text: 'Date et heure : ' + quand + ' (ajoutées automatiquement)' }),
+      h('label', { for: 'tl-nom', text: 'Employé qui fait le test' }), nom,
+      bns.length > 1 ? h('div', { class: 'stack', style: 'gap:4px' }, h('span', { text: 'Bassin testé' }), boutonsBassin) : (bns[0] ? h('div', { text: 'Bassin : ' + bns[0] }) : null),
+      groupe('Trousse'), groupe('BECSys'), err, btn,
+      h('button', { class: 'btn', type: 'button', onclick: ecranQr }, 'Retour'),
+      h('p', { class: 'muted', text: 'Les tests sont transmis à Soucy Aquatik et ajoutés aux relevés de l’installation.' })));
+    if (!memo) nom.focus();
   }
   /* Adresse (session gardée ou code tout juste reçu) inscrite pour d'autres installations que celle du QR : on demande l'adresse de CETTE
      installation au lieu d'ouvrir le portail du client déjà connecté. Ses installations restent accessibles par un lien. */
@@ -243,7 +290,10 @@
     var b = site.bassins.filter(function (x) { return x.nom === S.bassin; })[0];
     var code = (b && b.type_code) || (D.contrats && D.contrats[site.id]) || 'GEN', T = D.types[code] || D.types.GEN || { fields: [] };
     var F = (T.fields || []).filter(function (f) { return f && f.key; }), inputs = {};
-    var err = h('div', { role: 'alert', style: 'min-height:22px;font-weight:600' }), note = h('textarea', { class: 'input', id: 'note', rows: '2', placeholder: 'Remarque (facultatif)' });
+    /* Valeurs tapées gardées en mémoire : changer de bassin réaffiche le formulaire sans les perdre */
+    var sv = S.sv = S.sv || {};
+    var err = h('div', { role: 'alert', style: 'min-height:22px;font-weight:600' }), note = h('textarea', { class: 'input', id: 'note', rows: '2', placeholder: 'Remarque (facultatif)', oninput: function (e) { sv._note = e.target.value; } });
+    note.value = sv._note || '';
     var btn = h('button', { class: 'btn primary big', type: 'submit' }, 'Enregistrer le test');
     var go = function (e) {
       e.preventDefault(); if (bn.length > 1 && !S.bassin) { err.textContent = 'Choisissez le bassin.'; return; }
@@ -253,11 +303,12 @@
       call('saisir_releve', { site_id: site.id, bassin: S.bassin || null, vals: vals, note: note.value }).then(function (r) {
         btn.disabled = false;
         if (!r.ok) { if (r.session === false) { clearTok(); return ecranIdent(); } err.textContent = r.message || 'Enregistrement impossible.'; return; }
-        call('donnees', {}).then(function (d) { if (d.ok) S.data = d; rendreSaisie('Test enregistré à ' + r.heure + ' — merci !'); });
+        S.sv = {}; call('donnees', {}).then(function (d) { if (d.ok) S.data = d; rendreSaisie('Test enregistré à ' + r.heure + ' — merci !'); });
       }).catch(function () { btn.disabled = false; err.textContent = 'Réseau indisponible — réessayez.'; });
     };
     var champs = F.map(function (f) {
-      var id = 'm-' + f.key, inp = h('input', { class: 'input', id: id, type: 'text', inputmode: 'decimal', autocomplete: 'off', placeholder: f.lo != null && f.hi != null ? 'Visé : ' + fr(f.lo, f.step) + ' – ' + fr(f.hi, f.step) : '' });
+      var id = 'm-' + f.key, inp = h('input', { class: 'input', id: id, type: 'text', inputmode: 'decimal', autocomplete: 'off', placeholder: f.lo != null && f.hi != null ? 'Visé : ' + fr(f.lo, f.step) + ' – ' + fr(f.hi, f.step) : '', oninput: function (e) { sv[f.key] = e.target.value; } });
+      inp.value = sv[f.key] || '';
       inputs[f.key] = inp;
       return h('div', { class: 'stack', style: 'gap:4px' }, h('label', { for: id, text: f.label + (f.unit ? ' (' + f.unit + ')' : '') }), inp);
     });

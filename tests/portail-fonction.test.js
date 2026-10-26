@@ -113,3 +113,20 @@ test('portail : test d’eau saisi → ligne « releves » au statut client, val
   const un = L.releveClient(T, { vals: { ph: 7 } }, { contact, site: { id: 's2', nom: 'B', bassins: [{ nom: 'Seul' }] }, maintenant: t0, id: 'y' }).row;
   assert.equal(un.bassin, 'Seul', 'un seul bassin : choisi d’office');
 });
+
+test('portail : test d’eau sans connexion — employé, bassin, trousse et BECSys, date et heure du serveur', async () => {
+  const L = await mod();
+  const site = { id: 's1', nom: 'Piscine A', bassins: [{ nom: 'Grand bassin' }, { nom: 'Pataugeoire' }] }, t0 = new Date('2026-10-26T13:05:00Z');
+  const o = { site, cles: ['ph', 'cl'], maintenant: t0, id: 'tl1', typeCode: 'MI' };
+  assert.match(L.testLibre({ bassin: 'Pataugeoire', mesures: { ph: 7 } }, o).erreur, /nom de l’employé/);
+  assert.match(L.testLibre({ employe: 'Paul', mesures: { ph: 7 } }, o).erreur, /bassin testé/);
+  assert.match(L.testLibre({ employe: 'Paul', bassin: 'Pataugeoire', mesures: {} }, o).erreur, /au moins une mesure/);
+  assert.match(L.testLibre({ employe: 'Paul', bassin: 'Pataugeoire', mesures: { ph: '15' } }, o).erreur, /pH \(0 à 14\)/);
+  assert.match(L.testLibre({ employe: 'Paul', bassin: 'Pataugeoire', mesures: { becsys_mv: '-3' } }, o).erreur, /mV/);
+  const { row } = L.testLibre({ employe: '  Paul   Tremblay ', bassin: 'Pataugeoire', mesures: { ph: '7,4', cl: '1.5', becsys_mv: '720', becsys_ppm: '1,4', becsys_ph: '7.5', autre: '9' } }, o);
+  assert.deepEqual(row.vals, { ph: 7.4, cl: 1.5, becsys_mv: 720, becsys_ppm: 1.4, becsys_ph: 7.5 });
+  assert.deepEqual([row.tech_nom, row.bassin, row.statut, row.source, row.type_code, row.site_id], ['Paul Tremblay', 'Pataugeoire', 'client', 'carnet', 'MI', 's1']);
+  assert.deepEqual([row.date, row.heure], ['2026-10-26', '09:05'], 'heure de Montréal, mise par le serveur');
+  const je = L.testLibre({ employe: 'Paul', mesures: { cl: 0.8 } }, { site: { id: 's2', nom: 'Jeux', bassins: [{ nom: 'Jeux d’eau' }] }, cles: ['clr', 'ph'], id: 'x' }).row;
+  assert.deepEqual([je.vals, je.bassin], [{ clr: 0.8 }, 'Jeux d’eau'], 'jeux d’eau : chlore résiduel ; un seul bassin choisi d’office');
+});

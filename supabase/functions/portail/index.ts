@@ -120,7 +120,30 @@ const actions: Record<string, (req: Request, b: any) => Promise<Response>> = {
     if (!q || !q.actif) { await journal(req, { qr_id: q?.id || null, action: "qr", resultat: "revoque" }); return json(req, { ok: false, desactive: true }); }
     const { data: s } = await sb.from("sites").select("nom, bassins").eq("id", q.site_id).maybeSingle();
     const b0 = (s?.bassins || []).find((x: any) => String(x.id) === String(q.bassin_id));
-    return json(req, { ok: true, site_id: q.site_id, site: s?.nom || "", bassin: b0?.nom || "", code: q.code_affiche, carnet: `../qr-carnet/?site=${encodeURIComponent(q.site_id)}` });
+    return json(req, { ok: true, site_id: q.site_id, site: s?.nom || "", bassin: b0?.nom || "", code: q.code_affiche, carnet: `../qr-carnet/?site=${encodeURIComponent(q.site_id)}`,
+      bassins: (s?.bassins || []).filter((x: any) => x && x.nom).map((x: any) => x.nom) });
+  },
+  /* Test d'eau sans connexion : seul le jeton du code QR (actif) désigne le site ; limité par adresse IP ; rien n'est relu */
+  async test_libre(req, b) {
+    const { data: q } = await sb.from("client_qr").select("id, site_id, actif").eq("jeton", String(b.jeton || "")).maybeSingle();
+    if (!q || !q.actif) return json(req, { ok: false, message: "Ce lien n’est plus valide. Demandez la nouvelle affiche à Soucy Aquatik." }, 403);
+    const ip = await ipHash(req);
+    const { count } = await sb.from("client_acces_journal").select("id", { count: "exact", head: true }).eq("ip_hash", ip).like("action", "test_libre%").gte("quand", new Date(Date.now() - 36e5).toISOString());
+    if ((count || 0) >= L.TEST_LIBRE_PAR_IP_HEURE) return json(req, { ok: false, message: "Trop de tests envoyés depuis cet appareil — réessayez plus tard." }, 429);
+    const [{ data: site }, { data: ct }] = await Promise.all([
+      sb.from("sites").select("id, nom, bassins").eq("id", q.site_id).maybeSingle(),
+      sb.from("contrats").select("type_code").eq("site_id", q.site_id).maybeSingle(),
+    ]);
+    if (!site) return json(req, { ok: false, message: "Installation introuvable." }, 404);
+    const bassin = (site.bassins || []).find((x: any) => x && x.nom === b.bassin);
+    const code = (bassin && bassin.type_code) || ct?.type_code || "GEN";
+    const { data: t } = await sb.from("types_bassin").select("fields").eq("code", code).maybeSingle();
+    const r = L.testLibre(b, { site, cles: (t?.fields || []).map((f: any) => f && f.key), id: "tl" + L.jeton(9), typeCode: code });
+    if (r.erreur) return json(req, { ok: false, message: r.erreur }, 400);
+    const { error } = await sb.from("releves").insert(r.row);
+    await journal(req, { qr_id: q.id, identifiant: r.row.tech_nom.slice(0, 80), action: "test_libre:" + site.id, resultat: error ? "refuse" : "ok" });
+    if (error) { console.error("test_libre", error.message); return json(req, { ok: false, message: "Enregistrement impossible — réessayez." }, 500); }
+    return json(req, { ok: true, date: r.row.date, heure: r.row.heure, employe: r.row.tech_nom, bassin: r.row.bassin });
   },
   async demander_code(req, b) {
     const idt = L.identifiant(b.identifiant);
