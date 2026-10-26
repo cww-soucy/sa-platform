@@ -124,3 +124,20 @@ test('hivernement depuis Sites et inspections : listes du site, nouvelle liste l
   assert.deepEqual(errors, []);
   await page.close();
 });
+
+test('fiche du site : plusieurs courriels acceptés, « Contacts autorisés » ouvre l’accès client du site', async () => {
+  const { page, db, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: tables() });
+  await page.waitForFunction(() => window.__admin && window.__admin.D);
+  await page.evaluate(() => window.__admin.openSiteFiche(2));
+  await page.waitForFunction(() => window.__admin.vals().sfReady);
+  const fl = (label) => page.locator('.dialog .field').filter({ has: page.locator('label', { hasText: new RegExp('^' + label.replace(/[()]/g, '\\$&') + '$') }) }).locator('input').first();
+  await fl('Courriel(s)').fill('a@client.ca, b@client.ca');
+  await page.locator('.dialog').getByRole('button', { name: 'Enregistrer' }).click();
+  await page.waitForFunction(() => /Fiche du site enregistrée/.test(window.__admin.state.toast || ''));
+  assert.equal(db.rows('sites').find((s) => String(s.id) === '2').email, 'a@client.ca, b@client.ca');
+  await page.evaluate(() => window.__admin.openSiteFiche(2));
+  await page.getByRole('button', { name: 'Contacts autorisés (portail client)' }).click();
+  assert.deepEqual(await page.evaluate(() => [window.__admin.state.mod, window.__admin.state.inspView, String(window.__admin.state.inspSite)]), ['inspections', 'acces', '2']);
+  assert.deepEqual(errors, []);
+  await page.close();
+});

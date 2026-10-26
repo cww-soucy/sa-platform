@@ -629,7 +629,8 @@ SF=('<template data-sc="if" value="{{ sfOpen }}"><div class="dialog-backdrop" on
   +DLGHEAD('sfTitle','sfClose')+IF('sfLoading','<div>Chargement de la fiche…</div>')
   +IF('sfReady',G2(FL('Nom du site',SFIN('sfNom')),FL('Type',SEL('sfTypes','onSfType')))+IF('sfHasClient',FL('Client',SEL('sfClients','onSfClient')))
     +FL('Adresse','<div style="display:flex;gap:8px">'+SFIN('sfAddr').replace('>',' style="flex:1">',1)+'<sc-if value="{{ sfHasAddr }}"><a class="btn btn-ghost" href="{{ sfGeoMaps }}" target="_blank" rel="noopener">Voir sur la carte</a></sc-if></div>')
-    +G2(G2(FL('Téléphone',SFIN('sfTel','tel')),FL('Courriel',SFIN('sfEmail','email'))),G2(FL('Site web',SFIN('sfWeb','url')),FL('Année',SFIN('sfAnnee'))))
+    +G2(G2(FL('Téléphone',SFIN('sfTel','tel')),FL('Courriel(s)',SFIN('sfEmail','text',' placeholder="a@client.ca, b@client.ca"'))),G2(FL('Site web',SFIN('sfWeb','url')),FL('Année',SFIN('sfAnnee'))))
+    +IF('sfCanAcces','<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px"><span style="flex:1">Courriels du site : copies des rapports (plusieurs : séparer par des virgules). Accès au portail client : contacts autorisés, un par personne.</span><button class="btn btn-secondary" onClick="{{ sfAcces }}">Contacts autorisés (portail client)</button></div>')
     +G2(G2(FL('Relevé par défaut',SEL('sfRelTypes','onSfRelType')),FL('N° de contrat',INP('sfCode','onSfCode'))),G2(FL('Latitude',INP('sfLat','onSfLat','text',' placeholder="46.81"')),FL('Longitude',INP('sfLng','onSfLng','text',' placeholder="-71.21"'))))
     +'<div style="display:flex;flex-direction:column;gap:6px"><b>Bassins</b><sc-if value="{{ sfNoBassin }}"><div style="font-size:13px">Aucun bassin déclaré — le site compte pour un seul bassin, avec le relevé par défaut.</div></sc-if>'
     '<sc-for list="{{ sfBassins }}" as="b"><div style="display:grid;grid-template-columns:2fr 1.2fr 1.6fr 0.9fr 2fr auto auto;gap:6px;align-items:center">'

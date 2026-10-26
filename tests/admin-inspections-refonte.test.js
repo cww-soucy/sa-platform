@@ -233,15 +233,16 @@ test('onglets personnalisables : masquer et réordonner, gardé sur le navigateu
   await page.close();
 });
 
-test('accès client : courriel déjà autorisé pour un autre compte → message clair, rien n’est écrit', async () => {
+test('accès client : courriel déjà autorisé pour un autre compte → proposition de donner accès à ce site (une personne, plusieurs sites)', async () => {
   const { page, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: tables() });
   const S = { comptes: [{ id: 'cl-a', nom: 'Ville de Test', sites: ['1'], niveaux: {} }, { id: 'cl-b', nom: 'Autre client', sites: ['2'], niveaux: {} }],
     contacts: [{ id: 'ct-1', compte_id: 'cl-b', nom: 'Jeanne', courriel: 'jeanne@ville.qc.ca', niveau: 'gestionnaire', actif: true }], qr: [], journal: [], documents: [] }, writes = [];
   await page.route(FN, async (route) => {
     const b = JSON.parse(route.request().postData()), ok = (o) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(o) });
     if (b.action === 'admin_ouvrir') return ok({ ok: true, session: 'ADM-TOKEN-xxxxxxxxxxxxxxxx', role: 'admin' });
-    if (b.action === 'admin_lire') return ok({ ok: true, role: 'admin', ...S, portail: 'https://sa-platform.pages.dev/portail/', envoi: true });
-    if (b.action === 'admin_ecrire') { writes.push(b); return ok({ ok: false, message: 'duplicate key value violates unique constraint "client_contacts_courriel"' }); }
+    if (b.action === 'admin_lire') return ok({ ok: true, role: 'admin', ...JSON.parse(JSON.stringify(S)), portail: 'https://sa-platform.pages.dev/portail/', envoi: true });
+    if (b.action === 'admin_ecrire') { writes.push(b); const L = S[{ client_comptes: 'comptes', client_contacts: 'contacts' }[b.table]]; const k = L.findIndex((x) => x.id === (b.row || b).id);
+      if (b.supprimer) L.splice(k, 1); else if (k >= 0) L[k] = b.row; else L.push(b.row); return ok({ ok: true }); }
     return ok({ ok: false });
   });
   await open(page, 'acces');
@@ -250,8 +251,49 @@ test('accès client : courriel déjà autorisé pour un autre compte → message
   await page.getByLabel('Nom du contact').fill('Jeanne G.');
   await page.getByLabel('Courriel du contact').fill('Jeanne@Ville.qc.ca');
   await page.getByRole('button', { name: 'Ajouter', exact: true }).click();
-  await toast(page, /déjà autorisé pour le compte « Autre client »/);
-  assert.equal(writes.length, 0);
+  await page.getByText(/a déjà un accès client : Jeanne, compte « Autre client »/).waitFor();
+  assert.equal(writes.length, 0, 'rien n’est écrit avant la confirmation');
+  await page.getByRole('button', { name: 'Donner accès à ce site' }).click();
+  await toast(page, /Jeanne a maintenant accès à ce site \(compte « Autre client »\)/);
+  assert.deepEqual(S.comptes.find((c) => c.id === 'cl-b').sites, ['2', '1'], 'le site rejoint le compte de la personne');
+  assert.equal(S.contacts.length, 1, 'aucun doublon de contact');
+  // la personne apparaît dans les contacts du site, avec son compte ; retrait limité à ce site
+  const row = page.getByRole('row', { name: /Jeanne/ });
+  await row.getByText('Autre client · 2 sites').waitFor();
+  page.once('dialog', (d) => d.accept());
+  await row.getByRole('button', { name: 'Retirer de ce site' }).click();
+  await toast(page, /garde ses autres sites/);
+  assert.deepEqual(S.contacts[0].sites, ['2'], 'accès limité à ses autres sites');
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+test('accès client : site sans compte → rattaché à un compte existant (même client proposé en premier), contact ajouté sans créer de compte à part', async () => {
+  const t = tables(); t.clients = [{ id: 'cv', nom: 'Ville X', interne: false, notes: '' }]; t.sites[0].client_id = 'cv'; t.sites[1].client_id = 'cv';
+  const { page, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: t });
+  const S = { comptes: [{ id: 'cl-z', nom: 'Zeta', sites: ['9'], niveaux: {} }, { id: 'cl-b', nom: 'Ville X', sites: ['2'], niveaux: {} }], contacts: [], qr: [], journal: [], documents: [] };
+  await page.route(FN, async (route) => {
+    const b = JSON.parse(route.request().postData()), ok = (o) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(o) });
+    if (b.action === 'admin_ouvrir') return ok({ ok: true, session: 'ADM-TOKEN-xxxxxxxxxxxxxxxx', role: 'admin' });
+    if (b.action === 'admin_lire') return ok({ ok: true, role: 'admin', ...JSON.parse(JSON.stringify(S)), portail: 'https://sa-platform.pages.dev/portail/', envoi: true });
+    if (b.action === 'admin_ecrire') { const L = S[{ client_comptes: 'comptes', client_contacts: 'contacts' }[b.table]]; const k = L.findIndex((x) => x.id === b.row.id); if (k >= 0) L[k] = b.row; else L.push(b.row); return ok({ ok: true }); }
+    return ok({ ok: false });
+  });
+  await open(page, 'acces');
+  await page.getByLabel('Mot de passe').fill('bon');
+  await page.getByRole('button', { name: 'Ouvrir la gestion' }).click();
+  const sel = page.getByLabel('Rattacher à un compte client existant');
+  await sel.locator('option', { hasText: 'Zeta' }).waitFor({ state: 'attached' });
+  assert.match((await sel.locator('option').allTextContents())[1], /^Ville X \(1 site\) — même client/);
+  await sel.selectOption('cl-b');
+  await toast(page, /Site rattaché au compte « Ville X »/);
+  assert.deepEqual(S.comptes.find((c) => c.id === 'cl-b').sites, ['2', '1']);
+  await page.getByLabel('Nom du contact').fill('Paul');
+  await page.getByLabel('Courriel du contact').fill('paul@villex.ca');
+  await page.getByRole('button', { name: 'Ajouter', exact: true }).click();
+  await toast(page, /^Contact autorisé/);
+  assert.deepEqual(S.contacts.map((c) => c.compte_id), ['cl-b']);
+  assert.equal(S.comptes.length, 2, 'aucun compte en double');
   assert.deepEqual(errors, []);
   await page.close();
 });

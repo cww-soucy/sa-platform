@@ -1414,6 +1414,7 @@ Comp.prototype.siteFicheVals=function(){var self=this,st=this.state,D=this.D,sf=
     sfWo:wo.slice(0,12).map(function(w){return{txt:(w.date||'')+' · '+(w.type||'')+' · '+(WO_STAT.filter(function(s){return s[0]===w.status;})[0]||[0,w.status])[1]+(w.descr?' — '+String(w.descr).split('\n')[0].slice(0,60):''),open:function(){self.setState({sf:null});self.openFE('wo',w.id);}};}),sfHasWo:wo.length>0,sfWoN:wo.length+' bon(s) de travail',
     sfRelTxt:rel.length?rel.length+' relevé(s) — dernier le '+fdate(lastR.date)+' par '+(lastR.tech_nom||lastR.tech):'Aucun relevé',sfIsOld:!sf.isNew,
     sfNewWo:function(){var i=sf.id;self.setState({sf:null});self.openFE('wo',null,{site:i});},sfInsp:function(){var i=sf.id;self.setState({sf:null});self.go('inspections',{inspSite:i,inspKey:null});},
+    sfCanAcces:!sf.isNew&&!!D.byId[sf.id]&&!D.byId[sf.id].interne,sfAcces:function(){var i=sf.id;self.setState({sf:null});self.go('inspections',{inspSite:i,inspView:'acces',inspVisite:null,isf:null,inspBassin:null});},
     sfSave:function(){self.saveSiteFiche();},sfSaveLbl:sf.busy?'Enregistrement…':(sf.isNew?'Créer le site':'Enregistrer'),sfCanDel:!sf.isNew,sfDelLbl:sf.confirm?'Confirmer la suppression':'Supprimer le site',sfDel:function(){self.deleteSiteFiche();},
     sfClose:function(){self.setState({sf:null});},sfCloseBg:function(e){if(e.target===e.currentTarget)self.setState({sf:null});}});};
 

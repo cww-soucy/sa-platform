@@ -229,11 +229,17 @@ Comp.prototype.inspVals=function(){
   else{iq.plans=[];iq.markers=[];iq.docs=[];iq.bassins=[];iq.nb={types:[]};}
   /* ----- 4a-5 Accès client et QR ----- */
   iq.pw=st.iqPw||'';iq.onPw=function(e){self.setState({iqPw:e.target.value});};iq.ouvrir=function(e){if(e&&e.preventDefault)e.preventDefault();self.admOpen();};iq.adminErr=st.iqAdminErr||'';
-  if(view==='acces'&&adm){var cpn=st.iqCp&&st.iqCp.site===site.id?st.iqCp.nom:(cp?cp.nom:'');
+  if(view==='acces'&&adm){var cli0=this.clientById&&this.clientById(site.client_id),cpn=st.iqCp&&st.iqCp.site===site.id?st.iqCp.nom:(cp?cp.nom:(cli0?cli0.nom:''));
+    /* Un compte client regroupe plusieurs sites (un courriel n'appartient qu'à un compte) : rattacher ce site à un compte existant plutôt que d'en créer un par site */
+    var sansSite=(adm.comptes||[]).filter(function(c){return(c.sites||[]).map(String).indexOf(String(site.id))<0;}),memeClient=function(c){return!!site.client_id&&(c.sites||[]).some(function(x){var s2=self.D.byId[x];return s2&&s2.client_id===site.client_id;});};
+    sansSite.sort(function(a,b){return(memeClient(b)-memeClient(a))||String(a.nom).localeCompare(String(b.nom),'fr');});
     iq.cp={nom:cpn,exists:!!cp,onNom:function(e){self.setState({iqCp:{site:site.id,nom:e.target.value}});},saveLbl:cp?'Enregistrer le nom':'Créer le compte client',
       save:function(){var n=String(cpn||'').trim()||site.nom;self.admWrite('client_comptes',cp?Object.assign({},cp,{nom:n}):{id:rid('cl-'),nom:n,sites:[site.id],niveaux:{}}).then(function(ok){if(ok){self.setState({iqCp:null});self.flash(cp?'Compte enregistré':'Compte client créé');}});},
       upLogo:function(e){var file=e.target.files&&e.target.files[0];e.target.value='';if(!file)return;if(!cp){self.flash('Créez d’abord le compte client');return;}
-        self.admUpload(file,'logos').then(function(path){if(path)self.admWrite('client_comptes',Object.assign({},cp,{logo_path:path})).then(function(ok){if(ok)self.flash('Logo enregistré');});});}};
+        self.admUpload(file,'logos').then(function(path){if(path)self.admWrite('client_comptes',Object.assign({},cp,{logo_path:path})).then(function(ok){if(ok)self.flash('Logo enregistré');});});},
+      hasRattach:!cp&&sansSite.length>0,rattach:[{v:'',l:'… ou rattacher à un compte existant'}].concat(sansSite.map(function(c){return{v:c.id,l:c.nom+' ('+(c.sites||[]).length+' site'+((c.sites||[]).length>1?'s':'')+')'+(memeClient(c)?' — même client':'')};})),
+      onRattach:function(e){var c=sansSite.filter(function(x){return x.id===e.target.value;})[0];e.target.value='';if(!c)return;
+        self.admWrite('client_comptes',Object.assign({},c,{sites:(c.sites||[]).concat([site.id])})).then(function(ok){if(ok)self.flash('Site rattaché au compte « '+c.nom+' » — ses contacts y ont accès');});}};
     /* Un code QR fixe par site : il reste le même quoi qu’on change au site (bassins, nom…), pour garder les affiches plastifiées.
        Les codes par bassin déjà créés restent affichés. Seul « Remplacer » (code perdu ou affiche volée) en crée un nouveau. */
     var qrs=(adm.qr||[]).filter(function(x){return x.site_id===site.id&&x.actif;}),bns={};(site.bassins||[]).forEach(function(b,i){bns[String(b.id||b.nom)]={b:b,i:i};});
@@ -246,21 +252,37 @@ Comp.prototype.inspVals=function(){
           pfn('admin_qr',{site_id:site.id,bassin_id:bid,code_affiche:code,remplacer:!!q},t).then(function(r){if(!r.ok){self.flash('Refusé : '+(r.message||'erreur'));return;}self.flash(q?'Nouveau code créé — l’ancien est désactivé':'Code créé');self.admLoad();});}};});
     iq.droits=I.DROITS.map(function(k){return{l:DROIT_LIB[k],c:['operateur','gestionnaire','direction'].map(function(n){var on=I.droits(n,cp&&cp.niveaux)[k];
       return{on:on,aria:DROIT_LIB[k]+' — '+I.NIVEAU_NOM[n],go:function(e){if(!cp)return;var nv=JSON.parse(JSON.stringify(cp.niveaux||{}));nv[n]=Object.assign({},nv[n]||{});nv[n][k]=e.target.checked;self.admWrite('client_comptes',Object.assign({},cp,{niveaux:nv}));}};})};});
-    var cts=cp?(adm.contacts||[]).filter(function(x){return x.compte_id===cp.id;}):[];
-    iq.contacts=cts.map(function(c){return{nom:c.nom,niveau:I.NIVEAU_NOM[c.niveau]||c.niveau,courriel:c.courriel||'—',cel:c.cellulaire||'—',acces:c.dernier_acces?fdate(c.dernier_acces):'jamais',del:function(){if(window.confirm('Retirer l’accès de '+c.nom+' ?'))self.admWrite('client_contacts',{id:c.id},true);}};});
+    var cpt=function(id){return(adm.comptes||[]).filter(function(x){return x.id===id;})[0]||null;},sid=String(site.id);
+    var aAcces=function(x){var c=cpt(x.compte_id),cs=c?(c.sites||[]).map(String):[];return x.actif!==false&&cs.indexOf(sid)>=0&&(!(x.sites||[]).length||x.sites.map(String).indexOf(sid)>=0);};
+    var cts=(adm.contacts||[]).filter(aAcces);
+    iq.contacts=cts.map(function(c){var co=cpt(c.compte_id),cs=(co&&co.sites||[]).map(String),seul=(c.sites||[]).length?c.sites.length<=1:cs.length<=1;
+      return{nom:c.nom,compte:co?co.nom+(cs.length>1?' · '+cs.length+' sites':''):'—',niveau:I.NIVEAU_NOM[c.niveau]||c.niveau,courriel:c.courriel||'—',cel:c.cellulaire||'—',acces:c.dernier_acces?fdate(c.dernier_acces):'jamais',delLbl:seul?'Retirer':'Retirer de ce site',
+        del:function(){if(seul){if(window.confirm('Retirer l’accès de '+c.nom+' ?'))self.admWrite('client_contacts',{id:c.id},true);return;}
+          /* Ses autres sites restent : l'accès est limité aux sites du compte sauf celui-ci */
+          if(window.confirm('Retirer l’accès de '+c.nom+' à ce site seulement ?'))self.admWrite('client_contacts',Object.assign({},c,{sites:((c.sites||[]).length?c.sites.map(String):cs).filter(function(x){return x!==sid;})})).then(function(ok){if(ok)self.flash('Accès à ce site retiré — '+c.nom+' garde ses autres sites');});}};});
+    /* Courriel déjà autorisé ailleurs : on propose de donner accès à ce site à cette personne (son compte reçoit le site) */
+    var dupSt=st.iqDup&&st.iqDup.site===site.id?st.iqDup:null,dupC=dupSt&&(adm.contacts||[]).filter(function(x){return x.id===dupSt.id;})[0],dupCo=dupC&&cpt(dupC.compte_id);
+    iq.dup=!!(dupC&&dupCo);iq.dupTxt=iq.dup?'« '+(dupC.courriel||dupC.nom)+' » a déjà un accès client : '+dupC.nom+', compte « '+dupCo.nom+' » ('+(dupCo.sites||[]).length+' site(s)). Un courriel n’appartient qu’à un seul compte : on peut ajouter ce site à son accès.':'';
+    iq.dupGo=function(){if(!iq.dup)return;var p=self.admWrite('client_comptes',Object.assign({},dupCo,{sites:(dupCo.sites||[]).map(String).filter(function(x){return x!==sid;}).concat([sid])}));
+      if((dupC.sites||[]).length)p=p.then(function(ok){return ok&&self.admWrite('client_contacts',Object.assign({},dupC,{sites:dupC.sites.map(String).filter(function(x){return x!==sid;}).concat([sid])}));});
+      p.then(function(ok){if(ok){self.setState({iqDup:null,iqNc:null});self.flash(dupC.nom+' a maintenant accès à ce site (compte « '+dupCo.nom+' »)');}});};
+    iq.dupNo=function(){self.setState({iqDup:null});};
     var ncf=st.iqNc||{nom:'',niveau:'gestionnaire',courriel:'',cel:''},setNc=function(p){self.setState({iqNc:Object.assign({},ncf,p)});};
     iq.nc={nom:ncf.nom,courriel:ncf.courriel,cel:ncf.cel,nivs:['operateur','gestionnaire','direction'].map(function(n){return{v:n,l:I.NIVEAU_NOM[n],sel:n===ncf.niveau};}),
       onNom:function(e){setNc({nom:e.target.value});},onNiv:function(e){setNc({niveau:e.target.value});},onMail:function(e){setNc({courriel:e.target.value});},onCel:function(e){setNc({cel:e.target.value});},
-      add:function(){if(!cp){self.flash('Créez d’abord le compte client');return;}if(!String(ncf.nom).trim()||(!String(ncf.courriel).trim()&&!String(ncf.cel).trim())){self.flash('Nom et courriel (ou cellulaire) requis');return;}
+      add:function(){if(!String(ncf.nom).trim()||(!String(ncf.courriel).trim()&&!String(ncf.cel).trim())){self.flash('Nom et courriel (ou cellulaire) requis');return;}
         var mail=String(ncf.courriel).trim().toLowerCase(),dup=mail&&(adm.contacts||[]).filter(function(x){return x.actif!==false&&String(x.courriel||'').toLowerCase()===mail;})[0];
-        if(dup){var dc=(adm.comptes||[]).filter(function(x){return x.id===dup.compte_id;})[0];self.flash('Ce courriel est déjà autorisé pour le compte « '+(dc?dc.nom:dup.compte_id)+' » : retirez-le de ce compte d’abord.');return;}
-        self.admWrite('client_contacts',{id:rid('ct-'),compte_id:cp.id,nom:String(ncf.nom).trim(),courriel:String(ncf.courriel).trim()||null,cellulaire:String(ncf.cel).trim()||null,niveau:ncf.niveau,actif:true}).then(function(ok){if(ok){self.setState({iqNc:null});self.flash('Contact autorisé');}});}};
+        if(dup){if(aAcces(dup)){self.flash(dup.nom+' a déjà accès à ce site');return;}self.setState({iqDup:{site:site.id,id:dup.id}});return;}
+        /* Pas encore de compte pour ce site : créé au nom du client (ou du site), puis le contact */
+        var cid=cp?cp.id:rid('cl-'),pre=cp?Promise.resolve(true):self.admWrite('client_comptes',{id:cid,nom:String(cpn||'').trim()||site.nom,sites:[site.id],niveaux:{}});
+        pre.then(function(ok){return ok&&self.admWrite('client_contacts',{id:rid('ct-'),compte_id:cid,nom:String(ncf.nom).trim(),courriel:String(ncf.courriel).trim()||null,cellulaire:String(ncf.cel).trim()||null,niveau:ncf.niveau,actif:true});})
+          .then(function(ok){if(ok){self.setState({iqNc:null});self.flash(cp?'Contact autorisé':'Compte client créé et contact autorisé');}});}};
     var ids={};cts.forEach(function(c){ids[c.id]=c.nom;});var qids={};qrs.forEach(function(q){if(q.site_id===site.id)qids[q.id]=1;});
     var RES={ok:'Accès',refuse:'Refusé',otp_echoue:'Code erroné',otp_envoye:'Code envoyé',envoi_impossible:'Envoi impossible',revoque:'Code QR révoqué'};
     iq.journal=(adm.journal||[]).filter(function(j){return(cp&&j.compte_id===cp.id)||ids[j.contact_id]||qids[j.qr_id];}).slice(0,60).map(function(j){return{quand:fdate(j.quand)+' '+String(j.quand).slice(11,16),qui:ids[j.contact_id]||j.identifiant||'—',action:j.action||'',res:RES[j.resultat]||j.resultat,fw:j.resultat==='ok'?400:600};});
     iq.noJournal=!iq.journal.length;
     iq.envoiTxt=(adm.envoi?'Envoi des codes par courriel : actif.':'Envoi des codes : aucun fournisseur de courriel configuré sur le serveur (RESEND_API_KEY) — les contacts ne peuvent pas encore recevoir leur code.');}
-  else{iq.cp={};iq.qrs=[];iq.droits=[];iq.contacts=[];iq.nc={nivs:[]};iq.journal=[];}
+  else{iq.cp={rattach:[]};iq.qrs=[];iq.droits=[];iq.contacts=[];iq.nc={nivs:[]};iq.journal=[];}
   /* ----- Catalogue des points de contrôle ----- */
   if(view==='points'){var tc=st.pcType||site.type,TP=this.T(tc),cat=(D.cat||[]).filter(function(p){return!p.bassin_id&&(p.type_code===tc||!p.type_code);}),derive=!(D.cat||[]).some(function(p){return!p.bassin_id&&p.type_code===tc;});
     var rows=derive?I.pointsDuType(tc,[],TP.checks):cat.slice().sort(function(a,b){return(a.ordre||0)-(b.ordre||0);});

@@ -240,7 +240,9 @@
           <div class="field" style="flex:1;min-width:240px"><label>Compte client (organisation)</label><input class="input" value="{{ iq.cp.nom }}" onInput="{{ iq.cp.onNom }}" placeholder="ex. Ville de Granby"></div>
           <label class="btn btn-secondary" style="cursor:pointer">Logo du client<input type="file" accept="image/*" onChange="{{ iq.cp.upLogo }}" style="display:none"></label>
           <button class="btn btn-primary" onClick="{{ iq.cp.save }}">{{ iq.cp.saveLbl }}</button>
+          <sc-if value="{{ iq.cp.hasRattach }}"><select class="input" aria-label="Rattacher à un compte client existant" onChange="{{ iq.cp.onRattach }}" style="width:auto;max-width:360px"><sc-for list="{{ iq.cp.rattach }}" as="o"><option value="{{ o.v }}">{{ o.l }}</option></sc-for></select></sc-if>
         </div>
+        <span style="font-size:13px">Un compte client regroupe les sites d’une même organisation. Un courriel n’appartient qu’à un seul compte : pour qu’une personne voie plusieurs sites, ajoutez ces sites à son compte (rattachement ci-dessus, ou proposé automatiquement quand vous ajoutez un courriel déjà connu).</span>
           <section style="display:flex;flex-direction:column;gap:8px"><h3 style="margin:0;font-size:20px">Codes QR</h3><span style="font-size:13px">Le code QR ouvre le portail de cette installation. Il n’ouvre aucune donnée sans un contact autorisé.</span>
             <sc-for list="{{ iq.qrs }}" as="q"><div style="display:flex;gap:12px;align-items:center;border-top:1px solid var(--color-divider);padding-top:8px">
               <sc-if value="{{ q.img }}"><img src="{{ q.img }}" alt="Code QR {{ q.code }}" style="width:96px;height:96px"></sc-if>
@@ -249,24 +251,24 @@
             </div></sc-for>
             <span style="font-size:13px">Le code ne change jamais tout seul : réimprimez-le autant que nécessaire. « Remplacer » désactive l’ancien code (affiche perdue ou volée).</span>
           </section>
-        <sc-if value="{{ iq.cp.exists }}">
-        <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:18px">
+        <sc-if value="{{ iq.cp.exists }}"><div style="display:grid;grid-template-columns:minmax(0,1fr);gap:18px">
           <section style="display:flex;flex-direction:column;gap:8px"><h3 style="margin:0;font-size:20px">Ce que le client voit</h3>
             <table class="table" style="font-size:13px"><thead><tr><th></th><th>Opérateur</th><th>Gestionnaire</th><th>Direction</th></tr></thead><tbody><sc-for list="{{ iq.droits }}" as="g"><tr><td>{{ g.l }}</td><sc-for list="{{ g.c }}" as="c"><td><input type="checkbox" aria-label="{{ c.aria }}" checked="{{ c.on }}" onChange="{{ c.go }}"></td></sc-for></tr></sc-for></tbody></table>
           </section>
-        </div>
+        </div></sc-if>
         <section style="display:flex;flex-direction:column;gap:8px"><h3 style="margin:0;font-size:20px">Contacts autorisés</h3>
-          <table class="table" style="font-size:14px"><thead><tr><th>Nom</th><th>Niveau</th><th>Courriel</th><th>Cellulaire</th><th>Dernier accès</th><th></th></tr></thead><tbody>
-            <sc-for list="{{ iq.contacts }}" as="c"><tr><td>{{ c.nom }}</td><td>{{ c.niveau }}</td><td>{{ c.courriel }}</td><td>{{ c.cel }}</td><td>{{ c.acces }}</td><td><button class="btn btn-ghost" onClick="{{ c.del }}">Retirer</button></td></tr></sc-for>
-            <tr><td><input class="input" aria-label="Nom du contact" value="{{ iq.nc.nom }}" onInput="{{ iq.nc.onNom }}"></td><td><select class="input" aria-label="Niveau du contact" onChange="{{ iq.nc.onNiv }}"><sc-for list="{{ iq.nc.nivs }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></sc-for></select></td>
+          <table class="table" style="font-size:14px"><thead><tr><th>Nom</th><th>Compte</th><th>Niveau</th><th>Courriel</th><th>Cellulaire</th><th>Dernier accès</th><th></th></tr></thead><tbody>
+            <sc-for list="{{ iq.contacts }}" as="c"><tr><td>{{ c.nom }}</td><td style="font-size:13px">{{ c.compte }}</td><td>{{ c.niveau }}</td><td>{{ c.courriel }}</td><td>{{ c.cel }}</td><td>{{ c.acces }}</td><td><button class="btn btn-ghost" onClick="{{ c.del }}">{{ c.delLbl }}</button></td></tr></sc-for>
+            <tr><td><input class="input" aria-label="Nom du contact" value="{{ iq.nc.nom }}" onInput="{{ iq.nc.onNom }}"></td><td></td><td><select class="input" aria-label="Niveau du contact" onChange="{{ iq.nc.onNiv }}"><sc-for list="{{ iq.nc.nivs }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></sc-for></select></td>
               <td><input class="input" type="email" aria-label="Courriel du contact" value="{{ iq.nc.courriel }}" onInput="{{ iq.nc.onMail }}"></td><td><input class="input" aria-label="Cellulaire du contact" value="{{ iq.nc.cel }}" onInput="{{ iq.nc.onCel }}"></td><td></td><td><button class="btn btn-primary" onClick="{{ iq.nc.add }}">Ajouter</button></td></tr>
           </tbody></table>
+          <sc-if value="{{ iq.dup }}"><div role="alert" style="border:2px solid var(--color-text);padding:12px 14px;display:flex;flex-direction:column;gap:10px"><span style="font-size:14px">{{ iq.dupTxt }}</span>
+            <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary" onClick="{{ iq.dupGo }}">Donner accès à ce site</button><button class="btn btn-secondary" onClick="{{ iq.dupNo }}">Annuler</button></div></div></sc-if>
         </section>
         <section style="display:flex;flex-direction:column;gap:8px"><h3 style="margin:0;font-size:20px">Journal des accès</h3>
           <sc-if value="{{ iq.noJournal }}"><span style="font-size:14px">Aucun accès pour l’instant.</span></sc-if>
           <table class="table" style="font-size:13px"><tbody><sc-for list="{{ iq.journal }}" as="j"><tr><td style="white-space:nowrap">{{ j.quand }}</td><td>{{ j.qui }}</td><td>{{ j.action }}</td><td style="font-weight:{{ j.fw }}">{{ j.res }}</td></tr></sc-for></tbody></table>
         </section>
-        </sc-if>
         <span style="font-size:13px">{{ iq.envoiTxt }}</span>
       </sc-if>
     </div></sc-if>
