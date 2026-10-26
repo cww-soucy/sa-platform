@@ -115,7 +115,7 @@ Comp.prototype.inspVals=function(){
   var list=sites.filter(function(s){return!qq||norm(s.nom+' '+s.ville).indexOf(qq)>=0;}).sort(byGrav)
     .map(function(s){var x=sum[s.id],on=s.id===site.id;return{on:on,pick:function(){choisir(s);},nom:s.nom,sub:[s.ville,self.T(s.type).court,x.lastV?fdate(x.lastV.date):'aucune visite'].filter(Boolean).join(' · '),bg:on?'var(--color-accent-100)':'transparent',bar:on?'inset 3px 0 0 var(--color-accent-700)':'none',
       pz:['eau','meca','secu','struct'].map(function(k){return{t:PZT[k]+' : '+I.LIB[x.pz[k]],st:pzSt(x.pz[k])};}),go:function(){self.setState({inspSite:s.id,inspVisite:null,isf:null,inspBassin:null});}};});
-  var TABS=[['bilan','Bilan par système'],['visite','Visites'],['tendances','Tendances de l’eau'],['saisie','Nouvelle inspection'],['bassins','Bassins et plan'],['acces','Accès client'],['points','Points de contrôle']];
+  var TABS=[['bilan','Bilan par système'],['visite','Visites'],['tendances','Tendances de l’eau'],['saisie','Nouvelle inspection'],['bassins','Bassins et plan'],['hiver','Hivernement'],['acces','Accès client'],['points','Points de contrôle']];
   var go=function(v){return function(){var p={inspView:v};if(v==='saisie'&&!st.isf)p.isf=self.isfNew(site);self.setState(p);if(v==='acces'||v==='bassins'){if(self.admTok()&&!self.adm)self.admLoad();}};};
   // Onglets personnalisables (ordre et visibilité), mémorisés sur ce navigateur
   var pref=this.inspTabsPref(),LIBT={};TABS.forEach(function(t){LIBT[t[0]]=t[1];});
@@ -138,10 +138,12 @@ Comp.prototype.inspVals=function(){
       up:function(){if(!i)return;var o=ordre.slice();o.splice(i-1,0,o.splice(i,1)[0]);savePref(o,pref.cache);},
       down:function(){if(i>=ordre.length-1)return;var o=ordre.slice();o.splice(i+1,0,o.splice(i,1)[0]);savePref(o,pref.cache);},
       upDis:i===0,downDis:i===ordre.length-1};}),
-    persoReset:function(){savePref([],[]);self.flash('Onglets réinitialisés');},isBilan:view==='bilan',isVisite:view==='visite',isSaisie:view==='saisie',isBassins:view==='bassins',isAcces:view==='acces',isPoints:view==='points',
+    persoReset:function(){savePref([],[]);self.flash('Onglets réinitialisés');},isBilan:view==='bilan',isVisite:view==='visite',isSaisie:view==='saisie',isBassins:view==='bassins',isHiver:view==='hiver',isAcces:view==='acces',isPoints:view==='points',
     h:{nom:site.nom,type:T.label,contrat:site.contrat||'—',logo:cp&&cp.logo_url?cp.logo_url:'',sub:[cp?cp.nom:site.ville,nb>1?nb+' bassins':(nb?site.bassins[0].nom:'1 bassin'),lv?'dernière visite le '+fdateL(lv.date)+' par '+(lv.r.tech_nom||lv.r.tech):'aucune visite publiée'].filter(Boolean).join(' · ')},
     goRapport:go('visite'),goTend:go('tendances'),goSaisie:function(){self.setState({inspView:'saisie',isf:self.isfNew(site)});},voirClient:function(){self.voirClient(site);},ficheSite:function(){self.openSiteFiche(site.id);},
     hasVisit:!!(view==='visite'?S.vis.length:lv),noVisit:!(view==='visite'?S.vis.length:lv)};
+  /* ----- Hivernement du site : listes de contrôle (créer, reprendre, imprimer, envoyer) et configuration par ouvrage ----- */
+  if(view==='hiver')iq.hiv=this.hivSiteVals(site);
   /* ----- 2a Bilan ----- */
   if(view==='bilan'){var c=I.compteurs(S.items);iq.verdict=I.verdict(S.items);
     iq.cpt=[{n:c.action,l:'actions requises',st:pzSt('action',14)},{n:c.watch,l:'à surveiller',st:pzSt('watch',14)},{n:c.ok,l:'conformes',st:pzSt('ok',14)}];
@@ -276,3 +278,31 @@ Comp.prototype.inspVals=function(){
   else iq.pc={types:[],rows:[]};
   return{isInspNew:view!=='tendances',isInspections:view==='tendances',iq:iq,iqTabs:tabs};
 };
+
+/* ═════ Sites et inspections › Hivernement : tout l'hivernement d'un site au même endroit ═════
+   Listes « Hivernement » du site (table rapports_hivernage, mêmes que Hivernage et sa-terrain) et réglages par ouvrage
+   (gabarit, étapes retirées ou ajoutées : fiche du site › ouvrage › « Inspection et hivernage », ouvrages.js). */
+Comp.prototype.hvDuSite=function(site){var L=Array.isArray(this.docs.hv)?this.docs.hv:[];
+  return L.filter(function(r){return String(r.site_id||'')===String(site.id)||(!r.site_id&&norm(r.site_nom)===norm(site.nom));});};
+/* Nouvelle liste pour ce site : site, courriel et étapes selon ses ouvrages déjà choisis */
+Comp.prototype.hvNouveauSite=function(site){var self=this,H=window.SAHiv;this.openDoc('hv');
+  this.deHv(function(h,d){h.info.site=site.nom;d.f.site_nom=site.nom;d.f.site_id=site.id;if(!h.courriel&&site.email)h.courriel=site.email;h.plan=H.planPourSite(site,self.D.gab,self.adjDe(site.id));});};
+/* Réglages d'un ouvrage : la fiche du site s'ouvre directement sur « Inspection et hivernage » de cet ouvrage */
+Comp.prototype.hvConfigOuvrage=function(site,i){this.openSiteFiche(site.id,{oc:i});};
+Comp.prototype.hivSiteVals=function(site){var self=this,H=window.SAHiv,D=this.D;if(this.docs.hv===undefined)this.loadDocs('hv');
+  var L=this.hvDuSite(site).slice().sort(function(a,b){return String(b.date_inspection||'').localeCompare(String(a.date_inspection||''));}),adj=this.adjDe(site.id);
+  var rows=L.map(function(r){var hv=H.isChecklist(r)?H.fromReport(r):null,pg=hv&&H.progress(hv),env=hv&&hv.envois.length?hv.envois[hv.envois.length-1]:null;
+    return{date:r.date_inspection||'—',tech:r.technicien||'—',av:hv?pg.done+' / '+pg.total+' cases ('+pg.pct+' %)':'Ancien rapport de pré-hivernage',
+      etat:(r.status==='complete'?'Complété':'Brouillon')+(env?' · envoyé le '+String(env.le).slice(0,10):''),
+      open:function(){self.openDoc('hv',r.id);},print:function(){self.printHtml(self.hvDocHtml(r));},send:function(){self.hvEnvoyerLigne(r);}};});
+  var bs=(site.bassins||[]).filter(function(b){return b&&String(b.nom||'').trim();});
+  var ouv=bs.map(function(b,i){var g=H.gabaritDe(b,D.gab),bid=String(b.id||''),mien=function(dom,act){return adj.filter(function(r){return r.domaine===dom&&r.action===act&&(!r.bassin_id||String(r.bassin_id)===bid);}).length;};
+    var ret=mien('hiv','exclure'),aj=mien('hiv','ajouter');
+    return{nom:b.nom,gab:g?g.nom:'Aucun hivernement',choix:b.hiv&&b.hiv.gabarit?'choisi dans la fiche':'selon le type',
+      adj:(ret?ret+' étape(s) retirée(s)':'')+(ret&&aj?' · ':'')+(aj?aj+' ajoutée(s)':'')||'liste complète du gabarit',
+      cfg:function(){self.hvConfigOuvrage(site,(site.bassins||[]).indexOf(b));}};});
+  var dernier=L[0],faitAn=L.some(function(r){return String(r.date_inspection||'').slice(0,4)===String(new Date().getFullYear());});
+  return{loading:this.docs.hv===null,err:this.docs.hv==='err'?'Lecture impossible : '+(this.docErr||''):'',rows:rows,none:Array.isArray(this.docs.hv)&&!rows.length,
+    resume:faitAn?'Hivernement fait cette année'+(dernier?' (dernier : '+(dernier.date_inspection||'—')+')':''):'Pas encore d’hivernement cette année',
+    nouveau:function(){self.hvNouveauSite(site);},ouv:ouv,sansOuv:!ouv.length,ficheSite:function(){self.openSiteFiche(site.id);},gabarits:function(){self.gbOpen('piscine');},
+    plan:H.planPourSite(site,D.gab,adj).sections.reduce(function(n,s){return n+s.items.length;},0)+' étapes dans la liste de ce site'};};

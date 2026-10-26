@@ -691,6 +691,27 @@ html.nav-repli .sa-shell{grid-template-columns:72px minmax(0,1fr)!important}html
       </aside>
     </div></template>
 
+    <!-- ═ Hivernement du site : listes et configuration par ouvrage ═ -->
+    <template data-sc="if" value="{{ iq.isHiver }}"><div style="padding:18px 22px;display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><b style="font-size:15px;flex:1">{{ iq.hiv.resume }}</b>
+        <button class="btn btn-primary" onClick="{{ iq.hiv.nouveau }}">Nouvel hivernement pour ce site</button></div>
+      <div style="display:flex;flex-direction:column;gap:6px"><h3 style="margin:0;font-size:22px">Listes de contrôle</h3>
+        <template data-sc="if" value="{{ iq.hiv.loading }}"><div>Chargement…</div></template><template data-sc="if" value="{{ iq.hiv.err }}"><div role="alert" style="padding:10px 14px;border:2px solid var(--color-accent-900)">{{ iq.hiv.err }}</div></template>
+        <template data-sc="if" value="{{ iq.hiv.none }}"><div style="font-size:15px;border:1px dashed var(--color-text);padding:12px">Aucune liste d’hivernement pour ce site. Le technicien la remplit dans sa-terrain, ou créez-la ici.</div></template>
+        <table class="table" style="font-size:14px"><tbody><template data-sc="for" list="{{ iq.hiv.rows }}" as="r"><tr data-hiv="{{ r.date }}">
+          <td style="font-weight:600">{{ r.date }}</td><td>{{ r.tech }}</td><td>{{ r.av }}</td><td style="font-weight:600">{{ r.etat }}</td>
+          <td style="text-align:right;white-space:nowrap"><button class="btn btn-ghost" onClick="{{ r.print }}">Imprimer</button><button class="btn btn-ghost" onClick="{{ r.send }}">Envoyer au client</button><button class="btn btn-secondary" onClick="{{ r.open }}">Ouvrir</button></td>
+        </tr></template></tbody></table></div>
+      <div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h3 style="margin:0;font-size:22px;flex:1">Configuration par ouvrage</h3>
+          <span style="font-size:13px">{{ iq.hiv.plan }}</span><button class="btn btn-ghost" onClick="{{ iq.hiv.gabarits }}">Gabarits d’hivernage</button></div>
+        <span style="font-size:13px">Gabarit et étapes propres à chaque ouvrage (retirées ou ajoutées pour ce site). Les ajustements faits sur place dans sa-terrain apparaissent ici.</span>
+        <template data-sc="if" value="{{ iq.hiv.sansOuv }}"><div style="font-size:15px;border:1px dashed var(--color-text);padding:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="flex:1">Aucun ouvrage déclaré : la liste suit le type du site. Ajoutez les bassins, jeux d’eau ou fontaines dans la fiche du site pour régler chacun.</span><button class="btn btn-secondary" onClick="{{ iq.hiv.ficheSite }}">Fiche du site</button></div></template>
+        <table class="table" style="font-size:14px"><tbody><template data-sc="for" list="{{ iq.hiv.ouv }}" as="o"><tr data-ouvrage="{{ o.nom }}">
+          <td style="font-weight:600">{{ o.nom }}</td><td>{{ o.gab }} <span style="font-size:12px">({{ o.choix }})</span></td><td>{{ o.adj }}</td>
+          <td style="text-align:right"><button class="btn btn-secondary" onClick="{{ o.cfg }}">Configurer</button></td>
+        </tr></template></tbody></table></div>
+    </div></template>
+
     <!-- ═ Bassins et plan (5a-1) ═ -->
     <template data-sc="if" value="{{ iq.isBassins }}"><div style="display:grid;grid-template-columns:minmax(0,1fr) 400px;flex:1">
       <div style="padding:18px 22px;display:flex;flex-direction:column;gap:12px;min-width:0">
@@ -1017,7 +1038,7 @@ html.nav-repli .sa-shell{grid-template-columns:72px minmax(0,1fr)!important}html
             <tr data-site="{{ s.nom }}">
               <td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px"><button onClick="{{ s.go }}" style="all:unset;cursor:pointer;display:flex;flex-direction:column;line-height:1.25"><span style="font-weight:500;text-decoration:underline">{{ s.nom }}</span><span style="font-size:12px">{{ s.addr }}</span></button></td>
               <td style="padding:var(--sa-row,10px) 8px;font-size:13px">{{ s.inst }}</td>
-              <td style="padding:var(--sa-row,10px) 8px"><template data-sc="if" value="{{ s.hasInsp }}"><button onClick="{{ s.goInsp }}" aria-label="Inspections de {{ s.nom }}" style="all:unset;cursor:pointer;display:flex;flex-direction:column;gap:3px"><span style="display:flex;gap:3px"><template data-sc="for" list="{{ s.insp }}" as="p"><i title="{{ p.t }}" style="{{ p.st }}"></i></template></span><span style="font-size:12px;text-decoration:underline;white-space:nowrap">{{ s.inspTxt }}</span></button></template></td>
+              <td style="padding:var(--sa-row,10px) 8px"><template data-sc="if" value="{{ s.hasInsp }}"><button onClick="{{ s.goInsp }}" aria-label="Inspections de {{ s.nom }}" style="all:unset;cursor:pointer;display:flex;flex-direction:column;gap:3px"><span style="display:flex;gap:3px"><template data-sc="for" list="{{ s.insp }}" as="p"><i title="{{ p.t }}" style="{{ p.st }}"></i></template></span><span style="font-size:12px;text-decoration:underline;white-space:nowrap">{{ s.inspTxt }}</span></button><button onClick="{{ s.goHiv }}" aria-label="Hivernement de {{ s.nom }}" style="all:unset;cursor:pointer;font-size:12px;text-decoration:underline;margin-top:3px;display:block">Hivernement</button></template></td>
               <td style="padding:var(--sa-row,10px) 8px;font-variant-numeric:tabular-nums">{{ s.n }}</td>
               <td style="padding:var(--sa-row,10px) 8px"><select class="input" aria-label="Client du site" onChange="{{ s.onClient }}" style="min-width:180px"><template data-sc="for" list="{{ s.clientOpts }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select></td>
               <td style="padding:var(--sa-row,10px) 18px var(--sa-row,10px) 8px"><select class="input" aria-label="Fusionner dans" onChange="{{ s.onMerge }}" style="min-width:200px"><template data-sc="for" list="{{ s.mergeOpts }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select></td>
@@ -4068,13 +4089,13 @@ var SITE_TYPES=[['','—'],['commercial','Commercial'],['creusee','Piscine creus
 function isInterne(type,nom){return type==='interne'||/\b(entrepot|bureau|shop|garage)\b/.test(norm(nom));}
 var BASSIN_TYPES=[['piscine','Piscine'],['spa','Spa'],['pataugeoire','Pataugeoire'],['jeuxdeau','Jeux d’eau'],['fontaine','Fontaine'],['autre','Autre']];
 /* pre : valeurs de départ d'un nouveau site (ex. { client_id } depuis « Ajouter un site » d'un client) */
-Comp.prototype.openSiteFiche=function(id,pre){var self=this;
+Comp.prototype.openSiteFiche=function(id,pre){var self=this,oc=pre&&pre.oc!=null&&pre.oc>=0?{i:pre.oc}:null;
   if(!id){this.setState({sf:{id:null,isNew:true,client_id:(pre&&pre.client_id)||'',f:{nom:'',addr:'',tel:'',email:'',siteweb:'',type:'',annee:'',equips:[],files:[],bassins:[],gps:null,notes:''},type_code:'GEN',code:'',journal:[],equipIn:'',confirm:false,busy:false,loading:false}});return;}
   var s=this.D.byId[id];this.setState({sf:{id:id,loading:true}});
   Promise.all([get('sites?id=eq.'+encodeURIComponent(id)+'&select=*'),soft('site_journal?site_id=eq.'+encodeURIComponent(id)+'&select=*&order=date.desc,heure.desc&limit=40',[])]).then(function(r){var x=r[0][0];if(!x)throw new Error('site introuvable');
     var f={nom:x.nom||'',addr:x.addr||'',tel:x.tel||'',email:x.email||'',siteweb:x.siteweb||'',type:x.type||'',annee:x.annee||'',equips:Array.isArray(x.equips)?x.equips.slice():[],files:Array.isArray(x.files)?x.files.slice():[],
       bassins:Array.isArray(x.bassins)?x.bassins.map(function(b){return Object.assign({id:b.id||pmmId(),nom:'',type:'piscine',type_code:'',volume:'',notes:''},b);}):[],gps:x.gps||null,notes:x.notes||''};
-    self.setState({sf:{id:id,isNew:false,client_id:x.client_id||(s&&s.client_id)||'',f:f,upd:x.updated_at||null,type_code:s?s.type:'GEN',code:s?s.contrat:'',journal:r[1],equipIn:'',confirm:false,busy:false,loading:false}});})
+    self.setState({oc:oc,sf:{id:id,isNew:false,client_id:x.client_id||(s&&s.client_id)||'',f:f,upd:x.updated_at||null,type_code:s?s.type:'GEN',code:s?s.contrat:'',journal:r[1],equipIn:'',confirm:false,busy:false,loading:false}});})
     .catch(function(e){self.setState({sf:null});self.flash('Fiche illisible : '+netMsg(e));});};
 Comp.prototype.sfMut=function(fn){var sf=JSON.parse(JSON.stringify(this.state.sf));fn(sf.f,sf);sf.confirm=false;this.setState({sf:sf});};
 Comp.prototype.saveSiteFiche=function(){var self=this,sf=this.state.sf;if(!sf||sf.busy)return;var f=sf.f,nom=String(f.nom).trim();if(!nom){this.flash('Le nom du site est requis');return;}
@@ -4947,7 +4968,7 @@ Comp.prototype.inspVals=function(){
   var list=sites.filter(function(s){return!qq||norm(s.nom+' '+s.ville).indexOf(qq)>=0;}).sort(byGrav)
     .map(function(s){var x=sum[s.id],on=s.id===site.id;return{on:on,pick:function(){choisir(s);},nom:s.nom,sub:[s.ville,self.T(s.type).court,x.lastV?fdate(x.lastV.date):'aucune visite'].filter(Boolean).join(' · '),bg:on?'var(--color-accent-100)':'transparent',bar:on?'inset 3px 0 0 var(--color-accent-700)':'none',
       pz:['eau','meca','secu','struct'].map(function(k){return{t:PZT[k]+' : '+I.LIB[x.pz[k]],st:pzSt(x.pz[k])};}),go:function(){self.setState({inspSite:s.id,inspVisite:null,isf:null,inspBassin:null});}};});
-  var TABS=[['bilan','Bilan par système'],['visite','Visites'],['tendances','Tendances de l’eau'],['saisie','Nouvelle inspection'],['bassins','Bassins et plan'],['acces','Accès client'],['points','Points de contrôle']];
+  var TABS=[['bilan','Bilan par système'],['visite','Visites'],['tendances','Tendances de l’eau'],['saisie','Nouvelle inspection'],['bassins','Bassins et plan'],['hiver','Hivernement'],['acces','Accès client'],['points','Points de contrôle']];
   var go=function(v){return function(){var p={inspView:v};if(v==='saisie'&&!st.isf)p.isf=self.isfNew(site);self.setState(p);if(v==='acces'||v==='bassins'){if(self.admTok()&&!self.adm)self.admLoad();}};};
   // Onglets personnalisables (ordre et visibilité), mémorisés sur ce navigateur
   var pref=this.inspTabsPref(),LIBT={};TABS.forEach(function(t){LIBT[t[0]]=t[1];});
@@ -4970,10 +4991,12 @@ Comp.prototype.inspVals=function(){
       up:function(){if(!i)return;var o=ordre.slice();o.splice(i-1,0,o.splice(i,1)[0]);savePref(o,pref.cache);},
       down:function(){if(i>=ordre.length-1)return;var o=ordre.slice();o.splice(i+1,0,o.splice(i,1)[0]);savePref(o,pref.cache);},
       upDis:i===0,downDis:i===ordre.length-1};}),
-    persoReset:function(){savePref([],[]);self.flash('Onglets réinitialisés');},isBilan:view==='bilan',isVisite:view==='visite',isSaisie:view==='saisie',isBassins:view==='bassins',isAcces:view==='acces',isPoints:view==='points',
+    persoReset:function(){savePref([],[]);self.flash('Onglets réinitialisés');},isBilan:view==='bilan',isVisite:view==='visite',isSaisie:view==='saisie',isBassins:view==='bassins',isHiver:view==='hiver',isAcces:view==='acces',isPoints:view==='points',
     h:{nom:site.nom,type:T.label,contrat:site.contrat||'—',logo:cp&&cp.logo_url?cp.logo_url:'',sub:[cp?cp.nom:site.ville,nb>1?nb+' bassins':(nb?site.bassins[0].nom:'1 bassin'),lv?'dernière visite le '+fdateL(lv.date)+' par '+(lv.r.tech_nom||lv.r.tech):'aucune visite publiée'].filter(Boolean).join(' · ')},
     goRapport:go('visite'),goTend:go('tendances'),goSaisie:function(){self.setState({inspView:'saisie',isf:self.isfNew(site)});},voirClient:function(){self.voirClient(site);},ficheSite:function(){self.openSiteFiche(site.id);},
     hasVisit:!!(view==='visite'?S.vis.length:lv),noVisit:!(view==='visite'?S.vis.length:lv)};
+  /* ----- Hivernement du site : listes de contrôle (créer, reprendre, imprimer, envoyer) et configuration par ouvrage ----- */
+  if(view==='hiver')iq.hiv=this.hivSiteVals(site);
   /* ----- 2a Bilan ----- */
   if(view==='bilan'){var c=I.compteurs(S.items);iq.verdict=I.verdict(S.items);
     iq.cpt=[{n:c.action,l:'actions requises',st:pzSt('action',14)},{n:c.watch,l:'à surveiller',st:pzSt('watch',14)},{n:c.ok,l:'conformes',st:pzSt('ok',14)}];
@@ -5109,6 +5132,34 @@ Comp.prototype.inspVals=function(){
   return{isInspNew:view!=='tendances',isInspections:view==='tendances',iq:iq,iqTabs:tabs};
 };
 
+/* ═════ Sites et inspections › Hivernement : tout l'hivernement d'un site au même endroit ═════
+   Listes « Hivernement » du site (table rapports_hivernage, mêmes que Hivernage et sa-terrain) et réglages par ouvrage
+   (gabarit, étapes retirées ou ajoutées : fiche du site › ouvrage › « Inspection et hivernage », ouvrages.js). */
+Comp.prototype.hvDuSite=function(site){var L=Array.isArray(this.docs.hv)?this.docs.hv:[];
+  return L.filter(function(r){return String(r.site_id||'')===String(site.id)||(!r.site_id&&norm(r.site_nom)===norm(site.nom));});};
+/* Nouvelle liste pour ce site : site, courriel et étapes selon ses ouvrages déjà choisis */
+Comp.prototype.hvNouveauSite=function(site){var self=this,H=window.SAHiv;this.openDoc('hv');
+  this.deHv(function(h,d){h.info.site=site.nom;d.f.site_nom=site.nom;d.f.site_id=site.id;if(!h.courriel&&site.email)h.courriel=site.email;h.plan=H.planPourSite(site,self.D.gab,self.adjDe(site.id));});};
+/* Réglages d'un ouvrage : la fiche du site s'ouvre directement sur « Inspection et hivernage » de cet ouvrage */
+Comp.prototype.hvConfigOuvrage=function(site,i){this.openSiteFiche(site.id,{oc:i});};
+Comp.prototype.hivSiteVals=function(site){var self=this,H=window.SAHiv,D=this.D;if(this.docs.hv===undefined)this.loadDocs('hv');
+  var L=this.hvDuSite(site).slice().sort(function(a,b){return String(b.date_inspection||'').localeCompare(String(a.date_inspection||''));}),adj=this.adjDe(site.id);
+  var rows=L.map(function(r){var hv=H.isChecklist(r)?H.fromReport(r):null,pg=hv&&H.progress(hv),env=hv&&hv.envois.length?hv.envois[hv.envois.length-1]:null;
+    return{date:r.date_inspection||'—',tech:r.technicien||'—',av:hv?pg.done+' / '+pg.total+' cases ('+pg.pct+' %)':'Ancien rapport de pré-hivernage',
+      etat:(r.status==='complete'?'Complété':'Brouillon')+(env?' · envoyé le '+String(env.le).slice(0,10):''),
+      open:function(){self.openDoc('hv',r.id);},print:function(){self.printHtml(self.hvDocHtml(r));},send:function(){self.hvEnvoyerLigne(r);}};});
+  var bs=(site.bassins||[]).filter(function(b){return b&&String(b.nom||'').trim();});
+  var ouv=bs.map(function(b,i){var g=H.gabaritDe(b,D.gab),bid=String(b.id||''),mien=function(dom,act){return adj.filter(function(r){return r.domaine===dom&&r.action===act&&(!r.bassin_id||String(r.bassin_id)===bid);}).length;};
+    var ret=mien('hiv','exclure'),aj=mien('hiv','ajouter');
+    return{nom:b.nom,gab:g?g.nom:'Aucun hivernement',choix:b.hiv&&b.hiv.gabarit?'choisi dans la fiche':'selon le type',
+      adj:(ret?ret+' étape(s) retirée(s)':'')+(ret&&aj?' · ':'')+(aj?aj+' ajoutée(s)':'')||'liste complète du gabarit',
+      cfg:function(){self.hvConfigOuvrage(site,(site.bassins||[]).indexOf(b));}};});
+  var dernier=L[0],faitAn=L.some(function(r){return String(r.date_inspection||'').slice(0,4)===String(new Date().getFullYear());});
+  return{loading:this.docs.hv===null,err:this.docs.hv==='err'?'Lecture impossible : '+(this.docErr||''):'',rows:rows,none:Array.isArray(this.docs.hv)&&!rows.length,
+    resume:faitAn?'Hivernement fait cette année'+(dernier?' (dernier : '+(dernier.date_inspection||'—')+')':''):'Pas encore d’hivernement cette année',
+    nouveau:function(){self.hvNouveauSite(site);},ouv:ouv,sansOuv:!ouv.length,ficheSite:function(){self.openSiteFiche(site.id);},gabarits:function(){self.gbOpen('piscine');},
+    plan:H.planPourSite(site,D.gab,adj).sections.reduce(function(n,s){return n+s.items.length;},0)+' étapes dans la liste de ce site'};};
+
 /* ---------- sa-admin › Sites & Clients : un client regroupe plusieurs sites ; un site garde ses bassins et installations ----------
    Inséré dans app.js par assemble.py (même portée : get, rest, rpc, Comp, fdate, iso, norm, auditT…).
    Base : tables clients, lieux_alias, sites_fusions et fonctions site_fusionner / lieu_classer (docs/sql/MIGRATION_2026-10-05_clients_sites.sql). */
@@ -5193,7 +5244,7 @@ Comp.prototype.clientsVals=function(){var self=this,st=this.state,D=this.D;
   if(tab==='clients'&&!noDb){var q=norm(st.clQ||''),cOpts=function(cur){return[{v:'',l:'— Aucun client —',sel:!cur}].concat(clients.map(function(c){return{v:c.id,l:c.nom+(c.interne?' (interne)':''),sel:c.id===cur};})).concat([{v:'__new',l:'+ Nouveau client…',sel:false}]);};
     var row=function(s){var others=D.sites.filter(function(x){return x.id!==s.id;});
       var ins=self.clInsp(s);
-      return{insp:ins.pz,inspTxt:ins.txt,hasInsp:!s.interne,goInsp:function(){self.go('inspections',{inspSite:s.id,inspView:'bilan',inspVisite:null,isf:null,inspBassin:null});},nom:s.nom,addr:s.addr||'sans adresse',inst:(s.bassins||[]).map(function(b){return b.nom;}).filter(Boolean).join(' · ')||'—',n:self.clFt?(S.parSite[s.id]||0):'…',go:function(){self.openSiteFiche(s.id);},
+      return{insp:ins.pz,inspTxt:ins.txt,hasInsp:!s.interne,goInsp:function(){self.go('inspections',{inspSite:s.id,inspView:'bilan',inspVisite:null,isf:null,inspBassin:null});},goHiv:function(){self.go('inspections',{inspSite:s.id,inspView:'hiver',inspVisite:null,isf:null,inspBassin:null});},nom:s.nom,addr:s.addr||'sans adresse',inst:(s.bassins||[]).map(function(b){return b.nom;}).filter(Boolean).join(' · ')||'—',n:self.clFt?(S.parSite[s.id]||0):'…',go:function(){self.openSiteFiche(s.id);},
         clientOpts:cOpts(s.client_id),onClient:function(e){var v=e.target.value;if(v==='__new'){e.target.value=s.client_id||'';self.setState({cle:{id:null,nom:'',interne:false,siteId:s.id}});return;}self.clSetClient(s.id,v);},
         mergeOpts:[{v:'',l:'—',sel:true}].concat(others.map(function(x){return{v:x.id,l:x.nom,sel:false};})),
         onMerge:function(e){var v=e.target.value;e.target.value='';if(!v)return;var d=D.byId[v],rest_=norm(s.nom).replace(norm(d.nom),'').trim();

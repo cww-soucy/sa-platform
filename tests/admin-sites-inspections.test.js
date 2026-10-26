@@ -89,3 +89,38 @@ test('inspection : choix du site compact (recherche, clavier, précédent / suiv
   assert.deepEqual(errors, []);
   await page.close();
 });
+
+test('hivernement depuis Sites et inspections : listes du site, nouvelle liste liée au site, configuration par ouvrage', async () => {
+  const t = tables();
+  t.sites[1].bassins = [{ id: 'bb1', nom: 'Piscine principale', type: 'piscine' }, { id: 'bb2', nom: 'Jeux d’eau', type: 'jeuxdeau' }];
+  t.ouvrage_ajustements = [{ id: 'a1', site_id: '2', bassin_id: 'bb1', domaine: 'hiv', action: 'exclure', ref: 'x', actif: true }];
+  const { page, db, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: t });
+  await page.waitForFunction(() => window.__admin && window.__admin.D);
+  await page.evaluate(() => window.__admin.go('sites'));
+  await page.getByRole('button', { name: 'Hivernement de Piscine Beta' }).click();
+  assert.deepEqual(await page.evaluate(() => [window.__admin.state.mod, window.__admin.state.inspView, String(window.__admin.state.inspSite)]), ['inspections', 'hiver', '2']);
+  await page.getByRole('tab', { name: 'Hivernement' }).waitFor();
+  // listes du site (rapport existant), configuration par ouvrage
+  await page.locator('tr[data-hiv]').first().waitFor();
+  assert.equal(await page.locator('tr[data-hiv]').count(), 1);
+  assert.match(await page.locator('tr[data-ouvrage="Piscine principale"]').innerText(), /1 étape\(s\) retirée\(s\)/);
+  assert.match(await page.locator('tr[data-ouvrage="Jeux d’eau"]').innerText(), /liste complète du gabarit/);
+  // configurer un ouvrage : fiche du site ouverte sur « Inspection et hivernage » de cet ouvrage
+  await page.locator('tr[data-ouvrage="Jeux d’eau"]').getByRole('button', { name: 'Configurer' }).click();
+  await page.waitForFunction(() => { const v = window.__admin.vals(); return v.sfReady && v.ocOpen; });
+  assert.equal(await page.evaluate(() => window.__admin.state.oc.i), 1);
+  await page.evaluate(() => window.__admin.setState({ oc: null, sf: null }));
+  // nouvelle liste : site, ouvrages et étapes déjà choisis
+  await page.getByRole('button', { name: 'Nouvel hivernement pour ce site' }).click();
+  await page.waitForFunction(() => window.__admin.state.de && window.__admin.state.de.hv);
+  const de = await page.evaluate(() => { const d = window.__admin.state.de; return { site: d.hv.info.site, nom: d.f.site_nom, plan: !!d.hv.plan }; });
+  assert.deepEqual(de, { site: 'Piscine Beta', nom: 'Piscine Beta', plan: true });
+  await page.locator('.dialog').getByRole('button', { name: 'Enregistrer' }).click();
+  await page.waitForFunction(() => /enregistré/.test(window.__admin.state.toast || ''));
+  const r = db.rows('rapports_hivernage').find((x) => x.id !== 'hv-old');
+  assert.ok(r, 'liste créée (colonnes valides)');
+  assert.equal(String(r.site_id), '2');
+  await page.waitForFunction(() => document.querySelectorAll('tr[data-hiv]').length === 2);
+  assert.deepEqual(errors, []);
+  await page.close();
+});

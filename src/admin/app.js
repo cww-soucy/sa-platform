@@ -1358,13 +1358,13 @@ var SITE_TYPES=[['','—'],['commercial','Commercial'],['creusee','Piscine creus
 function isInterne(type,nom){return type==='interne'||/\b(entrepot|bureau|shop|garage)\b/.test(norm(nom));}
 var BASSIN_TYPES=[['piscine','Piscine'],['spa','Spa'],['pataugeoire','Pataugeoire'],['jeuxdeau','Jeux d’eau'],['fontaine','Fontaine'],['autre','Autre']];
 /* pre : valeurs de départ d'un nouveau site (ex. { client_id } depuis « Ajouter un site » d'un client) */
-Comp.prototype.openSiteFiche=function(id,pre){var self=this;
+Comp.prototype.openSiteFiche=function(id,pre){var self=this,oc=pre&&pre.oc!=null&&pre.oc>=0?{i:pre.oc}:null;
   if(!id){this.setState({sf:{id:null,isNew:true,client_id:(pre&&pre.client_id)||'',f:{nom:'',addr:'',tel:'',email:'',siteweb:'',type:'',annee:'',equips:[],files:[],bassins:[],gps:null,notes:''},type_code:'GEN',code:'',journal:[],equipIn:'',confirm:false,busy:false,loading:false}});return;}
   var s=this.D.byId[id];this.setState({sf:{id:id,loading:true}});
   Promise.all([get('sites?id=eq.'+encodeURIComponent(id)+'&select=*'),soft('site_journal?site_id=eq.'+encodeURIComponent(id)+'&select=*&order=date.desc,heure.desc&limit=40',[])]).then(function(r){var x=r[0][0];if(!x)throw new Error('site introuvable');
     var f={nom:x.nom||'',addr:x.addr||'',tel:x.tel||'',email:x.email||'',siteweb:x.siteweb||'',type:x.type||'',annee:x.annee||'',equips:Array.isArray(x.equips)?x.equips.slice():[],files:Array.isArray(x.files)?x.files.slice():[],
       bassins:Array.isArray(x.bassins)?x.bassins.map(function(b){return Object.assign({id:b.id||pmmId(),nom:'',type:'piscine',type_code:'',volume:'',notes:''},b);}):[],gps:x.gps||null,notes:x.notes||''};
-    self.setState({sf:{id:id,isNew:false,client_id:x.client_id||(s&&s.client_id)||'',f:f,upd:x.updated_at||null,type_code:s?s.type:'GEN',code:s?s.contrat:'',journal:r[1],equipIn:'',confirm:false,busy:false,loading:false}});})
+    self.setState({oc:oc,sf:{id:id,isNew:false,client_id:x.client_id||(s&&s.client_id)||'',f:f,upd:x.updated_at||null,type_code:s?s.type:'GEN',code:s?s.contrat:'',journal:r[1],equipIn:'',confirm:false,busy:false,loading:false}});})
     .catch(function(e){self.setState({sf:null});self.flash('Fiche illisible : '+netMsg(e));});};
 Comp.prototype.sfMut=function(fn){var sf=JSON.parse(JSON.stringify(this.state.sf));fn(sf.f,sf);sf.confirm=false;this.setState({sf:sf});};
 Comp.prototype.saveSiteFiche=function(){var self=this,sf=this.state.sf;if(!sf||sf.busy)return;var f=sf.f,nom=String(f.nom).trim();if(!nom){this.flash('Le nom du site est requis');return;}
