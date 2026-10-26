@@ -251,15 +251,23 @@ test('accès client : courriel déjà autorisé pour un autre compte → proposi
   await page.getByLabel('Nom du contact').fill('Jeanne G.');
   await page.getByLabel('Courriel du contact').fill('Jeanne@Ville.qc.ca');
   await page.getByRole('button', { name: 'Ajouter', exact: true }).click();
-  await page.getByText(/a déjà un accès client : Jeanne, compte « Autre client »/).waitFor();
+  await page.getByText(/a déjà un accès client : Jeanne, compte « Autre client », 1 site\(s\)/).waitFor();
   assert.equal(writes.length, 0, 'rien n’est écrit avant la confirmation');
   await page.getByRole('button', { name: 'Donner accès à ce site' }).click();
-  await toast(page, /Jeanne a maintenant accès à ce site \(compte « Autre client »\)/);
-  assert.deepEqual(S.comptes.find((c) => c.id === 'cl-b').sites, ['2', '1'], 'le site rejoint le compte de la personne');
+  await toast(page, /Jeanne a maintenant accès à ce site — même courriel, même code de connexion/);
+  assert.deepEqual(S.contacts[0].sites, ['2', '1'], 'le site s’ajoute à la liste de la personne');
+  assert.deepEqual(S.comptes.find((c) => c.id === 'cl-b').sites, ['2'], 'son compte (et ses autres contacts) ne changent pas');
+  assert.deepEqual(writes.map((w) => w.table), ['client_contacts']);
   assert.equal(S.contacts.length, 1, 'aucun doublon de contact');
   // la personne apparaît dans les contacts du site, avec son compte ; retrait limité à ce site
   const row = page.getByRole('row', { name: /Jeanne/ });
   await row.getByText('Autre client · 2 sites').waitFor();
+  // lien d'accès à envoyer à la personne
+  await page.evaluate(() => { window.__mails = []; window.__openMail = (u) => window.__mails.push(u); });
+  await row.getByRole('button', { name: 'Envoyer le lien' }).click();
+  const m = decodeURIComponent(await page.evaluate(() => window.__mails[0]));
+  assert.match(m, /^mailto:jeanne@ville\.qc\.ca\?/);
+  assert.match(m, /https:\/\/sa-platform\.pages\.dev\/portail\//);
   page.once('dialog', (d) => d.accept());
   await row.getByRole('button', { name: 'Retirer de ce site' }).click();
   await toast(page, /garde ses autres sites/);
@@ -294,6 +302,37 @@ test('accès client : site sans compte → rattaché à un compte existant (mêm
   await toast(page, /^Contact autorisé/);
   assert.deepEqual(S.contacts.map((c) => c.compte_id), ['cl-b']);
   assert.equal(S.comptes.length, 2, 'aucun compte en double');
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+test('accès client : contact « Employé — tests d’eau » limité au site, lien de saisie à lui envoyer', async () => {
+  const { page, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: tables() });
+  const S = { comptes: [{ id: 'cl-a', nom: 'Ville de Test', sites: ['1', '2'], niveaux: {} }], contacts: [], qr: [], journal: [], documents: [] };
+  await page.route(FN, async (route) => {
+    const b = JSON.parse(route.request().postData()), ok = (o) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(o) });
+    if (b.action === 'admin_ouvrir') return ok({ ok: true, session: 'ADM-TOKEN-xxxxxxxxxxxxxxxx', role: 'admin' });
+    if (b.action === 'admin_lire') return ok({ ok: true, role: 'admin', ...JSON.parse(JSON.stringify(S)), portail: 'https://sa-platform.pages.dev/portail/', envoi: true });
+    if (b.action === 'admin_ecrire') { S.contacts.push(b.row); return ok({ ok: true }); }
+    return ok({ ok: false });
+  });
+  await open(page, 'acces');
+  await page.getByLabel('Mot de passe').fill('bon');
+  await page.getByRole('button', { name: 'Ouvrir la gestion' }).click();
+  assert.equal(await page.getByLabel('Lien d’accès client').inputValue(), 'https://sa-platform.pages.dev/portail/');
+  await page.getByLabel('Nom du contact').fill('Paul Sauveteur');
+  await page.getByLabel('Niveau du contact').selectOption('saisie');
+  await page.getByLabel('Courriel du contact').fill('paul@ville.qc.ca');
+  await page.getByRole('button', { name: 'Ajouter', exact: true }).click();
+  await toast(page, /^Contact autorisé/);
+  assert.deepEqual([S.contacts[0].niveau, S.contacts[0].sites], ['saisie', ['1']], 'limité au site, pas aux deux sites du compte');
+  const row = page.getByRole('row', { name: /Paul Sauveteur/ });
+  await row.getByText('Employé — tests d’eau').waitFor();
+  await page.evaluate(() => { window.__mails = []; window.__openMail = (u) => window.__mails.push(u); });
+  await row.getByRole('button', { name: 'Envoyer le lien' }).click();
+  const m = decodeURIComponent(await page.evaluate(() => window.__mails[0]));
+  assert.match(m, /Saisie des tests d’eau/);
+  assert.match(m, /formulaire de saisie/);
   assert.deepEqual(errors, []);
   await page.close();
 });

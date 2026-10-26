@@ -155,7 +155,9 @@
       if (S.horsQr && !S.apercu) { S.reprise = false; return ecranAutreAcces(r); }
       S.reprise = false;
       if (qs && !S.horsQr) S.site = qs;
-      if (!S.site || !r.sites.some(function (s) { return s.id === S.site; })) S.site = (r.sites[0] || {}).id || null; rendre();
+      if (!S.site || !r.sites.some(function (s) { return s.id === S.site; })) S.site = (r.sites[0] || {}).id || null;
+      /* L'accès suit l'identifiant : un employé « tests d'eau » arrive directement sur son formulaire de saisie */
+      if (r.saisie && !S.apercu) return rendreSaisie(); rendre();
     }).catch(function () { erreur(); });
   }
   function visitesDe(site) {
@@ -230,6 +232,52 @@
       h('aside', { class: 'stack' }, bassins, lv && dr.rapports ? h('button', { class: 'btn big', onclick: function () { S.tab = 'rapports'; S.visite = lv.r.id; rendre(); } }, 'Rapport de la dernière visite') : null)),
       h('div', { class: 'foot' }, D.urgence ? h('a', { href: 'tel:' + D.urgence.replace(/[^\d+]/g, '') }, 'Urgence 24/7 · ' + D.urgence) : null,
         S.apercu ? null : h('button', { class: 'btn', onclick: function () { call('deconnexion'); clearTok(); location.reload(); } }, 'Se déconnecter')));
+  }
+
+  /* ---------- employé du client : saisie des tests d'eau (niveau « saisie ») ---------- */
+  function rendreSaisie(msg) {
+    var D = S.data, site = D.sites.filter(function (s) { return s.id === S.site; })[0];
+    if (!site) return show(h('div', { class: 'card' }, h('h2', { text: 'Aucune installation associée' }), h('p', { text: 'Votre accès n’est relié à aucun site. Communiquez avec Soucy Aquatik.' })));
+    var bn = site.bassins.map(function (b) { return b.nom; });
+    if (bn.length && bn.indexOf(S.bassin) < 0) S.bassin = bn.length === 1 ? bn[0] : '';
+    var b = site.bassins.filter(function (x) { return x.nom === S.bassin; })[0];
+    var code = (b && b.type_code) || (D.contrats && D.contrats[site.id]) || 'GEN', T = D.types[code] || D.types.GEN || { fields: [] };
+    var F = (T.fields || []).filter(function (f) { return f && f.key; }), inputs = {};
+    var err = h('div', { role: 'alert', style: 'min-height:22px;font-weight:600' }), note = h('textarea', { class: 'input', id: 'note', rows: '2', placeholder: 'Remarque (facultatif)' });
+    var btn = h('button', { class: 'btn primary big', type: 'submit' }, 'Enregistrer le test');
+    var go = function (e) {
+      e.preventDefault(); if (bn.length > 1 && !S.bassin) { err.textContent = 'Choisissez le bassin.'; return; }
+      var vals = {}; Object.keys(inputs).forEach(function (k) { if (inputs[k].value.trim()) vals[k] = inputs[k].value.trim(); });
+      if (!Object.keys(vals).length) { err.textContent = 'Entrez au moins une mesure.'; return; }
+      btn.disabled = true; err.textContent = 'Enregistrement…';
+      call('saisir_releve', { site_id: site.id, bassin: S.bassin || null, vals: vals, note: note.value }).then(function (r) {
+        btn.disabled = false;
+        if (!r.ok) { if (r.session === false) { clearTok(); return ecranIdent(); } err.textContent = r.message || 'Enregistrement impossible.'; return; }
+        call('donnees', {}).then(function (d) { if (d.ok) S.data = d; rendreSaisie('Test enregistré à ' + r.heure + ' — merci !'); });
+      }).catch(function () { btn.disabled = false; err.textContent = 'Réseau indisponible — réessayez.'; });
+    };
+    var champs = F.map(function (f) {
+      var id = 'm-' + f.key, inp = h('input', { class: 'input', id: id, type: 'text', inputmode: 'decimal', autocomplete: 'off', placeholder: f.lo != null && f.hi != null ? 'Visé : ' + fr(f.lo, f.step) + ' – ' + fr(f.hi, f.step) : '' });
+      inputs[f.key] = inp;
+      return h('div', { class: 'stack', style: 'gap:4px' }, h('label', { for: id, text: f.label + (f.unit ? ' (' + f.unit + ')' : '') }), inp);
+    });
+    var tests = (D.tests || []).filter(function (t) { return t.site_id === site.id; }).slice(0, 15);
+    var lib = function (t) { var TT = D.types[t.type_code] || T; return (TT.fields || []).filter(function (f) { return t.vals[f.key] != null; }).map(function (f) { return f.label + ' ' + fr(t.vals[f.key], f.step) + (f.unit ? ' ' + f.unit : ''); }).join(' · '); };
+    show(h('header', { class: 'head' }, h('b', { class: 'nomclient', text: (D.compte && D.compte.nom) || site.nom }),
+        h('div', { class: 'grow' }, D.sites.length > 1 ? h('select', { class: 'input', style: 'max-width:340px', 'aria-label': 'Mes installations', onchange: function (e) { S.site = e.target.value; S.bassin = null; rendreSaisie(); } },
+          D.sites.map(function (s) { return h('option', { value: s.id, selected: s.id === site.id }, s.nom); })) : null, h('h1', { text: site.nom }), h('div', { class: 'muted', text: 'Saisie des tests d’eau' })),
+        h('div', { style: 'text-align:right' }, h('div', { text: D.contact.nom }), h('span', { class: 'badge', text: I.NIVEAU_NOM[D.contact.niveau] || '' }))),
+      msg ? h('div', { class: 'box', role: 'status' }, h('b', { text: msg })) : null,
+      h('form', { class: 'card stack', style: 'max-width:520px', onsubmit: go },
+        bn.length > 1 ? h('div', { class: 'stack', style: 'gap:4px' }, h('span', { text: 'Bassin' }), h('div', { class: 'row', role: 'group', 'aria-label': 'Bassin' }, bn.map(function (n) {
+          return h('button', { type: 'button', class: 'btn' + (n === S.bassin ? ' primary' : ''), 'aria-pressed': String(n === S.bassin), onclick: function () { S.bassin = n; rendreSaisie(); } }, n); }))) : null,
+        F.length ? champs : h('p', { class: 'muted', text: 'Aucun paramètre à saisir pour cette installation. Communiquez avec Soucy Aquatik.' }),
+        F.length ? [h('label', { for: 'note', text: 'Remarque' }), note, err, btn] : null),
+      h('div', { class: 'card stack' }, h('h3', { text: 'Tests récents' }), tests.length ? h('table', null, h('tbody', null, tests.map(function (t) {
+        return h('tr', null, h('td', { text: fdate(t.date) + (t.heure ? ' ' + t.heure : '') }), h('td', { text: (t.bassin ? t.bassin + ' · ' : '') + lib(t) }), h('td', { class: 'muted', text: t.tech_nom }));
+      }))) : h('div', { class: 'muted', text: 'Aucun test saisi pour l’instant.' })),
+      h('div', { class: 'foot' }, h('button', { class: 'btn', onclick: function () { call('deconnexion'); clearTok(); location.reload(); } }, 'Se déconnecter')));
+    var f0 = inputs[(F[0] || {}).key]; if (f0 && !msg) f0.focus();
   }
 
   function ongletReleves(site, vis) {
