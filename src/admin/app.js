@@ -753,6 +753,7 @@ Comp.prototype.openDoc=function(kind,id){var me=(this.user.prenom+' '+this.user.
       plan:[],suivi:[],timeline:{q1:'',q2:'',q3:'',q4:''},callout:'',signataire_sa:me,signataire_client:'',status:'brouillon'}}[kind];
   ['items_liv','items_ret','photos','lignes','sections','plan','suivi'].forEach(function(k){if(f[k]==null&&(kind==='bl'&&/items|photos/.test(k)||kind==='so'&&k==='lignes'||kind==='hv'&&/sections|plan|suivi/.test(k)))f[k]=[];});
   if(kind==='hv'&&!f.timeline)f.timeline={q1:'',q2:'',q3:'',q4:''};
+  if(kind==='so')f.odt=soOdt(f);
   /* Hivernage : un nouveau rapport est la liste de contrôle « Hivernement » (src/hivernage/checklist.js) ; les anciens rapports de pré-hivernage gardent leur éditeur */
   var H=window.SAHiv,hv=null,hvPh=[];
   if(kind==='hv'&&(!x||H.isChecklist(x))){hv=x?H.fromReport(x):H.blank({date:today});hvPh=x?JSON.parse(JSON.stringify(H.photosOf(x))):[];if(!x)f=Object.assign(H.toReport(hv,{status:'brouillon'}),{status:'brouillon'});}
@@ -766,7 +767,7 @@ Comp.prototype.saveDoc=function(extra,msg,hvOver,apres){var self=this,de=this.st
   if(k==='bl'&&!String(f.client||'').trim()){this.flash('Le client est requis');return;}
   if(k==='hv'&&!String(f.site_nom||'').trim()){this.flash('Le site est requis');return;}
   if(k==='bl'){f.items_liv=f.items_liv.filter(function(r){return String(r.item||'').trim();});f.items_ret=f.items_ret.filter(function(r){return String(r.item||'').trim();});}
-  if(k==='so'){f.lignes=f.lignes.filter(function(r){return String(r.desc||r.code||'').trim();});if(!f.date)f.date=null;}
+  if(k==='so'){var odt=String(f.odt||'').trim();delete f.odt;f.lignes=f.lignes.filter(function(r){return String(r.desc||r.code||'').trim();}).map(function(r){r=Object.assign({},r);if(odt)r.odt=odt;else delete r.odt;return r;});if(!f.date)f.date=null;}
   if(k==='hv'){var s=this.D.sites.filter(function(x){return norm(x.nom)===norm(f.site_nom);})[0];if(s){f.site_id=s.id;if(de.hv&&!f.client){var cl=this.clientById&&this.clientById(s.client_id);if(cl)f.client=cl.nom;}}f.plan=f.plan.filter(function(r){return String(r.element||r.travaux||'').trim();});f.suivi=f.suivi.filter(function(r){return String(r.element||'').trim();});}
   f.updated_at=nowIso();delete f.id;var nid=de.id||pmmId();
   var fin=function(){auditT(self,de.id?'MODIFICATION':'CREATION',tb,de.id||'nouveau');self.setState({de:null});self.flash(msg||(DOC[k].lbl+' enregistré'));self.loadDocs(k,true);if(apres)apres(Object.assign({},f,{id:nid}));};
@@ -784,7 +785,7 @@ Comp.prototype.docHtml=function(k,f){var E=escH,h='<!doctype html><meta charset=
       +'<h2>Articles livrés</h2>'+tbl(ROWS.items_liv,f.items_liv||[])+((f.items_ret||[]).length?'<h2>Articles récupérés</h2>'+tbl(ROWS.items_ret,f.items_ret):'')
       +(f.status==='livre'?'<p><b>Livré</b> le '+E(f.livre_at?new Date(f.livre_at).toLocaleString('fr-CA'):'')+' par '+E(f.livre_par_nom||'')+'</p>':'')
       +(sigs.length?sigs.map(function(p){return'<div><img class="sig" src="'+p.data+'"><div>'+E(p.name)+'</div></div>';}).join(''):f.status==='livre'?'<p>Livraison validée sans signature du client.</p>':'<div class="s"><div>Signature du client</div><div>Date</div></div>');}
-  else if(k==='so')h+='<h1>Sortie d’inventaire '+E(f.no_bon)+'</h1><div class="m"><span><b>Client / projet :</b> '+E(f.client||'—')+'</span><span><b>Employé :</b> '+E(f.nom||'')+' ('+E(f.no_employe||'')+')</span><span><b>Département :</b> '+E(f.departement||'—')+'</span><span><b>Date :</b> '+E(f.date||'—')+'</span></div>'+tbl(ROWS.lignes,f.lignes||[])+'<div class="s"><div>Signature de l’employé</div><div>Signature du superviseur</div></div>';
+  else if(k==='so')h+='<h1>Sortie d’inventaire '+E(f.no_bon)+'</h1><div class="m"><span><b>Client / projet :</b> '+E(f.client||'—')+'</span><span><b>ODT :</b> '+E(f.odt||soOdt(f)||'—')+'</span><span><b>Employé :</b> '+E(f.nom||'')+' ('+E(f.no_employe||'')+')</span><span><b>Département :</b> '+E(f.departement||'—')+'</span><span><b>Date :</b> '+E(f.date||'—')+'</span></div>'+tbl(ROWS.lignes,f.lignes||[])+'<div class="s"><div>Signature de l’employé</div><div>Signature du superviseur</div></div>';
   else{var tg={};HIV_TAGS.forEach(function(t){tg[t[0]]=t[1];});
     h+='<h1>'+E(f.titre||'Rapport de pré-hivernage')+' — '+E(f.site_nom)+'</h1><div>'+E(f.objet||'')+'</div><div class="m"><span><b>Client :</b> '+E(f.client||'—')+'</span><span><b>Inspection :</b> '+E(f.date_inspection||'—')+'</span><span><b>Rapport :</b> '+E(f.date_rapport||'—')+'</span><span><b>Préparé par :</b> '+E(f.prepare_par||'—')+'</span><span><b>Technicien :</b> '+E(f.technicien||'—')+'</span></div>'
       +(f.sections||[]).map(function(s){return'<h2>'+E(s.title)+(s.tag?'<span class="t">'+E(tg[s.tag]||s.tag)+'</span>':'')+'</h2>'+((s.items||[]).length?'<ul>'+s.items.map(function(i){return'<li>'+E(i)+'</li>';}).join('')+'</ul>':'<div>Aucun constat.</div>')+(s.photos||[]).filter(function(p){return p.data;}).map(function(p){return'<img src="'+p.data+'" style="max-width:200px;margin:4px">';}).join('');}).join('')
@@ -843,6 +844,16 @@ Comp.prototype.soBlVals=function(){var self=this,sb=this.state.sb;if(!sb)return{
    logistique-courriel (elle relit la ligne et les destinataires ; le navigateur n'envoie qu'un identifiant). Sans service de courriel :
    « Courriel à l'entrepôt » ouvre le logiciel de courriel avec un message prêt. */
 var ENT_KEY='entrepot_courriels',LCF=SB+'/functions/v1/logistique-courriel',COURRIEL_RE=/^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+/* ODT d'une sortie : rangé dans ses lignes (sorties_inventaire n'a pas de colonne odt) */
+function soOdt(so){var l=(so.lignes||[]).filter(function(x){return x&&x.odt;})[0];return l?String(l.odt).trim():'';}
+/* Courriel d'une sortie — même format que la fonction serveur (supabase/functions/logistique-courriel/lib.js, sortieTexte) */
+function soQuand(so){var d=so.sent_at?new Date(so.sent_at):null;return d&&!isNaN(d)?iso(d)+' '+pad(d.getHours())+':'+pad(d.getMinutes()):(so.date||'—');}
+function soTexte(so){var L=(so.lignes||[]).filter(function(l){return l&&String(l.desc||l.code||'').trim();}),odt=soOdt(so),w=30,P=function(s,n){s=String(s);while(s.length<n)s+=' ';return s;};
+  var q=function(l){return String(l.qteSortie==null||l.qteSortie===''?'?':l.qteSortie)+(l.unite?' '+l.unite:'');};
+  L.forEach(function(l){w=Math.max(w,String(l.desc||l.code).length+8);});
+  return{sujet:'Sortie d’inventaire '+(so.no_bon||'')+' — '+(so.client||'sans projet')+(odt?' — ODT '+odt:''),
+    texte:['Bonjour,','','Sortie d’inventaire émise'+(so.nom?' par '+so.nom:'')+'.','','N° : '+(so.no_bon||'—'),'Date : '+soQuand(so),'Client / projet : '+(so.client||'—'),'ODT : '+(odt||'—'),'',
+      P('Articles :',w)+P('Quantités :',14)+'Emp :'].concat(L.length?L.map(function(l){return P('• '+(l.desc||l.code)+' /',w)+P(q(l),14)+(l.loc||'—');}):['(aucun article)']).concat(['','Soucy Aquatik']).join('\n')};}
 function entCfg(v){v=v&&typeof v==='object'?v:{};return{responsables:(Array.isArray(v.responsables)?v.responsables:[]).map(function(r){return{nom:String(r&&r.nom||''),courriel:String(r&&r.courriel||'')};}),sortie:v.sortie!==false,livraison:!!v.livraison};}
 function entDest(c){var out=[];c.responsables.forEach(function(r){var e=r.courriel.trim().toLowerCase();if(COURRIEL_RE.test(e)&&out.indexOf(e)<0)out.push(e);});return out;}
 Comp.prototype.loadEnt=function(force){var self=this;if(!force&&this.entSrv!==undefined)return;this.entSrv=null;
@@ -859,9 +870,7 @@ Comp.prototype.entApres=function(ev,row,msg){var self=this,c=this.entSrv&&typeof
 /* Envoi manuel : par le service s'il répond, sinon courriel préparé dans le logiciel de courriel */
 Comp.prototype.entCourriel=function(so){var self=this,c=this.entSrv&&typeof this.entSrv==='object'?this.entSrv:entCfg(null),dest=entDest(c);
   this.entNotifier('sortie',so.id).then(function(j){if(j.ok){self.flash('Courriel envoyé à l’entrepôt ('+(j.a||[]).join(', ')+')');auditT(self,'EXPORT','sorties_inventaire',so.id,{courriel_entrepot:(j.a||[]).join(', ')});return;}
-    var L=(so.lignes||[]).filter(function(l){return String(l.desc||l.code||'').trim();});
-    mailto(dest.join(','),'Sortie d’inventaire '+(so.no_bon||'')+' — '+(so.client||'sans projet'),'Bonjour,\n\nSortie d’inventaire émise'+(so.nom?' par '+so.nom:'')+'.\n\nN° : '+(so.no_bon||'—')+'\nDate : '+(so.date||'—')+'\nClient / projet : '+(so.client||'—')+'\n\nArticles :\n'
-      +(L.length?L.map(function(l){return'  • '+(l.desc||l.code)+' — '+(l.qteSortie||'?')+(l.unite?' '+l.unite:'')+(l.loc?' (empl. '+l.loc+')':'');}).join('\n'):'  (aucun article)')+'\n\nSoucy Aquatik');
+    var t=soTexte(so);mailto(dest.join(','),t.sujet,t.texte);
     self.flash(dest.length?'Courriel préparé pour '+dest.join(', '):'Aucun responsable d’entrepôt réglé (Logistique › Entrepôt) — courriel préparé sans destinataire');});};
 Comp.prototype.entVals=function(){var self=this,st=this.state;if(this.entSrv===undefined)this.loadEnt();
   var srv=this.entSrv&&typeof this.entSrv==='object'?this.entSrv:null,e=st.ent||(srv?JSON.parse(JSON.stringify(srv)):null);
@@ -911,7 +920,7 @@ Comp.prototype.docsVals=function(){var self=this,st=this.state,D=this.D,mod=st.m
   var techs=D.comptes.filter(function(c){return c.role!=='admin'&&D.statut[c.id]!=='inactif';}).map(function(c){var n=(c.prenom+' '+c.nom).trim();return{v:n,l:n,id:c.id,sel:(k==='bl'?f.technicien:k==='so'?f.nom:f.technicien)===n};});
   var done=k==='bl'?f.status==='livre':k==='so'?f.status==='envoye':f.status==='complete',me=(self.user.prenom+' '+self.user.nom).trim();
   var deV={deTitle:(de.id?'':'Nouveau · ')+DOC[k].lbl+(f.no_bon?' '+f.no_bon:''),isBL:k==='bl',isSO:k==='so',isHV:k==='hv',sitesList2:D.sites.map(function(s){return{v:s.nom};}),invList:(D.inv||[]).map(function(i){return{v:i.nom};}),
-    dClient:fld('client'),dTel:fld('tel'),dAdr:fld('adresse'),dDate:fld('date'),dHeure:fld('heure'),dUrg:fld('urgent'),dNom:fld('nom'),dDept:fld('departement'),dNoEmp:fld('no_employe'),
+    dOdt:fld('odt'),dClient:fld('client'),dTel:fld('tel'),dAdr:fld('adresse'),dDate:fld('date'),dHeure:fld('heure'),dUrg:fld('urgent'),dNom:fld('nom'),dDept:fld('departement'),dNoEmp:fld('no_employe'),
     dSite:fld('site_nom'),dObjet:fld('objet'),dTitre:fld('titre'),dDR:fld('date_rapport'),dDI:fld('date_inspection'),dPrep:fld('prepare_par'),dTech:fld('technicien'),dCall:fld('callout'),dSSA:fld('signataire_sa'),dSCl:fld('signataire_client'),
     dTechs:techs,onDTech:function(e){var v=e.target.value,t=techs.filter(function(x){return x.v===v;})[0];self.deMut(function(ff){if(k==='so'){ff.nom=v;if(t)ff.no_employe=t.id;}else ff.technicien=v;});},
     dQ:['q1','q2','q3','q4'].map(function(q,i){return{l:'T'+(i+1),v:(f.timeline||{})[q]||'',on:function(e){var v=e.target.value;self.deMut(function(ff){ff.timeline=ff.timeline||{};ff.timeline[q]=v;});}};}),

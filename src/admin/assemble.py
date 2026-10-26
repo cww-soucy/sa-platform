@@ -394,7 +394,7 @@ DE_BL=IF('isBL',G2(FL('Client',INP('dClient.v','dClient.on','text',' list="deSit
   +'<label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" checked="{{ dUrg.v }}" onChange="{{ dUrg.on }}">Livraison urgente</label>'
   +ROWED('rLiv','Articles à livrer','addLiv','Ajouter un article')+ROWED('rRet','Articles récupérés chez le client','addRet','Ajouter un article récupéré')
   +FL('Photos et signatures',PHOTOS('blPhotos','addBlPhoto')))
-DE_SO=IF('isSO',G2(FL('Client / projet',INP('dClient.v','dClient.on','text',' list="deSites"')),FL('Date',INP('dDate.v','dDate.on','date')))
+DE_SO=IF('isSO',G2(FL('Client / projet',INP('dClient.v','dClient.on','text',' list="deSites"')),G2(FL('ODT',INP('dOdt.v','dOdt.on','text',' placeholder="N° d’ODT"')),FL('Date',INP('dDate.v','dDate.on','date'))))
   +G2(FL('Employé',TECHSEL),G2(FL('N° employé',INP('dNoEmp.v','dNoEmp.on')),FL('Département',INP('dDept.v','dDept.on'))))
   +ROWED('rLig','Articles sortis','addLig','Ajouter une ligne'))
 PRIO='<select class="input" onChange="{{ r.onPrio }}" aria-label="Priorité" style="flex:1.2;padding:6px 8px"><template data-sc="for" list="{{ r.prio }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select>'

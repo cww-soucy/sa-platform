@@ -547,7 +547,7 @@ button{font-family:inherit}
             </div>
             <sc-if value="{{ isSortie }}">
               <div style="display:flex;flex-direction:column;gap:0">
-                <sc-if value="{{ soAsk }}"><div role="status" style="border:2px solid var(--color-text);padding:14px;margin-bottom:14px;display:flex;flex-direction:column;gap:10px"><b style="font-size:17px">{{ soAskTxt }}</b><span style="font-size:15px;line-height:1.4">Passer en bon de livraison ? Le client signe sur le téléphone — ou validez la livraison sans signature. Pas de papier.</span><button class="btn btn-primary" onClick="{{ soAskGo }}" style="min-height:56px;font-size:18px">Passer au bon de livraison</button><button class="btn btn-secondary" onClick="{{ soAskLater }}" style="min-height:48px;font-size:16px">Plus tard</button></div></sc-if><div style="font-size:15px;padding-bottom:10px">Pour : {{ logSite }}</div>
+                <sc-if value="{{ soAsk }}"><div role="status" style="border:2px solid var(--color-text);padding:14px;margin-bottom:14px;display:flex;flex-direction:column;gap:10px"><b style="font-size:17px">{{ soAskTxt }}</b><span style="font-size:15px;line-height:1.4">Passer en bon de livraison ? Le client signe sur le téléphone — ou validez la livraison sans signature. Pas de papier.</span><button class="btn btn-primary" onClick="{{ soAskGo }}" style="min-height:56px;font-size:18px">Passer au bon de livraison</button><button class="btn btn-secondary" onClick="{{ soAskLater }}" style="min-height:48px;font-size:16px">Plus tard</button></div></sc-if><div style="font-size:15px;padding-bottom:10px">Pour : {{ logSite }}</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding-bottom:12px"><div class="field"><label style="font-size:14px">ODT</label><input class="input" value="{{ soOdt }}" onInput="{{ onSoOdt }}" placeholder="N° d’ODT" style="min-height:48px;font-size:17px"></div><div class="field"><label style="font-size:14px">Emplacement</label><input class="input" value="{{ soLoc }}" onInput="{{ onSoLoc }}" placeholder="Ex. ENT, camion" style="min-height:48px;font-size:17px"></div></div>
                 <input class="input" value="{{ invQ }}" onInput="{{ onInvQ }}" placeholder="Chercher un article…" style="min-height:48px;font-size:17px;margin-bottom:8px"><sc-if value="{{ noInv }}"><div style="font-size:15px;padding:8px 0">Inventaire en chargement ou indisponible.</div></sc-if><sc-for list="{{ inventaire }}" as="p">
                   <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--color-divider)">
                     <div style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:16px;line-height:1.25">{{ p.nom }}</span><span style="font-size:13px">En stock : {{ p.reste }} {{ p.unite }}</span></div>
@@ -1834,14 +1834,16 @@ Comp.prototype.deletePunch=function(){var e=this.state.pe;if(!e)return;if(!e.con
 /* ---------- Logistique : sortie d'inventaire → bon de livraison signé (mêmes tables et formats que SA Platform) ---------- */
 Comp.prototype.logSiteObj=function(){var cj=this.curJob();return cj?(siteById(cj.site)||pseudoSite(cj.site,'')):null;};
 Comp.prototype.saveSortie=function(){var self=this,sel=this.state.sortie,items=this.inv.filter(function(p){return sel[p.id]>0;}).map(function(p){return{nom:p.nom,qty:sel[p.id],unite:p.unite||''};});
-  if(!items.length){this.flash('Choisissez au moins un article');return;}var s=this.logSiteObj(),dest=s?s.nom:'',now=new Date(),id=rid('so'),no=noBon('SA-INV-');
+  if(!items.length){this.flash('Choisissez au moins un article');return;}var s=this.logSiteObj(),dest=s?s.nom:'',now=new Date(),id=rid('so'),no=noBon('SA-INV-'),odt=this.soOdtVal(),loc=String(this.state.soLoc||'').trim();
   this.enqueue({_t:'sorties_inventaire',id:id,no_bon:no,nom:this.me.nom,no_employe:this.user.id,departement:this.user.dept||'',date:iso(now),client:dest,
-    lignes:items.map(function(i){return{code:'',loc:'',desc:i.nom,qteSortie:String(i.qty),qteRetour:'',projet:dest,unite:i.unite};}),status:'envoye',sent_at:now.toISOString(),created_by:this.user.id,created_at:now.toISOString(),updated_at:now.toISOString()});
+    lignes:items.map(function(i){var l={code:'',loc:loc,desc:i.nom,qteSortie:String(i.qty),qteRetour:'',projet:dest,unite:i.unite};if(odt)l.odt=odt;return l;}),status:'envoye',sent_at:now.toISOString(),created_by:this.user.id,created_at:now.toISOString(),updated_at:now.toISOString()});
   this.notifier('sortie',id);
   /* On propose tout de suite de passer en bon de livraison (signature du client sur le téléphone, ou livraison validée sans signature) */
-  this.lastSortie={site:s,items:items,no:no};this.setState({sortie:{},soAsk:true});this.flash('Sortie enregistrée · '+items.length+' article(s)');};
+  this.lastSortie={site:s,items:items,no:no};this.setState({sortie:{},soAsk:true,soOdt:null});this.flash('Sortie enregistrée · '+items.length+' article(s)');};
 /* Courriel automatique aux responsables de l'entrepôt (fonction serveur logistique-courriel) : passe par la file d'attente,
    après la ligne qu'il annonce ; le serveur relit la ligne et les destinataires réglés dans sa-admin › Logistique › Entrepôt. */
+/* ODT de la sortie : saisi, sinon celui du punch en cours. Rangé dans chaque ligne (sorties_inventaire n'a pas de colonne odt). */
+Comp.prototype.soOdtVal=function(){var v=this.state.soOdt;if(v!=null)return String(v).trim();var t=this.activeTask(this.viewDays());return String(t&&t.odt||'').trim();};
 Comp.prototype.notifier=function(ev,id){this.enqueue({_t:'logistique-courriel',_m:'FN',id:'ce-'+ev+'-'+id,body:{evenement:ev,id:id}});};
 Comp.prototype.newBonFromSortie=function(){var L=this.lastSortie;if(!L)return;var s=L.site,now=new Date();
   /* même numéro que la sortie (SA-INV-AAAAMMJJ-NNN → SA-AAAAMMJJ-NNN) : le bureau relie ainsi le bon à sa sortie */
@@ -2032,6 +2034,7 @@ Comp.prototype.vals=function(){
   var logV={isLog:scr==='logistique',isSortie:st.logTab==='sortie',isBon:st.logTab==='bon',tabSortie:function(){self.setState({logTab:'sortie'});},tabBon:function(){self.setState({logTab:'bon'});},
     sortieTabBg:segStyle(st.logTab==='sortie').bg,sortieTabFg:segStyle(st.logTab==='sortie').fg,bonTabBg:segStyle(st.logTab==='bon').bg,bonTabFg:segStyle(st.logTab==='bon').fg,
     logSite:ls?ls.nom:'aucun site (pas de punch en cours)',inventaire:inventaire,noInv:!this.inv.length,sortieCount:sortieCount,saveSortie:function(){self.saveSortie();},invQ:st.invQ,onInvQ:function(e){self.setState({invQ:e.target.value});},
+    soOdt:this.soOdtVal(),onSoOdt:function(e){self.setState({soOdt:e.target.value});},soLoc:st.soLoc||'',onSoLoc:function(e){self.setState({soLoc:e.target.value});},
     soAsk:!!(st.soAsk&&this.lastSortie),soAskTxt:this.lastSortie?('Sortie '+(this.lastSortie.no||'')+' enregistrée · '+this.lastSortie.items.length+' article(s)'+(this.lastSortie.site?' pour '+this.lastSortie.site.nom:'')):'',
     soAskGo:function(){self.newBonFromSortie();},soAskLater:function(){self.setState({soAsk:false});},
     noSigLbl:st.noSig?'Confirmer : livré sans signature':'Valider sans signature',validerSansSig:function(){self.validerSansSig();},
