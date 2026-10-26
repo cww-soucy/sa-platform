@@ -564,6 +564,7 @@ html.nav-repli .sa-shell{grid-template-columns:72px minmax(0,1fr)!important}html
         <button class="btn btn-primary" onClick="{{ iq.goRapport }}"><sa-i n="file" s="16"></sa-i>Rapport client</button>
         <button class="btn btn-secondary" onClick="{{ iq.goTend }}"><sa-i n="chart" s="16"></sa-i>Tendances de l’eau</button>
         <button class="btn btn-secondary" onClick="{{ iq.goSaisie }}"><sa-i n="plus" s="16"></sa-i>Nouvelle inspection</button>
+        <button class="btn btn-secondary" onClick="{{ iq.goHivNew }}"><sa-i n="snow" s="16"></sa-i>Nouvel hivernement</button>
         <button class="btn btn-secondary" onClick="{{ iq.ficheSite }}"><sa-i n="building" s="16"></sa-i>Fiche du site</button><button class="btn btn-secondary" onClick="{{ iq.voirClient }}"><sa-i n="eye" s="16"></sa-i>Voir comme le client</button>
       </div>
     </div>
@@ -618,7 +619,7 @@ html.nav-repli .sa-shell{grid-template-columns:72px minmax(0,1fr)!important}html
         <div style="padding:10px 12px;display:flex;gap:6px"><button class="btn btn-ghost" onClick="{{ iq.prevSite }}" aria-label="Site précédent"><sa-i n="left" s="16"></sa-i></button><span style="flex:1;font-size:13px;align-self:center">Visites</span><button class="btn btn-ghost" onClick="{{ iq.nextSite }}" aria-label="Site suivant"><sa-i n="right" s="16"></sa-i></button></div>
         <template data-sc="if" value="{{ iq.noVisit }}"><div style="padding:12px;font-size:14px">Aucune visite.</div></template>
         <template data-sc="for" list="{{ iq.visites }}" as="v"><button onClick="{{ v.go }}" style="all:unset;cursor:pointer;box-sizing:border-box;width:100%;display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-top:1px solid var(--color-divider);background:{{ v.bg }};box-shadow:{{ v.bar }}">
-          <span style="display:flex;justify-content:space-between;gap:6px"><b>{{ v.date }}</b><i style="{{ v.pz }}"></i></span><span style="font-size:13px">{{ v.txt }}</span><span style="font-size:12px;color:var(--color-neutral-700)">{{ v.tech }}</span><template data-sc="if" value="{{ v.brouillon }}"><span style="font-size:12px;font-weight:600">Brouillon</span></template>
+          <span style="display:flex;justify-content:space-between;gap:6px"><b>{{ v.date }}</b><i style="{{ v.pz }}"></i></span><span style="font-size:13px">{{ v.txt }}</span><span style="font-size:12px;color:var(--color-neutral-700)">{{ v.tech }}</span><template data-sc="if" value="{{ v.hiv }}"><span style="font-size:12px;font-weight:600;display:flex;align-items:center;gap:4px"><sa-i n="snow" s="12"></sa-i>Hivernement</span></template><template data-sc="if" value="{{ v.brouillon }}"><span style="font-size:12px;font-weight:600">Brouillon</span></template>
         </button></template>
       </div>
       <article style="padding:18px 22px;display:flex;flex-direction:column;gap:14px;min-width:0">
@@ -4996,7 +4997,7 @@ Comp.prototype.inspVals=function(){
       upDis:i===0,downDis:i===ordre.length-1};}),
     persoReset:function(){savePref([],[]);self.flash('Onglets réinitialisés');},isBilan:view==='bilan',isVisite:view==='visite',isSaisie:view==='saisie',isBassins:view==='bassins',isHiver:view==='hiver',isAcces:view==='acces',isPoints:view==='points',
     h:{nom:site.nom,type:T.label,contrat:site.contrat||'—',logo:cp&&cp.logo_url?cp.logo_url:'',sub:[cp?cp.nom:site.ville,nb>1?nb+' bassins':(nb?site.bassins[0].nom:'1 bassin'),lv?'dernière visite le '+fdateL(lv.date)+' par '+(lv.r.tech_nom||lv.r.tech):'aucune visite publiée'].filter(Boolean).join(' · ')},
-    goRapport:go('visite'),goTend:go('tendances'),goSaisie:function(){self.setState({inspView:'saisie',isf:self.isfNew(site)});},voirClient:function(){self.voirClient(site);},ficheSite:function(){self.openSiteFiche(site.id);},
+    goRapport:go('visite'),goTend:go('tendances'),goSaisie:function(){self.setState({inspView:'saisie',isf:self.isfNew(site)});},goHivNew:function(){self.hvNouveauSite(site);},voirClient:function(){self.voirClient(site);},ficheSite:function(){self.openSiteFiche(site.id);},
     hasVisit:!!(view==='visite'?S.vis.length:lv),noVisit:!(view==='visite'?S.vis.length:lv)};
   /* ----- Hivernement du site : listes de contrôle (créer, reprendre, imprimer, envoyer) et configuration par ouvrage ----- */
   if(view==='hiver')iq.hiv=this.hivSiteVals(site);
@@ -5020,7 +5021,13 @@ Comp.prototype.inspVals=function(){
     var idx=list.map(function(x){return x.nom;}),sl=sites.slice().sort(function(a,b){return a.nom.localeCompare(b.nom,'fr');}),si=sl.indexOf(site);
     iq.prevSite=function(){var s=sl[(si-1+sl.length)%sl.length];self.setState({inspSite:s.id,inspVisite:null});};iq.nextSite=function(){var s=sl[(si+1)%sl.length];self.setState({inspSite:s.id,inspVisite:null});};
     iq.visites=S.vis.map(function(v){var on=v===cur,c=I.compteurs(v.items);return{date:fdate(v.date)+' '+(v.r.heure||''),txt:(c.action||c.watch?[c.action?c.action+' action'+(c.action>1?'s':''):'',c.watch?c.watch+' à surveiller':''].filter(Boolean).join(' · '):'Tout conforme')+(nb>1?' · '+v.bassin:''),
-      tech:(v.r.tech_nom||v.r.tech||'')+(v.r.source==='bureau'?' · saisie bureau':''),brouillon:!v.pub,pz:pzSt(I.pire(v.items.map(function(i){return i.etat;}))),bg:on?'var(--color-accent-100)':'transparent',bar:on?'inset 3px 0 0 var(--color-accent-700)':'none',go:function(){self.setState({inspVisite:v.r.id});}};});
+      tech:(v.r.tech_nom||v.r.tech||'')+(v.r.source==='bureau'?' · saisie bureau':''),brouillon:!v.pub,pz:pzSt(I.pire(v.items.map(function(i){return i.etat;}))),bg:on?'var(--color-accent-100)':'transparent',bar:on?'inset 3px 0 0 var(--color-accent-700)':'none',go:function(){self.setState({inspVisite:v.r.id});},_k:String(v.date||'')+(v.r.heure||'')};});
+    /* Les hivernements du site entrent dans le même historique (ouverts dans la liste de contrôle) */
+    if(this.docs.hv===undefined)this.loadDocs('hv');var H=window.SAHiv;
+    iq.visites=iq.visites.concat(this.hvDuSite(site).map(function(r){var hv=H.isChecklist(r)?H.fromReport(r):null,pg=hv&&H.progress(hv);
+      return{hiv:true,date:fdate(r.date_inspection)||'—',txt:hv?pg.done+' / '+pg.total+' cases ('+pg.pct+' %)':'Rapport de pré-hivernage',tech:r.technicien||'',brouillon:r.status!=='complete',pz:'display:none',bg:'transparent',bar:'none',
+        go:function(){self.openDoc('hv',r.id);},_k:String(r.date_inspection||'')+'~'};})).sort(function(a,b){return String(b._k).localeCompare(String(a._k));});
+    iq.noVisit=!iq.visites.length;
     if(cur){var prev=S.vis.filter(function(v){return v.bassin===cur.bassin&&v.pub&&(v.date+(v.r.heure||''))<(cur.date+(cur.r.heure||''));}),se=I.etatsSystemes(cur.items),R2={action:3,watch:2,ok:1,na:0},r=cur.r;
       var saisi=r.source==='bureau'?' · saisie bureau par '+(r.saisi_par||'?')+(r.source_detail?' ('+((SRCS.filter(function(x){return x[0]===r.source_detail;})[0]||[0,r.source_detail])[1])+')':''):'';
       var photos=[];if(r.photo)photos.push({src:r.photo,leg:'Vue d’ensemble'});cur.items.forEach(function(i){(i.photos||[]).forEach(function(p){photos.push({src:p,leg:i.libelle});});});
