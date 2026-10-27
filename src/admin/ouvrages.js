@@ -81,7 +81,7 @@ function gbPropre(secs){var vu={};return(secs||[]).map(function(s){
     var items=s.items.filter(function(it){return String(it.t||'').trim();}).map(function(it){var x={id:it.id,t:String(it.t).trim()};if(String(it.n||'').trim())x.n=String(it.n).trim();if(String(it.b||'').trim())x.b=String(it.b).trim();
       if(it.crit)x.crit=true;if(it.g===2)x.g=2;var ch=String(it.choixTxt||'').split(/[,;\/]/).map(function(c){return c.trim();}).filter(Boolean);if(it.isChoix!==false&&ch.length>1)x.choix=ch;return x;});
     var id=s.id&&!vu[s.id]?s.id:'';if(!id){var k=1;while(vu['p'+k]||(secs||[]).some(function(o){return o!==s&&o.id==='p'+k;}))k++;id='p'+k;}vu[id]=1;
-    var o={id:id,titre:String(s.titre||'').trim()||'Section',col:s.col||(s.commun?'Vérification':'Tâche')};if(s.col2)o.col2=s.col2;if(s.commun)o.commun=true;if(items.some(function(it){return it.n;}))o.num=true;o.items=items;return o;})
+    var o={id:id,titre:String(s.titre||'').trim()||'Section',col:s.col||(s.commun?'Vérification':'Tâche')};if(s.col2)o.col2=s.col2;if(s.commun)o.commun=true;if(s.types&&s.types.length)o.types=s.types.slice();if(items.some(function(it){return it.n;}))o.num=true;o.items=items;return o;})
   .filter(function(s){return s.items.length;});}
 Comp.prototype.gbLoad=function(){var self=this;return get('gabarits_hivernage?select=*').then(function(r){self.D.gab=r||[];self.update();});};
 Comp.prototype.gbSave=function(desactiver){var self=this,gb=this.state.gb,H=window.SAHiv;if(!gb||gb.busy)return;
@@ -111,6 +111,9 @@ Comp.prototype.gbVals=function(){var self=this,gb=this.state.gb,D=this.D,H=windo
       delLbl:s._del?'Confirmer : supprimer la section':'Supprimer la section',del:mut(function(x,v,S){if(!x._del){x._del=true;return;}S.splice(si,1);}),
       addItem:mut(function(x){var num=x.num||x.items.some(function(it){return it.n;});x.items.push({id:gbNid('e'),n:num?String(x.items.length+1):'',t:''});}),
       hasPiece:!!s.col2,ariaSec:'Section '+(si+2),
+      /* Types d'hivernement : aucune case = la section sert à tous les types */
+      types:H.TYPES.map(function(t){var on=(s.types||[]).indexOf(t.code)>=0;return{l:t.nom.replace(/ \(.*\)$/,''),on:on,go:mut(function(x){var L=(x.types||[]).filter(function(c){return c!==t.code;});if(!on)L.push(t.code);x.types=L;})};}),
+      typesTxt:(s.types||[]).length?'':'(aucune case : tous les types)',
       items:s.items.map(function(it,ii){var m=function(fn){return mut(function(x,v,S){fn(x.items[ii],v,x);});},isC=it.isChoix!=null?!!it.isChoix:!!(it.choix&&it.choix.length>1);
         return{lbl:'Étape '+(ii+1)+' de la section '+(si+2),n:{v:it.n||'',on:m(function(y,v){y.n=v;})},t:{v:it.t||'',on:m(function(y,v){y.t=v;})},b:{v:it.b||'',on:m(function(y,v){y.b=v;})},
           crit:!!it.crit,onCrit:m(function(y,v){y.crit=!!v;}),piece:it.g===2,onPiece:m(function(y,v){if(v)y.g=2;else delete y.g;}),

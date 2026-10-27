@@ -623,7 +623,7 @@ button{font-family:inherit}
           </div>
         </sc-if>
 
-        <sc-if value="{{ isHivForm }}"><div style="padding:12px 0 0;display:flex;flex-direction:column"><button onClick="{{ goHiv }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:4px;height:44px;padding:0 20px;font-size:16px;color:var(--color-accent-700)"><sa-i n="left" s="22"></sa-i>Hivernage</button><div style="padding:6px 20px 12px;display:flex;flex-direction:column;gap:4px;border-bottom:1px solid var(--color-divider)"><div style="font-size:14px">Hivernement · fermeture avec formation</div><h1 style="margin:0;font-size:32px;line-height:1.02">{{ hivSite.nom }}</h1><div style="font-size:15px">{{ hivSite.ville }} · {{ hivProgress }} cases sur {{ hivTotal }}</div><sc-if value="{{ hivOuv }}"><div style="font-size:15px">Ouvrages : {{ hivOuv }}</div></sc-if><div style="height:8px;background:var(--color-divider);margin-top:6px"><div style="height:100%;width:{{ hivPct }};background:var(--color-accent-700)"></div></div></div><sc-if value="{{ hivCrit }}"><div role="alert" style="margin:12px 20px 0;padding:10px 12px;border:2px solid var(--color-text);font-size:15px;font-weight:600">{{ hivCrit }}</div></sc-if><div style="padding:12px 20px 0"><button class="btn btn-secondary" onClick="{{ hivEditGo }}" style="min-height:48px;width:100%;font-size:17px;gap:8px"><sa-i n="edit" s="18"></sa-i>{{ hivEditLbl }}</button><sc-if value="{{ hivEdit }}"><div style="font-size:14px;line-height:1.4;margin-top:8px">Retirez ce qui ne s’applique pas à ce site, ajoutez ce qui manque. C’est gardé pour les prochaines fois et le bureau le voit.</div></sc-if></div><div style="padding:16px 20px 4px"><h2 style="margin:0;font-size:21px">1. Informations générales</h2></div><div style="padding:4px 20px 8px;display:flex;flex-direction:column;gap:10px"><sc-for list="{{ hivInfo }}" as="f"><div class="field"><label style="font-size:15px">{{ f.l }}</label><input class="input" type="{{ f.type }}" value="{{ f.v }}" onInput="{{ f.on }}" style="min-height:48px;font-size:17px"></div></sc-for></div><sc-for list="{{ hivSecs }}" as="s"><div style="display:flex;flex-direction:column"><div style="display:flex;align-items:center;gap:10px;padding:16px 20px 8px;border-bottom:1px solid var(--color-divider)"><h2 style="margin:0;flex:1;font-size:21px;line-height:1.1">{{ s.titre }}</h2><button onClick="{{ s.all }}" style="all:unset;cursor:pointer;font-size:15px;color:var(--color-accent-700)">{{ s.allLbl }}</button></div><sc-if value="{{ hivNoEdit }}"><sc-for list="{{ s.items }}" as="c"><sc-if value="{{ c.isCase }}"><button onClick="{{ c.toggle }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:14px;padding:10px 20px;min-height:58px;box-sizing:border-box;border-bottom:1px solid var(--color-divider)"><span style="width:30px;height:30px;flex:none;box-sizing:border-box;border:1.5px solid var(--color-text);background:{{ c.box }};color:var(--color-bg);display:flex;align-items:center;justify-content:center"><sc-if value="{{ c.on }}"><sa-i n="check" s="20" w="2.5"></sa-i></sc-if></span><span style="font-size:16px;line-height:1.3;font-weight:{{ c.fw }}">{{ c.label }}</span></button></sc-if><sc-if value="{{ c.isChoix }}"><div role="group" aria-label="{{ c.label }}" style="display:flex;flex-direction:column;gap:8px;padding:10px 20px;border-bottom:1px solid var(--color-divider)"><span style="font-size:16px;line-height:1.3;font-weight:{{ c.fw }}">{{ c.label }}</span><div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{ c.opts }}" as="o"><button onClick="{{ o.go }}" aria-pressed="{{ o.pr }}" style="all:unset;cursor:pointer;min-height:44px;min-width:64px;box-sizing:border-box;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;border:1.5px solid var(--color-text);background:{{ o.bg }};color:{{ o.fg }};font-size:16px">{{ o.l }}</button></sc-for></div></div></sc-if></sc-for></sc-if><sc-if value="{{ hivEdit }}"><sc-for list="{{ s.edits }}" as="c"><div style="display:flex;align-items:center;gap:10px;padding:8px 20px;min-height:52px;box-sizing:border-box;border-bottom:1px solid var(--color-divider)"><span style="flex:1;font-size:16px;line-height:1.3">{{ c.label }}</span><button onClick="{{ c.retirer }}" aria-label="Retirer pour ce site : {{ c.label }}" style="all:unset;cursor:pointer;flex:none;display:inline-flex;align-items:center;gap:4px;min-height:40px;padding:0 10px;border:1px solid var(--color-text);font-size:14px"><sa-i n="x" s="15"></sa-i>Retirer</button></div></sc-for><sc-if value="{{ s.canAdd }}"><div style="display:flex;gap:8px;padding:10px 20px"><input class="input" value="{{ s.addV }}" onInput="{{ s.onAdd }}" placeholder="Ajouter une étape ici" aria-label="Ajouter une étape : {{ s.titre }}" style="flex:1;min-height:46px;font-size:16px"><button class="btn btn-secondary" onClick="{{ s.add }}" aria-label="Ajouter l’étape : {{ s.titre }}" style="min-height:46px;gap:6px"><sa-i n="plus" s="18"></sa-i>Ajouter</button></div></sc-if></sc-if><sc-if value="{{ s.tips }}"><div style="margin:12px 20px 0;padding:10px 12px;border-left:4px solid var(--color-accent-700);font-size:15px;line-height:1.4"><b>Bon à savoir :</b><sc-for list="{{ hivTips }}" as="t"><div style="margin-top:4px">• {{ t.t }}</div></sc-for></div><sc-if value="{{ hivAlerte }}"><div style="margin:10px 20px 0;padding:10px 12px;border:2px solid var(--color-text);font-weight:700;font-size:15px">{{ hivAlerte }}</div></sc-if></sc-if><sc-if value="{{ s.isForm }}"><div style="padding:12px 20px 0;display:flex;flex-direction:column;gap:10px"><b style="font-size:17px">Employés formés</b><sc-for list="{{ hivEmp }}" as="e"><div style="border:1px solid var(--color-divider);display:flex;flex-direction:column"><div style="display:flex;gap:6px;align-items:center;padding:8px"><input class="input" value="{{ e.nom }}" onInput="{{ e.onNom }}" placeholder="Employé (nom)" aria-label="Employé (nom)" style="flex:1;min-height:46px;font-size:17px"><button onClick="{{ e.del }}" aria-label="Retirer l’employé" style="all:unset;cursor:pointer;width:44px;height:44px;display:flex;align-items:center;justify-content:center"><sa-i n="x" s="20"></sa-i></button></div><sc-for list="{{ e.tg }}" as="c"><button onClick="{{ c.toggle }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:14px;padding:10px 20px;min-height:58px;box-sizing:border-box;border-bottom:1px solid var(--color-divider)"><span style="width:30px;height:30px;flex:none;box-sizing:border-box;border:1.5px solid var(--color-text);background:{{ c.box }};color:var(--color-bg);display:flex;align-items:center;justify-content:center"><sc-if value="{{ c.on }}"><sa-i n="check" s="20" w="2.5"></sa-i></sc-if></span><span style="font-size:16px;line-height:1.3;font-weight:{{ c.fw }}">{{ c.lbl }}</span></button></sc-for></div></sc-for><button class="btn btn-secondary" onClick="{{ addEmp }}" style="min-height:50px;font-size:17px;gap:8px"><sa-i n="plus" s="20"></sa-i>Ajouter un employé</button></div></sc-if></div></sc-for><sc-if value="{{ hivRetOk }}"><div style="padding:16px 20px 0;display:flex;flex-direction:column;gap:6px"><b style="font-size:17px">Retirées pour ce site</b><sc-for list="{{ hivRetirees }}" as="r"><div style="display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--color-divider);padding:6px 0"><span style="flex:1;font-size:15px;line-height:1.3">{{ r.l }}<br><span style="font-size:13px">{{ r.par }}</span></span><button onClick="{{ r.remettre }}" style="all:unset;cursor:pointer;min-height:40px;padding:0 10px;border:1px solid var(--color-text);font-size:14px;display:inline-flex;align-items:center">Remettre</button></div></sc-for></div></sc-if><div style="padding:18px 20px;display:flex;flex-direction:column;gap:10px"><h2 style="margin:0;font-size:21px">{{ hivNoRem }}. Remarques et anomalies</h2><textarea class="input" value="{{ hivNoteTxt }}" onInput="{{ onHivNote }}" placeholder="Bris, pièces à commander, remarques" style="min-height:90px;font-size:17px"></textarea><button class="btn btn-secondary" onClick="{{ hivPhoto }}" style="min-height:52px;font-size:18px;gap:10px"><sa-i n="camera" s="20"></sa-i>{{ hivPhotoLbl }}</button><button class="btn btn-primary" onClick="{{ sendHiv }}" style="min-height:60px;font-size:21px;margin-top:6px">Envoyer au bureau</button><div style="font-size:14px;line-height:1.4">Le bureau la vérifie, l’imprime ou l’envoie au client depuis sa-admin.</div></div></div></sc-if>
+        <sc-if value="{{ isHivForm }}"><div style="padding:12px 0 0;display:flex;flex-direction:column"><button onClick="{{ goHiv }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:4px;height:44px;padding:0 20px;font-size:16px;color:var(--color-accent-700)"><sa-i n="left" s="22"></sa-i>Hivernage</button><div style="padding:6px 20px 12px;display:flex;flex-direction:column;gap:4px;border-bottom:1px solid var(--color-divider)"><div style="font-size:14px">Hivernement · {{ hivTypeNom }}</div><h1 style="margin:0;font-size:32px;line-height:1.02">{{ hivSite.nom }}</h1><div style="font-size:15px">{{ hivSite.ville }} · {{ hivProgress }} cases sur {{ hivTotal }}</div><sc-if value="{{ hivOuv }}"><div style="font-size:15px">Ouvrages : {{ hivOuv }}</div></sc-if><div style="height:8px;background:var(--color-divider);margin-top:6px"><div style="height:100%;width:{{ hivPct }};background:var(--color-accent-700)"></div></div></div><sc-if value="{{ hivCrit }}"><div role="alert" style="margin:12px 20px 0;padding:10px 12px;border:2px solid var(--color-text);font-size:15px;font-weight:600">{{ hivCrit }}</div></sc-if><div style="padding:12px 20px 0"><button class="btn btn-secondary" onClick="{{ hivEditGo }}" style="min-height:48px;width:100%;font-size:17px;gap:8px"><sa-i n="edit" s="18"></sa-i>{{ hivEditLbl }}</button><sc-if value="{{ hivEdit }}"><div style="font-size:14px;line-height:1.4;margin-top:8px">Retirez ce qui ne s’applique pas à ce site, ajoutez ce qui manque. C’est gardé pour les prochaines fois et le bureau le voit.</div></sc-if></div><div role="group" aria-label="Type d’hivernement" style="padding:14px 20px 4px;display:flex;flex-direction:column;gap:8px"><b style="font-size:17px">Type d’hivernement</b><div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{ hivTypes }}" as="o"><button onClick="{{ o.go }}" aria-pressed="{{ o.pr }}" style="all:unset;cursor:pointer;min-height:44px;box-sizing:border-box;padding:0 12px;display:inline-flex;align-items:center;border:1.5px solid var(--color-text);background:{{ o.bg }};color:{{ o.fg }};font-size:15px">{{ o.l }}</button></sc-for></div><sc-if value="{{ hivAutre }}"><input class="input" value="{{ hivTypeAutre }}" onInput="{{ onHivTypeAutre }}" placeholder="Préciser le type d’intervention" aria-label="Préciser le type d’intervention" style="min-height:48px;font-size:17px"></sc-if></div><div style="padding:16px 20px 4px"><h2 style="margin:0;font-size:21px">1. Informations générales</h2></div><div style="padding:4px 20px 8px;display:flex;flex-direction:column;gap:10px"><sc-for list="{{ hivInfo }}" as="f"><div class="field"><label style="font-size:15px">{{ f.l }}</label><input class="input" type="{{ f.type }}" value="{{ f.v }}" onInput="{{ f.on }}" style="min-height:48px;font-size:17px"></div></sc-for></div><sc-for list="{{ hivSecs }}" as="s"><div style="display:flex;flex-direction:column"><div style="display:flex;align-items:center;gap:10px;padding:16px 20px 8px;border-bottom:1px solid var(--color-divider)"><h2 style="margin:0;flex:1;font-size:21px;line-height:1.1">{{ s.titre }}</h2><button onClick="{{ s.all }}" style="all:unset;cursor:pointer;font-size:15px;color:var(--color-accent-700)">{{ s.allLbl }}</button></div><sc-if value="{{ hivNoEdit }}"><sc-for list="{{ s.items }}" as="c"><sc-if value="{{ c.isCase }}"><button onClick="{{ c.toggle }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:14px;padding:10px 20px;min-height:58px;box-sizing:border-box;border-bottom:1px solid var(--color-divider)"><span style="width:30px;height:30px;flex:none;box-sizing:border-box;border:1.5px solid var(--color-text);background:{{ c.box }};color:var(--color-bg);display:flex;align-items:center;justify-content:center"><sc-if value="{{ c.on }}"><sa-i n="check" s="20" w="2.5"></sa-i></sc-if></span><span style="font-size:16px;line-height:1.3;font-weight:{{ c.fw }}">{{ c.label }}</span></button></sc-if><sc-if value="{{ c.isChoix }}"><div role="group" aria-label="{{ c.label }}" style="display:flex;flex-direction:column;gap:8px;padding:10px 20px;border-bottom:1px solid var(--color-divider)"><span style="font-size:16px;line-height:1.3;font-weight:{{ c.fw }}">{{ c.label }}</span><div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{ c.opts }}" as="o"><button onClick="{{ o.go }}" aria-pressed="{{ o.pr }}" style="all:unset;cursor:pointer;min-height:44px;min-width:64px;box-sizing:border-box;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;border:1.5px solid var(--color-text);background:{{ o.bg }};color:{{ o.fg }};font-size:16px">{{ o.l }}</button></sc-for></div></div></sc-if></sc-for></sc-if><sc-if value="{{ hivEdit }}"><sc-for list="{{ s.edits }}" as="c"><div style="display:flex;align-items:center;gap:10px;padding:8px 20px;min-height:52px;box-sizing:border-box;border-bottom:1px solid var(--color-divider)"><span style="flex:1;font-size:16px;line-height:1.3">{{ c.label }}</span><button onClick="{{ c.retirer }}" aria-label="Retirer pour ce site : {{ c.label }}" style="all:unset;cursor:pointer;flex:none;display:inline-flex;align-items:center;gap:4px;min-height:40px;padding:0 10px;border:1px solid var(--color-text);font-size:14px"><sa-i n="x" s="15"></sa-i>Retirer</button></div></sc-for><sc-if value="{{ s.canAdd }}"><div style="display:flex;gap:8px;padding:10px 20px"><input class="input" value="{{ s.addV }}" onInput="{{ s.onAdd }}" placeholder="Ajouter une étape ici" aria-label="Ajouter une étape : {{ s.titre }}" style="flex:1;min-height:46px;font-size:16px"><button class="btn btn-secondary" onClick="{{ s.add }}" aria-label="Ajouter l’étape : {{ s.titre }}" style="min-height:46px;gap:6px"><sa-i n="plus" s="18"></sa-i>Ajouter</button></div></sc-if></sc-if><sc-if value="{{ s.tips }}"><div style="margin:12px 20px 0;padding:10px 12px;border-left:4px solid var(--color-accent-700);font-size:15px;line-height:1.4"><b>Bon à savoir :</b><sc-for list="{{ hivTips }}" as="t"><div style="margin-top:4px">• {{ t.t }}</div></sc-for></div><sc-if value="{{ hivAlerte }}"><div style="margin:10px 20px 0;padding:10px 12px;border:2px solid var(--color-text);font-weight:700;font-size:15px">{{ hivAlerte }}</div></sc-if></sc-if><sc-if value="{{ s.isForm }}"><div style="padding:12px 20px 0;display:flex;flex-direction:column;gap:10px"><b style="font-size:17px">Employés formés</b><sc-for list="{{ hivEmp }}" as="e"><div style="border:1px solid var(--color-divider);display:flex;flex-direction:column"><div style="display:flex;gap:6px;align-items:center;padding:8px"><input class="input" value="{{ e.nom }}" onInput="{{ e.onNom }}" placeholder="Employé (nom)" aria-label="Employé (nom)" style="flex:1;min-height:46px;font-size:17px"><button onClick="{{ e.del }}" aria-label="Retirer l’employé" style="all:unset;cursor:pointer;width:44px;height:44px;display:flex;align-items:center;justify-content:center"><sa-i n="x" s="20"></sa-i></button></div><sc-for list="{{ e.tg }}" as="c"><button onClick="{{ c.toggle }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:14px;padding:10px 20px;min-height:58px;box-sizing:border-box;border-bottom:1px solid var(--color-divider)"><span style="width:30px;height:30px;flex:none;box-sizing:border-box;border:1.5px solid var(--color-text);background:{{ c.box }};color:var(--color-bg);display:flex;align-items:center;justify-content:center"><sc-if value="{{ c.on }}"><sa-i n="check" s="20" w="2.5"></sa-i></sc-if></span><span style="font-size:16px;line-height:1.3;font-weight:{{ c.fw }}">{{ c.lbl }}</span></button></sc-for></div></sc-for><button class="btn btn-secondary" onClick="{{ addEmp }}" style="min-height:50px;font-size:17px;gap:8px"><sa-i n="plus" s="20"></sa-i>Ajouter un employé</button></div></sc-if></div></sc-for><sc-if value="{{ hivEdit }}"><div style="padding:16px 20px 0;display:flex;flex-direction:column;gap:8px"><b style="font-size:17px">Nouvelle section pour ce site</b><div style="font-size:14px;line-height:1.4">Ex. « Glissade », « Bâtiment des pompes ». Gardée pour les prochaines années ; ajoutez les autres étapes dans la section une fois créée.</div><input class="input" value="{{ hivNewSec.titre }}" onInput="{{ hivNewSec.onTitre }}" placeholder="Titre de la section" aria-label="Titre de la nouvelle section" style="min-height:46px;font-size:16px"><input class="input" value="{{ hivNewSec.t }}" onInput="{{ hivNewSec.onT }}" placeholder="Première étape" aria-label="Première étape de la nouvelle section" style="min-height:46px;font-size:16px"><button class="btn btn-secondary" onClick="{{ hivNewSec.add }}" style="min-height:48px;gap:6px"><sa-i n="plus" s="18"></sa-i>Créer la section</button></div></sc-if><div style="padding:18px 20px 0;display:flex;flex-direction:column;gap:10px"><h2 style="margin:0;font-size:21px">{{ hivNoTrav }}. Travaux sur mesure</h2><div style="font-size:14px;line-height:1.4">Travaux faits en plus de la liste : réparation, remplacement, demande du client.</div><sc-for list="{{ hivTravaux }}" as="e"><div data-travail style="border:1px solid var(--color-divider);display:flex;flex-direction:column"><div style="display:flex;gap:6px;align-items:center;padding:8px"><input class="input" value="{{ e.t }}" onInput="{{ e.onT }}" placeholder="Travail" aria-label="Travail" style="flex:1;min-height:46px;font-size:17px"><button onClick="{{ e.del }}" aria-label="Retirer le travail" style="all:unset;cursor:pointer;width:44px;height:44px;display:flex;align-items:center;justify-content:center"><sa-i n="x" s="20"></sa-i></button></div><div style="display:flex;gap:6px;padding:0 8px 8px"><input class="input" value="{{ e.duree }}" onInput="{{ e.onDuree }}" placeholder="Heures" aria-label="Heures" inputmode="decimal" style="width:90px;min-height:44px;font-size:16px"><input class="input" value="{{ e.note }}" onInput="{{ e.onNote }}" placeholder="Note" aria-label="Note" style="flex:1;min-height:44px;font-size:16px"></div><sc-for list="{{ e.tg }}" as="c"><button onClick="{{ c.toggle }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:14px;padding:10px 20px;min-height:58px;box-sizing:border-box;border-bottom:1px solid var(--color-divider)"><span style="width:30px;height:30px;flex:none;box-sizing:border-box;border:1.5px solid var(--color-text);background:{{ c.box }};color:var(--color-bg);display:flex;align-items:center;justify-content:center"><sc-if value="{{ c.on }}"><sa-i n="check" s="20" w="2.5"></sa-i></sc-if></span><span style="font-size:16px;line-height:1.3;font-weight:{{ c.fw }}">{{ c.lbl }}</span></button></sc-for></div></sc-for><button class="btn btn-secondary" onClick="{{ addTravail }}" style="min-height:50px;font-size:17px;gap:8px"><sa-i n="plus" s="20"></sa-i>Ajouter un travail</button></div><div style="padding:18px 20px 0;display:flex;flex-direction:column;gap:10px"><h2 style="margin:0;font-size:21px">{{ hivNoMat }}. Matériel et produits utilisés</h2><datalist id="hivMatList"><sc-for list="{{ hivMatSugg }}" as="o"><option value="{{ o.v }}"></option></sc-for></datalist><sc-for list="{{ hivMat }}" as="m"><div data-materiel style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--color-divider);padding:6px 0"><input class="input" value="{{ m.nom }}" onInput="{{ m.onNom }}" list="hivMatList" placeholder="Matériel ou produit" aria-label="Matériel ou produit" style="flex:1;min-width:180px;min-height:46px;font-size:17px"><input class="input" value="{{ m.qte }}" onInput="{{ m.onQte }}" placeholder="Qté" aria-label="Quantité" inputmode="decimal" style="width:80px;min-height:46px;font-size:17px"><input class="input" value="{{ m.unite }}" onInput="{{ m.onUnite }}" placeholder="Unité" aria-label="Unité" style="width:80px;min-height:46px;font-size:17px"><button onClick="{{ m.del }}" aria-label="Retirer le matériel" style="all:unset;cursor:pointer;width:44px;height:44px;display:flex;align-items:center;justify-content:center"><sa-i n="x" s="20"></sa-i></button></div></sc-for><button class="btn btn-secondary" onClick="{{ addMat }}" style="min-height:50px;font-size:17px;gap:8px"><sa-i n="plus" s="20"></sa-i>Ajouter du matériel ou un produit</button></div><sc-if value="{{ hivRetOk }}"><div style="padding:16px 20px 0;display:flex;flex-direction:column;gap:6px"><b style="font-size:17px">Retirées pour ce site</b><sc-for list="{{ hivRetirees }}" as="r"><div style="display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--color-divider);padding:6px 0"><span style="flex:1;font-size:15px;line-height:1.3">{{ r.l }}<br><span style="font-size:13px">{{ r.par }}</span></span><button onClick="{{ r.remettre }}" style="all:unset;cursor:pointer;min-height:40px;padding:0 10px;border:1px solid var(--color-text);font-size:14px;display:inline-flex;align-items:center">Remettre</button></div></sc-for></div></sc-if><div style="padding:18px 20px;display:flex;flex-direction:column;gap:10px"><h2 style="margin:0;font-size:21px">{{ hivNoRem }}. Remarques et anomalies</h2><textarea class="input" value="{{ hivNoteTxt }}" onInput="{{ onHivNote }}" placeholder="Bris, pièces à commander, remarques" style="min-height:90px;font-size:17px"></textarea><button class="btn btn-secondary" onClick="{{ hivPhoto }}" style="min-height:52px;font-size:18px;gap:10px"><sa-i n="camera" s="20"></sa-i>{{ hivPhotoLbl }}</button><button class="btn btn-primary" onClick="{{ sendHiv }}" style="min-height:60px;font-size:21px;margin-top:6px">Envoyer au bureau</button><div style="font-size:14px;line-height:1.4">Le bureau la vérifie, l’imprime ou l’envoie au client depuis sa-admin.</div></div></div></sc-if>
 
         <!-- ═════ DEMANDES ═════ -->
         <sc-if value="{{ isDem }}">
@@ -984,7 +984,7 @@ button{font-family:inherit}
     compteurs: compteurs, score: score, pastilles: pastilles, verdict: verdict, resume: resume, depuis: depuis, droits: droits, visible: visible, masquer: masquer };
   if (typeof module === 'object' && module.exports) module.exports = api; else root.SAInsp = api;
 })(typeof window !== 'undefined' ? window : this);
-</script><script>/* Liste de contrôle d'intervention « Hivernement » (fermeture avec formation) — partagée par sa-terrain et sa-admin.
+</script><script>/* Liste de contrôle d'intervention « Hivernement » (type au choix : fermeture avec formation, complète, dormance, remise en service…) — partagée par sa-terrain et sa-admin.
    Aucune dépendance : intégrée telle quelle dans terrain.html / admin.html (build). Expose window.SAHiv (navigateur) ou module.exports (Node).
    Stockage : table rapports_hivernage (aucune colonne nouvelle). sections[0] porte la saisie complète dans `hivernement` ;
    chaque section garde aussi `title` + `items` lisibles (« ✔ … » / « ☐ … ») pour SA Platform et les anciens rapports. */
@@ -1167,13 +1167,27 @@ button{font-family:inherit}
      Un seul ouvrage : clés « p1-0 » comme avant ; plusieurs : « <id ouvrage>:p1-0 ». Retraits (hiv.exclus) et ajouts (hiv.ajouts) de la fiche de l’ouvrage. */
   /* Ajustements d’un site (table ouvrage_ajustements, faits sur le terrain ou au bureau) appliqués à ses bassins :
      hiv.exclus / insp.exclus (réf. retirées) et hiv.ajouts (étapes ajoutées). bassin_id vide = tout le site. */
+  var LIBRE = 'libre:';
+  function estLibre(r) { return String(r && r.section || '').indexOf(LIBRE) === 0; }
+  /* Sections libres d’un site : une ligne d’ouvrage_ajustements par étape (domaine hiv, action ajouter, section « libre:Titre ») */
+  function sectionsLibres(adj) {
+    var out = [];
+    (adj || []).filter(function (r) { return r && r.actif !== false && r.domaine === 'hiv' && r.action === 'ajouter' && estLibre(r) && String(r.texte || '').trim(); })
+      .sort(function (a, b) { return String(a.cree_le || '').localeCompare(String(b.cree_le || '')); })
+      .forEach(function (r) {
+        var titre = String(r.section).slice(LIBRE.length).trim() || 'Travaux propres au site', s = out.filter(function (x) { return x.titre === titre; })[0];
+        if (!s) { s = { titre: titre, cle: titre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'site', items: [] }; out.push(s); }
+        s.items.push({ id: r.id, t: String(r.texte).trim(), crit: !!r.crit });
+      });
+    return out;
+  }
   function avecAjustements(bassins, adj) {
     var act = (adj || []).filter(function (r) { return r && r.actif !== false; });
     return (bassins || []).map(function (b, i) {
       var id = String(b.id || 'b' + i), mine = act.filter(function (r) { return !r.bassin_id || String(r.bassin_id) === id; });
       var ex = function (dom) { return mine.filter(function (r) { return r.domaine === dom && r.action === 'exclure'; }).map(function (r) { return r.ref; }); };
       return Object.assign({}, b, { id: id,
-        hiv: Object.assign({}, b.hiv, { exclus: ex('hiv'), ajouts: mine.filter(function (r) { return r.domaine === 'hiv' && r.action === 'ajouter' && r.bassin_id; })
+        hiv: Object.assign({}, b.hiv, { exclus: ex('hiv'), ajouts: mine.filter(function (r) { return r.domaine === 'hiv' && r.action === 'ajouter' && r.bassin_id && !estLibre(r); })
           .map(function (r) { return { id: r.id, t: r.texte, section: r.section, crit: !!r.crit }; }) }),
         insp: Object.assign({}, b.insp, { exclus: ex('insp') }) });
     });
@@ -1187,7 +1201,7 @@ button{font-family:inherit}
   /* Étape à choix multiple : `choix` = au moins deux réponses ; la réponse choisie est gardée dans d.c[k] (texte) au lieu de true */
   function choixDe(it) { return it && Array.isArray(it.choix) && it.choix.length > 1 ? it.choix : null; }
   function reponse(d, it) { var v = d && d.c ? d.c[it.k] : null; return typeof v === 'string' ? v : ''; }
-  function planSite(bassins, rows) {
+  function planSite(bassins, rows, libres) {
     var liste = gabarits(rows), ouv = [];
     (bassins || []).forEach(function (b, i) { if (!b || !String(b.nom || '').trim()) return; var g = gabaritDe(b, liste); if (g) ouv.push({ id: String(b.id || 'b' + i), nom: String(b.nom).trim(), g: g, cfg: b.hiv || {} }); });
     if (!(bassins || []).length) ouv.push({ id: '', nom: '', g: gabaritDe({}, liste), cfg: {} });
@@ -1195,7 +1209,7 @@ button{font-family:inherit}
     var exclu = function (o, gref) { return (o.cfg.exclus || []).indexOf(gref) >= 0; };
     var fusion = function (dest, s, o) {
       var cur = dest.filter(function (x) { return x.id === s.id; })[0];
-      if (!cur) { cur = { id: s.id, titre: s.titre, col: s.col, col2: s.col2, num: s.num, commun: true, ob: '', items: [] }; dest.push(cur); }
+      if (!cur) { cur = { id: s.id, titre: s.titre, col: s.col, col2: s.col2, num: s.num, commun: true, ob: '', items: [] }; if (s.types && s.types.length) cur.types = s.types.slice(); dest.push(cur); }
       s.items.forEach(function (it, j) {
         var ref = s.id + '-' + iid(it, j), gref = o.g.code + ':' + ref, k = (premier[s.id] !== o.g.code ? o.g.code + ':' : '') + ref, ex = exclu(o, gref);
         var deja = cur.items.filter(function (x) { return x.t === it.t && !!x.b === !!it.b; })[0];
@@ -1210,7 +1224,7 @@ button{font-family:inherit}
         if (s.commun) { if (!premier[s.id]) premier[s.id] = o.g.code; fusion(iCorps < 0 || si < iCorps ? tete : fin, s, o); return; }
         var its = [];
         s.items.forEach(function (it, j) { var ref = s.id + '-' + iid(it, j), gref = o.g.code + ':' + ref; if (!exclu(o, gref)) its.push(Object.assign(copie(it), { k: pre + ref, ref: ref, gref: gref, ob: o.id }, multi ? { o: o.nom } : {})); });
-        corps.push({ id: pre + s.id, sid: s.id, titre: s.titre + suf, col: s.col, col2: s.col2, num: s.num, ob: o.id, items: its });
+        corps.push(Object.assign({ id: pre + s.id, sid: s.id, titre: s.titre + suf, col: s.col, col2: s.col2, num: s.num, ob: o.id, items: its }, s.types && s.types.length ? { types: s.types.slice() } : {}));
       });
       (o.cfg.ajouts || []).forEach(function (a) {
         if (!a || !String(a.t || '').trim()) return;
@@ -1220,6 +1234,10 @@ button{font-family:inherit}
       });
       (o.g.conseils || []).forEach(function (t) { if (conseils.indexOf(t) < 0) conseils.push(t); });
       if (!alerte && o.g.alerte) alerte = o.g.alerte;
+    });
+    /* Sections propres au site (ouvrage_ajustements section « libre:Titre ») : après les phases, avant le matériel et la formation */
+    (libres || []).forEach(function (l) {
+      corps.push({ id: 'lib-' + l.cle, sid: 'libre', libre: l.titre, titre: l.titre, col: 'Tâche', ob: '', items: l.items.map(function (a) { return { t: a.t, crit: !!a.crit, k: 'lib-' + a.id, ref: 'lib-' + a.id, aj: a.id, ob: '' }; }) });
     });
     var secs = tete.concat(corps, fin).map(function (s) { s.items = s.items.filter(function (it) { var g = it._garde !== false; delete it._garde; return g; }); return s; })
       .filter(function (s) { return s.items.length; });
@@ -1237,7 +1255,7 @@ button{font-family:inherit}
      « 12. Étape », « — Étape » (sans numéro), « - Vérification », « * Pièce de rechange ». « **texte** » = en gras ; « ! » à la fin = étape critique. */
   function versTexte(secs) {
     return (secs || []).map(function (s) {
-      return '## ' + s.titre + (s.commun ? ' [commun]' : '') + '\n' + s.items.map(function (it) {
+      return '## ' + s.titre + (s.commun ? ' [commun]' : '') + (s.types && s.types.length ? ' [types: ' + s.types.join(', ') + ']' : '') + '\n' + s.items.map(function (it) {
         var p = it.g === 2 ? '* ' : it.n === '—' ? '— ' : it.n ? it.n + '. ' : '- ';
         return p + it.t + (it.b ? ' **' + it.b + '**' : '') + (it.crit ? ' !' : '');
       }).join('\n');
@@ -1252,8 +1270,15 @@ button{font-family:inherit}
     };
     String(txt || '').split(/\r?\n/).forEach(function (l) {
       l = l.trim(); if (!l) return;
-      var h = /^#+\s*(.+?)\s*(\[commun\])?$/i.exec(l);
-      if (h) { cur = { id: idDe(h[1]), titre: h[1], commun: !!h[2], items: [] }; secs.push(cur); return; }
+      var h = /^#+\s*(.+)$/.exec(l);
+      if (h) {
+        var tt = h[1], com = false, ty = null, m2;
+        while ((m2 = /\s*\[(commun|types?\s*:\s*([^\]]*))\]\s*$/i.exec(tt))) {
+          if (/^commun$/i.test(m2[1])) com = true; else ty = String(m2[2] || '').split(/[,\s]+/).map(function (x) { return x.trim().toLowerCase(); }).filter(Boolean);
+          tt = tt.slice(0, m2.index).trim();
+        }
+        cur = { id: idDe(tt), titre: tt, commun: com, items: [] }; if (ty && ty.length) cur.types = ty; secs.push(cur); return;
+      }
       if (!cur) { cur = { id: idDe('Étapes'), titre: 'Étapes', items: [] }; secs.push(cur); }
       var it = {}, m;
       if ((m = /^(\d+)[.)]\s+(.*)$/.exec(l))) { it.n = m[1]; l = m[2]; }
@@ -1269,7 +1294,7 @@ button{font-family:inherit}
       var a = (ancien || []).filter(function (x) { return x.id === s.id; })[0], o = { id: s.id, titre: s.titre };
       o.col = a && a.col ? a.col : s.id === 'form' ? 'Sujet de formation' : deux ? 'Matériel' : num ? 'Tâche' : 'Vérification';
       if (deux) o.col2 = a && a.col2 ? a.col2 : 'Pièces de rechange';
-      if (num) o.num = true; if (s.commun) o.commun = true;
+      if (num) o.num = true; if (s.commun) o.commun = true; if (s.types) o.types = s.types;
       o.items = s.items.map(function (it) { var x = {}; ['n', 't', 'b', 'crit', 'g'].forEach(function (k) { if (it[k] != null) x[k] = it[k]; }); return x; });
       return o;
     });
@@ -1278,22 +1303,69 @@ button{font-family:inherit}
   function planPourSite(site, rows, adj) {
     site = site || {};
     var bs = (site.bassins || []).filter(function (b) { return b && String(b.nom || '').trim(); });
-    return planSite(avecAjustements(bs.length ? bs : [{ id: '', nom: site.nom || 'Site', type_code: site.type || '' }], adj), rows);
+    return planSite(avecAjustements(bs.length ? bs : [{ id: '', nom: site.nom || 'Site', type_code: site.type || '' }], adj), rows, sectionsLibres(adj));
   }
   /* Plan par défaut (anciens rapports et brouillons sans plan) : la piscine, telle que le formulaire papier */
   var DEFAUT = planSite([], GABARITS);
   var SECTIONS = DEFAUT.sections;
   function planDe(d) { return d && d.plan && Array.isArray(d.plan.sections) ? d.plan : DEFAUT; }
+  /* Type d’hivernement : choisi à la création, il donne le titre du rapport et les sections retenues.
+     formation = la section « Formation des employés » est faite ; une section de gabarit marquée [types: …] ne sert qu’à ces types. */
+  var TYPES = [
+    { code: 'formation', nom: 'Fermeture avec formation', formation: true },
+    { code: 'complete', nom: 'Fermeture complète', formation: false },
+    { code: 'dormance', nom: 'Mise en dormance (fermeture partielle)', formation: false },
+    { code: 'remise', nom: 'Remise en service (ouverture)', formation: false },
+    { code: 'autre', nom: 'Autre (préciser)', formation: true }
+  ];
+  function typeDe(d) {
+    var c = d && d.type, t = TYPES.filter(function (x) { return x.code === c; })[0] || TYPES[0];
+    var nom = t.code === 'autre' ? String(d.type_nom || '').trim() || 'Intervention' : t.nom;
+    return { code: t.code, nom: nom, formation: d && typeof d.formation === 'boolean' ? d.formation : t.formation };
+  }
+  /* Sections faites pour ce type, numérotées pour l’affichage (le plan figé du brouillon reste entier) */
+  function sectionsDe(d) {
+    var t = typeDe(d), P = planDe(d), garde = P.sections.filter(function (s) {
+      if ((s.sid || s.id) === 'form' && !t.formation) return false;
+      return !(s.types && s.types.length) || s.types.indexOf(t.code) >= 0;
+    });
+    var aConseil = garde.some(function (s) { return s.tips; }), dernier = garde.filter(function (s) { return !s.commun; }).slice(-1)[0];
+    return garde.map(function (s, i) { return Object.assign({}, s, { no: i + 2, tips: aConseil ? !!s.tips : !!dernier && s === dernier }); });
+  }
+  function travauxDe(d) { return (d.travaux || []).filter(function (x) { return String(x.t || '').trim(); }); }
+  function materielDe(d) { return (d.materiel || []).filter(function (x) { return String(x.nom || '').trim(); }); }
+  /* Numéros des sections qui suivent la liste : travaux sur mesure et matériel (s’il y en a), remarques, validation */
+  function numeros(d) {
+    var n = sectionsDe(d).length + 2, o = {};
+    if (travauxDe(d).length) o.travaux = n++;
+    if (materielDe(d).length) o.materiel = n++;
+    o.remarques = n++; o.validation = n; return o;
+  }
+  /* Suggestions pour « Matériel et produits utilisés » : la section Matériel du plan, puis les produits courants */
+  var PRODUITS = ['Antigel biodégradable', 'Chlore granulaire', 'Produit d’hivernage (algicide d’hiver)', 'Liquide de remisage des sondes', 'Téflon', 'Bouchons d’hivernage'];
+  function matSugg(d) {
+    var out = [];
+    planDe(d).sections.forEach(function (s) { if ((s.sid || s.id) === 'mat') s.items.forEach(function (it) { out.push(it.t); }); });
+    PRODUITS.forEach(function (t) { out.push(t); });
+    return out.filter(function (t, i) { return out.indexOf(t) === i; });
+  }
+  function qteTxt(m) { return (m.qte !== '' && m.qte != null ? m.qte + (m.unite ? ' ' + m.unite : '') : '') ; }
 
   function blank(o) {
     o = o || {};
     return { v: 1, info: { date: o.date || '', site: o.site || '', heure_debut: '', heure_fin: '', chef: o.chef || '', temperature: '', equipe: '', bassins: '' },
+      type: o.type || 'formation', type_nom: o.type_nom || '', travaux: [], materiel: [],
       c: {}, employes: [], remarques: '', responsable: o.responsable == null ? 'Maxime' : o.responsable, courriel: o.courriel || '', envois: [], plan: o.plan || null };
   }
   function norm(d) {
     var b = blank(); d = d || {};
-    return { v: 1, info: Object.assign(b.info, d.info || {}), c: Object.assign({}, d.c || {}), employes: (d.employes || []).map(function (e) { return { nom: e.nom || '', formation: !!e.formation, demo: !!e.demo }; }),
+    var o = { v: 1, info: Object.assign(b.info, d.info || {}), type: d.type || 'formation', type_nom: d.type_nom || '',
+      travaux: (d.travaux || []).map(function (x) { return { t: x.t || '', fait: !!x.fait, note: x.note || '', duree: x.duree == null ? '' : String(x.duree) }; }),
+      materiel: (d.materiel || []).map(function (x) { return { nom: x.nom || '', qte: x.qte == null ? '' : String(x.qte), unite: x.unite || '' }; }),
+      c: Object.assign({}, d.c || {}), employes: (d.employes || []).map(function (e) { return { nom: e.nom || '', formation: !!e.formation, demo: !!e.demo }; }),
       remarques: d.remarques || '', responsable: d.responsable == null ? b.responsable : d.responsable, courriel: d.courriel || '', envois: (d.envois || []).slice(), plan: d.plan && Array.isArray(d.plan.sections) ? d.plan : null };
+    if (typeof d.formation === 'boolean') o.formation = d.formation;
+    return o;
   }
   /* Un rapport d'hivernage est-il une liste de contrôle « Hivernement » ? */
   function isChecklist(r) { return !!(r && Array.isArray(r.sections) && r.sections[0] && r.sections[0].hivernement); }
@@ -1303,36 +1375,42 @@ button{font-family:inherit}
   /* Avancement : toutes les cases, comme le formulaire papier (formation des employés nommés comprise) */
   function progress(d) {
     d = norm(d); var total = 0, done = 0;
-    planDe(d).sections.forEach(function (s) { s.items.forEach(function (it) { total++; if (d.c[it.k]) done++; }); });
-    d.employes.forEach(function (e) { if (!String(e.nom).trim()) return; total += 2; if (e.formation) done++; if (e.demo) done++; });
+    sectionsDe(d).forEach(function (s) { s.items.forEach(function (it) { total++; if (d.c[it.k]) done++; }); });
+    if (typeDe(d).formation) d.employes.forEach(function (e) { if (!String(e.nom).trim()) return; total += 2; if (e.formation) done++; if (e.demo) done++; });
+    travauxDe(d).forEach(function (x) { total++; if (x.fait) done++; });
     return { total: total, done: done, pct: total ? Math.round(done / total * 100) : 0 };
   }
   function label(it) { return it.t + (it.b ? ' ' + it.b : ''); }
   function labelRep(d, it) { var r = reponse(d, it); return label(it) + (r ? ' : ' + r : ''); }
   function manquants(d) {
     d = norm(d); var out = [];
-    planDe(d).sections.forEach(function (s) { if (s.id === 'mat') return; s.items.forEach(function (it) { if (!d.c[it.k]) out.push((it.n && it.n !== '—' ? it.n + '. ' : '') + label(it)); }); });
+    sectionsDe(d).forEach(function (s) { if (s.id === 'mat') return; s.items.forEach(function (it) { if (!d.c[it.k]) out.push((it.n && it.n !== '—' ? it.n + '. ' : '') + label(it)); }); });
+    travauxDe(d).forEach(function (x) { if (!x.fait) out.push('Travaux : ' + x.t); });
     return out;
   }
   function critiquesManquants(d) {
     d = norm(d); var out = [];
-    planDe(d).sections.forEach(function (s) { s.items.forEach(function (it) { if (it.crit && !d.c[it.k]) out.push((it.o ? it.o + ' ' : '') + (it.n && it.n !== '—' ? it.n : '★') + '. ' + label(it)); }); });
+    sectionsDe(d).forEach(function (s) { s.items.forEach(function (it) { if (it.crit && !d.c[it.k]) out.push((it.o ? it.o + ' ' : '') + (it.n && it.n !== '—' ? it.n : '★') + '. ' + label(it)); }); });
     return out;
   }
 
   /* Ligne de rapports_hivernage (sans id / created_*) à partir de la saisie */
   function toReport(d, base, photos) {
     d = norm(d); var p = progress(d), i = d.info, b = base || {};
-    var s0 = { id: 'hivernement', title: 'Liste de contrôle d’hivernement', tag: critiquesManquants(d).length ? 'urgent' : '',
+    var s0 = { id: 'hivernement', title: 'Liste de contrôle d’hivernement — ' + typeDe(d).nom, tag: critiquesManquants(d).length ? 'urgent' : '',
       items: ['Avancement : ' + p.done + ' / ' + p.total + ' cases (' + p.pct + ' %)'].concat(INFO.filter(function (f) { return i[f[0]]; }).map(function (f) { return f[1] + ' : ' + i[f[0]]; })),
       photos: photos || [], hivernement: d };
-    var secs = [s0].concat(planDe(d).sections.map(function (s) {
+    var T = typeDe(d), SD = sectionsDe(d), N = SD.length;
+    var secs = [s0].concat(SD.map(function (s) {
       return { id: 'hv-' + s.id, title: s.no + '. ' + s.titre, tag: '', photos: [], items: s.items.map(function (it) { return (d.c[it.k] ? '✔ ' : '☐ ') + (it.n && it.n !== '—' ? it.n + '. ' : '') + labelRep(d, it); }) };
     }));
-    var emp = d.employes.filter(function (e) { return String(e.nom).trim(); });
+    var tr = travauxDe(d), mt = materielDe(d);
+    if (tr.length) secs.push({ id: 'hv-travaux', title: numeros(d).travaux + '. Travaux sur mesure', tag: '', photos: [], items: tr.map(function (x) { return (x.fait ? '✔ ' : '☐ ') + x.t + (x.duree ? ' (' + x.duree + ' h)' : '') + (x.note ? ' — ' + x.note : ''); }) });
+    if (mt.length) secs.push({ id: 'hv-materiel', title: numeros(d).materiel + '. Matériel et produits utilisés', tag: '', photos: [], items: mt.map(function (m) { return m.nom + (qteTxt(m) ? ' : ' + qteTxt(m) : ''); }) });
+    var emp = T.formation ? d.employes.filter(function (e) { return String(e.nom).trim(); }) : [];
     if (emp.length) secs.push({ id: 'hv-employes', title: 'Employés formés', tag: '', photos: [], items: emp.map(function (e) { return e.nom + ' — formation ' + (e.formation ? 'complétée' : 'non complétée') + ', démonstration ' + (e.demo ? 'réussie' : 'non réussie'); }) });
-    return Object.assign({}, b, { site_id: b.site_id || '', site_nom: i.site || b.site_nom || '', client: b.client || '', objet: TITRE + ' — fermeture avec formation',
-      titre: TITRE + ' — ' + (i.site || b.site_nom || ''), sous_titre: 'Liste de contrôle d’intervention', date_rapport: b.date_rapport || i.date || '', date_inspection: i.date || b.date_inspection || '',
+    return Object.assign({}, b, { site_id: b.site_id || '', site_nom: i.site || b.site_nom || '', client: b.client || '', objet: TITRE + ' — ' + T.nom.toLowerCase(),
+      titre: TITRE + ' — ' + (i.site || b.site_nom || ''), sous_titre: 'Liste de contrôle d’intervention · ' + T.nom, date_rapport: b.date_rapport || i.date || '', date_inspection: i.date || b.date_inspection || '',
       prepare_par: b.prepare_par || 'Soucy Aquatik', technicien: i.chef || b.technicien || '', sections: secs, plan: b.plan || [], suivi: b.suivi || [], timeline: b.timeline || { q1: '', q2: '', q3: '', q4: '' },
       callout: d.remarques || '', signataire_sa: i.chef || '', signataire_client: d.responsable || '' });
   }
@@ -1356,15 +1434,15 @@ button{font-family:inherit}
 
   /* Document autonome (impression, pièce jointe envoyée au client) — même présentation que le formulaire papier */
   function html(d, opts) {
-    d = norm(d); opts = opts || {}; var p = progress(d), i = d.info, E = esc;
+    d = norm(d); opts = opts || {}; var p = progress(d), i = d.info, E = esc, T = typeDe(d), NO = numeros(d);
     var box = function (on) { return '<span class="box' + (on ? ' on' : '') + '">' + (on ? '✓' : '') + '</span>'; };
     var row = function (it, withNum) { var on = !!d.c[it.k]; return '<tr class="' + (on ? 'done' : '') + (it.crit ? ' critical' : '') + '"><td class="cb">' + box(on) + '</td>' + (withNum ? '<td class="num">' + E(it.n) + '</td>' : '') + '<td class="t">' + E(it.t) + (it.b ? ' <strong>' + E(it.b) + '</strong>' : '') + (choixDe(it) ? ' — <strong>' + (reponse(d, it) ? E(reponse(d, it)) : '____') + '</strong> <span class="choix">(' + E(choixDe(it).join(' / ')) + ')</span>' : '') + '</td></tr>'; };
     var h = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>' + E(TITRE + ' — ' + (i.site || '')) + '</title><style>' + CSS + '</style></head><body><div class="page">'
-      + '<header class="top"><div><h1>' + E(TITRE + ' — ' + (i.site || '')) + '</h1><div class="sub">Liste de contrôle d’intervention · Fermeture avec formation</div></div><img src="' + LOGO + '" alt="Soucy Aquatik"></header><div class="body">'
+      + '<header class="top"><div><h1>' + E(TITRE + ' — ' + (i.site || '')) + '</h1><div class="sub">Liste de contrôle d’intervention · ' + E(T.nom) + '</div></div><img src="' + LOGO + '" alt="Soucy Aquatik"></header><div class="body">'
       + '<div class="kpis"><div class="kpi"><div class="val">' + p.total + '</div><div class="lbl">Cases au total</div></div><div class="kpi"><div class="val">' + p.done + '</div><div class="lbl">Cases cochées</div></div><div class="kpi"><div class="val">' + p.pct + ' %</div><div class="lbl">Avancement</div></div></div>'
       + '<h2>1. Informations générales</h2><div class="info-grid">' + INFO.map(function (f) { return '<div class="field' + (f[3] ? ' wide' : '') + '"><label>' + E(f[1]) + ' :</label><span>' + E(i[f[0]]) + '</span></div>'; }).join('') + '</div>';
-    var P = planDe(d), N = P.sections.length;
-    P.sections.forEach(function (s) {
+    var P = planDe(d);
+    sectionsDe(d).forEach(function (s) {
       h += '<h2>' + s.no + '. ' + E(s.titre) + '</h2>';
       if (s.col2) {
         var a = s.items.filter(function (it) { return it.g !== 2; }), b = s.items.filter(function (it) { return it.g === 2; }), n = Math.max(a.length, b.length), r = '';
@@ -1379,10 +1457,15 @@ button{font-family:inherit}
           + emp.map(function (e) { return '<tr><td style="height:30px;">' + E(e ? e.nom : '') + '</td><td>' + box(!!(e && e.formation)) + '</td><td>' + box(!!(e && e.demo)) + '</td></tr>'; }).join('') + '</table>';
       }
     });
+    var tr = travauxDe(d), mt = materielDe(d);
+    if (tr.length) h += '<h2>' + NO.travaux + '. Travaux sur mesure</h2><table><tr><th class="cb">✔</th><th>Travaux</th><th style="width:80px;">Heures</th><th>Note</th></tr>'
+      + tr.map(function (x) { return '<tr class="' + (x.fait ? 'done' : '') + '"><td class="cb">' + box(x.fait) + '</td><td class="t">' + E(x.t) + '</td><td>' + E(x.duree) + '</td><td>' + E(x.note) + '</td></tr>'; }).join('') + '</table>';
+    if (mt.length) h += '<h2>' + NO.materiel + '. Matériel et produits utilisés</h2><table><tr><th>Matériel ou produit</th><th style="width:160px;">Quantité</th></tr>'
+      + mt.map(function (m) { return '<tr><td>' + E(m.nom) + '</td><td>' + E(qteTxt(m)) + '</td></tr>'; }).join('') + '</table>';
     var ph = (opts.photos || []).filter(function (x) { return x && /^data:image|^https?:/.test(x.data || x.url || ''); });
-    h += '<h2>' + (N + 2) + '. Remarques et anomalies</h2><table><tr><td class="notes">' + E(d.remarques) + '</td></tr></table>'
+    h += '<h2>' + NO.remarques + '. Remarques et anomalies</h2><table><tr><td class="notes">' + E(d.remarques) + '</td></tr></table>'
       + (ph.length ? '<div class="photos">' + ph.map(function (x) { return '<img src="' + E(x.data || x.url) + '" alt="' + E(x.name || 'Photo') + '">'; }).join('') + '</div>' : '')
-      + '<h2>' + (N + 3) + '. Validation</h2><div class="sign-row"><div class="sign-box">Chef d’équipe — Signature et date<b>' + E(i.chef) + '</b></div><div class="sign-box">Responsable' + (d.responsable ? ' (' + E(d.responsable) + ')' : '') + ' — Signature et date</div></div>'
+      + '<h2>' + NO.validation + '. Validation</h2><div class="sign-row"><div class="sign-box">Chef d’équipe — Signature et date<b>' + E(i.chef) + '</b></div><div class="sign-box">Responsable' + (d.responsable ? ' (' + E(d.responsable) + ')' : '') + ' — Signature et date</div></div>'
       + '<div class="foot">Soucy Aquatik · liste de contrôle générée par SA Platform</div></div></div></body></html>';
     return h;
   }
@@ -1390,15 +1473,17 @@ button{font-family:inherit}
   /* Corps du courriel au client */
   function texte(d) {
     d = norm(d); var p = progress(d), i = d.info, m = manquants(d);
-    return 'Bonjour,\n\nVoici la liste de contrôle de l’hivernement' + (i.site ? ' de ' + i.site : '') + (i.date ? ' réalisé le ' + i.date : '') + '.\n\n'
+    var T = typeDe(d), mt = materielDe(d);
+    return 'Bonjour,\n\nVoici la liste de contrôle de l’hivernement' + (i.site ? ' de ' + i.site : '') + ' (' + T.nom.toLowerCase() + ')' + (i.date ? ' réalisé le ' + i.date : '') + '.\n\n'
       + 'Avancement : ' + p.done + ' / ' + p.total + ' cases cochées (' + p.pct + ' %).\n'
       + (m.length ? '\nÉtapes non cochées :\n' + m.slice(0, 15).map(function (x) { return '• ' + x; }).join('\n') + (m.length > 15 ? '\n• … et ' + (m.length - 15) + ' autre(s)' : '') + '\n' : '\nToutes les étapes de l’hivernement ont été réalisées.\n')
+      + (mt.length ? '\nMatériel et produits utilisés :\n' + mt.map(function (m) { return '• ' + m.nom + (qteTxt(m) ? ' : ' + qteTxt(m) : ''); }).join('\n') + '\n' : '')
       + (d.remarques ? '\nRemarques : ' + d.remarques + '\n' : '')
       + '\nLa liste de contrôle complète est jointe à ce courriel.\n\nSoucy Aquatik';
   }
   function fichier(d) { d = norm(d); return ('Hivernement ' + (d.info.site || '') + ' ' + (d.info.date || '')).trim().replace(/[\\/:*?"<>|\s]+/g, '-').replace(/-{2,}/g, '-').replace(/^-|-$/g, '') + '.html'; }
 
-  var api = { SECTIONS: SECTIONS, GABARITS: GABARITS, DEFAUT: DEFAUT, gabarits: gabarits, gabaritDe: gabaritDe, planSite: planSite, planPourSite: planPourSite, avecAjustements: avecAjustements, libelleRef: libelleRef, iid: iid, choixDe: choixDe, reponse: reponse, planDe: planDe, versTexte: versTexte, deTexte: deTexte, INFO: INFO, TIPS: TIPS, ALERTE: ALERTE, LOGO: LOGO, blank: blank, norm: norm, isChecklist: isChecklist, fromReport: fromReport, photosOf: photosOf,
+  var api = { SECTIONS: SECTIONS, GABARITS: GABARITS, DEFAUT: DEFAUT, gabarits: gabarits, gabaritDe: gabaritDe, planSite: planSite, planPourSite: planPourSite, avecAjustements: avecAjustements, libelleRef: libelleRef, iid: iid, choixDe: choixDe, reponse: reponse, planDe: planDe, versTexte: versTexte, deTexte: deTexte, INFO: INFO, TYPES: TYPES, typeDe: typeDe, sectionsDe: sectionsDe, sectionsLibres: sectionsLibres, LIBRE: LIBRE, numeros: numeros, travauxDe: travauxDe, materielDe: materielDe, matSugg: matSugg, TIPS: TIPS, ALERTE: ALERTE, LOGO: LOGO, blank: blank, norm: norm, isChecklist: isChecklist, fromReport: fromReport, photosOf: photosOf,
     progress: progress, manquants: manquants, critiquesManquants: critiquesManquants, toReport: toReport, html: html, texte: texte, fichier: fichier };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.SAHiv = api;
 })(typeof window !== 'undefined' ? window : this);
@@ -1895,8 +1980,13 @@ Comp.prototype.hivReplan=function(sid){var s=siteById(sid);this.hivSet(sid,funct
 Comp.prototype.hivRetirer=function(sid,it){var self=this;if(it.aj)this.annulerAjust(it.aj);else(it.grefs||[it.gref]).forEach(function(g){self.ajuster({site_id:String(sid),bassin_id:it.ob||null,domaine:'hiv',action:'exclure',ref:g});});
   this.hivReplan(sid);this.flash('Étape retirée pour ce site — le bureau la voit dans sa-admin');};
 Comp.prototype.hivAjouter=function(sid,sec){var t=String((this.state.hivAdd||{})[sec.id]||'').trim();if(!t)return;
-  this.ajuster({site_id:String(sid),bassin_id:sec.ob||null,domaine:'hiv',action:'ajouter',section:sec.sid,texte:t,crit:false});
+  this.ajuster({site_id:String(sid),bassin_id:sec.libre?null:(sec.ob||null),domaine:'hiv',action:'ajouter',section:sec.libre?window.SAHiv.LIBRE+sec.libre:sec.sid,texte:t,crit:false});
   var o=Object.assign({},this.state.hivAdd);delete o[sec.id];this.setState({hivAdd:o});this.hivReplan(sid);this.flash('Étape ajoutée pour ce site');};
+/* Nouvelle section propre au site (ex. « Glissade », « Bâtiment des pompes ») : gardée pour les prochaines années, le bureau la voit */
+Comp.prototype.hivNouvelleSection=function(sid){var n=this.state.hivNewSec||{},titre=String(n.titre||'').trim(),t=String(n.t||'').trim();
+  if(!titre||!t){this.flash('Titre de la section et première étape requis');return;}
+  this.ajuster({site_id:String(sid),bassin_id:null,domaine:'hiv',action:'ajouter',section:window.SAHiv.LIBRE+titre,texte:t,crit:false});
+  this.setState({hivNewSec:{}});this.hivReplan(sid);this.flash('Section « '+titre+' » ajoutée pour ce site');};
 Comp.prototype.ptRetirer=function(s,bsel,sid,p){this.ajuster({site_id:String(s.id),bassin_id:bsel?bsel.id:null,domaine:'insp',action:'exclure',ref:p.id});
   this.setPt(sid,p.id,{etat:null});this.flash('« '+p.libelle+' » ne sera plus demandé à ce site');};
 Comp.prototype.ptAjouter=function(s,bsel,step){var t=String(this.state.ptAdd||'').trim();if(!t)return;var n=window.SAInsp.propres(REF.cat,bsel?bsel.id:'site:'+s.id).length;
@@ -2062,15 +2152,29 @@ Comp.prototype.vals=function(){
     hivEdit:!!st.hivEdit,hivNoEdit:!st.hivEdit,hivEditLbl:st.hivEdit?'Terminer les modifications':'Modifier la liste pour ce site',hivEditGo:function(){self.setState({hivEdit:!self.state.hivEdit});},
     hivRetirees:hivSel?adjDe(hivSel.id).filter(function(r){return r.domaine==='hiv'&&r.action==='exclure';}).map(function(r){return{l:H.libelleRef(r.ref,REF.gab),par:(r.par_nom||'')+(r.cree_le?' · '+String(r.cree_le).slice(0,10):''),remettre:function(){self.annulerAjust(r.id);self.hivReplan(hivSel.id);}};}):[],
     hivRetOk:!!(st.hivEdit&&hivSel&&adjDe(hivSel.id).some(function(r){return r.domaine==='hiv'&&r.action==='exclure';})),
-    hivSecs:hd?H.planDe(hd).sections.map(function(sc){var cases=sc.items.filter(function(it){return!H.choixDe(it);}),all=cases.length&&cases.every(function(it){return hd.c[it.k];});
+    hivTypeNom:hd?H.typeDe(hd).nom:'',
+    hivTypes:hd?H.TYPES.map(function(t){var on=H.typeDe(hd).code===t.code;return{l:t.nom,pr:on?'true':'false',bg:on?'var(--color-text)':'transparent',fg:on?'var(--color-bg)':'var(--color-text)',go:function(){self.hivSet(hivSel.id,function(d){d.type=t.code;});}};}):[],
+    hivAutre:!!hd&&H.typeDe(hd).code==='autre',hivTypeAutre:hd?hd.type_nom:'',onHivTypeAutre:hset(function(d,v){d.type_nom=v;}),
+    hivNewSec:{titre:(st.hivNewSec||{}).titre||'',t:(st.hivNewSec||{}).t||'',onTitre:function(e){self.setState({hivNewSec:Object.assign({},self.state.hivNewSec,{titre:e.target.value})});},
+      onT:function(e){self.setState({hivNewSec:Object.assign({},self.state.hivNewSec,{t:e.target.value})});},add:function(){self.hivNouvelleSection(hivSel.id);}},
+    hivNoTrav:hd?H.sectionsDe(hd).length+2:0,hivNoMat:hd?H.sectionsDe(hd).length+3:0,
+    hivTravaux:hd?hd.travaux.map(function(w,i){var tg={lbl:'Fait',fw:'600',on:!!w.fait,box:w.fait?'var(--color-text)':'transparent',toggle:function(){self.hivSet(hivSel.id,function(d){d.travaux[i].fait=!d.travaux[i].fait;});}};
+      return{t:w.t,duree:w.duree,note:w.note,onT:hset(function(d,v){d.travaux[i].t=v;}),onDuree:hset(function(d,v){d.travaux[i].duree=v;}),onNote:hset(function(d,v){d.travaux[i].note=v;}),tg:[tg],
+        del:function(){self.hivSet(hivSel.id,function(d){d.travaux.splice(i,1);});}};}):[],
+    addTravail:function(){self.hivSet(hivSel.id,function(d){d.travaux.push({t:'',fait:false,note:'',duree:''});});},
+    hivMat:hd?hd.materiel.map(function(m,i){return{nom:m.nom,qte:m.qte,unite:m.unite,onNom:hset(function(d,v){d.materiel[i].nom=v;}),onQte:hset(function(d,v){d.materiel[i].qte=v;}),onUnite:hset(function(d,v){d.materiel[i].unite=v;}),
+      del:function(){self.hivSet(hivSel.id,function(d){d.materiel.splice(i,1);});}};}):[],
+    addMat:function(){self.hivSet(hivSel.id,function(d){d.materiel.push({nom:'',qte:'',unite:''});});},
+    hivMatSugg:hd?H.matSugg(hd).map(function(v){return{v:v};}):[],
+    hivSecs:hd?H.sectionsDe(hd).map(function(sc){var cases=sc.items.filter(function(it){return!H.choixDe(it);}),all=cases.length&&cases.every(function(it){return hd.c[it.k];});
       return{titre:sc.no+'. '+sc.titre,allLbl:cases.length?(all?'Tout décocher':'Tout cocher'):'',all:function(){self.hivSet(hivSel.id,function(d){cases.forEach(function(it){d.c[it.k]=!all;});});},
-        canAdd:!sc.commun&&!!sc.ob,addV:(st.hivAdd||{})[sc.id]||'',onAdd:function(e){var o=Object.assign({},self.state.hivAdd);o[sc.id]=e.target.value;self.setState({hivAdd:o});},add:function(){self.hivAjouter(hivSel.id,sc);},
+        canAdd:(!sc.commun&&!!sc.ob)||!!sc.libre,addV:(st.hivAdd||{})[sc.id]||'',onAdd:function(e){var o=Object.assign({},self.state.hivAdd);o[sc.id]=e.target.value;self.setState({hivAdd:o});},add:function(){self.hivAjouter(hivSel.id,sc);},
         edits:sc.items.map(function(it){return{label:(sc.num&&it.n&&it.n!=='—'?it.n+'. ':'')+it.t+(it.b?' '+it.b:''),aj:!!it.aj,retirer:function(){self.hivRetirer(hivSel.id,it);}};}),
         tips:!!sc.tips,isForm:sc.id==='form',items:sc.items.map(function(it){var on=!!hd.c[it.k],ch=H.choixDe(it),rep=H.reponse(hd,it);return{label:(sc.num&&it.n!=='—'?it.n+'. ':'')+it.t+(it.b?' '+it.b:'')+(sc.col2?(it.g===2?' (pièce)':''):''),on:on,fw:it.crit?'600':'400',
           isCase:!ch,isChoix:!!ch,opts:(ch||[]).map(function(o){var sel=rep===o;return{l:o,bg:sel?'var(--color-text)':'transparent',fg:sel?'var(--color-bg)':'var(--color-text)',pr:sel?'true':'false',
             go:function(){self.hivSet(hivSel.id,function(d){d.c[it.k]=d.c[it.k]===o?false:o;});}};}),
           box:on?'var(--color-text)':'transparent',toggle:function(){self.hivSet(hivSel.id,function(d){d.c[it.k]=!d.c[it.k];});}};})};}):[],
-    hivTips:(hd?H.planDe(hd).conseils:[]).map(function(t){return{t:t};}),hivAlerte:hd?H.planDe(hd).alerte:'',hivNoRem:(hd?H.planDe(hd).sections.length:8)+2,hivOuv:hd&&H.planDe(hd).ouvrages.length>1?H.planDe(hd).ouvrages.map(function(o){return o.nom;}).join(' · '):'',
+    hivTips:(hd?H.planDe(hd).conseils:[]).map(function(t){return{t:t};}),hivAlerte:hd?H.planDe(hd).alerte:'',hivNoRem:(hd?H.sectionsDe(hd).length:8)+4,hivOuv:hd&&H.planDe(hd).ouvrages.length>1?H.planDe(hd).ouvrages.map(function(o){return o.nom;}).join(' · '):'',
     hivEmp:hd?hd.employes.map(function(e,i){var tg=function(key,lbl){return{lbl:lbl,fw:'400',on:!!e[key],box:e[key]?'var(--color-text)':'transparent',toggle:function(){self.hivSet(hivSel.id,function(d){d.employes[i][key]=!d.employes[i][key];});}};};
       return{nom:e.nom,onNom:hset(function(d,v){d.employes[i].nom=v;}),tg:[tg('formation','Formation complétée'),tg('demo','Démonstration réussie')],del:function(){self.hivSet(hivSel.id,function(d){d.employes.splice(i,1);});}};}):[],
     addEmp:function(){self.hivSet(hivSel.id,function(d){d.employes.push({nom:'',formation:false,demo:false});});},

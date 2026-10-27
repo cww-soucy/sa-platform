@@ -354,4 +354,14 @@ Comp.prototype.hivSiteVals=function(site){var self=this,H=window.SAHiv,D=this.D;
   return{loading:this.docs.hv===null,err:this.docs.hv==='err'?'Lecture impossible : '+(this.docErr||''):'',rows:rows,none:Array.isArray(this.docs.hv)&&!rows.length,
     resume:faitAn?'Hivernement fait cette année'+(dernier?' (dernier : '+(dernier.date_inspection||'—')+')':''):'Pas encore d’hivernement cette année',
     nouveau:function(){self.hvNouveauSite(site);},ouv:ouv,sansOuv:!ouv.length,ficheSite:function(){self.openSiteFiche(site.id);},gabarits:function(){self.gbOpen('piscine');},
-    plan:H.planPourSite(site,D.gab,adj).sections.reduce(function(n,s){return n+s.items.length;},0)+' étapes dans la liste de ce site'};};
+    plan:H.planPourSite(site,D.gab,adj).sections.reduce(function(n,s){return n+s.items.length;},0)+' étapes dans la liste de ce site',
+    /* Sections propres au site (« Glissade », « Bâtiment des pompes »…) : une ligne d'ouvrage_ajustements par étape, comme sur le terrain */
+    libres:H.sectionsLibres(adj).map(function(l){var k=l.titre,v=(self.state.hvLibAdd||{})[k]||'';
+      return{titre:l.titre,items:l.items.map(function(it){return{t:it.t,del:function(){self.adjDel([it.id]);}};}),v:v,
+        on:function(e){var o=Object.assign({},self.state.hvLibAdd);o[k]=e.target.value;self.setState({hvLibAdd:o});},
+        add:function(){var t=String((self.state.hvLibAdd||{})[k]||'').trim();if(!t)return;
+          self.adjAdd({site_id:String(site.id),bassin_id:null,domaine:'hiv',action:'ajouter',section:H.LIBRE+k,texte:t,crit:false}).then(function(){var o=Object.assign({},self.state.hvLibAdd);delete o[k];self.setState({hvLibAdd:o});});}};}),
+    libNew:{titre:(this.state.hvLibNew||{}).titre||'',t:(this.state.hvLibNew||{}).t||'',
+      onTitre:function(e){self.setState({hvLibNew:Object.assign({},self.state.hvLibNew,{titre:e.target.value})});},onT:function(e){self.setState({hvLibNew:Object.assign({},self.state.hvLibNew,{t:e.target.value})});},
+      add:function(){var n=self.state.hvLibNew||{},ti=String(n.titre||'').trim(),t=String(n.t||'').trim();if(!ti||!t){self.flash('Titre de la section et première étape requis');return;}
+        self.adjAdd({site_id:String(site.id),bassin_id:null,domaine:'hiv',action:'ajouter',section:H.LIBRE+ti,texte:t,crit:false}).then(function(){self.setState({hvLibNew:{}});});}}};};

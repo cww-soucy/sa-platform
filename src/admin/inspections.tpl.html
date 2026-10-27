@@ -194,6 +194,16 @@
           <td style="font-weight:600">{{ o.nom }}</td><td>{{ o.gab }} <span style="font-size:12px">({{ o.choix }})</span></td><td>{{ o.adj }}</td>
           <td style="text-align:right"><button class="btn btn-secondary" onClick="{{ o.cfg }}">Configurer</button></td>
         </tr></sc-for></tbody></table></div>
+      <div data-hiv-libres style="display:flex;flex-direction:column;gap:8px"><h3 style="margin:0;font-size:22px">Sections propres à ce site</h3>
+        <span style="font-size:13px">Une section entière avec ses étapes (ex. « Glissade », « Bâtiment des pompes »), ajoutée à chaque hivernement de ce site, les prochaines années aussi. Les techniciens peuvent en créer sur place dans sa-terrain.</span>
+        <sc-for list="{{ iq.hiv.libres }}" as="l"><div data-libre="{{ l.titre }}" style="border:1px solid var(--color-text);padding:10px 12px;display:flex;flex-direction:column;gap:4px">
+          <b style="font-size:15px">{{ l.titre }}</b>
+          <sc-for list="{{ l.items }}" as="it"><div style="display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--color-divider);padding:3px 0"><span style="flex:1;font-size:14px">{{ it.t }}</span><button class="btn btn-ghost btn-icon" onClick="{{ it.del }}" aria-label="Retirer l’étape : {{ it.t }}"><sa-i n="x" s="16"></sa-i></button></div></sc-for>
+          <div style="display:flex;gap:8px;margin-top:4px"><input class="input" value="{{ l.v }}" onInput="{{ l.on }}" placeholder="Ajouter une étape" aria-label="Ajouter une étape : {{ l.titre }}" style="flex:1"><button class="btn btn-secondary" onClick="{{ l.add }}">Ajouter</button></div>
+        </div></sc-for>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input class="input" value="{{ iq.hiv.libNew.titre }}" onInput="{{ iq.hiv.libNew.onTitre }}" placeholder="Titre de la nouvelle section" aria-label="Titre de la nouvelle section" style="flex:1;min-width:180px">
+          <input class="input" value="{{ iq.hiv.libNew.t }}" onInput="{{ iq.hiv.libNew.onT }}" placeholder="Première étape" aria-label="Première étape de la nouvelle section" style="flex:2;min-width:220px">
+          <button class="btn btn-secondary" onClick="{{ iq.hiv.libNew.add }}">Créer la section</button></div></div>
     </div></sc-if>
 
     <!-- ═ Bassins et plan (5a-1) ═ -->

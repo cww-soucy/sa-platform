@@ -27,7 +27,7 @@ test('une seule entrée « Sites et inspections » et une barre d’onglets comm
   await page.getByRole('button', { name: /Sites et inspections/ }).first().click();
   assert.equal(await page.evaluate(() => window.__admin.state.mod), 'inspections');
   const bar = page.getByRole('tablist', { name: 'Sites et inspections' });
-  assert.deepEqual(await bar.getByRole('tab').allTextContents(), ['Inspections et rapports', 'Clients et sites', 'Lieux à classer', 'Répertoire']);
+  assert.deepEqual(await bar.getByRole('tab').allTextContents(), ['Inspections et rapports', 'Hivernage', 'Clients et sites', 'Lieux à classer', 'Répertoire']);
   await bar.getByRole('tab', { name: 'Clients et sites' }).click();
   assert.deepEqual(await page.evaluate(() => [window.__admin.state.mod, window.__admin.state.sitesTab]), ['sites', 'clients']);
   assert.equal(await bar.getByRole('tab', { name: 'Clients et sites' }).getAttribute('aria-selected'), 'true');

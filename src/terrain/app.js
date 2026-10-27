@@ -433,8 +433,13 @@ Comp.prototype.hivReplan=function(sid){var s=siteById(sid);this.hivSet(sid,funct
 Comp.prototype.hivRetirer=function(sid,it){var self=this;if(it.aj)this.annulerAjust(it.aj);else(it.grefs||[it.gref]).forEach(function(g){self.ajuster({site_id:String(sid),bassin_id:it.ob||null,domaine:'hiv',action:'exclure',ref:g});});
   this.hivReplan(sid);this.flash('Étape retirée pour ce site — le bureau la voit dans sa-admin');};
 Comp.prototype.hivAjouter=function(sid,sec){var t=String((this.state.hivAdd||{})[sec.id]||'').trim();if(!t)return;
-  this.ajuster({site_id:String(sid),bassin_id:sec.ob||null,domaine:'hiv',action:'ajouter',section:sec.sid,texte:t,crit:false});
+  this.ajuster({site_id:String(sid),bassin_id:sec.libre?null:(sec.ob||null),domaine:'hiv',action:'ajouter',section:sec.libre?window.SAHiv.LIBRE+sec.libre:sec.sid,texte:t,crit:false});
   var o=Object.assign({},this.state.hivAdd);delete o[sec.id];this.setState({hivAdd:o});this.hivReplan(sid);this.flash('Étape ajoutée pour ce site');};
+/* Nouvelle section propre au site (ex. « Glissade », « Bâtiment des pompes ») : gardée pour les prochaines années, le bureau la voit */
+Comp.prototype.hivNouvelleSection=function(sid){var n=this.state.hivNewSec||{},titre=String(n.titre||'').trim(),t=String(n.t||'').trim();
+  if(!titre||!t){this.flash('Titre de la section et première étape requis');return;}
+  this.ajuster({site_id:String(sid),bassin_id:null,domaine:'hiv',action:'ajouter',section:window.SAHiv.LIBRE+titre,texte:t,crit:false});
+  this.setState({hivNewSec:{}});this.hivReplan(sid);this.flash('Section « '+titre+' » ajoutée pour ce site');};
 Comp.prototype.ptRetirer=function(s,bsel,sid,p){this.ajuster({site_id:String(s.id),bassin_id:bsel?bsel.id:null,domaine:'insp',action:'exclure',ref:p.id});
   this.setPt(sid,p.id,{etat:null});this.flash('« '+p.libelle+' » ne sera plus demandé à ce site');};
 Comp.prototype.ptAjouter=function(s,bsel,step){var t=String(this.state.ptAdd||'').trim();if(!t)return;var n=window.SAInsp.propres(REF.cat,bsel?bsel.id:'site:'+s.id).length;
@@ -600,15 +605,29 @@ Comp.prototype.vals=function(){
     hivEdit:!!st.hivEdit,hivNoEdit:!st.hivEdit,hivEditLbl:st.hivEdit?'Terminer les modifications':'Modifier la liste pour ce site',hivEditGo:function(){self.setState({hivEdit:!self.state.hivEdit});},
     hivRetirees:hivSel?adjDe(hivSel.id).filter(function(r){return r.domaine==='hiv'&&r.action==='exclure';}).map(function(r){return{l:H.libelleRef(r.ref,REF.gab),par:(r.par_nom||'')+(r.cree_le?' · '+String(r.cree_le).slice(0,10):''),remettre:function(){self.annulerAjust(r.id);self.hivReplan(hivSel.id);}};}):[],
     hivRetOk:!!(st.hivEdit&&hivSel&&adjDe(hivSel.id).some(function(r){return r.domaine==='hiv'&&r.action==='exclure';})),
-    hivSecs:hd?H.planDe(hd).sections.map(function(sc){var cases=sc.items.filter(function(it){return!H.choixDe(it);}),all=cases.length&&cases.every(function(it){return hd.c[it.k];});
+    hivTypeNom:hd?H.typeDe(hd).nom:'',
+    hivTypes:hd?H.TYPES.map(function(t){var on=H.typeDe(hd).code===t.code;return{l:t.nom,pr:on?'true':'false',bg:on?'var(--color-text)':'transparent',fg:on?'var(--color-bg)':'var(--color-text)',go:function(){self.hivSet(hivSel.id,function(d){d.type=t.code;});}};}):[],
+    hivAutre:!!hd&&H.typeDe(hd).code==='autre',hivTypeAutre:hd?hd.type_nom:'',onHivTypeAutre:hset(function(d,v){d.type_nom=v;}),
+    hivNewSec:{titre:(st.hivNewSec||{}).titre||'',t:(st.hivNewSec||{}).t||'',onTitre:function(e){self.setState({hivNewSec:Object.assign({},self.state.hivNewSec,{titre:e.target.value})});},
+      onT:function(e){self.setState({hivNewSec:Object.assign({},self.state.hivNewSec,{t:e.target.value})});},add:function(){self.hivNouvelleSection(hivSel.id);}},
+    hivNoTrav:hd?H.sectionsDe(hd).length+2:0,hivNoMat:hd?H.sectionsDe(hd).length+3:0,
+    hivTravaux:hd?hd.travaux.map(function(w,i){var tg={lbl:'Fait',fw:'600',on:!!w.fait,box:w.fait?'var(--color-text)':'transparent',toggle:function(){self.hivSet(hivSel.id,function(d){d.travaux[i].fait=!d.travaux[i].fait;});}};
+      return{t:w.t,duree:w.duree,note:w.note,onT:hset(function(d,v){d.travaux[i].t=v;}),onDuree:hset(function(d,v){d.travaux[i].duree=v;}),onNote:hset(function(d,v){d.travaux[i].note=v;}),tg:[tg],
+        del:function(){self.hivSet(hivSel.id,function(d){d.travaux.splice(i,1);});}};}):[],
+    addTravail:function(){self.hivSet(hivSel.id,function(d){d.travaux.push({t:'',fait:false,note:'',duree:''});});},
+    hivMat:hd?hd.materiel.map(function(m,i){return{nom:m.nom,qte:m.qte,unite:m.unite,onNom:hset(function(d,v){d.materiel[i].nom=v;}),onQte:hset(function(d,v){d.materiel[i].qte=v;}),onUnite:hset(function(d,v){d.materiel[i].unite=v;}),
+      del:function(){self.hivSet(hivSel.id,function(d){d.materiel.splice(i,1);});}};}):[],
+    addMat:function(){self.hivSet(hivSel.id,function(d){d.materiel.push({nom:'',qte:'',unite:''});});},
+    hivMatSugg:hd?H.matSugg(hd).map(function(v){return{v:v};}):[],
+    hivSecs:hd?H.sectionsDe(hd).map(function(sc){var cases=sc.items.filter(function(it){return!H.choixDe(it);}),all=cases.length&&cases.every(function(it){return hd.c[it.k];});
       return{titre:sc.no+'. '+sc.titre,allLbl:cases.length?(all?'Tout décocher':'Tout cocher'):'',all:function(){self.hivSet(hivSel.id,function(d){cases.forEach(function(it){d.c[it.k]=!all;});});},
-        canAdd:!sc.commun&&!!sc.ob,addV:(st.hivAdd||{})[sc.id]||'',onAdd:function(e){var o=Object.assign({},self.state.hivAdd);o[sc.id]=e.target.value;self.setState({hivAdd:o});},add:function(){self.hivAjouter(hivSel.id,sc);},
+        canAdd:(!sc.commun&&!!sc.ob)||!!sc.libre,addV:(st.hivAdd||{})[sc.id]||'',onAdd:function(e){var o=Object.assign({},self.state.hivAdd);o[sc.id]=e.target.value;self.setState({hivAdd:o});},add:function(){self.hivAjouter(hivSel.id,sc);},
         edits:sc.items.map(function(it){return{label:(sc.num&&it.n&&it.n!=='—'?it.n+'. ':'')+it.t+(it.b?' '+it.b:''),aj:!!it.aj,retirer:function(){self.hivRetirer(hivSel.id,it);}};}),
         tips:!!sc.tips,isForm:sc.id==='form',items:sc.items.map(function(it){var on=!!hd.c[it.k],ch=H.choixDe(it),rep=H.reponse(hd,it);return{label:(sc.num&&it.n!=='—'?it.n+'. ':'')+it.t+(it.b?' '+it.b:'')+(sc.col2?(it.g===2?' (pièce)':''):''),on:on,fw:it.crit?'600':'400',
           isCase:!ch,isChoix:!!ch,opts:(ch||[]).map(function(o){var sel=rep===o;return{l:o,bg:sel?'var(--color-text)':'transparent',fg:sel?'var(--color-bg)':'var(--color-text)',pr:sel?'true':'false',
             go:function(){self.hivSet(hivSel.id,function(d){d.c[it.k]=d.c[it.k]===o?false:o;});}};}),
           box:on?'var(--color-text)':'transparent',toggle:function(){self.hivSet(hivSel.id,function(d){d.c[it.k]=!d.c[it.k];});}};})};}):[],
-    hivTips:(hd?H.planDe(hd).conseils:[]).map(function(t){return{t:t};}),hivAlerte:hd?H.planDe(hd).alerte:'',hivNoRem:(hd?H.planDe(hd).sections.length:8)+2,hivOuv:hd&&H.planDe(hd).ouvrages.length>1?H.planDe(hd).ouvrages.map(function(o){return o.nom;}).join(' · '):'',
+    hivTips:(hd?H.planDe(hd).conseils:[]).map(function(t){return{t:t};}),hivAlerte:hd?H.planDe(hd).alerte:'',hivNoRem:(hd?H.sectionsDe(hd).length:8)+4,hivOuv:hd&&H.planDe(hd).ouvrages.length>1?H.planDe(hd).ouvrages.map(function(o){return o.nom;}).join(' · '):'',
     hivEmp:hd?hd.employes.map(function(e,i){var tg=function(key,lbl){return{lbl:lbl,fw:'400',on:!!e[key],box:e[key]?'var(--color-text)':'transparent',toggle:function(){self.hivSet(hivSel.id,function(d){d.employes[i][key]=!d.employes[i][key];});}};};
       return{nom:e.nom,onNom:hset(function(d,v){d.employes[i].nom=v;}),tg:[tg('formation','Formation complétée'),tg('demo','Démonstration réussie')],del:function(){self.hivSet(hivSel.id,function(d){d.employes.splice(i,1);});}};}):[],
     addEmp:function(){self.hivSet(hivSel.id,function(d){d.employes.push({nom:'',formation:false,demo:false});});},
