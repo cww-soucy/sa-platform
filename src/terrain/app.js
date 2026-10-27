@@ -445,6 +445,10 @@ Comp.prototype.ptRetirer=function(s,bsel,sid,p){this.ajuster({site_id:String(s.i
 Comp.prototype.ptAjouter=function(s,bsel,step){var t=String(this.state.ptAdd||'').trim();if(!t)return;var n=window.SAInsp.propres(REF.cat,bsel?bsel.id:'site:'+s.id).length;
   var p={id:rid('ouv-'),systeme_code:step,type_code:'_ouvrage',bassin_id:bsel?bsel.id:'site:'+s.id,site_id:String(s.id),libelle:t,mode:step==='securite'?'ouinon':'etat',obligatoire:false,actions_correctives:[],ordre:100+n,actif:true,updated_at:new Date().toISOString()};
   REF.cat=(REF.cat||[]).concat([p]);this.refCache();this.enqueue(Object.assign({_t:'inspection_points'},p));this.setState({ptAdd:''});this.flash('Point ajouté pour ce site');};
+/* Affichage de la liste sur le chantier, gardé sur l'appareil : menus repliés par section ou détaillés, texte court ou complet, toutes les sections ou une à la fois */
+var HIV_VUE=[['mode','Menus',[['section','Par section'],['detail','Détaillé']]],['texte','Texte',[['court','Court'],['complet','Complet']]],['ordre','Organisation',[['toutes','Toutes les sections'],['une','Une à la fois']]]];
+Comp.prototype.hivVue=function(){return Object.assign({mode:'section',texte:'court',ordre:'toutes'},jget('sa_hiv_vue',null),this.state.hivVue||{});};
+Comp.prototype.setHivVue=function(v){jset('sa_hiv_vue',v);this.setState({hivVue:v,hivPos:0});};
 Comp.prototype.hivSet=function(sid,fn){var d=this.hivCur(sid);fn(d);var o={};o[sid]=d;this.setState(function(s2){return{hivData:Object.assign({},s2.hivData,o)};});this.persist();};
 Comp.prototype.sendHiv=function(){var st=this.state,sid=st.hivSel,s=sid&&siteById(sid);if(!s)return;var now=new Date(),d=this.hivCur(sid);
   d.info.site=s.nom;if(!d.info.date)d.info.date=iso(now);if(!String(d.info.chef||'').trim())d.info.chef=this.me.nom;
@@ -595,10 +599,11 @@ Comp.prototype.vals=function(){
   var HF=[['todo','À faire'],['done','Faits'],['all','Tous']];
   var hivSel=st.hivSel&&siteById(st.hivSel),H=window.SAHiv,hd=hivSel?this.hivCur(hivSel.id):null,hpg=hd?H.progress(hd):{done:0,total:0,pct:0};
   var hset=function(fn){return function(e){var v=e&&e.target?(e.target.type==='checkbox'?e.target.checked:e.target.value):e;self.hivSet(hivSel.id,function(d){fn(d,v);});};};
+  var vue=this.hivVue(),nSecs=hd?H.sectionsDe(hd).length:0,pos=Math.max(0,Math.min(nSecs-1,st.hivPos||0));
   var hivV={isHiv:scr==='hivernage',isHivForm:scr==='hivForm'&&!!hivSel,hivDoneCount:hivDoneCount,hivTotalSites:hs.length,
     hivCells:hs.map(function(s){return{bg:hivDone(s)?'var(--color-accent-700)':'transparent'};}),
     hivFilters:HF.map(function(f,i){var on=hf===f[0];return{label:f[1],go:function(){self.setState({hivFilter:f[0]});},bl:i?'1px solid var(--color-divider)':'none',bg:segStyle(on).bg,fg:segStyle(on).fg};}),
-    hivList:hs.filter(function(s){var d=!!hivDone(s);return hf==='all'||(hf==='done'?d:!d);}).map(function(s){var d=hivDone(s);return{nom:s.nom,ville:s.ville||'—',statutTxt:d?'Fait le '+d:'À faire',icon:d?'check':'right',open:function(){self.setState({hivSel:s.id,screen:'hivForm'});}};}),
+    hivList:hs.filter(function(s){var d=!!hivDone(s);return hf==='all'||(hf==='done'?d:!d);}).map(function(s){var d=hivDone(s);return{nom:s.nom,ville:s.ville||'—',statutTxt:d?'Fait le '+d:'À faire',icon:d?'check':'right',open:function(){self.setState({hivSel:s.id,screen:'hivForm',hivPos:0,hivOpen:{}});}};}),
     hivSite:hivSel?{nom:hivSel.nom,ville:hivSel.ville||'—'}:{},hivProgress:hpg.done,hivTotal:hpg.total,hivPct:hpg.pct+'%',
     hivCrit:hd&&H.critiquesManquants(hd).length?'Étape(s) critique(s) non cochée(s) : '+H.critiquesManquants(hd).map(function(x){return x.split('.')[0];}).join(', '):'',
     hivInfo:hd?H.INFO.filter(function(f){return f[0]!=='site'&&f[0]!=='date';}).map(function(f){return{l:f[1],type:f[2],v:hd.info[f[0]]||'',on:hset(function(d,v){d.info[f[0]]=v;})};}):[],
@@ -619,11 +624,22 @@ Comp.prototype.vals=function(){
       del:function(){self.hivSet(hivSel.id,function(d){d.materiel.splice(i,1);});}};}):[],
     addMat:function(){self.hivSet(hivSel.id,function(d){d.materiel.push({nom:'',qte:'',unite:''});});},
     hivMatSugg:hd?H.matSugg(hd).map(function(v){return{v:v};}):[],
-    hivSecs:hd?H.sectionsDe(hd).map(function(sc){var cases=sc.items.filter(function(it){return!H.choixDe(it);}),all=cases.length&&cases.every(function(it){return hd.c[it.k];});
-      return{titre:sc.no+'. '+sc.titre,allLbl:cases.length?(all?'Tout décocher':'Tout cocher'):'',all:function(){self.hivSet(hivSel.id,function(d){cases.forEach(function(it){d.c[it.k]=!all;});});},
+    hivVueOpts:HIV_VUE.map(function(g){return{l:g[1],opts:g[2].map(function(o,i){var on=vue[g[0]]===o[0];return{l:o[1],pr:on?'true':'false',bg:on?'var(--color-text)':'transparent',fg:on?'var(--color-bg)':'var(--color-text)',
+      bl:i?'none':'1.5px solid var(--color-text)',go:function(){var v=Object.assign({},vue);v[g[0]]=o[0];self.setHivVue(v);}};})};}),
+    hivUne:!!hd&&vue.ordre==='une'&&!st.hivEdit,hivPosTxt:hd?'Section '+(pos+1)+' sur '+nSecs:'',hivPrevOk:pos>0,hivNextOk:pos<nSecs-1,
+    hivPrev:function(){self.setState({hivPos:Math.max(0,pos-1)});window.scrollTo(0,0);},hivNext:function(){self.setState({hivPos:Math.min(nSecs-1,pos+1)});window.scrollTo(0,0);},
+    hivSecs:hd?H.sectionsDe(hd).map(function(sc,si){var cases=sc.items.filter(function(it){return!H.choixDe(it);}),all=cases.length&&cases.every(function(it){return hd.c[it.k];});
+      /* Par section : « Section faite » coche d'un coup les cases ordinaires ; les étapes critiques et à choix restent à faire une par une, toujours visibles */
+      var ord=cases.filter(function(it){return!it.crit;}),ordAll=ord.length&&ord.every(function(it){return hd.c[it.k];}),ouvert=!!(st.hivOpen||{})[sc.id],secMode=vue.mode==='section'&&!st.hivEdit;
+      var fait=sc.items.filter(function(it){return hd.c[it.k];}).length,nCrit=sc.items.filter(function(it){return it.crit||H.choixDe(it);}).length;
+      var lab=function(it){return(sc.num&&it.n&&it.n!=='—'?it.n+'. ':'')+(vue.texte==='court'?H.court(it):it.t)+(it.b?' '+it.b:'')+(sc.col2?(it.g===2?' (pièce)':''):'');};
+      return{titre:sc.no+'. '+sc.titre,vis:vue.ordre!=='une'||!!st.hivEdit||si===pos,modeSec:secMode,compte:fait+' / '+sc.items.length,
+        secFaitLbl:ord.length?(ordAll?'Section faite ✓ — annuler':'Section faite'+(nCrit?' (sauf les étapes à cocher une à une)':'')):'',secFait:function(){self.hivSet(hivSel.id,function(d){ord.forEach(function(it){d.c[it.k]=!ordAll;});});},
+        voirLbl:ouvert?'Replier':'Voir les '+sc.items.length+' étapes',voir:function(){var o=Object.assign({},self.state.hivOpen);o[sc.id]=!ouvert;self.setState({hivOpen:o});},
+        allLbl:secMode?'':(cases.length?(all?'Tout décocher':'Tout cocher'):''),all:function(){self.hivSet(hivSel.id,function(d){cases.forEach(function(it){d.c[it.k]=!all;});});},
         canAdd:(!sc.commun&&!!sc.ob)||!!sc.libre,addV:(st.hivAdd||{})[sc.id]||'',onAdd:function(e){var o=Object.assign({},self.state.hivAdd);o[sc.id]=e.target.value;self.setState({hivAdd:o});},add:function(){self.hivAjouter(hivSel.id,sc);},
         edits:sc.items.map(function(it){return{label:(sc.num&&it.n&&it.n!=='—'?it.n+'. ':'')+it.t+(it.b?' '+it.b:''),aj:!!it.aj,retirer:function(){self.hivRetirer(hivSel.id,it);}};}),
-        tips:!!sc.tips,isForm:sc.id==='form',items:sc.items.map(function(it){var on=!!hd.c[it.k],ch=H.choixDe(it),rep=H.reponse(hd,it);return{label:(sc.num&&it.n!=='—'?it.n+'. ':'')+it.t+(it.b?' '+it.b:'')+(sc.col2?(it.g===2?' (pièce)':''):''),on:on,fw:it.crit?'600':'400',
+        tips:!!sc.tips,isForm:sc.id==='form',items:sc.items.filter(function(it){return!secMode||ouvert||it.crit||H.choixDe(it);}).map(function(it){var on=!!hd.c[it.k],ch=H.choixDe(it),rep=H.reponse(hd,it);return{label:(it.crit&&secMode?'★ ':'')+lab(it),on:on,fw:it.crit?'600':'400',
           isCase:!ch,isChoix:!!ch,opts:(ch||[]).map(function(o){var sel=rep===o;return{l:o,bg:sel?'var(--color-text)':'transparent',fg:sel?'var(--color-bg)':'var(--color-text)',pr:sel?'true':'false',
             go:function(){self.hivSet(hivSel.id,function(d){d.c[it.k]=d.c[it.k]===o?false:o;});}};}),
           box:on?'var(--color-text)':'transparent',toggle:function(){self.hivSet(hivSel.id,function(d){d.c[it.k]=!d.c[it.k];});}};})};}):[],
