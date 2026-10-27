@@ -69,6 +69,14 @@ test('sa-admin : inspection personnalisée depuis le site, point à corriger ave
   assert.equal(d.notes['bassin-5'], 'Grille manquante au drain principal');
   // historique du site : l'inspection y est, avec ses déficiences ; pas dans l'onglet Hivernement
   assert.equal(await page.evaluate(() => window.__admin.state.toast), 'Rapport d’inspection enregistré');
+  // enregistrée dans l'onglet « Inspections personnalisées » du site (on y revient après l'enregistrement)
+  assert.equal(await page.evaluate(() => window.__admin.state.inspView), 'perso');
+  await page.locator('tr[data-insp]').first().waitFor();
+  assert.match(await page.locator('[data-perso]').innerText(), /Inspection après chantier[\s\S]*Bureau SA|Inspection après chantier[\s\S]*1 point\(s\) à corriger/);
+  assert.match(await page.locator('tr[data-insp]').innerText(), /1 point\(s\) à corriger[\s\S]*Brouillon/);
+  await page.getByRole('tab', { name: 'Bilan par système' }).click().catch(() => page.evaluate(() => window.__admin.setState({ inspView: 'bilan' })));
+  await page.getByRole('button', { name: 'Voir les inspections' }).waitFor();
+  assert.match(await page.locator('#app').innerText(), /1 inspection\(s\) personnalisée\(s\) · dernière le/);
   await page.evaluate(() => window.__admin.setState({ de: null, inspView: 'visite' }));
   await page.waitForFunction(() => /1 point\(s\) à corriger/.test(document.body.innerText));
   assert.match(await page.locator('#app').innerText(), /Inspection après chantier/);
