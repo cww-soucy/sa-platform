@@ -427,6 +427,7 @@ DE_HV2=IF('isHV2','<datalist id="deTechs"><sc-for list="{{ hvTechs }}" as="o"><o
   '<span>{{ hvProg }}</span><div style="flex:1;height:10px;background:var(--color-divider)"><div style="height:100%;width:{{ hvPct }};background:var(--color-accent-700)"></div></div></div>'
   '<sc-if value="{{ hvCrit }}"><div role="alert" style="padding:8px 12px;border:2px solid var(--color-accent-900);font-size:14px;font-weight:600">{{ hvCrit }}</div></sc-if>'
   '<sc-if value="{{ hvOuv }}"><div style="font-size:14px">{{ hvOuv }}</div></sc-if>'
+  +G2(FL('Type d’hivernement',SEL('hvTypes','onHvType').replace('<select ','<select aria-label="Type d’hivernement" ',1)),IF('hvAutre',FL('Préciser le type',INP('hvTypeNom.v','hvTypeNom.on','text',' placeholder="ex. Fermeture des jeux d’eau seulement"'))))
   +HVH('1. Informations générales')
   +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 14px"><sc-for list="{{ hvInfo }}" as="f"><div class="field" style="grid-column:{{ f.span }}"><label>{{ f.l }}</label>'
   '<input class="input" type="{{ f.type }}" value="{{ f.v }}" onInput="{{ f.on }}" list="{{ f.list }}"></div></sc-for></div>'
@@ -442,6 +443,20 @@ DE_HV2=IF('isHV2','<datalist id="deTechs"><sc-for list="{{ hvTechs }}" as="o"><o
   '<label style="display:flex;gap:6px;align-items:center;font-size:14px"><input type="checkbox" checked="{{ e.demo }}" onChange="{{ e.onDemo }}">Démonstration réussie</label>'+DELB('e.del')+'</div></sc-for>'
   '<button class="btn btn-ghost" onClick="{{ addEmp }}" style="align-self:flex-start">+ Ajouter un employé</button></div></sc-if>'
   '</div></sc-for>'
+  +HVH('{{ hvNoTrav }}')+'<div style="font-size:13px">Travaux propres à cette intervention, en plus de la liste (réparation, remplacement, demande du client…). Ils ne changent pas le gabarit.</div>'
+  '<sc-for list="{{ hvTravaux }}" as="w"><div data-travail style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--color-divider);padding:4px 0">'
+  '<label style="display:flex;gap:6px;align-items:center;font-size:14px"><input type="checkbox" checked="{{ w.fait }}" onChange="{{ w.onFait }}" aria-label="Travail fait">Fait</label>'
+  '<input class="input" value="{{ w.t }}" onInput="{{ w.onT }}" placeholder="Travail réalisé ou à faire" aria-label="Travail" style="flex:2;min-width:200px;padding:6px 8px">'
+  '<input class="input" value="{{ w.duree }}" onInput="{{ w.onDuree }}" placeholder="Heures" aria-label="Heures" inputmode="decimal" style="width:80px;padding:6px 8px">'
+  '<input class="input" value="{{ w.note }}" onInput="{{ w.onNote }}" placeholder="Note" aria-label="Note" style="flex:1;min-width:140px;padding:6px 8px">'+DELB('w.del')+'</div></sc-for>'
+  '<button class="btn btn-ghost" onClick="{{ addTravail }}" style="align-self:flex-start">+ Ajouter un travail</button>'
+  +HVH('{{ hvNoMat }}')+'<datalist id="hvMatList"><sc-for list="{{ hvMatSugg }}" as="o"><option value="{{ o.v }}"></option></sc-for></datalist>'
+  '<sc-for list="{{ hvMat }}" as="m"><div data-materiel style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--color-divider);padding:4px 0">'
+  '<input class="input" value="{{ m.nom }}" onInput="{{ m.onNom }}" list="hvMatList" placeholder="Matériel ou produit (ex. antigel biodégradable)" aria-label="Matériel ou produit" style="flex:2;min-width:220px;padding:6px 8px">'
+  '<input class="input" value="{{ m.qte }}" onInput="{{ m.onQte }}" placeholder="Qté" aria-label="Quantité" inputmode="decimal" style="width:80px;padding:6px 8px">'
+  '<input class="input" value="{{ m.unite }}" onInput="{{ m.onUnite }}" list="hvUnites" placeholder="Unité" aria-label="Unité" style="width:100px;padding:6px 8px">'+DELB('m.del')+'</div></sc-for>'
+  '<datalist id="hvUnites"><option value="L"></option><option value="kg"></option><option value="unité"></option><option value="sac"></option><option value="boîte"></option><option value="m"></option></datalist>'
+  '<button class="btn btn-ghost" onClick="{{ addMat }}" style="align-self:flex-start">+ Ajouter du matériel ou un produit</button>'
   +HVH('{{ hvNoRem }}')+FL('Remarques et anomalies',TXT('hvRem.v','hvRem.on','Bris, pièces à commander, anomalies constatées'))+FL('Photos',PHOTOS('hvPhotos','addHvPhoto'))
   +HVH('{{ hvNoVal }}')+G2(FL('Responsable',INP('hvResp.v','hvResp.on')),FL('Client',INP('dClient.v','dClient.on')))
   +FL('Courriel du client',INP('hvMail.v','hvMail.on','text',' placeholder="courriel@client.ca (plusieurs : séparer par des virgules)"'))
@@ -688,6 +703,9 @@ GBDLG=('<template data-sc="if" value="{{ gbOpen }}"><div class="dialog-backdrop"
     '<sc-if value="{{ s.canUp }}"><button onClick="{{ s.up }}" aria-label="Monter la section {{ s.no }}" style="all:unset;cursor:pointer;min-width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--color-divider);font-size:15px">↑</button></sc-if>'
     '<sc-if value="{{ s.canDown }}"><button onClick="{{ s.down }}" aria-label="Descendre la section {{ s.no }}" style="all:unset;cursor:pointer;min-width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--color-divider);font-size:15px">↓</button></sc-if>'
     '<button class="btn btn-ghost" onClick="{{ s.del }}" style="font-size:13px;padding:4px 8px">{{ s.delLbl }}</button></div>'
+    '<div role="group" aria-label="Types d’hivernement — section {{ s.no }}" style="display:flex;gap:6px 12px;align-items:center;flex-wrap:wrap;padding:6px 12px;border-bottom:1px solid var(--color-divider);font-size:13px">'
+    '<span>Faite pour :</span><sc-for list="{{ s.types }}" as="ty"><label style="display:flex;gap:4px;align-items:center"><input type="checkbox" checked="{{ ty.on }}" onChange="{{ ty.go }}">{{ ty.l }}</label></sc-for>'
+    '<span style="opacity:.75">{{ s.typesTxt }}</span></div>'
     '<sc-for list="{{ s.items }}" as="it"><div role="group" aria-label="{{ it.lbl }}" style="display:flex;flex-direction:column;gap:6px;padding:8px 12px;border-bottom:1px solid var(--color-divider)">'
     '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
     '<input class="input" value="{{ it.n.v }}" onInput="{{ it.n.on }}" aria-label="N°" placeholder="N°" style="width:52px;padding:6px">'
@@ -944,6 +962,10 @@ CATBAR=('<template data-sc="if" value="{{ isSiteCat }}"><div role="tablist" aria
 _ps=[M.find(x) for x in ('<template data-sc="if" value="{{ isInspNew }}">','<template data-sc="if" value="{{ isInspections }}">','<template data-sc="if" value="{{ isSites }}">')]
 assert all(p>0 for p in _ps), ('ancres sites/inspections',_ps)
 _p=min(_ps); M=M[:_p]+CATBAR+M[_p:]
+# Hivernage : même catégorie, même barre d'onglets
+_h=re.search(r'<(template data-sc="if"|sc-if) value="\{\{ isHivB \}\}"',M)
+assert _h, 'ancre isHivB (barre Sites et inspections)'
+M=M[:_h.start()]+CATBAR.replace('{{ isSiteCat }}','{{ isHivCat }}',1)+M[_h.start():]
 open(os.path.join(OUT,'admin.markup.html'),'w',encoding='utf-8').write(M)
 M=re.sub(r'(<template data-sc="if" value="\{\{ isCarte \}\}"[^>]*>\s*<div style="display:flex;flex-direction:column;gap:16px;height:100%">)',r'\1<div style="font-size:13px">{{ carteInfo }}</div>',M,count=1)
 ds=re.sub(r"@import url\([^)]*\);\s*",'',open(os.path.join(SRC,'design')+'/ds/styles.css',encoding='utf-8').read())

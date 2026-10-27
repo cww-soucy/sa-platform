@@ -61,11 +61,11 @@ Comp.prototype.clClasser=function(L,siteId){var self=this,s=this.D.byId[siteId];
    .catch(function(e){self.flash('Échec — rien n’a été classé : '+netMsg(e));});};
 
 /* Sites et inspections : une seule catégorie. Barre d'onglets commune aux deux écrans (mod « inspections » et « sites »). */
-var SC_TABS=[['insp','Inspections et rapports'],['clients','Clients et sites'],['lieux','Lieux à classer'],['rep','Répertoire']];
-Comp.prototype.siteCatVals=function(){var self=this,st=this.state,D=this.D,mod=st.mod;if(!D||(mod!=='sites'&&mod!=='inspections'))return{isSiteCat:false,catTabs:[]};
-  var cur=mod==='inspections'?'insp':(st.sitesTab||'clients'),nL=this.clFt?this.clStats().lieux.length:0;
-  return{isSiteCat:true,catTabs:SC_TABS.map(function(t){var on=t[0]===cur;return{label:t[1]+(t[0]==='lieux'&&nL?' ('+nL+')':''),on:on,bd:on?'var(--color-text)':'transparent',
-    go:function(){if(t[0]==='insp')self.go('inspections');else self.go('sites',{sitesTab:t[0]});}};})};};
+var SC_TABS=[['insp','Inspections et rapports'],['hiv','Hivernage'],['clients','Clients et sites'],['lieux','Lieux à classer'],['rep','Répertoire']];
+Comp.prototype.siteCatVals=function(){var self=this,st=this.state,D=this.D,mod=st.mod;if(!D||(mod!=='sites'&&mod!=='inspections'&&mod!=='hivernage'))return{isSiteCat:false,isHivCat:false,catTabs:[]};
+  var cur=mod==='inspections'?'insp':mod==='hivernage'?'hiv':(st.sitesTab||'clients'),nL=this.clFt?this.clStats().lieux.length:0;
+  return{isSiteCat:mod!=='hivernage',isHivCat:mod==='hivernage',catTabs:SC_TABS.map(function(t){var on=t[0]===cur;return{label:t[1]+(t[0]==='lieux'&&nL?' ('+nL+')':''),on:on,bd:on?'var(--color-text)':'transparent',
+    go:function(){if(t[0]==='insp')self.go('inspections');else if(t[0]==='hiv')self.go('hivernage');else self.go('sites',{sitesTab:t[0]});}};})};};
 /* État d'inspection d'un site, pour la liste des clients et sites : pastilles par système + dernière visite */
 Comp.prototype.clInsp=function(s){var I=window.SAInsp;if(!I||s.interne)return{pz:[],txt:'—'};var x=this.inspSummary(s),PZT={eau:'Eau',meca:'Mécanique',secu:'Sécurité',struct:'Structure'};
   return{pz:['eau','meca','secu','struct'].map(function(k){return{t:PZT[k]+' : '+I.LIB[x.pz[k]],st:pzSt(x.pz[k])};}),txt:x.lastV?'Visite du '+fdate(x.lastV.date):'Aucune visite'};};

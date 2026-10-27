@@ -1,4 +1,4 @@
-/* Liste de contrôle d'intervention « Hivernement » (fermeture avec formation) — partagée par sa-terrain et sa-admin.
+/* Liste de contrôle d'intervention « Hivernement » (type au choix : fermeture avec formation, complète, dormance, remise en service…) — partagée par sa-terrain et sa-admin.
    Aucune dépendance : intégrée telle quelle dans terrain.html / admin.html (build). Expose window.SAHiv (navigateur) ou module.exports (Node).
    Stockage : table rapports_hivernage (aucune colonne nouvelle). sections[0] porte la saisie complète dans `hivernement` ;
    chaque section garde aussi `title` + `items` lisibles (« ✔ … » / « ☐ … ») pour SA Platform et les anciens rapports. */
@@ -181,13 +181,27 @@
      Un seul ouvrage : clés « p1-0 » comme avant ; plusieurs : « <id ouvrage>:p1-0 ». Retraits (hiv.exclus) et ajouts (hiv.ajouts) de la fiche de l’ouvrage. */
   /* Ajustements d’un site (table ouvrage_ajustements, faits sur le terrain ou au bureau) appliqués à ses bassins :
      hiv.exclus / insp.exclus (réf. retirées) et hiv.ajouts (étapes ajoutées). bassin_id vide = tout le site. */
+  var LIBRE = 'libre:';
+  function estLibre(r) { return String(r && r.section || '').indexOf(LIBRE) === 0; }
+  /* Sections libres d’un site : une ligne d’ouvrage_ajustements par étape (domaine hiv, action ajouter, section « libre:Titre ») */
+  function sectionsLibres(adj) {
+    var out = [];
+    (adj || []).filter(function (r) { return r && r.actif !== false && r.domaine === 'hiv' && r.action === 'ajouter' && estLibre(r) && String(r.texte || '').trim(); })
+      .sort(function (a, b) { return String(a.cree_le || '').localeCompare(String(b.cree_le || '')); })
+      .forEach(function (r) {
+        var titre = String(r.section).slice(LIBRE.length).trim() || 'Travaux propres au site', s = out.filter(function (x) { return x.titre === titre; })[0];
+        if (!s) { s = { titre: titre, cle: titre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'site', items: [] }; out.push(s); }
+        s.items.push({ id: r.id, t: String(r.texte).trim(), crit: !!r.crit });
+      });
+    return out;
+  }
   function avecAjustements(bassins, adj) {
     var act = (adj || []).filter(function (r) { return r && r.actif !== false; });
     return (bassins || []).map(function (b, i) {
       var id = String(b.id || 'b' + i), mine = act.filter(function (r) { return !r.bassin_id || String(r.bassin_id) === id; });
       var ex = function (dom) { return mine.filter(function (r) { return r.domaine === dom && r.action === 'exclure'; }).map(function (r) { return r.ref; }); };
       return Object.assign({}, b, { id: id,
-        hiv: Object.assign({}, b.hiv, { exclus: ex('hiv'), ajouts: mine.filter(function (r) { return r.domaine === 'hiv' && r.action === 'ajouter' && r.bassin_id; })
+        hiv: Object.assign({}, b.hiv, { exclus: ex('hiv'), ajouts: mine.filter(function (r) { return r.domaine === 'hiv' && r.action === 'ajouter' && r.bassin_id && !estLibre(r); })
           .map(function (r) { return { id: r.id, t: r.texte, section: r.section, crit: !!r.crit }; }) }),
         insp: Object.assign({}, b.insp, { exclus: ex('insp') }) });
     });
@@ -201,7 +215,7 @@
   /* Étape à choix multiple : `choix` = au moins deux réponses ; la réponse choisie est gardée dans d.c[k] (texte) au lieu de true */
   function choixDe(it) { return it && Array.isArray(it.choix) && it.choix.length > 1 ? it.choix : null; }
   function reponse(d, it) { var v = d && d.c ? d.c[it.k] : null; return typeof v === 'string' ? v : ''; }
-  function planSite(bassins, rows) {
+  function planSite(bassins, rows, libres) {
     var liste = gabarits(rows), ouv = [];
     (bassins || []).forEach(function (b, i) { if (!b || !String(b.nom || '').trim()) return; var g = gabaritDe(b, liste); if (g) ouv.push({ id: String(b.id || 'b' + i), nom: String(b.nom).trim(), g: g, cfg: b.hiv || {} }); });
     if (!(bassins || []).length) ouv.push({ id: '', nom: '', g: gabaritDe({}, liste), cfg: {} });
@@ -209,7 +223,7 @@
     var exclu = function (o, gref) { return (o.cfg.exclus || []).indexOf(gref) >= 0; };
     var fusion = function (dest, s, o) {
       var cur = dest.filter(function (x) { return x.id === s.id; })[0];
-      if (!cur) { cur = { id: s.id, titre: s.titre, col: s.col, col2: s.col2, num: s.num, commun: true, ob: '', items: [] }; dest.push(cur); }
+      if (!cur) { cur = { id: s.id, titre: s.titre, col: s.col, col2: s.col2, num: s.num, commun: true, ob: '', items: [] }; if (s.types && s.types.length) cur.types = s.types.slice(); dest.push(cur); }
       s.items.forEach(function (it, j) {
         var ref = s.id + '-' + iid(it, j), gref = o.g.code + ':' + ref, k = (premier[s.id] !== o.g.code ? o.g.code + ':' : '') + ref, ex = exclu(o, gref);
         var deja = cur.items.filter(function (x) { return x.t === it.t && !!x.b === !!it.b; })[0];
@@ -224,7 +238,7 @@
         if (s.commun) { if (!premier[s.id]) premier[s.id] = o.g.code; fusion(iCorps < 0 || si < iCorps ? tete : fin, s, o); return; }
         var its = [];
         s.items.forEach(function (it, j) { var ref = s.id + '-' + iid(it, j), gref = o.g.code + ':' + ref; if (!exclu(o, gref)) its.push(Object.assign(copie(it), { k: pre + ref, ref: ref, gref: gref, ob: o.id }, multi ? { o: o.nom } : {})); });
-        corps.push({ id: pre + s.id, sid: s.id, titre: s.titre + suf, col: s.col, col2: s.col2, num: s.num, ob: o.id, items: its });
+        corps.push(Object.assign({ id: pre + s.id, sid: s.id, titre: s.titre + suf, col: s.col, col2: s.col2, num: s.num, ob: o.id, items: its }, s.types && s.types.length ? { types: s.types.slice() } : {}));
       });
       (o.cfg.ajouts || []).forEach(function (a) {
         if (!a || !String(a.t || '').trim()) return;
@@ -234,6 +248,10 @@
       });
       (o.g.conseils || []).forEach(function (t) { if (conseils.indexOf(t) < 0) conseils.push(t); });
       if (!alerte && o.g.alerte) alerte = o.g.alerte;
+    });
+    /* Sections propres au site (ouvrage_ajustements section « libre:Titre ») : après les phases, avant le matériel et la formation */
+    (libres || []).forEach(function (l) {
+      corps.push({ id: 'lib-' + l.cle, sid: 'libre', libre: l.titre, titre: l.titre, col: 'Tâche', ob: '', items: l.items.map(function (a) { return { t: a.t, crit: !!a.crit, k: 'lib-' + a.id, ref: 'lib-' + a.id, aj: a.id, ob: '' }; }) });
     });
     var secs = tete.concat(corps, fin).map(function (s) { s.items = s.items.filter(function (it) { var g = it._garde !== false; delete it._garde; return g; }); return s; })
       .filter(function (s) { return s.items.length; });
@@ -251,7 +269,7 @@
      « 12. Étape », « — Étape » (sans numéro), « - Vérification », « * Pièce de rechange ». « **texte** » = en gras ; « ! » à la fin = étape critique. */
   function versTexte(secs) {
     return (secs || []).map(function (s) {
-      return '## ' + s.titre + (s.commun ? ' [commun]' : '') + '\n' + s.items.map(function (it) {
+      return '## ' + s.titre + (s.commun ? ' [commun]' : '') + (s.types && s.types.length ? ' [types: ' + s.types.join(', ') + ']' : '') + '\n' + s.items.map(function (it) {
         var p = it.g === 2 ? '* ' : it.n === '—' ? '— ' : it.n ? it.n + '. ' : '- ';
         return p + it.t + (it.b ? ' **' + it.b + '**' : '') + (it.crit ? ' !' : '');
       }).join('\n');
@@ -266,8 +284,15 @@
     };
     String(txt || '').split(/\r?\n/).forEach(function (l) {
       l = l.trim(); if (!l) return;
-      var h = /^#+\s*(.+?)\s*(\[commun\])?$/i.exec(l);
-      if (h) { cur = { id: idDe(h[1]), titre: h[1], commun: !!h[2], items: [] }; secs.push(cur); return; }
+      var h = /^#+\s*(.+)$/.exec(l);
+      if (h) {
+        var tt = h[1], com = false, ty = null, m2;
+        while ((m2 = /\s*\[(commun|types?\s*:\s*([^\]]*))\]\s*$/i.exec(tt))) {
+          if (/^commun$/i.test(m2[1])) com = true; else ty = String(m2[2] || '').split(/[,\s]+/).map(function (x) { return x.trim().toLowerCase(); }).filter(Boolean);
+          tt = tt.slice(0, m2.index).trim();
+        }
+        cur = { id: idDe(tt), titre: tt, commun: com, items: [] }; if (ty && ty.length) cur.types = ty; secs.push(cur); return;
+      }
       if (!cur) { cur = { id: idDe('Étapes'), titre: 'Étapes', items: [] }; secs.push(cur); }
       var it = {}, m;
       if ((m = /^(\d+)[.)]\s+(.*)$/.exec(l))) { it.n = m[1]; l = m[2]; }
@@ -283,7 +308,7 @@
       var a = (ancien || []).filter(function (x) { return x.id === s.id; })[0], o = { id: s.id, titre: s.titre };
       o.col = a && a.col ? a.col : s.id === 'form' ? 'Sujet de formation' : deux ? 'Matériel' : num ? 'Tâche' : 'Vérification';
       if (deux) o.col2 = a && a.col2 ? a.col2 : 'Pièces de rechange';
-      if (num) o.num = true; if (s.commun) o.commun = true;
+      if (num) o.num = true; if (s.commun) o.commun = true; if (s.types) o.types = s.types;
       o.items = s.items.map(function (it) { var x = {}; ['n', 't', 'b', 'crit', 'g'].forEach(function (k) { if (it[k] != null) x[k] = it[k]; }); return x; });
       return o;
     });
@@ -292,22 +317,69 @@
   function planPourSite(site, rows, adj) {
     site = site || {};
     var bs = (site.bassins || []).filter(function (b) { return b && String(b.nom || '').trim(); });
-    return planSite(avecAjustements(bs.length ? bs : [{ id: '', nom: site.nom || 'Site', type_code: site.type || '' }], adj), rows);
+    return planSite(avecAjustements(bs.length ? bs : [{ id: '', nom: site.nom || 'Site', type_code: site.type || '' }], adj), rows, sectionsLibres(adj));
   }
   /* Plan par défaut (anciens rapports et brouillons sans plan) : la piscine, telle que le formulaire papier */
   var DEFAUT = planSite([], GABARITS);
   var SECTIONS = DEFAUT.sections;
   function planDe(d) { return d && d.plan && Array.isArray(d.plan.sections) ? d.plan : DEFAUT; }
+  /* Type d’hivernement : choisi à la création, il donne le titre du rapport et les sections retenues.
+     formation = la section « Formation des employés » est faite ; une section de gabarit marquée [types: …] ne sert qu’à ces types. */
+  var TYPES = [
+    { code: 'formation', nom: 'Fermeture avec formation', formation: true },
+    { code: 'complete', nom: 'Fermeture complète', formation: false },
+    { code: 'dormance', nom: 'Mise en dormance (fermeture partielle)', formation: false },
+    { code: 'remise', nom: 'Remise en service (ouverture)', formation: false },
+    { code: 'autre', nom: 'Autre (préciser)', formation: true }
+  ];
+  function typeDe(d) {
+    var c = d && d.type, t = TYPES.filter(function (x) { return x.code === c; })[0] || TYPES[0];
+    var nom = t.code === 'autre' ? String(d.type_nom || '').trim() || 'Intervention' : t.nom;
+    return { code: t.code, nom: nom, formation: d && typeof d.formation === 'boolean' ? d.formation : t.formation };
+  }
+  /* Sections faites pour ce type, numérotées pour l’affichage (le plan figé du brouillon reste entier) */
+  function sectionsDe(d) {
+    var t = typeDe(d), P = planDe(d), garde = P.sections.filter(function (s) {
+      if ((s.sid || s.id) === 'form' && !t.formation) return false;
+      return !(s.types && s.types.length) || s.types.indexOf(t.code) >= 0;
+    });
+    var aConseil = garde.some(function (s) { return s.tips; }), dernier = garde.filter(function (s) { return !s.commun; }).slice(-1)[0];
+    return garde.map(function (s, i) { return Object.assign({}, s, { no: i + 2, tips: aConseil ? !!s.tips : !!dernier && s === dernier }); });
+  }
+  function travauxDe(d) { return (d.travaux || []).filter(function (x) { return String(x.t || '').trim(); }); }
+  function materielDe(d) { return (d.materiel || []).filter(function (x) { return String(x.nom || '').trim(); }); }
+  /* Numéros des sections qui suivent la liste : travaux sur mesure et matériel (s’il y en a), remarques, validation */
+  function numeros(d) {
+    var n = sectionsDe(d).length + 2, o = {};
+    if (travauxDe(d).length) o.travaux = n++;
+    if (materielDe(d).length) o.materiel = n++;
+    o.remarques = n++; o.validation = n; return o;
+  }
+  /* Suggestions pour « Matériel et produits utilisés » : la section Matériel du plan, puis les produits courants */
+  var PRODUITS = ['Antigel biodégradable', 'Chlore granulaire', 'Produit d’hivernage (algicide d’hiver)', 'Liquide de remisage des sondes', 'Téflon', 'Bouchons d’hivernage'];
+  function matSugg(d) {
+    var out = [];
+    planDe(d).sections.forEach(function (s) { if ((s.sid || s.id) === 'mat') s.items.forEach(function (it) { out.push(it.t); }); });
+    PRODUITS.forEach(function (t) { out.push(t); });
+    return out.filter(function (t, i) { return out.indexOf(t) === i; });
+  }
+  function qteTxt(m) { return (m.qte !== '' && m.qte != null ? m.qte + (m.unite ? ' ' + m.unite : '') : '') ; }
 
   function blank(o) {
     o = o || {};
     return { v: 1, info: { date: o.date || '', site: o.site || '', heure_debut: '', heure_fin: '', chef: o.chef || '', temperature: '', equipe: '', bassins: '' },
+      type: o.type || 'formation', type_nom: o.type_nom || '', travaux: [], materiel: [],
       c: {}, employes: [], remarques: '', responsable: o.responsable == null ? 'Maxime' : o.responsable, courriel: o.courriel || '', envois: [], plan: o.plan || null };
   }
   function norm(d) {
     var b = blank(); d = d || {};
-    return { v: 1, info: Object.assign(b.info, d.info || {}), c: Object.assign({}, d.c || {}), employes: (d.employes || []).map(function (e) { return { nom: e.nom || '', formation: !!e.formation, demo: !!e.demo }; }),
+    var o = { v: 1, info: Object.assign(b.info, d.info || {}), type: d.type || 'formation', type_nom: d.type_nom || '',
+      travaux: (d.travaux || []).map(function (x) { return { t: x.t || '', fait: !!x.fait, note: x.note || '', duree: x.duree == null ? '' : String(x.duree) }; }),
+      materiel: (d.materiel || []).map(function (x) { return { nom: x.nom || '', qte: x.qte == null ? '' : String(x.qte), unite: x.unite || '' }; }),
+      c: Object.assign({}, d.c || {}), employes: (d.employes || []).map(function (e) { return { nom: e.nom || '', formation: !!e.formation, demo: !!e.demo }; }),
       remarques: d.remarques || '', responsable: d.responsable == null ? b.responsable : d.responsable, courriel: d.courriel || '', envois: (d.envois || []).slice(), plan: d.plan && Array.isArray(d.plan.sections) ? d.plan : null };
+    if (typeof d.formation === 'boolean') o.formation = d.formation;
+    return o;
   }
   /* Un rapport d'hivernage est-il une liste de contrôle « Hivernement » ? */
   function isChecklist(r) { return !!(r && Array.isArray(r.sections) && r.sections[0] && r.sections[0].hivernement); }
@@ -317,36 +389,42 @@
   /* Avancement : toutes les cases, comme le formulaire papier (formation des employés nommés comprise) */
   function progress(d) {
     d = norm(d); var total = 0, done = 0;
-    planDe(d).sections.forEach(function (s) { s.items.forEach(function (it) { total++; if (d.c[it.k]) done++; }); });
-    d.employes.forEach(function (e) { if (!String(e.nom).trim()) return; total += 2; if (e.formation) done++; if (e.demo) done++; });
+    sectionsDe(d).forEach(function (s) { s.items.forEach(function (it) { total++; if (d.c[it.k]) done++; }); });
+    if (typeDe(d).formation) d.employes.forEach(function (e) { if (!String(e.nom).trim()) return; total += 2; if (e.formation) done++; if (e.demo) done++; });
+    travauxDe(d).forEach(function (x) { total++; if (x.fait) done++; });
     return { total: total, done: done, pct: total ? Math.round(done / total * 100) : 0 };
   }
   function label(it) { return it.t + (it.b ? ' ' + it.b : ''); }
   function labelRep(d, it) { var r = reponse(d, it); return label(it) + (r ? ' : ' + r : ''); }
   function manquants(d) {
     d = norm(d); var out = [];
-    planDe(d).sections.forEach(function (s) { if (s.id === 'mat') return; s.items.forEach(function (it) { if (!d.c[it.k]) out.push((it.n && it.n !== '—' ? it.n + '. ' : '') + label(it)); }); });
+    sectionsDe(d).forEach(function (s) { if (s.id === 'mat') return; s.items.forEach(function (it) { if (!d.c[it.k]) out.push((it.n && it.n !== '—' ? it.n + '. ' : '') + label(it)); }); });
+    travauxDe(d).forEach(function (x) { if (!x.fait) out.push('Travaux : ' + x.t); });
     return out;
   }
   function critiquesManquants(d) {
     d = norm(d); var out = [];
-    planDe(d).sections.forEach(function (s) { s.items.forEach(function (it) { if (it.crit && !d.c[it.k]) out.push((it.o ? it.o + ' ' : '') + (it.n && it.n !== '—' ? it.n : '★') + '. ' + label(it)); }); });
+    sectionsDe(d).forEach(function (s) { s.items.forEach(function (it) { if (it.crit && !d.c[it.k]) out.push((it.o ? it.o + ' ' : '') + (it.n && it.n !== '—' ? it.n : '★') + '. ' + label(it)); }); });
     return out;
   }
 
   /* Ligne de rapports_hivernage (sans id / created_*) à partir de la saisie */
   function toReport(d, base, photos) {
     d = norm(d); var p = progress(d), i = d.info, b = base || {};
-    var s0 = { id: 'hivernement', title: 'Liste de contrôle d’hivernement', tag: critiquesManquants(d).length ? 'urgent' : '',
+    var s0 = { id: 'hivernement', title: 'Liste de contrôle d’hivernement — ' + typeDe(d).nom, tag: critiquesManquants(d).length ? 'urgent' : '',
       items: ['Avancement : ' + p.done + ' / ' + p.total + ' cases (' + p.pct + ' %)'].concat(INFO.filter(function (f) { return i[f[0]]; }).map(function (f) { return f[1] + ' : ' + i[f[0]]; })),
       photos: photos || [], hivernement: d };
-    var secs = [s0].concat(planDe(d).sections.map(function (s) {
+    var T = typeDe(d), SD = sectionsDe(d), N = SD.length;
+    var secs = [s0].concat(SD.map(function (s) {
       return { id: 'hv-' + s.id, title: s.no + '. ' + s.titre, tag: '', photos: [], items: s.items.map(function (it) { return (d.c[it.k] ? '✔ ' : '☐ ') + (it.n && it.n !== '—' ? it.n + '. ' : '') + labelRep(d, it); }) };
     }));
-    var emp = d.employes.filter(function (e) { return String(e.nom).trim(); });
+    var tr = travauxDe(d), mt = materielDe(d);
+    if (tr.length) secs.push({ id: 'hv-travaux', title: numeros(d).travaux + '. Travaux sur mesure', tag: '', photos: [], items: tr.map(function (x) { return (x.fait ? '✔ ' : '☐ ') + x.t + (x.duree ? ' (' + x.duree + ' h)' : '') + (x.note ? ' — ' + x.note : ''); }) });
+    if (mt.length) secs.push({ id: 'hv-materiel', title: numeros(d).materiel + '. Matériel et produits utilisés', tag: '', photos: [], items: mt.map(function (m) { return m.nom + (qteTxt(m) ? ' : ' + qteTxt(m) : ''); }) });
+    var emp = T.formation ? d.employes.filter(function (e) { return String(e.nom).trim(); }) : [];
     if (emp.length) secs.push({ id: 'hv-employes', title: 'Employés formés', tag: '', photos: [], items: emp.map(function (e) { return e.nom + ' — formation ' + (e.formation ? 'complétée' : 'non complétée') + ', démonstration ' + (e.demo ? 'réussie' : 'non réussie'); }) });
-    return Object.assign({}, b, { site_id: b.site_id || '', site_nom: i.site || b.site_nom || '', client: b.client || '', objet: TITRE + ' — fermeture avec formation',
-      titre: TITRE + ' — ' + (i.site || b.site_nom || ''), sous_titre: 'Liste de contrôle d’intervention', date_rapport: b.date_rapport || i.date || '', date_inspection: i.date || b.date_inspection || '',
+    return Object.assign({}, b, { site_id: b.site_id || '', site_nom: i.site || b.site_nom || '', client: b.client || '', objet: TITRE + ' — ' + T.nom.toLowerCase(),
+      titre: TITRE + ' — ' + (i.site || b.site_nom || ''), sous_titre: 'Liste de contrôle d’intervention · ' + T.nom, date_rapport: b.date_rapport || i.date || '', date_inspection: i.date || b.date_inspection || '',
       prepare_par: b.prepare_par || 'Soucy Aquatik', technicien: i.chef || b.technicien || '', sections: secs, plan: b.plan || [], suivi: b.suivi || [], timeline: b.timeline || { q1: '', q2: '', q3: '', q4: '' },
       callout: d.remarques || '', signataire_sa: i.chef || '', signataire_client: d.responsable || '' });
   }
@@ -370,15 +448,15 @@
 
   /* Document autonome (impression, pièce jointe envoyée au client) — même présentation que le formulaire papier */
   function html(d, opts) {
-    d = norm(d); opts = opts || {}; var p = progress(d), i = d.info, E = esc;
+    d = norm(d); opts = opts || {}; var p = progress(d), i = d.info, E = esc, T = typeDe(d), NO = numeros(d);
     var box = function (on) { return '<span class="box' + (on ? ' on' : '') + '">' + (on ? '✓' : '') + '</span>'; };
     var row = function (it, withNum) { var on = !!d.c[it.k]; return '<tr class="' + (on ? 'done' : '') + (it.crit ? ' critical' : '') + '"><td class="cb">' + box(on) + '</td>' + (withNum ? '<td class="num">' + E(it.n) + '</td>' : '') + '<td class="t">' + E(it.t) + (it.b ? ' <strong>' + E(it.b) + '</strong>' : '') + (choixDe(it) ? ' — <strong>' + (reponse(d, it) ? E(reponse(d, it)) : '____') + '</strong> <span class="choix">(' + E(choixDe(it).join(' / ')) + ')</span>' : '') + '</td></tr>'; };
     var h = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>' + E(TITRE + ' — ' + (i.site || '')) + '</title><style>' + CSS + '</style></head><body><div class="page">'
-      + '<header class="top"><div><h1>' + E(TITRE + ' — ' + (i.site || '')) + '</h1><div class="sub">Liste de contrôle d’intervention · Fermeture avec formation</div></div><img src="' + LOGO + '" alt="Soucy Aquatik"></header><div class="body">'
+      + '<header class="top"><div><h1>' + E(TITRE + ' — ' + (i.site || '')) + '</h1><div class="sub">Liste de contrôle d’intervention · ' + E(T.nom) + '</div></div><img src="' + LOGO + '" alt="Soucy Aquatik"></header><div class="body">'
       + '<div class="kpis"><div class="kpi"><div class="val">' + p.total + '</div><div class="lbl">Cases au total</div></div><div class="kpi"><div class="val">' + p.done + '</div><div class="lbl">Cases cochées</div></div><div class="kpi"><div class="val">' + p.pct + ' %</div><div class="lbl">Avancement</div></div></div>'
       + '<h2>1. Informations générales</h2><div class="info-grid">' + INFO.map(function (f) { return '<div class="field' + (f[3] ? ' wide' : '') + '"><label>' + E(f[1]) + ' :</label><span>' + E(i[f[0]]) + '</span></div>'; }).join('') + '</div>';
-    var P = planDe(d), N = P.sections.length;
-    P.sections.forEach(function (s) {
+    var P = planDe(d);
+    sectionsDe(d).forEach(function (s) {
       h += '<h2>' + s.no + '. ' + E(s.titre) + '</h2>';
       if (s.col2) {
         var a = s.items.filter(function (it) { return it.g !== 2; }), b = s.items.filter(function (it) { return it.g === 2; }), n = Math.max(a.length, b.length), r = '';
@@ -393,10 +471,15 @@
           + emp.map(function (e) { return '<tr><td style="height:30px;">' + E(e ? e.nom : '') + '</td><td>' + box(!!(e && e.formation)) + '</td><td>' + box(!!(e && e.demo)) + '</td></tr>'; }).join('') + '</table>';
       }
     });
+    var tr = travauxDe(d), mt = materielDe(d);
+    if (tr.length) h += '<h2>' + NO.travaux + '. Travaux sur mesure</h2><table><tr><th class="cb">✔</th><th>Travaux</th><th style="width:80px;">Heures</th><th>Note</th></tr>'
+      + tr.map(function (x) { return '<tr class="' + (x.fait ? 'done' : '') + '"><td class="cb">' + box(x.fait) + '</td><td class="t">' + E(x.t) + '</td><td>' + E(x.duree) + '</td><td>' + E(x.note) + '</td></tr>'; }).join('') + '</table>';
+    if (mt.length) h += '<h2>' + NO.materiel + '. Matériel et produits utilisés</h2><table><tr><th>Matériel ou produit</th><th style="width:160px;">Quantité</th></tr>'
+      + mt.map(function (m) { return '<tr><td>' + E(m.nom) + '</td><td>' + E(qteTxt(m)) + '</td></tr>'; }).join('') + '</table>';
     var ph = (opts.photos || []).filter(function (x) { return x && /^data:image|^https?:/.test(x.data || x.url || ''); });
-    h += '<h2>' + (N + 2) + '. Remarques et anomalies</h2><table><tr><td class="notes">' + E(d.remarques) + '</td></tr></table>'
+    h += '<h2>' + NO.remarques + '. Remarques et anomalies</h2><table><tr><td class="notes">' + E(d.remarques) + '</td></tr></table>'
       + (ph.length ? '<div class="photos">' + ph.map(function (x) { return '<img src="' + E(x.data || x.url) + '" alt="' + E(x.name || 'Photo') + '">'; }).join('') + '</div>' : '')
-      + '<h2>' + (N + 3) + '. Validation</h2><div class="sign-row"><div class="sign-box">Chef d’équipe — Signature et date<b>' + E(i.chef) + '</b></div><div class="sign-box">Responsable' + (d.responsable ? ' (' + E(d.responsable) + ')' : '') + ' — Signature et date</div></div>'
+      + '<h2>' + NO.validation + '. Validation</h2><div class="sign-row"><div class="sign-box">Chef d’équipe — Signature et date<b>' + E(i.chef) + '</b></div><div class="sign-box">Responsable' + (d.responsable ? ' (' + E(d.responsable) + ')' : '') + ' — Signature et date</div></div>'
       + '<div class="foot">Soucy Aquatik · liste de contrôle générée par SA Platform</div></div></div></body></html>';
     return h;
   }
@@ -404,15 +487,17 @@
   /* Corps du courriel au client */
   function texte(d) {
     d = norm(d); var p = progress(d), i = d.info, m = manquants(d);
-    return 'Bonjour,\n\nVoici la liste de contrôle de l’hivernement' + (i.site ? ' de ' + i.site : '') + (i.date ? ' réalisé le ' + i.date : '') + '.\n\n'
+    var T = typeDe(d), mt = materielDe(d);
+    return 'Bonjour,\n\nVoici la liste de contrôle de l’hivernement' + (i.site ? ' de ' + i.site : '') + ' (' + T.nom.toLowerCase() + ')' + (i.date ? ' réalisé le ' + i.date : '') + '.\n\n'
       + 'Avancement : ' + p.done + ' / ' + p.total + ' cases cochées (' + p.pct + ' %).\n'
       + (m.length ? '\nÉtapes non cochées :\n' + m.slice(0, 15).map(function (x) { return '• ' + x; }).join('\n') + (m.length > 15 ? '\n• … et ' + (m.length - 15) + ' autre(s)' : '') + '\n' : '\nToutes les étapes de l’hivernement ont été réalisées.\n')
+      + (mt.length ? '\nMatériel et produits utilisés :\n' + mt.map(function (m) { return '• ' + m.nom + (qteTxt(m) ? ' : ' + qteTxt(m) : ''); }).join('\n') + '\n' : '')
       + (d.remarques ? '\nRemarques : ' + d.remarques + '\n' : '')
       + '\nLa liste de contrôle complète est jointe à ce courriel.\n\nSoucy Aquatik';
   }
   function fichier(d) { d = norm(d); return ('Hivernement ' + (d.info.site || '') + ' ' + (d.info.date || '')).trim().replace(/[\\/:*?"<>|\s]+/g, '-').replace(/-{2,}/g, '-').replace(/^-|-$/g, '') + '.html'; }
 
-  var api = { SECTIONS: SECTIONS, GABARITS: GABARITS, DEFAUT: DEFAUT, gabarits: gabarits, gabaritDe: gabaritDe, planSite: planSite, planPourSite: planPourSite, avecAjustements: avecAjustements, libelleRef: libelleRef, iid: iid, choixDe: choixDe, reponse: reponse, planDe: planDe, versTexte: versTexte, deTexte: deTexte, INFO: INFO, TIPS: TIPS, ALERTE: ALERTE, LOGO: LOGO, blank: blank, norm: norm, isChecklist: isChecklist, fromReport: fromReport, photosOf: photosOf,
+  var api = { SECTIONS: SECTIONS, GABARITS: GABARITS, DEFAUT: DEFAUT, gabarits: gabarits, gabaritDe: gabaritDe, planSite: planSite, planPourSite: planPourSite, avecAjustements: avecAjustements, libelleRef: libelleRef, iid: iid, choixDe: choixDe, reponse: reponse, planDe: planDe, versTexte: versTexte, deTexte: deTexte, INFO: INFO, TYPES: TYPES, typeDe: typeDe, sectionsDe: sectionsDe, sectionsLibres: sectionsLibres, LIBRE: LIBRE, numeros: numeros, travauxDe: travauxDe, materielDe: materielDe, matSugg: matSugg, TIPS: TIPS, ALERTE: ALERTE, LOGO: LOGO, blank: blank, norm: norm, isChecklist: isChecklist, fromReport: fromReport, photosOf: photosOf,
     progress: progress, manquants: manquants, critiquesManquants: critiquesManquants, toReport: toReport, html: html, texte: texte, fichier: fichier };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.SAHiv = api;
 })(typeof window !== 'undefined' ? window : this);
