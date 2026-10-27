@@ -144,7 +144,9 @@ Comp.prototype.inspVals=function(){
       upDis:i===0,downDis:i===ordre.length-1};}),
     persoReset:function(){savePref([],[]);self.flash('Onglets réinitialisés');},isBilan:view==='bilan',isVisite:view==='visite',isSaisie:view==='saisie',isBassins:view==='bassins',isHiver:view==='hiver',isAcces:view==='acces',isPoints:view==='points',
     h:{nom:site.nom,type:T.label,contrat:site.contrat||'—',logo:cp&&cp.logo_url?cp.logo_url:'',sub:[cp?cp.nom:site.ville,nb>1?nb+' bassins':(nb?site.bassins[0].nom:'1 bassin'),lv?'dernière visite le '+fdateL(lv.date)+' par '+(lv.r.tech_nom||lv.r.tech):'aucune visite publiée'].filter(Boolean).join(' · ')},
-    goRapport:go('visite'),goTend:go('tendances'),goSaisie:function(){self.setState({inspView:'saisie',isf:self.isfNew(site)});},goHivNew:function(){self.hvNouveauSite(site);},voirClient:function(){self.voirClient(site);},ficheSite:function(){self.openSiteFiche(site.id);},
+    goRapport:go('visite'),goTend:go('tendances'),goSaisie:function(){self.setState({inspView:'saisie',isf:self.isfNew(site)});},
+    modeles:window.SAHiv.modelesInsp(D.gab).map(function(m){return{v:m.code,l:m.nom,sel:(st.inspModele||'insp-apres-chantier')===m.code};}),onModele:function(e){self.setState({inspModele:e.target.value});},
+    goPerso:function(){self.inspNouvelle(site,self.state.inspModele||'insp-apres-chantier');},goModeles:function(){self.gbOpen(self.state.inspModele||'insp-apres-chantier',true);},goHivNew:function(){self.hvNouveauSite(site);},voirClient:function(){self.voirClient(site);},ficheSite:function(){self.openSiteFiche(site.id);},
     hasVisit:!!(view==='visite'?S.vis.length:lv),noVisit:!(view==='visite'?S.vis.length:lv)};
   /* ----- Hivernement du site : listes de contrôle (créer, reprendre, imprimer, envoyer) et configuration par ouvrage ----- */
   if(view==='hiver')iq.hiv=this.hivSiteVals(site);
@@ -171,8 +173,8 @@ Comp.prototype.inspVals=function(){
       tech:(v.r.tech_nom||v.r.tech||'')+(v.r.source==='bureau'?' · saisie bureau':v.r.source==='client'?' · test saisi par le client':v.r.source==='carnet'?' · test sans connexion':''),brouillon:!v.pub&&!testClient(v.r),pz:pzSt(I.pire(v.items.map(function(i){return i.etat;}))),bg:on?'var(--color-accent-100)':'transparent',bar:on?'inset 3px 0 0 var(--color-accent-700)':'none',go:function(){self.setState({inspVisite:v.r.id});},_k:String(v.date||'')+(v.r.heure||'')};});
     /* Les hivernements du site entrent dans le même historique (ouverts dans la liste de contrôle) */
     if(this.docs.hv===undefined)this.loadDocs('hv');var H=window.SAHiv;
-    iq.visites=iq.visites.concat(this.hvDuSite(site).map(function(r){var hv=H.isChecklist(r)?H.fromReport(r):null,pg=hv&&H.progress(hv);
-      return{hiv:true,date:fdate(r.date_inspection)||'—',txt:hv?pg.done+' / '+pg.total+' cases ('+pg.pct+' %)':'Rapport de pré-hivernage',tech:r.technicien||'',brouillon:r.status!=='complete',pz:'display:none',bg:'transparent',bar:'none',
+    iq.visites=iq.visites.concat(this.hvDuSite(site).concat(this.inspPersoDuSite(site)).map(function(r){var hv=H.isChecklist(r)?H.fromReport(r):null,pg=hv&&H.progress(hv),ip=inspRow(r),ac=ip?H.aCorriger(hv).length:0;
+      return{hiv:true,hivIco:ip?'clipboard':'snow',hivLbl:ip?H.typeDe(hv).nom:'Hivernement',date:fdate(r.date_inspection)||'—',txt:ip?(ac?ac+' point(s) à corriger':'Aucune déficience')+' · '+pg.done+' / '+pg.total+' points':hv?pg.done+' / '+pg.total+' cases ('+pg.pct+' %)':'Rapport de pré-hivernage',tech:r.technicien||'',brouillon:r.status!=='complete',pz:'display:none',bg:'transparent',bar:'none',
         go:function(){self.openDoc('hv',r.id);},_k:String(r.date_inspection||'')+'~'};})).sort(function(a,b){return String(b._k).localeCompare(String(a._k));});
     iq.noVisit=!iq.visites.length;
     if(cur){var prev=S.vis.filter(function(v){return v.bassin===cur.bassin&&v.pub&&(v.date+(v.r.heure||''))<(cur.date+(cur.r.heure||''));}),se=I.etatsSystemes(cur.items),R2={action:3,watch:2,ok:1,na:0},r=cur.r;
@@ -331,8 +333,15 @@ Comp.prototype.inspVals=function(){
 /* ═════ Sites et inspections › Hivernement : tout l'hivernement d'un site au même endroit ═════
    Listes « Hivernement » du site (table rapports_hivernage, mêmes que Hivernage et sa-terrain) et réglages par ouvrage
    (gabarit, étapes retirées ou ajoutées : fiche du site › ouvrage › « Inspection et hivernage », ouvrages.js). */
+/* Inspection personnalisée (modèle d'inspection) rangée avec les listes de contrôle dans rapports_hivernage */
+function inspRow(r){var H=window.SAHiv;return!!(H&&H.isChecklist(r)&&r.sections[0].hivernement.genre==='insp');}
+Comp.prototype.inspPersoDuSite=function(site){return this.hvDuSite(site,true);};
+/* Nouvelle inspection personnalisée pour ce site, d'après un modèle (src/hivernage/checklist.js › modelesInsp) */
+Comp.prototype.inspNouvelle=function(site,code){var self=this,H=window.SAHiv,L=H.modelesInsp(this.D.gab),m=L.filter(function(x){return x.code===code;})[0]||L[0];if(!m)return;this.openDoc('hv');
+  this.deHv(function(h,d){h.genre='insp';h.modele=m.code;h.modele_nom=m.nom;h.plan=H.planInsp(m);h.info.site=site.nom;d.f.site_nom=site.nom;d.f.site_id=site.id;if(!h.courriel&&site.email)h.courriel=site.email;});};
 Comp.prototype.hvDuSite=function(site){var L=Array.isArray(this.docs.hv)?this.docs.hv:[];
-  return L.filter(function(r){return String(r.site_id||'')===String(site.id)||(!r.site_id&&norm(r.site_nom)===norm(site.nom));});};
+  var insp=arguments[1]===true;
+  return L.filter(function(r){return(String(r.site_id||'')===String(site.id)||(!r.site_id&&norm(r.site_nom)===norm(site.nom)))&&inspRow(r)===insp;});};
 /* Nouvelle liste pour ce site : site, courriel et étapes selon ses ouvrages déjà choisis */
 Comp.prototype.hvNouveauSite=function(site){var self=this,H=window.SAHiv;this.openDoc('hv');
   this.deHv(function(h,d){h.info.site=site.nom;d.f.site_nom=site.nom;d.f.site_id=site.id;if(!h.courriel&&site.email)h.courriel=site.email;h.plan=H.planPourSite(site,self.D.gab,self.adjDe(site.id));});};

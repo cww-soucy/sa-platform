@@ -160,10 +160,44 @@
     { code: 'fontaine', nom: 'Fontaine', types: ['fontaine', 'FO'], sections: FONTAINE, ordre: 3, alerte: ALERTE,
       conseils: ['Les buses, la pompe submersible et les luminaires se remisent selon les directives de leur fabricant : vérifier la fiche de la fontaine.'] }
   ];
+  /* Modèles d’inspection personnalisée (« genre » insp) : mêmes sections et étapes que les gabarits d’hivernage,
+     rangés dans gabarits_hivernage avec types = ['_insp'] (jamais pris pour un bassin). Chaque point se répond Conforme / À corriger / S.O. */
+  var INSP = '_insp', REP_INSP = ['Conforme', 'À corriger', 'S.O.'];
+  var pt = function (t, crit) { var o = { t: t, choix: REP_INSP.slice() }; if (crit) o.crit = true; return o; };
+  var MODELES_INSP = [
+    { code: 'insp-apres-chantier', nom: 'Inspection après chantier', types: [INSP], ordre: 1, conseils: [], alerte: '', sections: [
+      { id: 'site', titre: 'Site et sécurité', col: 'Point inspecté', items: [pt('Chantier nettoyé : débris, matériaux et outils retirés'), pt('Clôtures, portes et accès sécurisés remis en place', true),
+        pt('Affichage réglementaire en place (profondeur, règlements, capacité)'), pt('Équipements de sauvetage et trousse de premiers soins présents')] },
+      { id: 'bassin', titre: 'Bassin et surfaces', col: 'Point inspecté', items: [pt('Revêtement ou peinture sans défaut (fissures, bulles, plis, coulisses)'), pt('Céramique et joints complets, sans arête coupante'),
+        pt('Margelles et plage intactes, bien fixées'), pt('Lignes et marquages conformes'), pt('Échelles, mains courantes et ancrages serrés'),
+        pt('Grilles de drains de fond en place et vissées', true), pt('Retours d’eau, écumoires et prises d’aspiration installés')] },
+      { id: 'meca', titre: 'Mécanique et circulation', col: 'Point inspecté', items: [pt('Pompes en fonction, sans fuite ni bruit anormal'), pt('Filtres : pression normale, lavage fait'),
+        pt('Tuyauterie et valves sans fuite, identifiées'), pt('Traitement et dosage en fonction, sondes calibrées'), pt('Chauffage ou thermopompe fonctionnel')] },
+      { id: 'elec', titre: 'Électricité et éclairage', col: 'Point inspecté', items: [pt('Éclairage subaquatique fonctionnel'), pt('Disjoncteurs et panneaux identifiés'), pt('Disjoncteur de fuite à la terre (DDFT) testé', true)] },
+      { id: 'eau', titre: 'Eau', col: 'Point inspecté', items: [pt('Bassin rempli au niveau d’opération'), pt('Analyse d’eau dans les normes (pH, chlore)')] },
+      { id: 'remise', titre: 'Documentation et remise au client', col: 'Point inspecté', items: [pt('Manuels, garanties et fiches techniques remis'), pt('Formation de l’opérateur faite'),
+        pt('Clés, codes et accès remis'), pt('Liste des déficiences transmise au client')] }] }
+  ];
+  function estInsp(g) { return !!(g && (g.types || []).indexOf(INSP) >= 0); }
+  /* Modèles d’inspection en service : ceux de la base (types ['_insp']) remplacent ou complètent les modèles intégrés */
+  function modelesInsp(rows) {
+    var b = (rows || []).filter(function (r) { return r && estInsp(r) && Array.isArray(r.sections) && r.sections.length; }), out = [];
+    MODELES_INSP.forEach(function (m) { if (!b.some(function (r) { return r.code === m.code; })) out.push(m); });
+    return out.concat(b.filter(function (r) { return r.actif !== false; })).sort(function (a, c) { return (a.ordre || 0) - (c.ordre || 0); });
+  }
+  /* Plan d’une inspection : les sections du modèle telles quelles (clés « section-étape »), plus les sections propres au site */
+  function planInsp(m, adj) {
+    var corps = (m && m.sections || []).map(function (s) {
+      var o = { id: s.id, sid: s.id, titre: s.titre, col: s.col || 'Point inspecté', ob: '', items: s.items.map(function (it, j) { var ref = s.id + '-' + iid(it, j); return Object.assign(copie(it), { k: ref, ref: ref, gref: m.code + ':' + ref, ob: '' }); }) };
+      if (s.col2) o.col2 = s.col2; if (s.num) o.num = true; if (s.commun) o.commun = true; return o;
+    }).filter(function (s) { return s.items.length; });
+    corps.forEach(function (s, i) { s.no = i + 2; });
+    return { v: 1, genre: 'insp', modele: m ? m.code : '', ouvrages: [], sections: corps, conseils: (m && m.conseils) || [], alerte: (m && m.alerte) || '' };
+  }
   function copie(x) { return JSON.parse(JSON.stringify(x)); }
   /* Gabarits en service : table gabarits_hivernage si elle est remplie, sinon ceux ci-dessus */
   function gabarits(rows) {
-    var g = (rows || []).filter(function (r) { return r && r.actif !== false && Array.isArray(r.sections) && r.sections.length; });
+    var g = (rows || []).filter(function (r) { return r && r.actif !== false && !estInsp(r) && Array.isArray(r.sections) && r.sections.length; });
     return (g.length ? g : GABARITS).slice().sort(function (a, b) { return (a.ordre || 0) - (b.ordre || 0); });
   }
   /* Gabarit d’un ouvrage (bassin de sites.bassins) : choix de la fiche (hiv.gabarit), sinon son type, sinon son nom */
@@ -332,7 +366,10 @@
     { code: 'remise', nom: 'Remise en service (ouverture)', formation: false },
     { code: 'autre', nom: 'Autre (préciser)', formation: true }
   ];
+  function estInspD(d) { return !!(d && d.genre === 'insp'); }
+  function titreDe(d) { return estInspD(d) ? 'Inspection' : TITRE; }
   function typeDe(d) {
+    if (estInspD(d)) return { code: 'insp', nom: String(d.modele_nom || '').trim() || 'Inspection personnalisée', formation: true };
     var c = d && d.type, t = TYPES.filter(function (x) { return x.code === c; })[0] || TYPES[0];
     var nom = t.code === 'autre' ? String(d.type_nom || '').trim() || 'Intervention' : t.nom;
     return { code: t.code, nom: nom, formation: d && typeof d.formation === 'boolean' ? d.formation : t.formation };
@@ -368,15 +405,15 @@
   function blank(o) {
     o = o || {};
     return { v: 1, info: { date: o.date || '', site: o.site || '', heure_debut: '', heure_fin: '', chef: o.chef || '', temperature: '', equipe: '', bassins: '' },
-      type: o.type || 'formation', type_nom: o.type_nom || '', travaux: [], materiel: [],
-      c: {}, employes: [], remarques: '', responsable: o.responsable == null ? 'Maxime' : o.responsable, courriel: o.courriel || '', envois: [], plan: o.plan || null };
+      type: o.type || 'formation', type_nom: o.type_nom || '', travaux: [], materiel: [], genre: o.genre || '', modele: o.modele || '', modele_nom: o.modele_nom || '',
+      c: {}, notes: {}, employes: [], remarques: '', responsable: o.responsable == null ? 'Maxime' : o.responsable, courriel: o.courriel || '', envois: [], plan: o.plan || null };
   }
   function norm(d) {
     var b = blank(); d = d || {};
-    var o = { v: 1, info: Object.assign(b.info, d.info || {}), type: d.type || 'formation', type_nom: d.type_nom || '',
+    var o = { v: 1, info: Object.assign(b.info, d.info || {}), type: d.type || 'formation', type_nom: d.type_nom || '', genre: d.genre || '', modele: d.modele || '', modele_nom: d.modele_nom || '',
       travaux: (d.travaux || []).map(function (x) { return { t: x.t || '', fait: !!x.fait, note: x.note || '', duree: x.duree == null ? '' : String(x.duree) }; }),
       materiel: (d.materiel || []).map(function (x) { return { nom: x.nom || '', qte: x.qte == null ? '' : String(x.qte), unite: x.unite || '' }; }),
-      c: Object.assign({}, d.c || {}), employes: (d.employes || []).map(function (e) { return { nom: e.nom || '', formation: !!e.formation, demo: !!e.demo }; }),
+      c: Object.assign({}, d.c || {}), notes: Object.assign({}, d.notes || {}), employes: (d.employes || []).map(function (e) { return { nom: e.nom || '', formation: !!e.formation, demo: !!e.demo }; }),
       remarques: d.remarques || '', responsable: d.responsable == null ? b.responsable : d.responsable, courriel: d.courriel || '', envois: (d.envois || []).slice(), plan: d.plan && Array.isArray(d.plan.sections) ? d.plan : null };
     if (typeof d.formation === 'boolean') o.formation = d.formation;
     return o;
@@ -386,6 +423,12 @@
   function fromReport(r) { return isChecklist(r) ? norm(r.sections[0].hivernement) : null; }
   function photosOf(r) { return isChecklist(r) ? (r.sections[0].photos || []) : []; }
 
+  /* Points à corriger d’une inspection : réponse « À corriger » (ou « non conforme »), avec la note du point */
+  function aCorriger(d) {
+    d = norm(d); var out = [];
+    sectionsDe(d).forEach(function (s) { s.items.forEach(function (it) { var r = reponse(d, it); if (/corriger|non.conforme/i.test(r)) out.push({ k: it.k, section: s.titre, t: label(it), note: d.notes[it.k] || '', crit: !!it.crit }); }); });
+    return out;
+  }
   /* Avancement : toutes les cases, comme le formulaire papier (formation des employés nommés comprise) */
   function progress(d) {
     d = norm(d); var total = 0, done = 0;
@@ -418,7 +461,7 @@
   /* Ligne de rapports_hivernage (sans id / created_*) à partir de la saisie */
   function toReport(d, base, photos) {
     d = norm(d); var p = progress(d), i = d.info, b = base || {};
-    var s0 = { id: 'hivernement', title: 'Liste de contrôle d’hivernement — ' + typeDe(d).nom, tag: critiquesManquants(d).length ? 'urgent' : '',
+    var s0 = { id: 'hivernement', title: (estInspD(d) ? 'Inspection — ' : 'Liste de contrôle d’hivernement — ') + typeDe(d).nom, tag: critiquesManquants(d).length ? 'urgent' : '',
       items: ['Avancement : ' + p.done + ' / ' + p.total + ' cases (' + p.pct + ' %)'].concat(INFO.filter(function (f) { return i[f[0]]; }).map(function (f) { return f[1] + ' : ' + i[f[0]]; })),
       photos: photos || [], hivernement: d };
     var T = typeDe(d), SD = sectionsDe(d), N = SD.length;
@@ -430,8 +473,8 @@
     if (mt.length) secs.push({ id: 'hv-materiel', title: numeros(d).materiel + '. Matériel et produits utilisés', tag: '', photos: [], items: mt.map(function (m) { return m.nom + (qteTxt(m) ? ' : ' + qteTxt(m) : ''); }) });
     var emp = T.formation ? d.employes.filter(function (e) { return String(e.nom).trim(); }) : [];
     if (emp.length) secs.push({ id: 'hv-employes', title: 'Employés formés', tag: '', photos: [], items: emp.map(function (e) { return e.nom + ' — formation ' + (e.formation ? 'complétée' : 'non complétée') + ', démonstration ' + (e.demo ? 'réussie' : 'non réussie'); }) });
-    return Object.assign({}, b, { site_id: b.site_id || '', site_nom: i.site || b.site_nom || '', client: b.client || '', objet: TITRE + ' — ' + T.nom.toLowerCase(),
-      titre: TITRE + ' — ' + (i.site || b.site_nom || ''), sous_titre: 'Liste de contrôle d’intervention · ' + T.nom, date_rapport: b.date_rapport || i.date || '', date_inspection: i.date || b.date_inspection || '',
+    return Object.assign({}, b, { site_id: b.site_id || '', site_nom: i.site || b.site_nom || '', client: b.client || '', objet: estInspD(d) ? T.nom : TITRE + ' — ' + T.nom.toLowerCase(),
+      titre: titreDe(d) + ' — ' + (i.site || b.site_nom || ''), sous_titre: (estInspD(d) ? 'Rapport d’inspection · ' : 'Liste de contrôle d’intervention · ') + T.nom, date_rapport: b.date_rapport || i.date || '', date_inspection: i.date || b.date_inspection || '',
       prepare_par: b.prepare_par || 'Soucy Aquatik', technicien: i.chef || b.technicien || '', sections: secs, plan: b.plan || [], suivi: b.suivi || [], timeline: b.timeline || { q1: '', q2: '', q3: '', q4: '' },
       callout: d.remarques || '', signataire_sa: i.chef || '', signataire_client: d.responsable || '' });
   }
@@ -448,7 +491,7 @@
     + 'td.cb,th.cb{width:44px;text-align:center}td.num{width:52px;text-align:center;color:var(--grey);font-weight:600}.box{display:inline-block;width:18px;height:18px;border:1.5px solid var(--bleu);border-radius:3px;line-height:15px;font-size:14px;font-weight:700;color:#fff;text-align:center}.box.on{background:var(--bleu)}'
     + 'tr.done td{color:#7a8190}.critical td.t{font-weight:700;color:var(--rouge)}tr.done.critical td.t{color:#7a8190}'
     + '.alert{border:2px solid var(--rouge);background:#fbeaea;color:#5c1510;padding:10px 12px;font-weight:700;margin:14px 0;border-radius:3px}.tip{border-left:4px solid var(--bleu-med);background:#f4f7fb;padding:8px 12px;margin:10px 0}.tip strong{color:var(--bleu)}ul.clean{margin:4px 0 0 18px;padding:0}ul.clean li{margin:3px 0}'
-    + '.notes{min-height:70px;white-space:pre-wrap}.sign-row{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:16px}.sign-box{border:1px solid var(--line);height:70px;padding:6px 8px;font-size:12px;color:var(--grey)}.sign-box b{display:block;color:var(--ink);font-size:13px;margin-top:4px}'
+    + '.note{font-size:12.5px;color:var(--rouge);margin-top:2px}.notes{min-height:70px;white-space:pre-wrap}.sign-row{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:16px}.sign-box{border:1px solid var(--line);height:70px;padding:6px 8px;font-size:12px;color:var(--grey)}.sign-box b{display:block;color:var(--ink);font-size:13px;margin-top:4px}'
     + '.photos{display:flex;flex-wrap:wrap;gap:8px}.photos img{max-width:200px;max-height:160px;border:1px solid var(--line)}.foot{color:var(--grey);font-size:11px;margin-top:14px}'
     + '@media print{body{background:#fff;font-size:11.5px}.page{box-shadow:none;margin:0;padding:0 0 12px;max-width:none}header.top,h2,th,.box.on,.kpi{-webkit-print-color-adjust:exact;print-color-adjust:exact}h2{break-after:avoid}table,tr,.sign-row,.tip,.alert{break-inside:avoid}}'
     + '@media (max-width:600px){.info-grid,.sign-row,.kpis{grid-template-columns:1fr}.wide{grid-column:auto}}';
@@ -457,10 +500,13 @@
   function html(d, opts) {
     d = norm(d); opts = opts || {}; var p = progress(d), i = d.info, E = esc, T = typeDe(d), NO = numeros(d);
     var box = function (on) { return '<span class="box' + (on ? ' on' : '') + '">' + (on ? '✓' : '') + '</span>'; };
-    var row = function (it, withNum) { var on = !!d.c[it.k]; return '<tr class="' + (on ? 'done' : '') + (it.crit ? ' critical' : '') + '"><td class="cb">' + box(on) + '</td>' + (withNum ? '<td class="num">' + E(it.n) + '</td>' : '') + '<td class="t">' + E(it.t) + (it.b ? ' <strong>' + E(it.b) + '</strong>' : '') + (choixDe(it) ? ' — <strong>' + (reponse(d, it) ? E(reponse(d, it)) : '____') + '</strong> <span class="choix">(' + E(choixDe(it).join(' / ')) + ')</span>' : '') + '</td></tr>'; };
-    var h = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>' + E(TITRE + ' — ' + (i.site || '')) + '</title><style>' + CSS + '</style></head><body><div class="page">'
-      + '<header class="top"><div><h1>' + E(TITRE + ' — ' + (i.site || '')) + '</h1><div class="sub">Liste de contrôle d’intervention · ' + E(T.nom) + '</div></div><img src="' + LOGO + '" alt="Soucy Aquatik"></header><div class="body">'
-      + '<div class="kpis"><div class="kpi"><div class="val">' + p.total + '</div><div class="lbl">Cases au total</div></div><div class="kpi"><div class="val">' + p.done + '</div><div class="lbl">Cases cochées</div></div><div class="kpi"><div class="val">' + p.pct + ' %</div><div class="lbl">Avancement</div></div></div>'
+    var row = function (it, withNum) { var on = !!d.c[it.k]; return '<tr class="' + (on ? 'done' : '') + (it.crit ? ' critical' : '') + '"><td class="cb">' + box(on) + '</td>' + (withNum ? '<td class="num">' + E(it.n) + '</td>' : '') + '<td class="t">' + E(it.t) + (it.b ? ' <strong>' + E(it.b) + '</strong>' : '') + (d.notes[it.k] ? '<div class="note">' + E(d.notes[it.k]) + '</div>' : '') + (choixDe(it) ? ' — <strong>' + (reponse(d, it) ? E(reponse(d, it)) : '____') + '</strong> <span class="choix">(' + E(choixDe(it).join(' / ')) + ')</span>' : '') + '</td></tr>'; };
+    var h = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>' + E(titreDe(d) + ' — ' + (i.site || '')) + '</title><style>' + CSS + '</style></head><body><div class="page">'
+      + '<header class="top"><div><h1>' + E(titreDe(d) + ' — ' + (i.site || '')) + '</h1><div class="sub">' + (estInspD(d) ? 'Rapport d’inspection · ' : 'Liste de contrôle d’intervention · ') + E(T.nom) + '</div></div><img src="' + LOGO + '" alt="Soucy Aquatik"></header><div class="body">'
+      + (estInspD(d) ? (function () { var ac = aCorriger(d), conf = 0; sectionsDe(d).forEach(function (s) { s.items.forEach(function (it) { if (reponse(d, it) === 'Conforme' || (!choixDe(it) && d.c[it.k])) conf++; }); });
+          return '<div class="kpis"><div class="kpi"><div class="val">' + p.total + '</div><div class="lbl">Points inspectés</div></div><div class="kpi"><div class="val">' + conf + '</div><div class="lbl">Conformes</div></div><div class="kpi"><div class="val">' + ac.length + '</div><div class="lbl">À corriger</div></div></div>'
+            + (ac.length ? '<div class="alert">Déficiences à corriger :<ul class="clean">' + ac.map(function (x) { return '<li>' + E(x.section + ' — ' + x.t) + (x.note ? ' : ' + E(x.note) : '') + '</li>'; }).join('') + '</ul></div>' : ''); })()
+        : '<div class="kpis"><div class="kpi"><div class="val">' + p.total + '</div><div class="lbl">Cases au total</div></div><div class="kpi"><div class="val">' + p.done + '</div><div class="lbl">Cases cochées</div></div><div class="kpi"><div class="val">' + p.pct + ' %</div><div class="lbl">Avancement</div></div></div>')
       + '<h2>1. Informations générales</h2><div class="info-grid">' + INFO.map(function (f) { return '<div class="field' + (f[3] ? ' wide' : '') + '"><label>' + E(f[1]) + ' :</label><span>' + E(i[f[0]]) + '</span></div>'; }).join('') + '</div>';
     var P = planDe(d);
     sectionsDe(d).forEach(function (s) {
@@ -495,6 +541,12 @@
   function texte(d) {
     d = norm(d); var p = progress(d), i = d.info, m = manquants(d);
     var T = typeDe(d), mt = materielDe(d);
+    if (estInspD(d)) {
+      var ac = aCorriger(d);
+      return 'Bonjour,\n\nVoici le rapport d’inspection (' + T.nom.toLowerCase() + ')' + (i.site ? ' de ' + i.site : '') + (i.date ? ', réalisée le ' + i.date : '') + '.\n\n'
+        + (ac.length ? 'Déficiences à corriger :\n' + ac.map(function (x) { return '• ' + x.section + ' — ' + x.t + (x.note ? ' : ' + x.note : ''); }).join('\n') + '\n' : 'Aucune déficience relevée.\n')
+        + (d.remarques ? '\nRemarques : ' + d.remarques + '\n' : '') + '\nLe rapport complet est joint à ce courriel.\n\nSoucy Aquatik';
+    }
     return 'Bonjour,\n\nVoici la liste de contrôle de l’hivernement' + (i.site ? ' de ' + i.site : '') + ' (' + T.nom.toLowerCase() + ')' + (i.date ? ' réalisé le ' + i.date : '') + '.\n\n'
       + 'Avancement : ' + p.done + ' / ' + p.total + ' cases cochées (' + p.pct + ' %).\n'
       + (m.length ? '\nÉtapes non cochées :\n' + m.slice(0, 15).map(function (x) { return '• ' + x; }).join('\n') + (m.length > 15 ? '\n• … et ' + (m.length - 15) + ' autre(s)' : '') + '\n' : '\nToutes les étapes de l’hivernement ont été réalisées.\n')
@@ -502,9 +554,9 @@
       + (d.remarques ? '\nRemarques : ' + d.remarques + '\n' : '')
       + '\nLa liste de contrôle complète est jointe à ce courriel.\n\nSoucy Aquatik';
   }
-  function fichier(d) { d = norm(d); return ('Hivernement ' + (d.info.site || '') + ' ' + (d.info.date || '')).trim().replace(/[\\/:*?"<>|\s]+/g, '-').replace(/-{2,}/g, '-').replace(/^-|-$/g, '') + '.html'; }
+  function fichier(d) { d = norm(d); return ((estInspD(d) ? 'Inspection ' : 'Hivernement ') + (d.info.site || '') + ' ' + (d.info.date || '')).trim().replace(/[\\/:*?"<>|\s]+/g, '-').replace(/-{2,}/g, '-').replace(/^-|-$/g, '') + '.html'; }
 
-  var api = { SECTIONS: SECTIONS, GABARITS: GABARITS, DEFAUT: DEFAUT, gabarits: gabarits, gabaritDe: gabaritDe, planSite: planSite, planPourSite: planPourSite, avecAjustements: avecAjustements, libelleRef: libelleRef, iid: iid, choixDe: choixDe, reponse: reponse, planDe: planDe, versTexte: versTexte, deTexte: deTexte, INFO: INFO, TYPES: TYPES, typeDe: typeDe, sectionsDe: sectionsDe, sectionsLibres: sectionsLibres, LIBRE: LIBRE, numeros: numeros, travauxDe: travauxDe, materielDe: materielDe, matSugg: matSugg, court: court, TIPS: TIPS, ALERTE: ALERTE, LOGO: LOGO, blank: blank, norm: norm, isChecklist: isChecklist, fromReport: fromReport, photosOf: photosOf,
+  var api = { SECTIONS: SECTIONS, GABARITS: GABARITS, DEFAUT: DEFAUT, gabarits: gabarits, gabaritDe: gabaritDe, planSite: planSite, planPourSite: planPourSite, avecAjustements: avecAjustements, libelleRef: libelleRef, iid: iid, choixDe: choixDe, reponse: reponse, planDe: planDe, versTexte: versTexte, deTexte: deTexte, INFO: INFO, TYPES: TYPES, typeDe: typeDe, sectionsDe: sectionsDe, sectionsLibres: sectionsLibres, LIBRE: LIBRE, numeros: numeros, travauxDe: travauxDe, materielDe: materielDe, matSugg: matSugg, court: court, MODELES_INSP: MODELES_INSP, INSP: INSP, REP_INSP: REP_INSP, estInsp: estInsp, estInspD: estInspD, modelesInsp: modelesInsp, planInsp: planInsp, aCorriger: aCorriger, titreDe: titreDe, TIPS: TIPS, ALERTE: ALERTE, LOGO: LOGO, blank: blank, norm: norm, isChecklist: isChecklist, fromReport: fromReport, photosOf: photosOf,
     progress: progress, manquants: manquants, critiquesManquants: critiquesManquants, toReport: toReport, html: html, texte: texte, fichier: fichier };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.SAHiv = api;
 })(typeof window !== 'undefined' ? window : this);
