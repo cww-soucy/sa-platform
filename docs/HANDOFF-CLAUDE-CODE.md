@@ -164,6 +164,10 @@ Passation de design : `docs/design_handoff_inspections_portail/README.md`. Réal
 - Onglet « Inspections personnalisées » du site (`persoSiteVals`) : liste, ouvrir, imprimer, envoyer ; rappel dans le Bilan ; après « Inspection personnalisée », on revient sur cet onglet.
 - À faire : saisie dans sa-terrain.
 
+### Suivi des livraisons — 27/10
+- Bons de livraison non livrés au **Monitoring**, à la **Vue globale**, aux **Opérations** (tous les clients) et dans le **dossier du client** (même nom de client) : `Comp.blSuivi`, `livVals`, gabarits `LIVROW` / `LIVPANEL` (assemble.py). Gradateur `BL_ETAPES` : Brouillon → À livrer (articles + technicien) → En route → Livré ; « en retard » si la date est passée ; tri : retard, étape, date.
+- Statut `en_route` (aucune contrainte sur `bons_livraison.status`, aucune migration) posé par « Je pars livrer » dans sa-terrain (`Comp.enRoute`) ; la livraison (signature ou sans signature) passe ensuite à `livre`.
+
 ### Priorité 2 — modules absents dans sa-terrain
 - [x] **Logistique** (sortie d'inventaire, bon de livraison depuis le terrain) — 29/09 : sortie au format de SA Platform, bons en attente + nouveau bon depuis la sortie, signature au doigt (stockée comme photo du bon, validation en PATCH partiel)
   - 26/10 : **sortie → bon de livraison sans papier**. sa-terrain propose « Passer au bon de livraison » dès la sortie enregistrée ; le client signe au doigt, ou l'employé « Valide sans signature » (deux touches). sa-admin : sortie émise → proposition de créer le bon (livreur choisi) qui apparaît dans « Bons à livrer » de sa-terrain ; tuile Logistique = nombre de bons à livrer. Lien sortie ↔ bon par le numéro (`SA-INV-AAAAMMJJ-NNN` → `SA-AAAAMMJJ-NNN`), sans colonne ajoutée.

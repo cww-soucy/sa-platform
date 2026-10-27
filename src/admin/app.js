@@ -732,6 +732,23 @@ Comp.prototype.comptesVals=function(){var self=this,st=this.state,isAdm=this.use
 /* ═════════════ LOGISTIQUE (bons de livraison, sorties d'inventaire) et HIVERNAGE — côté bureau ═════════════
    Mêmes tables et mêmes formats que SA Platform (bons_livraison, sorties_inventaire, rapports_hivernage). */
 var HIV_TAGS=[['','Sans priorité'],['urgent','Urgent'],['eleve','Priorité élevée'],['modere','Modérée'],['reglementaire','Réglementaire']];
+/* Suivi des livraisons (monitoring, vue globale, opérations, dossier du client) : gradateur Brouillon → À livrer → En route → Livré.
+   À livrer = articles listés et technicien assigné ; En route = « Je pars livrer » dans sa-terrain ; en retard = date passée sans livraison. */
+var BL_ETAPES=['Brouillon','À livrer','En route','Livré'];
+function blEtape(b){if(b.status==='livre')return 3;if(b.status==='en_route')return 2;var art=(b.items_liv||[]).some(function(i){return String(i.item||'').trim();});return art&&String(b.technicien||'').trim()?1:0;}
+Comp.prototype.blSuivi=function(o){o=o||{};if(this.docs.bl===undefined)this.loadDocs('bl');var self=this,today=iso(new Date()),L=Array.isArray(this.docs.bl)?this.docs.bl:[];
+  return L.filter(function(b){return b.status!=='livre'&&(!o.client||norm(b.client)===norm(o.client));}).map(function(b){var e=blEtape(b),ret=!!(b.date&&b.date<today);
+    var n=(b.items_liv||[]).filter(function(i){return String(i.item||'').trim();}).length;
+    return{_e:e,_r:ret,_d:b.date||'9',no:b.no_bon||'—',client:b.client||'Client non précisé',tech:b.technicien||'non assigné',date:b.date?fdate(b.date):'sans date',art:n+' article'+(n>1?'s':''),
+      etape:BL_ETAPES[e]+(ret?' · en retard':'')+(b.urgent?' · URGENT':''),etFw:ret||b.urgent?'700':'600',bd:ret||b.urgent?'2px solid var(--color-accent-900)':'1px solid var(--color-divider)',
+      steps:BL_ETAPES.map(function(l,i){return{l:l,bg:i<=e?(ret?'var(--color-accent-900)':'var(--color-accent-700)'):'var(--color-divider)',fw:i===e?'700':'400'};}),
+      open:function(){self.openDoc('bl',b.id);}};})
+    .sort(function(a,b){return(b._r-a._r)||(b._e-a._e)||a._d.localeCompare(b._d);});};
+/* Résumé : « 3 à livrer · 1 en route · 1 en retard » */
+function blResume(rows){var n=function(f){return rows.filter(f).length;},r=n(function(x){return x._r;});
+  return rows.length?[n(function(x){return x._e===0;})+' brouillon(s)',n(function(x){return x._e===1;})+' à livrer',n(function(x){return x._e===2;})+' en route'].concat(r?[r+' en retard']:[]).join(' · '):'Aucune livraison en cours';}
+Comp.prototype.livVals=function(){var mod=this.state.mod;if(mod!=='monitoring'&&mod!=='globale'&&mod!=='operations')return{livRows:[],livOn:false};var self=this,rows=this.blSuivi();
+  return{livOn:true,livRows:rows,livNone:Array.isArray(this.docs.bl)&&!rows.length,livResume:blResume(rows),livGo:function(){self.go('logistique',{logTab:'bl',docF:'attente'});}};};
 var DOC={bl:{t:'bons_livraison',lbl:'Bon de livraison'},so:{t:'sorties_inventaire',lbl:'Sortie d’inventaire'},hv:{t:'rapports_hivernage',lbl:'Rapport d’hivernage'}};
 var ROWS={items_liv:[['item','Article',3],['qteSortie','Qté sortie',1],['unite','Unité',1],['qteLivree','Qté livrée',1],['statut','Statut',2]],
   items_ret:[['item','Article récupéré',3],['qteRecuperee','Qté',1],['unite','Unité',1],['raison','Raison / remarque',3]],
@@ -903,7 +920,7 @@ Comp.prototype.docsVals=function(){var self=this,st=this.state,D=this.D,mod=st.m
     if(kind==='so'){if(done&&!bl)acts.push({l:'Bon de livraison',go:function(){self.openSoBl(r);}});acts.push({l:'Courriel à l’entrepôt',go:function(){self.entCourriel(r);}});}
     return{acts:acts,a:kind==='hv'?r.site_nom||'—':r.no_bon||'—',b:kind==='hv'?(r.client||r.objet||''):(r.client||'—'),c:kind==='hv'?(r.date_inspection||'—')+' · '+(r.technicien||'—'):(r.date||'—')+' · '+(kind==='bl'?(r.technicien||'—'):(r.nom||'—')),
       d:(kind==='bl'?(r.items_liv||[]).length+' article(s)':kind==='so'?(r.lignes||[]).length+' ligne(s)':hv?'Hivernement · '+pg.done+' / '+pg.total+' cases ('+pg.pct+' %)':(r.sections||[]).length+' section(s)')+(r.urgent?' · URGENT':''),
-      etat:(done?(kind==='bl'?'Livré':kind==='so'?'Envoyée':'Complété'):'Brouillon')+(env?' · envoyé le '+String(env.le).slice(0,10):'')+(bl?' · bon '+bl.no_bon+(bl.status==='livre'?' livré':' à livrer'):''),open:function(){self.openDoc(kind,r.id);}};});
+      etat:(done?(kind==='bl'?'Livré':kind==='so'?'Envoyée':'Complété'):kind==='bl'?BL_ETAPES[blEtape(r)]+(r.date&&r.date<iso(new Date())?' · en retard':''):'Brouillon')+(env?' · envoyé le '+String(env.le).slice(0,10):'')+(bl?' · bon '+bl.no_bon+(bl.status==='livre'?' livré':' à livrer'):''),open:function(){self.openDoc(kind,r.id);}};});
   var FL3=[['attente',kind==='bl'?'À livrer':'Brouillons'],['faits',kind==='bl'?'Livrés':kind==='so'?'Envoyées':'Complétés'],['tous','Tous']];
   var out={isLogi:mod==='logistique',isLogDocs:mod==='logistique'&&lt!=='ent',isLogEnt:mod==='logistique'&&lt==='ent',isHivB:mod==='hivernage',logTabs:[['bl','Bons de livraison'],['so','Sorties d’inventaire'],['ent','Entrepôt · courriels']].map(function(x){return Object.assign({label:x[1],go:function(){self.setState({logTab:x[0],docF:'tous',docQ:''});}},segS((lt||'bl')===x[0]));}),
     docFilters:FL3.map(function(x){return Object.assign({label:x[1],go:function(){self.setState({docF:x[0]});}},segS(flt===x[0]));}),docQ:st.docQ||'',onDocQ:function(e){self.setState({docQ:e.target.value});},
@@ -1952,6 +1969,7 @@ Comp.prototype.vals=function(){
     return Object.assign({},d,{open:open,chev:open?'down':'right',rowBg:open?'var(--color-accent-100)':'transparent',toggle:function(){self.setState(function(s2){var o=Object.assign({},s2.opsOpen);o[d.id]=!o[d.id];return{opsOpen:o};});},
       visites:d._g.map(function(w){var open=function(){self.openEdit({kind:'wo',id:w.id});};var sv=woDone(w.status)?'fait':w.status==='en_cours'?'en cours':(w.assigne?'planifié':'à assigner'),c=VST[sv];return{open:open,date:fdate(w.date),tache:String(w.descr||'').split('\n')[0].slice(0,80)||'Visite',tech:String(w.assigne||'').split(/,\s*/).filter(Boolean).map(function(a){return names[a]||a;}).join(', ')||'—',statut:sv,bg:c[0],fg:c[1]};}),
       sites:d._s?[{nom:d._s.nom,go:function(){self.go('inspections',{inspSite:d._s.id,inspKey:null});}}]:[],
+      livs:open?self.blSuivi({client:d.client}):[],
       addVisit:function(){var e=String(d._g[0].assigne||'').split(/,\s*/)[0]||'';self.openDlg({type:'Bon de travail',site:d._s?d._s.id:'',tech:e});},goFact:function(){self.setState({mod:'facturation',factFilter:'Tous'});}});});
   // ---- sites
   var nouveaux=D.sites.filter(function(s){return/automatiquement/i.test(s.notes);}).map(function(s){var dup=null;D.sites.forEach(function(x){if(!dup&&x.id!==s.id&&!/automatiquement/i.test(x.notes)&&norm(x.nom).length>3&&(norm(s.nom).indexOf(norm(x.nom))>=0||norm(x.nom).indexOf(norm(s.nom))>=0))dup=x;});
@@ -2092,7 +2110,7 @@ Comp.prototype.vals=function(){
     exportMsg:function(){self.printInsp(is.id);},
     opsFilters:opsFilters,dossiers:dossiers,newDossier:function(){self.openDlg({type:'Bon de travail'});},noDossier:dossiers.length===0,
     nouveaux:nouveaux,siteTypeOptions:siteTypeOptions,siteType:stype,onSiteType:function(e){self.setState({siteType:e.target.value});},siteRows:siteRows,siteCount:siteRows.length,noNouveaux:nouveaux.length===0},
-    monTeam,this.monModeVals(),this.siteCatVals(),this.tempsVals(punchRows),this.empVals(),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals(),this.stockVals(),this.outilsVals(),this.monVals(),this.siteFicheVals(),this.typesVals(),this.carteCtlVals(),this.plan2Vals(),this.calVals(),this.seriesVals(),this.globVals(),this.commVals(),this.inspVals(),this.clientsVals(),this.sondagesVals(),this.ocVals(),this.gbVals());
+    monTeam,this.monModeVals(),this.siteCatVals(),this.livVals(),this.tempsVals(punchRows),this.empVals(),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals(),this.stockVals(),this.outilsVals(),this.monVals(),this.siteFicheVals(),this.typesVals(),this.carteCtlVals(),this.plan2Vals(),this.calVals(),this.seriesVals(),this.globVals(),this.commVals(),this.inspVals(),this.clientsVals(),this.sondagesVals(),this.ocVals(),this.gbVals());
 };
 Comp.prototype.update=function(){if(!this._host)return;SARender(document.getElementById('tpl'),this._host,this.vals());this.syncMap();var el=this.rootRef.current;if(el)el.style.setProperty('--sa-row','10px');};
 Comp.prototype.mount=function(host){var self=this;this._host=host;var hm=hashMod();if(hm&&TITLES_OK(hm))this.state.mod=hm;this.update();
