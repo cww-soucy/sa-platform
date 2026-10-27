@@ -161,6 +161,7 @@ Passation de design : `docs/design_handoff_inspections_portail/README.md`. Réal
 ### Inspections personnalisées — 27/10
 - **Modèles d'inspection** (`SAHiv.modelesInsp`) : rangés dans `gabarits_hivernage` avec `types = ['_insp']` (exclus de `SAHiv.gabarits`, jamais pris pour un bassin) ; « Inspection après chantier » est intégré (code `insp-apres-chantier`), remplacé par la ligne de la base du même code une fois modifié. Chaque point se répond Conforme / À corriger / S.O. (`REP_INSP`), avec une note quand il est à corriger (`d.notes[k]`).
 - **Saisie** : sa-admin › Sites et inspections › site › « Modèle d'inspection » + « Inspection personnalisée » ; « Modèles » ouvre l'éditeur de gabarits en mode inspection (sans types d'ouvrage ni types d'hivernement). Stockage : `rapports_hivernage`, `sections[0].hivernement.genre = 'insp'` (aucune migration) ; exclue des listes d'hivernement (`inspRow`), visible dans l'historique « Visites » du site avec le nombre de points à corriger. Rapport et courriel : « Rapport d'inspection », déficiences en tête (`SAHiv.aCorriger`).
+- Onglet « Inspections personnalisées » du site (`persoSiteVals`) : liste, ouvrir, imprimer, envoyer ; rappel dans le Bilan ; après « Inspection personnalisée », on revient sur cet onglet.
 - À faire : saisie dans sa-terrain.
 
 ### Priorité 2 — modules absents dans sa-terrain

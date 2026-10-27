@@ -71,6 +71,7 @@
 
     <!-- ═ Bilan par système (2a) ═ -->
     <sc-if value="{{ iq.isBilan }}"><div style="padding:18px 22px;display:flex;flex-direction:column;gap:16px">
+      <sc-if value="{{ iq.perso.resume }}"><div style="border:1px solid var(--color-text);padding:10px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><sa-i n="clipboard" s="18"></sa-i><span style="flex:1;font-size:15px">{{ iq.perso.resume }}</span><button class="btn btn-secondary" onClick="{{ iq.perso.voir }}">Voir les inspections</button></div></sc-if>
       <sc-if value="{{ iq.noVisit }}"><div style="border:1px dashed var(--color-text);padding:14px">Aucune visite publiée pour ce site. Les visites apparaissent ici dès qu’un technicien valide une inspection dans sa-terrain, ou après une saisie bureau.</div></sc-if>
       <sc-if value="{{ iq.hasVisit }}">
         <div style="background:var(--color-accent-100);border:1px solid var(--color-accent-300);padding:14px 16px;display:flex;align-items:center;gap:18px;flex-wrap:wrap">
@@ -175,6 +176,19 @@
         <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" checked="{{ iq.f.envoyer }}" onChange="{{ iq.f.onEnvoyer }}">Aviser les contacts du client (courriel)</label>
         <div style="font-size:13px">Le rapport est visible sur le portail (page du code QR) dès la publication.</div>
       </aside>
+    </div></sc-if>
+
+    <!-- ═ Inspections personnalisées du site (modèles d'inspection) ═ -->
+    <sc-if value="{{ iq.isPerso }}"><div data-perso style="padding:18px 22px;display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><h3 style="margin:0;font-size:22px;flex:1">Inspections personnalisées</h3>
+        <select class="input" onChange="{{ iq.onModele }}" aria-label="Modèle de la nouvelle inspection" style="max-width:240px;padding:6px 8px"><template data-sc="for" list="{{ iq.modeles }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select>
+        <button class="btn btn-primary" onClick="{{ iq.goPerso }}"><sa-i n="plus" s="16"></sa-i>Nouvelle inspection</button><button class="btn btn-ghost" onClick="{{ iq.goModeles }}">Modèles</button></div>
+      <sc-if value="{{ iq.perso.loading }}"><div>Chargement…</div></sc-if>
+      <sc-if value="{{ iq.perso.none }}"><div style="font-size:15px;border:1px dashed var(--color-text);padding:12px">Aucune inspection personnalisée pour ce site. Choisissez un modèle puis « Nouvelle inspection » ; elle sera enregistrée ici.</div></sc-if>
+      <table class="table" style="font-size:14px"><tbody><sc-for list="{{ iq.perso.rows }}" as="r"><tr data-insp="{{ r.date }}">
+        <td style="font-weight:600;white-space:nowrap">{{ r.date }}</td><td>{{ r.modele }}<br><span style="font-size:12px">{{ r.tech }} · {{ r.av }}</span></td><td style="font-weight:{{ r.acFw }}">{{ r.ac }}</td><td>{{ r.etat }}</td>
+        <td style="text-align:right;white-space:nowrap"><button class="btn btn-ghost" onClick="{{ r.print }}">Imprimer</button><button class="btn btn-ghost" onClick="{{ r.send }}">Envoyer au client</button><button class="btn btn-secondary" onClick="{{ r.open }}">Ouvrir</button></td>
+      </tr></sc-for></tbody></table>
     </div></sc-if>
 
     <!-- ═ Hivernement du site : listes et configuration par ouvrage ═ -->
