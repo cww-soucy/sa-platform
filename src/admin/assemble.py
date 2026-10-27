@@ -70,6 +70,14 @@ rep('Valeurs produites par le calcul existant — affichage seulement, aucune r�
 
 
 # ---------- ÉTAPES 1-2 : dialogues de modification (WO/créneau/tâche) et fiche de site ----------
+# Gradateur de livraison (bons de livraison non livrés) : une ligne par bon, 4 étapes
+LIVROW=lambda v:('<button onClick="{{ %s.open }}" data-livraison="{{ %s.no }}" style="all:unset;cursor:pointer;display:flex;flex-direction:column;gap:6px;padding:10px 12px;border:{{ %s.bd }};box-sizing:border-box;width:100%%">'
+  '<span style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><b style="font-size:15px">{{ %s.no }}</b><span style="flex:1;min-width:120px">{{ %s.client }}</span><span style="font-size:13px;font-weight:{{ %s.etFw }}">{{ %s.etape }}</span></span>'
+  '<span role="img" aria-label="Étape : {{ %s.etape }}" style="display:grid;grid-template-columns:repeat(4,1fr);gap:3px"><sc-for list="{{ %s.steps }}" as="st"><span style="display:flex;flex-direction:column;gap:3px"><i style="display:block;height:7px;background:{{ st.bg }}"></i><span style="font-size:11px;font-weight:{{ st.fw }}">{{ st.l }}</span></span></sc-for></span>'
+  '<span style="font-size:12px">{{ %s.date }} · {{ %s.tech }} · {{ %s.art }}</span></button>')%((v,)*12)
+LIVPANEL=lambda titre:('<sc-if value="{{ livOn }}"><section class="blueprint" data-livraisons style="display:flex;flex-direction:column"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>'
+  '<div style="padding:10px 18px;border-bottom:1px solid var(--color-divider);display:flex;align-items:center;gap:10px;flex-wrap:wrap"><sa-i n="truck" s="18"></sa-i><span style="font:600 20px var(--font-heading)">'+titre+'</span><span style="flex:1;font-size:13px">{{ livResume }}</span><button class="btn btn-ghost" onClick="{{ livGo }}">Logistique</button></div>'
+  '<div style="padding:12px 18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px"><sc-if value="{{ livNone }}"><span style="font-size:14px">Aucun bon de livraison en cours.</span></sc-if><sc-for list="{{ livRows }}" as="lv">'+LIVROW('lv')+'</sc-for></div></section></sc-if>')
 FL=lambda lab,inner: '<div class="field"><label>%s</label>%s</div>'%(lab,inner)
 SEL=lambda opts,fn:'<select class="input" onChange="{{ %s }}"><template data-sc="for" list="{{ %s }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select>'%(fn,opts)
 SEG=lambda lst:'<div style="display:flex;border:1px solid var(--color-divider);align-self:flex-start"><template data-sc="for" list="{{ %s }}" as="t"><button onClick="{{ t.go }}" style="all:unset;cursor:pointer;white-space:nowrap;padding:7px 14px;font:600 15px var(--font-heading);border-right:1px solid var(--color-divider);background:{{ t.bg }};color:{{ t.fg }}">{{ t.label }}</button></template></div>'%lst
@@ -124,8 +132,11 @@ if b:
     M=M.replace(b,nb,1)
 b=block(M,'isOperations')
 if b:
-    nb=b.replace('<sc-if value="{{ isOperations }}">','<sc-if value="{{ isOperations }}"><sc-if value="{{ noDossier }}"><div style="margin:12px 28px 0;padding:12px 14px;border:1px dashed var(--color-text);font-size:15px">Aucun dossier pour ce filtre.</div></sc-if>',1)
+    nb=b.replace('<sc-if value="{{ isOperations }}">','<sc-if value="{{ isOperations }}"><div style="margin:12px 28px 0">'+LIVPANEL('Livraisons en cours (tous les clients)')+'</div><sc-if value="{{ noDossier }}"><div style="margin:12px 28px 0;padding:12px 14px;border:1px dashed var(--color-text);font-size:15px">Aucun dossier pour ce filtre.</div></sc-if>',1)
     M=M.replace(b,nb,1)
+_dl='<div style="font-size:12px">Contrat {{ d.contrat }} · sites</div>'
+if M.count(_dl)==1: M=M.replace(_dl,'<sc-if value="{{ d.livs }}"><div data-dossier-livraisons style="display:flex;flex-direction:column;gap:6px"><div style="font-size:12px;font-weight:600">Livraisons en cours pour ce client</div><sc-for list="{{ d.livs }}" as="lv">'+LIVROW('lv')+'</sc-for></div></sc-if>'+_dl,1)
+else: print('!! ancre dossier (livraisons)')
 b=block(M,'isSites')
 if b:
     nb=b.replace('<sc-if value="{{ isSites }}">','<sc-if value="{{ isSites }}"><sc-if value="{{ noNouveaux }}"><div style="margin:12px 28px 0;padding:12px 14px;border:1px dashed var(--color-text);font-size:15px">Aucun site détecté automatiquement en attente.</div></sc-if>',1)
@@ -584,7 +595,7 @@ MONASK=('<sc-if value="{{ monAsk }}"><div class="dialog-backdrop" style="z-index
   '<button class="btn btn-secondary" onClick="{{ monOwnDev }}">Changer pour cet appareil</button><span style="font-size:13px">Cet appareil garde ses propres réglages (au départ, ceux de votre compte) ; vos autres appareils ne changent pas.</span></div>'
   '</div></div></sc-if>\n')
 M=M.rstrip()+'\n'+MONASK
-if M.count(_mon)==1: M=M.replace(_mon,_mon+MONBAR,1)
+if M.count(_mon)==1: M=M.replace(_mon,_mon+MONBAR+LIVPANEL('Livraisons en cours'),1)
 else: print('!! ancre monitoring',M.count(_mon))
 RELP=CARD('<div style="padding:14px 18px;border-bottom:1px solid var(--color-divider);display:flex;align-items:baseline;justify-content:space-between"><h3 style="margin:0;font-size:22px">{{ relTitle }}</h3></div>'
   '<sc-if value="{{ relNone }}"><div style="padding:12px 18px">Aucun relevé {{ monPerLbl }}.</div></sc-if><table class="table" style="font-size:14px"><tbody><sc-for list="{{ relRows }}" as="r"><tr onClick="{{ r.go }}" style="cursor:pointer">'
@@ -810,7 +821,7 @@ if k2>=0:
 _h=lambda t,extra='':'<div style="padding:10px 18px;border-bottom:1px solid var(--color-divider);display:flex;align-items:center;gap:10px"><span style="font:600 20px var(--font-heading);flex:1">%s</span>%s</div>'%(t,extra)
 GLOB=('<sc-if value="{{ isGlobale }}"><div style="display:flex;flex-direction:column;gap:18px">'
   '<sc-if value="{{ gLoading }}"><div>Chargement…</div></sc-if>'
-  '<sc-if value="{{ gReady }}"><div style="display:flex;flex-direction:column;gap:18px">'
+  '<sc-if value="{{ gReady }}"><div style="display:flex;flex-direction:column;gap:18px">'+LIVPANEL('Livraisons en cours')+''
   '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px"><sc-for list="{{ gKpis }}" as="k">'
   +CARD('<div style="padding:14px 16px"><div style="font:600 34px var(--font-heading)">{{ k.v }}</div><div style="font-size:14px">{{ k.l }}</div></div>')+'</sc-for></div>'
   +CARD(_h('Charge par technicien','<span style="font-size:13px">jours occupés / jours disponibles (lun.–ven.)</span>')

@@ -201,7 +201,9 @@ if B:
     M=M.replace(B,head+PICK+'<sc-if value="{{ bonOpen }}">'+BACK+inner+'</sc-if></sc-if>',1)
 else: print('!! bloc isBon')
 rep('<span style="font:600 24px var(--font-heading)">BL-26-0932</span>','<span style="font:600 24px var(--font-heading)">{{ bon.no }}</span>',1)
-rep('<span style="font-size:15px">{{ logClient }} · {{ logSite }}</span>','<span style="font-size:15px">{{ bon.client }} · {{ bon.addr }}</span>',1)
+rep('<span style="font-size:15px">{{ logClient }} · {{ logSite }}</span>','<span style="font-size:15px">{{ bon.client }} · {{ bon.addr }}</span>'
+  '<sc-if value="{{ bonEnRouteOk }}"><button class="btn btn-secondary" onClick="{{ enRoute }}" style="min-height:52px;font-size:17px;gap:8px;margin-top:8px"><sa-i n="truck" s="20"></sa-i>Je pars livrer</button></sc-if>'
+  '<sc-if value="{{ bonEnRoute }}"><span role="status" style="font-size:15px;font-weight:600;display:inline-flex;align-items:center;gap:6px;margin-top:6px"><sa-i n="truck" s="18"></sa-i>En route — le bureau suit la livraison</span></sc-if>',1)
 rep('— copie envoyée au client','— bon marqué livré',1)
 # Sortie enregistrée : on propose tout de suite de passer en bon de livraison (signature du client sur le téléphone)
 rep('<div style="font-size:15px;padding-bottom:10px">Pour : {{ logSite }}</div>',

@@ -410,6 +410,11 @@ Comp.prototype.confirmSig=function(){var b=this.curBon();if(!b)return;var nom=St
 /* Livraison validée sans signature (client absent, dépôt convenu) : deux touches, pour ne pas le faire par erreur */
 Comp.prototype.validerSansSig=function(){var b=this.curBon();if(!b||b.status==='livre')return;if(!this.state.noSig){this.setState({noSig:true});return;}
   this.setState({noSig:false});this.livrer(b,new Date(),{},{_noSig:true});};
+/* « Je pars livrer » : le bon passe « en route » (suivi des livraisons dans sa-admin : monitoring, vue globale, dossier du client) */
+Comp.prototype.enRoute=function(){var b=this.curBon();if(!b||b.status==='livre'||b.status==='en_route')return;var now=new Date(),patch={status:'en_route',updated_at:now.toISOString()};
+  if(b._new){var full=Object.assign({},b,patch,{_t:'bons_livraison'});delete full._new;delete full._signedBy;delete full._signedAt;delete full._noSig;this.enqueue(full);delete b._new;}
+  else this.enqueue({_t:'bons_livraison',_m:'PATCH',_q:'id=eq.'+encodeURIComponent(b.id)+'&status=neq.livre',id:'blr-'+b.id,body:patch});
+  Object.assign(b,patch);this.update();this.flash('Bon '+b.no_bon+' en route — le bureau suit la livraison');};
 Comp.prototype.livrer=function(b,now,extra,local){var patch=Object.assign({status:'livre',livre_at:now.toISOString(),livre_by:this.user.id,livre_par_nom:this.me.nom,updated_at:now.toISOString()},extra);
   if(b._new){var full=Object.assign({},b,patch,{_t:'bons_livraison'});delete full._new;delete full._signedBy;delete full._signedAt;delete full._noSig;this.enqueue(full);}
   else this.enqueue({_t:'bons_livraison',_m:'PATCH',_q:'id=eq.'+encodeURIComponent(b.id)+'&status=neq.livre',id:'bl-'+b.id,body:patch});
@@ -587,7 +592,8 @@ Comp.prototype.vals=function(){
     soAskGo:function(){self.newBonFromSortie();},soAskLater:function(){self.setState({soAsk:false});},
     noSigLbl:st.noSig?'Confirmer : livré sans signature':'Valider sans signature',validerSansSig:function(){self.validerSansSig();},
     bonPick:!bon,bonOpen:!!bon,bonList:bonList,noBons:!bonList.length,hasLastSortie:!!this.lastSortie,lastSortieTxt:this.lastSortie?(this.lastSortie.items.length+' article(s) · '+(this.lastSortie.site?this.lastSortie.site.nom:'hors site')):'',newBon:function(){self.newBonFromSortie();},
-    bon:bon?{no:bon.no_bon||'—',client:bon.client||'—',addr:bon.adresse||''}:{},bonBack:function(){self.setState({bonSel:null});self.loadLog();},
+    bon:bon?{no:bon.no_bon||'—',client:bon.client||'—',addr:bon.adresse||''}:{},
+    bonEnRouteOk:!!(bon&&bon.status!=='livre'&&bon.status!=='en_route'),bonEnRoute:!!(bon&&bon.status==='en_route'),enRoute:function(){self.enRoute();},bonBack:function(){self.setState({bonSel:null});self.loadLog();},
     bonItems:bon?(bon.items_liv||[]).filter(function(i){return i.item;}).map(function(i){return{nom:i.item,qty:i.qteLivree||i.qteSortie||'—',unite:i.unite||''};}):[],
     signer:st.signer,onSigner:function(e){self.setState({signer:e.target.value});},clearSig:function(){self.clearSig();},confirmSig:function(){self.confirmSig();},
     isSigned:!!(bon&&bon.status==='livre'&&!bon._noSig),isNoSig:!!(bon&&bon.status==='livre'&&bon._noSig),notSigned:!!(bon&&bon.status!=='livre'),signedBy:bon?(bon._signedBy||''):'',signedAt:bon?(bon._signedAt||''):'',
