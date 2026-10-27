@@ -418,7 +418,8 @@ DE_HV=IF('isHVold',G2(FL('Site',INP('dSite.v','dSite.on','text',' list="deSites"
 HVH=lambda t:'<h3 style="margin:0;padding:6px 10px;background:var(--color-text);color:var(--color-bg);font:600 15px var(--font-heading);text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:10px">%s</h3>'%t
 HVBOX=('<sc-if value="{{ it.isChoix }}"><div role="group" aria-label="{{ it.t }}" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:7px 4px;border-bottom:1px solid var(--color-divider);font-size:14px;line-height:1.35">'
   '<span style="width:{{ it.nw }};flex:none;font-weight:600;text-align:center;overflow:hidden">{{ it.n }}</span><span style="flex:1;min-width:200px;font-weight:{{ it.fw }}">{{ it.t }}</span><span style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ it.opts }}" as="o">'
-  '<button onClick="{{ o.go }}" aria-pressed="{{ o.pr }}" style="all:unset;cursor:pointer;padding:4px 12px;border:1px solid var(--color-text);background:{{ o.bg }};color:{{ o.fg }};font-size:14px">{{ o.l }}</button></sc-for></span></div></sc-if>'
+  '<button onClick="{{ o.go }}" aria-pressed="{{ o.pr }}" style="all:unset;cursor:pointer;padding:4px 12px;border:1px solid var(--color-text);background:{{ o.bg }};color:{{ o.fg }};font-size:14px">{{ o.l }}</button></sc-for></span>'
+  '<sc-if value="{{ it.noteOn }}"><input class="input" value="{{ it.note }}" onInput="{{ it.onNote }}" placeholder="Déficience constatée, correctif à faire" aria-label="Note : {{ it.t }}" style="flex-basis:100%;padding:6px 8px"></sc-if></div></sc-if>'
   '<sc-if value="{{ it.isCase }}"><label style="display:flex;gap:10px;align-items:flex-start;padding:7px 4px;border-bottom:1px solid var(--color-divider);cursor:pointer;font-size:14px;line-height:1.35;opacity:{{ it.op }}">'
   '<input type="checkbox" checked="{{ it.on }}" onChange="{{ it.go }}" style="width:18px;height:18px;flex:none;margin:1px 0 0">'
   '<span style="width:{{ it.nw }};flex:none;font-weight:600;text-align:center;overflow:hidden">{{ it.n }}</span><span style="flex:1;font-weight:{{ it.fw }}">{{ it.t }}</span></label></sc-if>')
@@ -427,7 +428,8 @@ DE_HV2=IF('isHV2','<datalist id="deTechs"><sc-for list="{{ hvTechs }}" as="o"><o
   '<span>{{ hvProg }}</span><div style="flex:1;height:10px;background:var(--color-divider)"><div style="height:100%;width:{{ hvPct }};background:var(--color-accent-700)"></div></div></div>'
   '<sc-if value="{{ hvCrit }}"><div role="alert" style="padding:8px 12px;border:2px solid var(--color-accent-900);font-size:14px;font-weight:600">{{ hvCrit }}</div></sc-if>'
   '<sc-if value="{{ hvOuv }}"><div style="font-size:14px">{{ hvOuv }}</div></sc-if>'
-  +G2(FL('Type d’hivernement',SEL('hvTypes','onHvType').replace('<select ','<select aria-label="Type d’hivernement" ',1)),IF('hvAutre',FL('Préciser le type',INP('hvTypeNom.v','hvTypeNom.on','text',' placeholder="ex. Fermeture des jeux d’eau seulement"'))))
+  +'<sc-if value="{{ hvAC }}"><div role="status" style="padding:8px 12px;border:2px solid var(--color-accent-900);font-weight:600">{{ hvAC }}</div></sc-if>'
+  +IF('hvIsHiv',G2(FL('Type d’hivernement',SEL('hvTypes','onHvType').replace('<select ','<select aria-label="Type d’hivernement" ',1)),IF('hvAutre',FL('Préciser le type',INP('hvTypeNom.v','hvTypeNom.on','text',' placeholder="ex. Fermeture des jeux d’eau seulement"')))))
   +HVH('1. Informations générales')
   +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 14px"><sc-for list="{{ hvInfo }}" as="f"><div class="field" style="grid-column:{{ f.span }}"><label>{{ f.l }}</label>'
   '<input class="input" type="{{ f.type }}" value="{{ f.v }}" onInput="{{ f.on }}" list="{{ f.list }}"></div></sc-for></div>'
@@ -443,7 +445,7 @@ DE_HV2=IF('isHV2','<datalist id="deTechs"><sc-for list="{{ hvTechs }}" as="o"><o
   '<label style="display:flex;gap:6px;align-items:center;font-size:14px"><input type="checkbox" checked="{{ e.demo }}" onChange="{{ e.onDemo }}">Démonstration réussie</label>'+DELB('e.del')+'</div></sc-for>'
   '<button class="btn btn-ghost" onClick="{{ addEmp }}" style="align-self:flex-start">+ Ajouter un employé</button></div></sc-if>'
   '</div></sc-for>'
-  +HVH('{{ hvNoTrav }}')+'<div style="font-size:13px">Travaux propres à cette intervention, en plus de la liste (réparation, remplacement, demande du client…). Ils ne changent pas le gabarit.</div>'
+  +'<sc-if value="{{ hvIsHiv }}">'+HVH('{{ hvNoTrav }}')+'<div style="font-size:13px">Travaux propres à cette intervention, en plus de la liste (réparation, remplacement, demande du client…). Ils ne changent pas le gabarit.</div>'
   '<sc-for list="{{ hvTravaux }}" as="w"><div data-travail style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--color-divider);padding:4px 0">'
   '<label style="display:flex;gap:6px;align-items:center;font-size:14px"><input type="checkbox" checked="{{ w.fait }}" onChange="{{ w.onFait }}" aria-label="Travail fait">Fait</label>'
   '<input class="input" value="{{ w.t }}" onInput="{{ w.onT }}" placeholder="Travail réalisé ou à faire" aria-label="Travail" style="flex:2;min-width:200px;padding:6px 8px">'
@@ -456,7 +458,7 @@ DE_HV2=IF('isHV2','<datalist id="deTechs"><sc-for list="{{ hvTechs }}" as="o"><o
   '<input class="input" value="{{ m.qte }}" onInput="{{ m.onQte }}" placeholder="Qté" aria-label="Quantité" inputmode="decimal" style="width:80px;padding:6px 8px">'
   '<input class="input" value="{{ m.unite }}" onInput="{{ m.onUnite }}" list="hvUnites" placeholder="Unité" aria-label="Unité" style="width:100px;padding:6px 8px">'+DELB('m.del')+'</div></sc-for>'
   '<datalist id="hvUnites"><option value="L"></option><option value="kg"></option><option value="unité"></option><option value="sac"></option><option value="boîte"></option><option value="m"></option></datalist>'
-  '<button class="btn btn-ghost" onClick="{{ addMat }}" style="align-self:flex-start">+ Ajouter du matériel ou un produit</button>'
+  '<button class="btn btn-ghost" onClick="{{ addMat }}" style="align-self:flex-start">+ Ajouter du matériel ou un produit</button></sc-if>'
   +HVH('{{ hvNoRem }}')+FL('Remarques et anomalies',TXT('hvRem.v','hvRem.on','Bris, pièces à commander, anomalies constatées'))+FL('Photos',PHOTOS('hvPhotos','addHvPhoto'))
   +HVH('{{ hvNoVal }}')+G2(FL('Responsable',INP('hvResp.v','hvResp.on')),FL('Client',INP('dClient.v','dClient.on')))
   +FL('Courriel du client',INP('hvMail.v','hvMail.on','text',' placeholder="courriel@client.ca (plusieurs : séparer par des virgules)"'))
@@ -692,8 +694,8 @@ OCDLG=('<template data-sc="if" value="{{ ocOpen }}"><div class="dialog-backdrop"
 # ---------- Hivernage › Gabarits d'hivernage (ouvrages.js) ----------
 GBDLG=('<template data-sc="if" value="{{ gbOpen }}"><div class="dialog-backdrop" onClick="{{ gbCloseBg }}" style="z-index:60"><div class="dialog" onClick="{{ stop }}" style="width:min(900px,100%);background:var(--color-bg);max-height:calc(100vh - 40px);overflow-y:auto;gap:14px;padding:22px 24px;border:1px solid var(--color-text)">'
   +DLGHEAD('gbTitle','gbClose')
-  +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+SEL('gbList','onGbSel').replace('<select class="input"','<select class="input" aria-label="Gabarit" style="max-width:280px"')+'<button class="btn btn-ghost" onClick="{{ gbNew }}">+ Nouveau gabarit</button><span style="flex:1"></span><span style="font-size:13px">{{ gbSrc }}</span></div>'
-  +G2(FL('Nom',INP('gbNom.v','gbNom.on')),FL('Ouvrages qui le prennent par défaut (types, séparés par des virgules)',INP('gbTypes.v','gbTypes.on','text',' placeholder="jeuxdeau, JE"')))
+  +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+SEL('gbList','onGbSel').replace('<select class="input"','<select class="input" aria-label="Gabarit" style="max-width:280px"')+'<button class="btn btn-ghost" onClick="{{ gbNew }}">{{ gbNewLbl }}</button><span style="flex:1"></span><span style="font-size:13px">{{ gbSrc }}</span></div>'
+  +G2(FL('Nom',INP('gbNom.v','gbNom.on')),IF('gbHiv',FL('Ouvrages qui le prennent par défaut (types, séparés par des virgules)',INP('gbTypes.v','gbTypes.on','text',' placeholder="jeuxdeau, JE"'))))
   +'<div style="display:flex;flex-direction:column;gap:16px"><div style="font-size:13px;line-height:1.4">Une carte par section, une ligne par étape. « Case à cocher » ou « Choix multiple » (réponses séparées par des virgules, ex. Oui, Non, N/A). '
     'Une section « commune » est fusionnée quand le site a plusieurs ouvrages. Les flèches changent l’ordre ; rien n’est enregistré avant « Enregistrer ».</div>'
     '<sc-for list="{{ gbSecs }}" as="s"><div style="border:1px solid var(--color-text);display:flex;flex-direction:column">'
@@ -703,9 +705,9 @@ GBDLG=('<template data-sc="if" value="{{ gbOpen }}"><div class="dialog-backdrop"
     '<sc-if value="{{ s.canUp }}"><button onClick="{{ s.up }}" aria-label="Monter la section {{ s.no }}" style="all:unset;cursor:pointer;min-width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--color-divider);font-size:15px">↑</button></sc-if>'
     '<sc-if value="{{ s.canDown }}"><button onClick="{{ s.down }}" aria-label="Descendre la section {{ s.no }}" style="all:unset;cursor:pointer;min-width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--color-divider);font-size:15px">↓</button></sc-if>'
     '<button class="btn btn-ghost" onClick="{{ s.del }}" style="font-size:13px;padding:4px 8px">{{ s.delLbl }}</button></div>'
-    '<div role="group" aria-label="Types d’hivernement — section {{ s.no }}" style="display:flex;gap:6px 12px;align-items:center;flex-wrap:wrap;padding:6px 12px;border-bottom:1px solid var(--color-divider);font-size:13px">'
+    '<sc-if value="{{ gbHiv }}"><div role="group" aria-label="Types d’hivernement — section {{ s.no }}" style="display:flex;gap:6px 12px;align-items:center;flex-wrap:wrap;padding:6px 12px;border-bottom:1px solid var(--color-divider);font-size:13px">'
     '<span>Faite pour :</span><sc-for list="{{ s.types }}" as="ty"><label style="display:flex;gap:4px;align-items:center"><input type="checkbox" checked="{{ ty.on }}" onChange="{{ ty.go }}">{{ ty.l }}</label></sc-for>'
-    '<span style="opacity:.75">{{ s.typesTxt }}</span></div>'
+    '<span style="opacity:.75">{{ s.typesTxt }}</span></div></sc-if>'
     '<sc-for list="{{ s.items }}" as="it"><div role="group" aria-label="{{ it.lbl }}" style="display:flex;flex-direction:column;gap:6px;padding:8px 12px;border-bottom:1px solid var(--color-divider)">'
     '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
     '<input class="input" value="{{ it.n.v }}" onInput="{{ it.n.on }}" aria-label="N°" placeholder="N°" style="width:52px;padding:6px">'

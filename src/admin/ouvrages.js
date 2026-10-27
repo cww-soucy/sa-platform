@@ -69,9 +69,12 @@ function gbRow(g){return{code:g.code,nom:g.nom,types:g.types||[],sections:g.sect
    donc déplacer ou supprimer une étape ne décale pas les retraits faits sur les sites. */
 function gbCopie(secs){return(secs||[]).map(function(s){return Object.assign({},s,{items:(s.items||[]).map(function(it,j){var x=Object.assign({},it,{id:window.SAHiv.iid(it,j)});x.choixTxt=(it.choix||[]).join(', ');return x;})});});}
 function gbNid(p){return p+Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
-Comp.prototype.gbOpen=function(code){var H=window.SAHiv,L=H.gabarits(this.D.gab),g=L.filter(function(x){return x.code===code;})[0]||L[0];
-  this.setState({gb:{code:g.code,nom:g.nom,types:(g.types||[]).join(', '),secs:gbCopie(g.sections),conseils:(g.conseils||[]).join('\n'),alerte:g.alerte||'',isNew:false,busy:false,confirm:false}});};
-Comp.prototype.gbNew=function(){this.setState({gb:{code:'',nom:'',types:'',secs:[{id:'secu',titre:'Sécurité et préparation',col:'Vérification',commun:true,items:[{id:gbNid('e'),t:''}]},
+/* insp = modèles d'inspection personnalisée (gabarits_hivernage.types = ['_insp']) : même éditeur, sans types d'ouvrage */
+function gbListe(D,insp){var H=window.SAHiv;return insp?H.modelesInsp(D.gab):H.gabarits(D.gab);}
+Comp.prototype.gbOpen=function(code,insp){var L=gbListe(this.D,insp),g=L.filter(function(x){return x.code===code;})[0]||L[0];
+  this.setState({gb:{code:g.code,nom:g.nom,insp:!!insp,types:insp?'':(g.types||[]).join(', '),secs:gbCopie(g.sections),conseils:(g.conseils||[]).join('\n'),alerte:g.alerte||'',isNew:false,busy:false,confirm:false}});};
+Comp.prototype.gbNew=function(){var R=window.SAHiv.REP_INSP;if(this.state.gb&&this.state.gb.insp){this.setState({gb:{code:'',nom:'',insp:true,types:'',secs:[{id:'s1',titre:'Points inspectés',col:'Point inspecté',items:[{id:gbNid('e'),t:'',choix:R.slice(),choixTxt:R.join(', '),isChoix:true}]}],conseils:'',alerte:'',isNew:true,busy:false,confirm:false}});return;}
+  this.setState({gb:{code:'',nom:'',types:'',secs:[{id:'secu',titre:'Sécurité et préparation',col:'Vérification',commun:true,items:[{id:gbNid('e'),t:''}]},
   {id:'p1',titre:'Phase 1 — ',col:'Tâche',num:true,items:[{id:gbNid('e'),n:'1',t:''}]},{id:'form',titre:'Formation des employés',col:'Sujet de formation',commun:true,items:[{id:gbNid('e'),t:''}]}],
   conseils:'',alerte:window.SAHiv.GABARITS[0].alerte,isNew:true,busy:false,confirm:false}});};
 /* Modification d'une copie des sections du gabarit en cours */
@@ -85,14 +88,14 @@ function gbPropre(secs){var vu={};return(secs||[]).map(function(s){
   .filter(function(s){return s.items.length;});}
 Comp.prototype.gbLoad=function(){var self=this;return get('gabarits_hivernage?select=*').then(function(r){self.D.gab=r||[];self.update();});};
 Comp.prototype.gbSave=function(desactiver){var self=this,gb=this.state.gb,H=window.SAHiv;if(!gb||gb.busy)return;
-  var L=H.gabarits(this.D.gab),old=L.filter(function(x){return x.code===gb.code;})[0],nom=String(gb.nom||'').trim();
+  var L=gbListe(this.D,gb.insp),old=L.filter(function(x){return x.code===gb.code;})[0],nom=String(gb.nom||'').trim();
   if(!nom){this.flash('Le nom du gabarit est requis');return;}
   var secs=gbPropre(gb.secs);if(!secs.length){this.flash('Le gabarit doit compter au moins une étape');return;}
-  var code=gb.code||gbSlug(nom);if(gb.isNew&&L.some(function(x){return x.code===code;}))code=code+'-'+Date.now().toString(36).slice(-3);
-  var g={code:code,nom:nom,types:String(gb.types||'').split(/[,;]/).map(function(x){return x.trim();}).filter(Boolean),sections:secs,
+  var code=gb.code||(gb.insp?'insp-':'')+gbSlug(nom);if(gb.isNew&&L.some(function(x){return x.code===code;}))code=code+'-'+Date.now().toString(36).slice(-3);
+  var g={code:code,nom:nom,types:gb.insp?[H.INSP]:String(gb.types||'').split(/[,;]/).map(function(x){return x.trim();}).filter(Boolean),sections:secs,
     conseils:String(gb.conseils||'').split(/\r?\n/).map(function(x){return x.trim();}).filter(Boolean),alerte:String(gb.alerte||'').trim(),ordre:old?old.ordre:L.length+1,actif:!desactiver,updated_at:nowIso()};
   /* Table encore vide : on y met aussi les gabarits par défaut, sinon ils disparaîtraient dès le premier enregistrement */
-  var rows=(this.D.gab||[]).length?[g]:H.GABARITS.filter(function(x){return x.code!==code;}).map(function(x){return Object.assign(gbRow(x),{updated_at:g.updated_at});}).concat([g]);
+  var rows=(this.D.gab||[]).filter(function(r){return!H.estInsp(r);}).length?[g]:H.GABARITS.filter(function(x){return x.code!==code;}).map(function(x){return Object.assign(gbRow(x),{updated_at:g.updated_at});}).concat([g]);
   this.setState({gb:Object.assign({},gb,{busy:true})});
   rest('POST','gabarits_hivernage',rows,'resolution=merge-duplicates,return=minimal').then(function(){auditT(self,old?'MODIFICATION':'CREATION','gabarits_hivernage',code);self.setState({gb:null});
     self.flash(desactiver?'Gabarit désactivé':'Gabarit enregistré — sa-terrain l’utilise pour les nouvelles listes dès sa prochaine synchronisation');return self.gbLoad();})
@@ -100,7 +103,7 @@ Comp.prototype.gbSave=function(desactiver){var self=this,gb=this.state.gb,H=wind
 Comp.prototype.gbVals=function(){var self=this,gb=this.state.gb,D=this.D,H=window.SAHiv;
   var base={gbGo:function(){self.gbOpen('piscine');},gbOpen:false};
   if(!gb||!D)return base;
-  var L=H.gabarits(D.gab),set=function(k){return function(e){var o={};o[k]=e.target.value;self.setState({gb:Object.assign({},self.state.gb,o,{confirm:false})});};};
+  var L=gbListe(D,gb.insp),set=function(k){return function(e){var o={};o[k]=e.target.value;self.setState({gb:Object.assign({},self.state.gb,o,{confirm:false})});};};
   var secs=gbPropre(gb.secs),n=0,c=0,q=0;secs.forEach(function(s){s.items.forEach(function(it){n++;if(it.crit)c++;if(it.choix)q++;});});
   var nb=(D.sites||[]).filter(function(s){return(s.bassins||[]).some(function(b){var g=H.gabaritDe(b,D.gab);return g&&g.code===gb.code;});}).length;
   var NS=gb.secs.length,move=function(arr,i,d){var x=arr[i];arr.splice(i,1);arr.splice(i+d,0,x);};
@@ -109,7 +112,7 @@ Comp.prototype.gbVals=function(){var self=this,gb=this.state.gb,D=this.D,H=windo
     return{no:si+2,titre:{v:s.titre,on:mut(function(x,v){x.titre=v;})},commun:!!s.commun,onCommun:mut(function(x,v){x.commun=!!v;}),
       up:mut(function(x,v,S){move(S,si,-1);}),down:mut(function(x,v,S){move(S,si,1);}),canUp:si>0,canDown:si<NS-1,
       delLbl:s._del?'Confirmer : supprimer la section':'Supprimer la section',del:mut(function(x,v,S){if(!x._del){x._del=true;return;}S.splice(si,1);}),
-      addItem:mut(function(x){var num=x.num||x.items.some(function(it){return it.n;});x.items.push({id:gbNid('e'),n:num?String(x.items.length+1):'',t:''});}),
+      addItem:mut(function(x){var num=x.num||x.items.some(function(it){return it.n;}),R=H.REP_INSP;x.items.push(Object.assign({id:gbNid('e'),n:num?String(x.items.length+1):'',t:''},gb.insp?{choix:R.slice(),choixTxt:R.join(', '),isChoix:true}:{}));}),
       hasPiece:!!s.col2,ariaSec:'Section '+(si+2),
       /* Types d'hivernement : aucune case = la section sert à tous les types */
       types:H.TYPES.map(function(t){var on=(s.types||[]).indexOf(t.code)>=0;return{l:t.nom.replace(/ \(.*\)$/,''),on:on,go:mut(function(x){var L=(x.types||[]).filter(function(c){return c!==t.code;});if(!on)L.push(t.code);x.types=L;})};}),
@@ -120,12 +123,12 @@ Comp.prototype.gbVals=function(){var self=this,gb=this.state.gb,D=this.D,H=windo
           types:[{v:'case',l:'Case à cocher',sel:!isC},{v:'choix',l:'Choix multiple',sel:isC}],onType:m(function(y,v){y.isChoix=v==='choix';if(y.isChoix&&!String(y.choixTxt||'').trim())y.choixTxt='Oui, Non, N/A';}),
           isChoix:isC,choix:{v:it.choixTxt||'',on:m(function(y,v){y.choixTxt=v;})},
           up:m(function(y,v,x){move(x.items,ii,-1);}),down:m(function(y,v,x){move(x.items,ii,1);}),canUp:ii>0,canDown:ii<NI-1,del:m(function(y,v,x){x.items.splice(ii,1);})};})};});
-  return Object.assign(base,{gbOpen:true,gbTitle:gb.isNew?'Nouveau gabarit d’hivernage':'Gabarit d’hivernage — '+gb.nom,
+  return Object.assign(base,{gbOpen:true,gbHiv:!gb.insp,gbNewLbl:gb.insp?'+ Nouveau modèle':'+ Nouveau gabarit',gbTitle:gb.insp?(gb.isNew?'Nouveau modèle d’inspection':'Modèle d’inspection — '+gb.nom):gb.isNew?'Nouveau gabarit d’hivernage':'Gabarit d’hivernage — '+gb.nom,
     gbClose:function(){self.setState({gb:null});},gbCloseBg:function(e){if(e.target===e.currentTarget)self.setState({gb:null});},
-    gbList:L.map(function(g){return{v:g.code,l:g.nom,sel:g.code===gb.code};}).concat(gb.isNew?[{v:'',l:'Nouveau gabarit',sel:true}]:[]),onGbSel:function(e){if(e.target.value)self.gbOpen(e.target.value);},gbNew:function(){self.gbNew();},
+    gbList:L.map(function(g){return{v:g.code,l:g.nom,sel:g.code===gb.code};}).concat(gb.isNew?[{v:'',l:'Nouveau gabarit',sel:true}]:[]),onGbSel:function(e){if(e.target.value)self.gbOpen(e.target.value,self.state.gb.insp);},gbNew:function(){self.gbNew();},
     gbNom:{v:gb.nom,on:set('nom')},gbTypes:{v:gb.types,on:set('types')},gbConseils:{v:gb.conseils,on:set('conseils')},gbAlerte:{v:gb.alerte,on:set('alerte')},
     gbSecs:gbSecs,gbAddSec:function(){self.gbMut(function(S){var fin=S.filter(function(x){return x.commun;}).length&&S[S.length-1].commun?S.length-1:S.length;S.splice(fin,0,{id:'',titre:'Nouvelle section',col:'Tâche',items:[{id:gbNid('e'),n:'',t:''}]});});},
-    gbApercu:secs.length+' section(s), '+n+' étape(s), dont '+c+' critique(s) et '+q+' à choix multiple'+(gb.isNew?'':' · utilisé sur '+nb+' site(s)'),
+    gbApercu:secs.length+' section(s), '+n+' étape(s), dont '+c+' critique(s) et '+q+' à choix multiple'+(gb.isNew||gb.insp?'':' · utilisé sur '+nb+' site(s)'),
     gbSrc:(D.gab||[]).length?'':'Gabarits par défaut : le premier enregistrement les copie dans la base.',
     gbSave:function(){self.gbSave(false);},gbSaveLbl:gb.busy?'Enregistrement…':'Enregistrer',
     gbCanDel:!gb.isNew&&L.length>1,gbDelLbl:gb.confirm?'Confirmer la désactivation':'Désactiver',
