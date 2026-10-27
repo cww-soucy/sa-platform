@@ -31,7 +31,7 @@ function tables() {
 test('sa-terrain : la liste d’hivernage suit les ouvrages, le technicien retire, ajoute et remet des étapes pour le site', async () => {
   const { page, db, errors } = await openApp(browser, srv.url, { app: 'terrain', user: TECH, tables: tables() });
   await page.waitForFunction(() => window.__terrain && window.__terrain.syncAt);
-  await T(page, () => window.__terrain.setState({ hivSel: '10', screen: 'hivForm' }));
+  await T(page, () => window.__terrain.setState({ hivSel: '10', screen: 'hivForm', hivVue: { mode: 'detail', texte: 'complet', ordre: 'toutes' } }));
   assert.match(await text(page), /0 cases sur 38/, 'gabarit Jeux d’eau');
   assert.match(await text(page), /Phase 3 — Purge des conduites/);
   assert.doesNotMatch(await text(page), /16 po sous les retours/);
@@ -164,7 +164,7 @@ test('étape à choix multiple : sa-terrain enregistre la réponse choisie, le r
   t.gabarits_hivernage = H.GABARITS.filter((x) => x.code !== 'jeuxdeau').concat([g]).map((x) => Object.assign({ actif: true }, x));
   const { page, errors } = await openApp(browser, srv.url, { app: 'terrain', user: TECH, tables: t });
   await page.waitForFunction(() => window.__terrain && window.__terrain.syncAt);
-  await T(page, () => window.__terrain.setState({ hivSel: '10', screen: 'hivForm' }));
+  await T(page, () => window.__terrain.setState({ hivSel: '10', screen: 'hivForm', hivVue: { mode: 'detail', texte: 'complet', ordre: 'toutes' } }));
   assert.match(await text(page), /0 cases sur 39/);
   const q = page.getByRole('group', { name: /4b\. État de la valve d’appoint/ });
   await q.getByRole('button', { name: 'Fermée' }).click();

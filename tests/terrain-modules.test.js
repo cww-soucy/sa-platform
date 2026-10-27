@@ -222,6 +222,7 @@ test('hivernage : liste réelle des sites, liste de contrôle « Hivernement » 
   const v = await T(page, () => { const x = window.__terrain.vals(); return { done: x.hivDoneCount, tot: x.hivTotalSites, list: x.hivList.map((h) => h.nom) }; });
   // site 1 = piscine intérieure (MI) exclue, site 3 fusionné exclu, site 2 déjà fait cette année
   assert.deepEqual(v, { done: 1, tot: 2, list: ['Piscine Alpha Sud'] });
+  await page.evaluate(() => localStorage.setItem('sa_hiv_vue', JSON.stringify({ mode: 'detail', texte: 'complet', ordre: 'toutes' }))); // affichage détaillé (le défaut est allégé)
   await page.getByRole('button', { name: /Piscine Alpha Sud/ }).click();
   assert.match(await text(page), /0 cases sur 58/);
   await page.getByRole('button', { name: /^1\. Vidanger le bassin au complet/ }).click();

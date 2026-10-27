@@ -717,6 +717,7 @@ GBDLG=('<template data-sc="if" value="{{ gbOpen }}"><div class="dialog-backdrop"
     '<select class="input" onChange="{{ it.onType }}" aria-label="Type de réponse" style="max-width:170px;padding:5px 8px"><template data-sc="for" list="{{ it.types }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select>'
     '<sc-if value="{{ it.isChoix }}"><input class="input" value="{{ it.choix.v }}" onInput="{{ it.choix.on }}" aria-label="Réponses possibles" placeholder="Oui, Non, N/A" style="flex:1;min-width:180px;padding:5px 8px"></sc-if>'
     '<input class="input" value="{{ it.b.v }}" onInput="{{ it.b.on }}" aria-label="Précision en gras" placeholder="Précision en gras (facultatif)" style="flex:1;min-width:160px;padding:5px 8px">'
+    '<input class="input" value="{{ it.court.v }}" onInput="{{ it.court.on }}" aria-label="Texte court (sa-terrain)" placeholder="{{ it.courtPh }}" style="flex:1;min-width:160px;padding:5px 8px">'
     '<label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" checked="{{ it.crit }}" onChange="{{ it.onCrit }}">Critique</label>'
     '<sc-if value="{{ s.hasPiece }}"><label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" checked="{{ it.piece }}" onChange="{{ it.onPiece }}">Pièce de rechange</label></sc-if></div>'
     '</div></sc-for>'

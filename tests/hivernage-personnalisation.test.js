@@ -70,7 +70,7 @@ test('modèle : le type retire la formation, les travaux et le matériel vont au
 test('sa-terrain : type choisi, travail sur mesure, matériel et nouvelle section pour le site', async () => {
   const { page, db, errors } = await openApp(browser, srv.url, { app: 'terrain', user: TECH, tables: tables() });
   await page.waitForFunction(() => window.__terrain && window.__terrain.syncAt);
-  await T(page, () => window.__terrain.setState({ hivSel: '10', screen: 'hivForm' }));
+  await T(page, () => window.__terrain.setState({ hivSel: '10', screen: 'hivForm', hivVue: { mode: 'detail', texte: 'complet', ordre: 'toutes' } }));
   assert.match(await text(page), /Hivernement · Fermeture avec formation[\s\S]*0 cases sur 58/);
   await page.getByRole('group', { name: 'Type d’hivernement' }).getByRole('button', { name: 'Fermeture complète' }).click();
   let t = await text(page);
@@ -166,4 +166,45 @@ test('sa-admin : Hivernage dans « Sites et inspections », type, travaux et mat
   assert.ok(r.sections.some((s) => s.title === 'Matériel et produits utilisés' || /Matériel et produits utilisés$/.test(s.title)));
   assert.deepEqual(errors, []);
   await page.close();
+});
+
+test('sa-terrain allégé : menus par section, critiques une à une, texte court, une section à la fois (gardé sur l’appareil)', async () => {
+  const { page, errors } = await openApp(browser, srv.url, { app: 'terrain', user: TECH, tables: tables() });
+  await page.waitForFunction(() => window.__terrain && window.__terrain.syncAt);
+  await T(page, () => window.__terrain.setState({ hivSel: '10', screen: 'hivForm' }));
+  const p1 = page.locator('[data-section="3. Phase 1 — Vidange"]');
+  // par défaut : sections repliées, seule l'étape critique visible, en texte court
+  assert.deepEqual(await p1.getByRole('button', { name: /^★/ }).allTextContents(), ['★ 1. Vidanger le bassin au complet']);
+  assert.doesNotMatch(await p1.innerText(), /Ouvrir toutes les vannes/);
+  await p1.getByRole('button', { name: 'Section faite (sauf les étapes à cocher une à une)' }).click();
+  assert.match(await p1.innerText(), /7 \/ 8 cases cochées/);
+  const st = await T(page, () => window.__terrain.hivCur('10').c);
+  assert.equal(st['p1-0'], undefined, 'l’étape critique n’est pas cochée par « Section faite »');
+  assert.equal(st['p1-1'], true);
+  await p1.getByRole('button', { name: /^★ 1\./ }).click();
+  assert.match(await p1.innerText(), /8 \/ 8 cases cochées[\s\S]*Section faite ✓ — annuler/);
+  await p1.getByRole('button', { name: 'Voir les 8 étapes' }).click();
+  assert.match(await p1.innerText(), /15\. Vidanger les filtres\n/, 'texte court : sans la précision');
+  // texte complet, puis une section à la fois
+  await page.getByRole('group', { name: 'Affichage : Texte' }).getByRole('button', { name: 'Complet' }).click();
+  assert.match(await p1.innerText(), /15\. Vidanger les filtres \(bouchon au bas du filtre\)/);
+  await page.getByRole('group', { name: 'Affichage : Organisation' }).getByRole('button', { name: 'Une à la fois' }).click();
+  assert.equal(await page.locator('[data-section]').count(), 1);
+  assert.match(await text(page), /Section 1 sur 8/);
+  await page.getByRole('button', { name: 'Suivante' }).click();
+  assert.equal(await page.locator('[data-section]').getAttribute('data-section'), '3. Phase 1 — Vidange');
+  assert.deepEqual(await T(page, () => JSON.parse(localStorage.getItem('sa_hiv_vue'))), { mode: 'section', texte: 'complet', ordre: 'une' });
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+test('gabarit : « texte court » propre à une étape, utilisé sur le terrain, rapport complet', () => {
+  const it = { t: 'Alimentation électrique des pompes, chauffe-eau et système de traitement coupée et verrouillée' };
+  assert.equal(H.court(it), it.t, 'jamais coupé à une virgule');
+  assert.equal(H.court(Object.assign({ court: 'Électricité coupée et cadenassée' }, it)), 'Électricité coupée et cadenassée');
+  assert.equal(H.court({ t: 'Vidanger les filtres (bouchon au bas du filtre), remettre les bouchons' }), 'Vidanger les filtres');
+  const rows = [{ code: 'piscine', nom: 'Piscine', types: ['GEN'], ordre: 1, sections: [{ id: 'p1', titre: 'Phase 1', items: [Object.assign({ n: '1', court: 'Électricité coupée' }, it)] }] }];
+  const d = H.blank({ plan: H.planSite([{ id: 'b', nom: 'P', type_code: 'GEN' }], rows) });
+  assert.equal(H.court(H.sectionsDe(d)[0].items[0]), 'Électricité coupée');
+  assert.match(H.toReport(d, {}).sections[1].items[0], /coupée et verrouillée/);
 });

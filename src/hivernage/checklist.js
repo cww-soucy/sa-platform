@@ -309,7 +309,7 @@
       o.col = a && a.col ? a.col : s.id === 'form' ? 'Sujet de formation' : deux ? 'Matériel' : num ? 'Tâche' : 'Vérification';
       if (deux) o.col2 = a && a.col2 ? a.col2 : 'Pièces de rechange';
       if (num) o.num = true; if (s.commun) o.commun = true; if (s.types) o.types = s.types;
-      o.items = s.items.map(function (it) { var x = {}; ['n', 't', 'b', 'crit', 'g'].forEach(function (k) { if (it[k] != null) x[k] = it[k]; }); return x; });
+      o.items = s.items.map(function (it) { var x = {}; ['n', 't', 'b', 'crit', 'g', 'court'].forEach(function (k) { if (it[k] != null) x[k] = it[k]; }); return x; });
       return o;
     });
   }
@@ -393,6 +393,13 @@
     if (typeDe(d).formation) d.employes.forEach(function (e) { if (!String(e.nom).trim()) return; total += 2; if (e.formation) done++; if (e.demo) done++; });
     travauxDe(d).forEach(function (x) { total++; if (x.fait) done++; });
     return { total: total, done: done, pct: total ? Math.round(done / total * 100) : 0 };
+  }
+  /* Libellé court pour le chantier (sa-terrain, « Texte court ») : `court` du gabarit, sinon le début de l’étape
+     jusqu’à la première précision (« (… », « : », « . », « — » ; jamais à une virgule, qui porte souvent l’action), s’il reste assez de texte. Le rapport garde toujours le texte complet. */
+  function court(it) {
+    if (it && String(it.court || '').trim()) return String(it.court).trim();
+    var t = String(it && it.t || ''), m = /\s*(\(|:\s|\.\s|\s—\s|;\s)/.exec(t.slice(15));
+    return m ? t.slice(0, 15 + m.index).trim() : t;
   }
   function label(it) { return it.t + (it.b ? ' ' + it.b : ''); }
   function labelRep(d, it) { var r = reponse(d, it); return label(it) + (r ? ' : ' + r : ''); }
@@ -497,7 +504,7 @@
   }
   function fichier(d) { d = norm(d); return ('Hivernement ' + (d.info.site || '') + ' ' + (d.info.date || '')).trim().replace(/[\\/:*?"<>|\s]+/g, '-').replace(/-{2,}/g, '-').replace(/^-|-$/g, '') + '.html'; }
 
-  var api = { SECTIONS: SECTIONS, GABARITS: GABARITS, DEFAUT: DEFAUT, gabarits: gabarits, gabaritDe: gabaritDe, planSite: planSite, planPourSite: planPourSite, avecAjustements: avecAjustements, libelleRef: libelleRef, iid: iid, choixDe: choixDe, reponse: reponse, planDe: planDe, versTexte: versTexte, deTexte: deTexte, INFO: INFO, TYPES: TYPES, typeDe: typeDe, sectionsDe: sectionsDe, sectionsLibres: sectionsLibres, LIBRE: LIBRE, numeros: numeros, travauxDe: travauxDe, materielDe: materielDe, matSugg: matSugg, TIPS: TIPS, ALERTE: ALERTE, LOGO: LOGO, blank: blank, norm: norm, isChecklist: isChecklist, fromReport: fromReport, photosOf: photosOf,
+  var api = { SECTIONS: SECTIONS, GABARITS: GABARITS, DEFAUT: DEFAUT, gabarits: gabarits, gabaritDe: gabaritDe, planSite: planSite, planPourSite: planPourSite, avecAjustements: avecAjustements, libelleRef: libelleRef, iid: iid, choixDe: choixDe, reponse: reponse, planDe: planDe, versTexte: versTexte, deTexte: deTexte, INFO: INFO, TYPES: TYPES, typeDe: typeDe, sectionsDe: sectionsDe, sectionsLibres: sectionsLibres, LIBRE: LIBRE, numeros: numeros, travauxDe: travauxDe, materielDe: materielDe, matSugg: matSugg, court: court, TIPS: TIPS, ALERTE: ALERTE, LOGO: LOGO, blank: blank, norm: norm, isChecklist: isChecklist, fromReport: fromReport, photosOf: photosOf,
     progress: progress, manquants: manquants, critiquesManquants: critiquesManquants, toReport: toReport, html: html, texte: texte, fichier: fichier };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.SAHiv = api;
 })(typeof window !== 'undefined' ? window : this);
