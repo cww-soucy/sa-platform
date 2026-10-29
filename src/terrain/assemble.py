@@ -383,9 +383,9 @@ TODO_ITEM=('<div style="display:flex;flex-direction:column;gap:8px;padding:12px 
   '<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><b style="font:600 18px var(--font-heading)">{{ t.titre }}</b><span style="font-size:13px">{{ t.quoi }}</span>'
   '<sc-if value="{{ t.hasTasks }}"><span style="margin-left:auto;font-size:13px;padding:3px 8px;border:1px solid var(--color-accent);color:var(--color-accent-700);white-space:nowrap">{{ t.nTxt }}</span></sc-if></div>'
   '<sc-if value="{{ t.hasDescr }}"><div style="font-size:16px;line-height:1.4;white-space:pre-wrap">{{ t.descr }}</div></sc-if>'
-  '<sc-if value="{{ t.hasTasks }}"><div role="list" style="display:flex;flex-direction:column;gap:6px"><sc-for list="{{ t.tasks }}" as="k">'
-  '<div role="listitem" style="display:flex;gap:10px;align-items:flex-start;opacity:{{ k.op }}"><span aria-hidden="true" style="flex:none;width:22px;height:22px;border:1.5px solid var(--color-text);display:flex;align-items:center;justify-content:center;font-weight:700">{{ k.mark }}</span>'
-  '<span style="font-size:17px;line-height:1.3;text-decoration:{{ k.deco }}">{{ k.label }}</span></div></sc-for></div></sc-if>'
+  '<sc-if value="{{ t.hasTasks }}"><div style="display:flex;flex-direction:column;gap:2px"><sc-for list="{{ t.tasks }}" as="k">'
+  '<button role="checkbox" aria-checked="{{ k.on }}" aria-label="{{ k.aria }}" onClick="{{ k.go }}" style="all:unset;cursor:pointer;display:flex;gap:12px;align-items:center;min-height:44px;opacity:{{ k.op }}"><span aria-hidden="true" style="flex:none;width:28px;height:28px;border:2px solid var(--color-text);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px">{{ k.mark }}</span>'
+  '<span style="font-size:17px;line-height:1.3;text-decoration:{{ k.deco }}">{{ k.label }}</span></button></sc-for></div></sc-if>'
   '<sc-if value="{{ t.hasNotes }}"><div style="font-size:15px;line-height:1.4;white-space:pre-wrap;padding:8px 10px;background:var(--color-accent-100)"><b>Notes du bureau :</b> {{ t.notes }}</div></sc-if></div>')
 TODO=('<sc-if value="{{ cur.hasTodos }}"><div data-todo style="padding:18px 20px 10px;display:flex;flex-direction:column;border-bottom:1px solid var(--color-divider)">'
   '<h3 style="margin:0 0 6px;font-size:24px;display:flex;align-items:center;gap:8px"><sa-i n="clipboard" s="22"></sa-i>À faire sur ce site</h3>'
