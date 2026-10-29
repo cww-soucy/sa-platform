@@ -378,6 +378,26 @@ icons=open(os.path.join(SRC,'design')+'/sa-icons.js',encoding='utf-8').read()
 insp=open(os.path.join(SRC,'inspection','model.js'),encoding='utf-8').read(); assert '</script' not in insp.lower()
 hiv=open(os.path.join(SRC,'hivernage','checklist.js'),encoding='utf-8').read(); assert '</script' not in hiv.lower()
 rt=open(os.path.join(HERE,'runtime.js'),encoding='utf-8').read(); app=open(os.path.join(HERE,'app.js'),encoding='utf-8').read()
+# ---------- FICHE : « À faire » — description, notes et tâches du bon de travail saisis au bureau, avant les relevés ----------
+TODO_ITEM=('<div style="display:flex;flex-direction:column;gap:8px;padding:12px 0;border-top:1px solid var(--color-divider)">'
+  '<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><b style="font:600 18px var(--font-heading)">{{ t.titre }}</b><span style="font-size:13px">{{ t.quoi }}</span>'
+  '<sc-if value="{{ t.hasTasks }}"><span style="margin-left:auto;font-size:13px;padding:3px 8px;border:1px solid var(--color-accent);color:var(--color-accent-700);white-space:nowrap">{{ t.nTxt }}</span></sc-if></div>'
+  '<sc-if value="{{ t.hasDescr }}"><div style="font-size:16px;line-height:1.4;white-space:pre-wrap">{{ t.descr }}</div></sc-if>'
+  '<sc-if value="{{ t.hasTasks }}"><div role="list" style="display:flex;flex-direction:column;gap:6px"><sc-for list="{{ t.tasks }}" as="k">'
+  '<div role="listitem" style="display:flex;gap:10px;align-items:flex-start;opacity:{{ k.op }}"><span aria-hidden="true" style="flex:none;width:22px;height:22px;border:1.5px solid var(--color-text);display:flex;align-items:center;justify-content:center;font-weight:700">{{ k.mark }}</span>'
+  '<span style="font-size:17px;line-height:1.3;text-decoration:{{ k.deco }}">{{ k.label }}</span></div></sc-for></div></sc-if>'
+  '<sc-if value="{{ t.hasNotes }}"><div style="font-size:15px;line-height:1.4;white-space:pre-wrap;padding:8px 10px;background:var(--color-accent-100)"><b>Notes du bureau :</b> {{ t.notes }}</div></sc-if></div>')
+TODO=('<sc-if value="{{ cur.hasTodos }}"><div data-todo style="padding:18px 20px 10px;display:flex;flex-direction:column;border-bottom:1px solid var(--color-divider)">'
+  '<h3 style="margin:0 0 6px;font-size:24px;display:flex;align-items:center;gap:8px"><sa-i n="clipboard" s="22"></sa-i>À faire sur ce site</h3>'
+  '<sc-for list="{{ cur.todos }}" as="t">'+TODO_ITEM+'</sc-for></div></sc-if>')
+_g='<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-bottom:1px solid var(--color-divider)">'
+if M.count(_g)==1: M=M.replace(_g,TODO+_g,1)
+else: print('!! fiche : ancre « À faire »',M.count(_g))
+# Planning : tâches et notes de chaque travail sous sa ligne
+rep('<span style="font-size:14px">{{ p.tache }} · {{ p.ville }}</span>',
+  '<span style="font-size:14px">{{ p.tache }} · {{ p.ville }}</span><sc-if value="{{ p.hasTodo }}"><div data-todo-plan style="display:flex;flex-direction:column;gap:3px;margin-top:2px">'
+  '<sc-for list="{{ p.todo.tasks }}" as="k"><span style="font-size:15px;line-height:1.3;text-decoration:{{ k.deco }};opacity:{{ k.op }}">{{ k.box }} {{ k.label }}</span></sc-for>'
+  '<sc-if value="{{ p.todo.hasNotes }}"><span style="font-size:14px;line-height:1.3;white-space:pre-wrap"><b>Notes :</b> {{ p.todo.notes }}</span></sc-if></div></sc-if>',1)
 # ---------- FICHE : Bureau / Entrepôt = travail interne, aucun bassin → pas de relevé ----------
 _a='<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-bottom:1px solid var(--color-divider)">'
 _e=re.search(r'\n\s*</div>\n\s*</sc-if>\n\s*<!-- ═════ LOGISTIQUE',M)

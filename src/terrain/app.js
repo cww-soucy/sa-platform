@@ -208,26 +208,33 @@ Comp.prototype.loadRef=function(){var self=this;var cached=jget('sa_terrain_ref'
     /* ajustements faits sur ce téléphone et pas encore envoyés : gardés jusqu’à leur envoi */
     var enAttente=jget('sa_terrain_queue',[]).filter(function(x){return x._t==='ouvrage_ajustements'||x._t==='inspection_points';});enAttente.forEach(function(x){if(x._t==='inspection_points'){if(!raw.cat.some(function(p){return p.id===x.id;}))raw.cat=raw.cat.concat([x]);}else if(x._m==='PATCH')raw.adj=raw.adj.filter(function(a){return'annul-'+a.id!==x.id;});else if(!raw.adj.some(function(a){return a.id===x.id;}))raw.adj=raw.adj.concat([x]);});jset('sa_terrain_ref',raw);buildRef(raw);self.syncAt=new Date();self.okLoad('ref');}).catch(function(e){self.failLoad('ref','sites et contrats'+(cached?' (copie locale utilisée)':''),e);});};
 Comp.prototype.loadJobs=function(){var self=this,uid=encodeURIComponent(this.user.id),d0=this.today,d6=iso(addDays(new Date(),6));
-  var q=[get('workorders?select=id,client,site,type,date,assigne,status,descr,groupe_id&date=gte.'+d0+'&date=lte.'+d6+'&assigne=ilike.*'+uid+'*'),
-    get('planning_tasks?select=id,titre,emp,site_id,site_nom,date_debut,date_fin,heure_debut,heure_fin,statut,recurrence,wo_id,plan_id&date_debut=lte.'+d6+'&date_fin=gte.'+d0+'&emp=ilike.*'+uid+'*'),
-    get('plan?select=id,client,addr,date,heure,emp,site_id,descr,type,status&date=gte.'+d0+'&date=lte.'+d6+'&emp=ilike.*'+uid+'*')];
+  var q=[get('workorders?select=id,client,site,type,date,assigne,status,descr,notes,tasks,groupe_id&date=gte.'+d0+'&date=lte.'+d6+'&assigne=ilike.*'+uid+'*'),
+    get('planning_tasks?select=id,titre,descr,emp,site_id,site_nom,date_debut,date_fin,heure_debut,heure_fin,statut,recurrence,wo_id,plan_id&date_debut=lte.'+d6+'&date_fin=gte.'+d0+'&emp=ilike.*'+uid+'*'),
+    get('plan?select=id,client,addr,date,heure,emp,site_id,descr,notes,type,status&date=gte.'+d0+'&date=lte.'+d6+'&emp=ilike.*'+uid+'*')];
   var me=this.user.id,ck='sa_terrain_jobs_'+me,cached=jget(ck,null);
   /* Tournée gardée sur le téléphone : la page rouverte sans réseau (salle mécanique) affiche quand même les visites du jour */
   if(cached&&cached.d===this.today&&!this.jobs.length){this.jobsFromRows(cached.r);this.update();}
   return Promise.all(q).then(function(r){jset(ck,{d:self.today,r:r});self.jobsFromRows(r);self.syncAt=new Date();self.okLoad('jobs');}).catch(function(e){self.failLoad('jobs','tournée du jour',e);});};
+/* Travaux à faire saisis au bureau (SA Platform / sa-admin) : description complète, notes et liste de tâches du bon de travail */
+function todoView(t,h){var n=t.tasks.length,nd=t.tasks.filter(function(x){return x.done;}).length;
+  return{quoi:t.quoi,titre:t.titre,h:h||'',descr:t.descr,hasDescr:!!t.descr,notes:t.notes,hasNotes:!!t.notes,hasTasks:n>0,nTxt:n?nd+'/'+n+' fait'+(nd>1?'s':''):'',
+    tasks:t.tasks.map(function(x){return{label:x.label,mark:x.done?'✓':'',box:x.done?'☑':'☐',deco:x.done?'line-through':'none',op:x.done?0.6:1};})};}
+function todoOf(quoi,titre,descr,notes,tasks){if(typeof tasks==='string'){try{tasks=JSON.parse(tasks);}catch(e){tasks=[];}}
+  tasks=(Array.isArray(tasks)?tasks:[]).map(function(t){return typeof t==='string'?{label:t,done:false}:{label:String((t&&(t.label||t.titre||t.text))||'').trim(),done:!!(t&&t.done)};}).filter(function(t){return t.label;});
+  descr=String(descr||'').trim();notes=String(notes||'').trim();return{quoi:quoi,titre:titre,descr:descr,notes:notes,tasks:tasks,vide:!descr&&!notes&&!tasks.length};}
 Comp.prototype.jobsFromRows=function(r){var self=this,me=this.user.id;{var wo=r[0].filter(function(w){return hasId(w.assigne,me);}),pt=r[1].filter(function(t){return hasId(t.emp,me);}),pl=r[2].filter(function(p){return hasId(p.emp,me);});var all=[];
     var woIds={},plIds={};wo.forEach(function(w){woIds[w.id]=1;});pl.forEach(function(p){plIds[p.id]=1;});
     wo.forEach(function(w){var s=matchSite(w.client,w.site)||pseudoSite(w.client,w.site);
-      all.push({id:'wo:'+w.id,date:w.date,site:s.id,h:'',fin:'',statut:(w.status==='termine'||w.status==='complete'||w.status==='facture')?'fait':'à venir',tache:(String(w.descr||'').split('\n')[0].slice(0,90))||cap(w.type||'Visite'),rec:w.groupe_id?'Visite récurrente':''});});
+      all.push({id:'wo:'+w.id,date:w.date,site:s.id,h:'',fin:'',statut:(w.status==='termine'||w.status==='complete'||w.status==='facture')?'fait':'à venir',tache:(String(w.descr||'').split('\n')[0].slice(0,90))||cap(w.type||'Visite'),rec:w.groupe_id?'Visite récurrente':'',todo:todoOf('Bon de travail',cap(w.type||'Visite'),w.descr,w.notes,w.tasks)});});
     pl.forEach(function(p){var s=(p.site_id&&siteById(p.site_id))||matchSite(p.client,p.addr)||pseudoSite(p.client,p.addr);
-      all.push({id:'pl:'+p.id,date:p.date,site:s.id,h:p.heure||'',fin:'',statut:p.status==='termine'?'fait':'à venir',tache:(String(p.descr||'').split('\n')[0].slice(0,90))||cap(p.type||'Intervention'),rec:''});});
+      all.push({id:'pl:'+p.id,date:p.date,site:s.id,h:p.heure||'',fin:'',statut:p.status==='termine'?'fait':'à venir',tache:(String(p.descr||'').split('\n')[0].slice(0,90))||cap(p.type||'Intervention'),rec:'',todo:todoOf('Créneau',cap(p.type||'Intervention'),p.descr,p.notes,[])});});
     pt.forEach(function(t){if((t.wo_id&&woIds[t.wo_id])||(t.plan_id&&plIds[t.plan_id]))return;
       var s=(t.site_id&&siteById(t.site_id))||matchSite(t.site_nom,'')||pseudoSite(t.site_nom||t.titre,'');
-      for(var i=0;i<7;i++){var dd=iso(addDays(new Date(),i));if(dd>=t.date_debut&&dd<=t.date_fin)all.push({id:'pt:'+t.id+':'+dd,date:dd,site:s.id,h:t.heure_debut||'',fin:t.heure_fin||'',statut:t.statut==='termine'?'fait':'à venir',tache:t.titre||'Tâche',rec:t.recurrence?'Récurrent':''});}});
+      for(var i=0;i<7;i++){var dd=iso(addDays(new Date(),i));if(dd>=t.date_debut&&dd<=t.date_fin)all.push({id:'pt:'+t.id+':'+dd,date:dd,site:s.id,h:t.heure_debut||'',fin:t.heure_fin||'',statut:t.statut==='termine'?'fait':'à venir',tache:t.titre||'Tâche',rec:t.recurrence?'Récurrent':'',todo:todoOf('Tâche planning',t.titre||'Tâche',t.descr,'',[])});}});
     self.jobs=all.filter(function(j){return j.date===self.today;}).sort(function(a,b){return(a.h||'99').localeCompare(b.h||'99');});
     self.days=[];for(var i=0;i<7;i++){var dt=addDays(new Date(),i),ds=iso(dt);
       self.days.push({dow:JOURS[dt.getDay()].slice(0,3),num:dnum(dt),title:(i===0?'Aujourd’hui · ':'')+JOURS[dt.getDay()].toLowerCase()+' '+dnum(dt)+' '+MOIS[dt.getMonth()],
-        items:all.filter(function(j){return j.date===ds;}).sort(function(a,b){return(a.h||'99').localeCompare(b.h||'99');}).map(function(j){return[j.h,j.site,j.tache,j.rec];})});}
+        items:all.filter(function(j){return j.date===ds;}).sort(function(a,b){return(a.h||'99').localeCompare(b.h||'99');}).map(function(j){return[j.h,j.site,j.tache,j.rec,j.todo];})});}
   }};
 Comp.prototype.weekKey=function(){return iso(mondayOf(new Date()));};
 Comp.prototype.ftSet=function(row){this.ft={days:row.days,updated_at:row.updated_at,total_h:row.total_h};jset(LSK_FT+this.user.id+'_'+this.weekKey(),this.ft);};
@@ -535,6 +542,9 @@ Comp.prototype.vals=function(){
       outBg:nOut?'var(--color-accent-900)':'transparent',outFg:nOut?'var(--color-bg)':'var(--color-text)',nChecks:checks.filter(function(c){return c.on;}).length,nChecksTotal:checks.length,
       isValidated:!!va,notValidated:!va,validAt:va,photoReq:T.photo,sid:sid,nSys:sysL.length,nSysDone:nSysDone,pct:sysL.length?nSysDone/sysL.length*100:0,reste:sysL.length-nSysDone?'reste '+(sysL.length-nSysDone)+' système'+(sysL.length-nSysDone>1?'s':''):'prêt à valider',syncTxt:st.sync[sid]==='ok'?'synchronisée avec le bureau':'en attente de réseau — sera envoyée automatiquement'};
     ph=st.photo[sid];
+    /* À faire sur ce site aujourd’hui : tous les travaux du jour à ce site (un site peut avoir un bon de travail ET une tâche planning) */
+    var tds=self.jobs.filter(function(j){return j.site===cj.site&&j.todo&&!j.todo.vide;});if(cj.todo&&!cj.todo.vide&&tds.indexOf(cj)<0)tds.unshift(cj);
+    cur.todos=tds.map(function(j){return todoView(j.todo,j.h);});cur.hasTodos=cur.todos.length>0;
     cur._site=s;cur._T=T;cur._fields=fields;cur._checks=checks;cur._pts=PTS;cur._ps=ps;cur._acts=acts;cur._items=items;cur._missing=missing;
     var stepV={step:step,stStart:step==='start',stEau:step==='eau',stSys:step!=='start'&&step!=='eau'&&step!=='resume',stResume:step==='resume',notResume:step!=='resume',notStart:step!=='start',sysRows:sysRows,sysCur:sysCur,sysPts:sysPts,
       resumeTxt:I.resume(items),validateLbl:missing.length?missing.length+' point'+(missing.length>1?'s':'')+' à répondre':'Valider et envoyer',
@@ -724,7 +734,7 @@ Comp.prototype.vals=function(){
       var va={};va[k]=hhmm(now);if(k!==s.id&&bs.every(function(x){var kk=s.id+'#'+x.id;return kk===k||st.validated[kk];}))va[s.id]=hhmm(now);self.setState(function(s2){return{validated:Object.assign({},s2.validated,va)};});self.enqueue(rec);wos.forEach(function(w){self.enqueue(Object.assign({_t:'workorders'},w));});
       self.flash(navigator.onLine?'Fiche enregistrée':'Fiche enregistrée — sera envoyée au retour du réseau');},
     planDays:days.map(function(d,i){return Object.assign({dow:d.dow,num:d.num,go:function(){self.setState({planDay:i});}},segStyle(st.planDay===i));}),
-    planTitle:dsel.title,planItems:dsel.items.map(function(it){var s=siteById(it[1])||pseudoSite(it[1],'');return{h:it[0]||'—',nom:s.nom,ville:s.ville,tache:it[2],rec:it[3]};}),recurrences:Object.keys(recMap).map(function(k){return recMap[k];}),
+    planTitle:dsel.title,planItems:dsel.items.map(function(it){var s=siteById(it[1])||pseudoSite(it[1],'');var td=it[4]&&!it[4].vide?todoView(it[4],it[0]):null;return{h:it[0]||'—',nom:s.nom,ville:s.ville,tache:it[2],rec:it[3],hasTodo:!!td,todo:td||{tasks:[]}};}),recurrences:Object.keys(recMap).map(function(k){return recMap[k];}),
     myWeek:this.hours==null?'—':fr(Math.round(this.hours*100)/100),me:this.me,queueLbl:this.queueN?this.queueN+' fiche(s) à envoyer':'Rien en attente',
     bureauTel:String(this.bureau||'').replace(/[^\d+]/g,''),logout:function(){jetonFin();localStorage.removeItem('sa_terrain_user');location.reload();},mdp:this.mdpVals(),
     tabs:TABS.map(function(t){return{label:t[1],icon:t[2],go:function(){self.go(t[0]);},fg:tabOf===t[0]?'var(--color-text)':'var(--color-neutral-600)',fw:tabOf===t[0]?600:400,bar:tabOf===t[0]?'inset 0 3px 0 var(--color-text)':'none',dot:t[0]==='fiche'&&!!cj};})
