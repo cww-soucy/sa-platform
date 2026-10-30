@@ -83,7 +83,7 @@ test('logistique : sortie d’inventaire enregistrée au format de SA Platform',
   await page.getByRole('button', { name: 'Plus' }).first().click();
   await page.getByRole('button', { name: 'Plus' }).first().click();
   assert.match(await text(page), /En stock : 10 bidon/);
-  await page.getByRole('button', { name: /Enregistrer la sortie · 1 article/ }).click();
+  await page.getByRole('button', { name: /Enregistrer et envoyer · 1 article/ }).click();
   await noQueue(page);
   const s = db.rows('sorties_inventaire')[0];
   assert.ok(s, 'sortie reçue par le serveur (colonnes valides)');
@@ -101,6 +101,52 @@ async function sign(page) {
   await page.mouse.move(b.x + 90, b.y + 90, { steps: 5 }); await page.mouse.move(b.x + 160, b.y + 50, { steps: 5 });
   await page.mouse.up();
 }
+
+test('logistique : article saisi à la main (hors inventaire) et envoi direct à moi seulement', async () => {
+  const MOI = Object.assign({}, USER, { email: 'kael@soucyaquatik.com' });
+  const { page, db, errors } = await openApp(browser, srv.url, { app: 'terrain', user: MOI, tables: base() });
+  db.fnReply['logistique-courriel'] = { body: { ok: true, a: ['kael@soucyaquatik.com'] } };
+  await ready(page);
+  await T(page, () => window.__terrain.vals().goLog());
+  await page.waitForFunction(() => window.__terrain.inv.length === 3);
+  await page.getByPlaceholder('Chercher un article…').fill('Raccord PVC 2 po');
+  await page.getByText(/Aucun article « Raccord PVC 2 po » dans l’inventaire/).waitFor();
+  assert.equal(await page.getByLabel('Nom de l’article').inputValue(), 'Raccord PVC 2 po', 'le texte cherché sert de nom');
+  await page.getByLabel('Quantité de l’article').fill('3');
+  await page.getByLabel('Unité de l’article').fill('unité');
+  await page.getByRole('button', { name: 'Ajouter', exact: true }).click();
+  assert.match(await text(page), /Raccord PVC 2 po\s*Saisie manuelle \(hors inventaire\) · unité\s*3/);
+  await page.getByPlaceholder('Ex. ENT, camion').fill('ENT');
+  // Envoi direct : on décoche les responsables, on coche « Moi »
+  await page.getByRole('checkbox', { name: /Responsable/ }).click();
+  assert.match(await text(page), /Enregistrer la sortie · 1 article/, 'rien de coché : simple enregistrement');
+  await page.getByRole('checkbox', { name: /Moi/ }).click();
+  assert.equal(await page.getByRole('checkbox', { name: /Moi/ }).getAttribute('aria-checked'), 'true');
+  await page.getByRole('button', { name: /Enregistrer et envoyer · 1 article/ }).click();
+  await noQueue(page);
+  const s = db.rows('sorties_inventaire')[0];
+  assert.deepEqual(s.lignes.map((l) => [l.desc, l.qteSortie, l.unite, l.loc, l.manuel]), [['Raccord PVC 2 po', '3', 'unité', 'ENT', true]]);
+  assert.deepEqual(db.fns.map((f) => f.body), [{ evenement: 'sortie', id: s.id, envoi: { responsables: false, moi: true } }], 'le serveur relit l’adresse : aucune adresse envoyée par le téléphone');
+  await page.waitForFunction(() => /Courriel envoyé à kael@soucyaquatik\.com/.test(window.__terrain.state.toast || ''));
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+test('logistique : aucun destinataire coché → sortie enregistrée sans courriel', async () => {
+  const { page, db, errors } = await openApp(browser, srv.url, { app: 'terrain', user: USER, tables: base() });
+  await ready(page);
+  await T(page, () => window.__terrain.vals().goLog());
+  await page.waitForFunction(() => window.__terrain.inv.length === 3);
+  assert.equal(await page.getByRole('checkbox', { name: /Moi/ }).count(), 0, 'compte sans courriel : pas d’option « Moi »');
+  await page.getByRole('button', { name: 'Plus' }).first().click();
+  await page.getByRole('checkbox', { name: /Responsable/ }).click();
+  await page.getByRole('button', { name: /Enregistrer la sortie · 1 article/ }).click();
+  await noQueue(page);
+  assert.equal(db.rows('sorties_inventaire').length, 1);
+  assert.deepEqual(db.fns, []);
+  assert.deepEqual(errors, []);
+  await page.close();
+});
 
 test('logistique : bon en attente signé par le client → marqué livré sans écraser le reste du bon', async () => {
   const { page, db, errors } = await openApp(browser, srv.url, { app: 'terrain', user: USER, tables: base() });
@@ -138,7 +184,7 @@ test('logistique : nouveau bon créé à partir de la sortie, signé et livré',
   await T(page, () => window.__terrain.vals().goLog());
   await page.waitForFunction(() => window.__terrain.inv.length === 3);
   await page.getByRole('button', { name: 'Plus' }).nth(2).click();
-  await page.getByRole('button', { name: /Enregistrer la sortie/ }).click();
+  await page.getByRole('button', { name: /Enregistrer et envoyer/ }).click();
   await T(page, () => window.__terrain.setState({ logTab: 'bon' }));
   await page.getByRole('button', { name: /Nouveau bon depuis la sortie · 1 article/ }).click();
   assert.match(await text(page), /Joint torique 2 po\s*1 u/);
@@ -165,12 +211,12 @@ test('logistique : sortie enregistrée → proposition immédiate du bon de livr
   await page.getByRole('button', { name: 'Plus' }).first().click();
   await page.getByPlaceholder('N° d’ODT').fill('ODT-4512');
   await page.getByPlaceholder('Ex. ENT, camion').fill('CWW');
-  await page.getByRole('button', { name: /Enregistrer la sortie · 1 article/ }).click();
+  await page.getByRole('button', { name: /Enregistrer et envoyer · 1 article/ }).click();
   await page.getByText(/Sortie SA-INV-\d{8}-\d{3} enregistrée · 1 article\(s\)/).waitFor();
   await noQueue(page);
   const s = db.rows('sorties_inventaire')[0];
   assert.deepEqual(s.lignes.map((l) => [l.desc, l.odt, l.loc]), [['Chlore liquide 20 L', 'ODT-4512', 'CWW']], 'ODT et emplacement dans les lignes (colonnes valides)');
-  assert.deepEqual(db.fns.map((f) => [f.fn, f.body, f.jeton]), [['logistique-courriel', { evenement: 'sortie', id: s.id }, true]], 'après la sortie, avec le jeton de session');
+  assert.deepEqual(db.fns.map((f) => [f.fn, f.body, f.jeton]), [['logistique-courriel', { evenement: 'sortie', id: s.id, envoi: { responsables: true, moi: false } }, true]], 'après la sortie, avec le jeton de session');
   await page.getByRole('button', { name: 'Passer au bon de livraison' }).click();
   assert.match(await text(page), /Chlore liquide 20 L\s*1 bidon/);
   await page.getByPlaceholder('Ex. responsable de la piscine').fill('Marc Roy');
@@ -191,7 +237,7 @@ test('logistique : « Plus tard » garde le bon proposé ; livraison validée sa
   await T(page, () => window.__terrain.vals().goLog());
   await page.waitForFunction(() => window.__terrain.inv.length === 3);
   await page.getByRole('button', { name: 'Plus' }).nth(2).click();
-  await page.getByRole('button', { name: /Enregistrer la sortie/ }).click();
+  await page.getByRole('button', { name: /Enregistrer et envoyer/ }).click();
   await page.getByRole('button', { name: 'Plus tard' }).click();
   assert.doesNotMatch(await text(page), /Passer au bon de livraison/);
   await T(page, () => window.__terrain.setState({ logTab: 'bon' }));

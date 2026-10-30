@@ -183,9 +183,25 @@ def sc_block(M,start):
 rep('{{ hivDoneCount }}<span style="font-weight:400;font-size:22px"> / 33</span>','{{ hivDoneCount }}<span style="font-weight:400;font-size:22px"> / {{ hivTotalSites }}</span>',1)
 # Sortie : plus de « camion » fictif — stock réel de l'inventaire, destination = site du punch en cours
 rep('Camion 07 → {{ logSite }}','Pour : {{ logSite }}',1)
-rep('En camion : {{ p.reste }} {{ p.unite }}','En stock : {{ p.reste }} {{ p.unite }}',1)
+rep('En camion : {{ p.reste }} {{ p.unite }}','{{ p.sous }}',1)
 rep('<sc-for list="{{ inventaire }}" as="p">','<input class="input" value="{{ invQ }}" onInput="{{ invQ_ }}" placeholder="Chercher un article…" style="min-height:48px;font-size:17px;margin-bottom:8px"><sc-if value="{{ noInv }}"><div style="font-size:15px;padding:8px 0">Inventaire en chargement ou indisponible.</div></sc-if><sc-for list="{{ inventaire }}" as="p">',1)
 M=M.replace('onInput="{{ invQ_ }}"','onInput="{{ onInvQ }}"')
+# Sortie : article saisi à la main (hors inventaire) et envoi direct par courriel (responsables de l'entrepôt et/ou soi-même)
+rep('<sc-for list="{{ inventaire }}" as="p">','<sc-if value="{{ invVide }}"><div role="status" style="font-size:15px;padding:4px 0 10px">{{ invVideTxt }}</div></sc-if><sc-for list="{{ inventaire }}" as="p">',1)
+rep('<button class="btn btn-primary" onClick="{{ saveSortie }}" style="min-height:58px;font-size:20px;margin-top:14px"><span>Enregistrer la sortie · {{ sortieCount }} article(s)</span></button>',
+  '<div style="border-top:1px solid var(--color-divider);padding-top:12px;display:flex;flex-direction:column;gap:8px">'
+  '<h3 style="margin:0;font-size:19px">Article hors inventaire</h3>'
+  '<input class="input" value="{{ soManNom }}" onInput="{{ onSoManNom }}" placeholder="Nom de l’article (saisie manuelle)" aria-label="Nom de l’article" style="min-height:48px;font-size:17px">'
+  '<div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end">'
+  '<div class="field"><label style="font-size:14px">Quantité</label><input class="input" value="{{ soManQty }}" onInput="{{ onSoManQty }}" inputmode="decimal" aria-label="Quantité de l’article" style="min-height:48px;font-size:17px"></div>'
+  '<div class="field"><label style="font-size:14px">Unité</label><input class="input" value="{{ soManU }}" onInput="{{ onSoManU }}" placeholder="Ex. sac, L" aria-label="Unité de l’article" style="min-height:48px;font-size:17px"></div>'
+  '<button class="btn btn-secondary" onClick="{{ addManuel }}" style="min-height:48px;font-size:16px;gap:6px"><sa-i n="plus" s="18"></sa-i>Ajouter</button></div></div>'
+  '<div style="border-top:1px solid var(--color-divider);margin-top:14px;padding-top:12px;display:flex;flex-direction:column;gap:8px">'
+  '<h3 style="margin:0;font-size:19px">Envoi direct par courriel</h3>'
+  '<button role="checkbox" aria-checked="{{ envR }}" onClick="{{ togEnvR }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;min-height:50px;padding:0 12px;border:1px solid var(--color-divider);font-size:17px;background:{{ envRBg }};color:{{ envRFg }}"><span style="font-size:22px">{{ envRBox }}</span>Responsable(s) de l’entrepôt</button>'
+  '<sc-if value="{{ hasMoi }}"><button role="checkbox" aria-checked="{{ envM }}" onClick="{{ togEnvM }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;min-height:50px;padding:0 12px;border:1px solid var(--color-divider);font-size:17px;background:{{ envMBg }};color:{{ envMFg }}"><span style="font-size:22px">{{ envMBox }}</span><span style="display:flex;flex-direction:column"><span>Moi</span><span style="font-size:13px">{{ moiMail }}</span></span></button></sc-if>'
+  '<sc-if value="{{ noMoi }}"><span style="font-size:13px">{{ noMoiTxt }}</span></sc-if></div>'
+  '<button class="btn btn-primary" onClick="{{ saveSortie }}" style="min-height:58px;font-size:20px;margin-top:14px"><span>{{ saveLbl }}</span></button>',1)
 # Bon : liste des bons en attente, puis le bon choisi (signature du client)
 B=sc_block(M,'<sc-if value="{{ isBon }}">')
 if B:

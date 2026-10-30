@@ -55,3 +55,14 @@ test('logistique-courriel : format demandé (date et heure d’émission, ODT, c
   assert.match(m.sujet, /— ODT ODT-4512$/);
   assert.match(m.html, /<th>Quantités<\/th><th>Emp<\/th>/);
 });
+
+test('logistique-courriel : envoi direct depuis sa-terrain (responsables et/ou moi) — le choix passe outre l’interrupteur', async () => {
+  const L = await mod();
+  const c = L.reglage({ responsables: [{ nom: 'Entrepôt', courriel: 'entrepot@soucy.com' }], sortie: false });
+  assert.deepEqual(L.destinatairesEnvoi(c, 'sortie', null, 'moi@soucy.com'), [], 'appel automatique : sorties désactivées');
+  assert.deepEqual(L.destinatairesEnvoi(c, 'sortie', { responsables: true, moi: false }, 'moi@soucy.com'), ['entrepot@soucy.com']);
+  assert.deepEqual(L.destinatairesEnvoi(c, 'sortie', { responsables: false, moi: true }, ' Moi@Soucy.com '), ['moi@soucy.com']);
+  assert.deepEqual(L.destinatairesEnvoi(c, 'sortie', { responsables: true, moi: true }, 'entrepot@soucy.com'), ['entrepot@soucy.com'], 'sans doublon');
+  assert.deepEqual(L.destinatairesEnvoi(c, 'sortie', { responsables: false, moi: true }, ''), [], 'compte sans courriel');
+  assert.deepEqual(L.destinatairesEnvoi(c, 'livraison', { responsables: false, moi: true }, 'moi@soucy.com'), [], 'envoi direct : sorties seulement');
+});

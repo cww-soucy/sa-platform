@@ -361,7 +361,7 @@ Comp.prototype.flush=function(){var self=this,q=jget('sa_terrain_queue',[]);if(!
   /* _m:'FN' → appel d'une fonction serveur (courriel à l'entrepôt) : retiré de la file dès que le serveur répond, même par un refus
      (service non déployé ou non configuré) — un courriel ne bloque jamais les fiches qui suivent */
   if(item._m==='FN'){jetonFrais().catch(function(){}).then(function(){return window.fetch(SB+'/functions/v1/'+tbl,avecJeton({method:'POST',headers:Object.assign({'Content-Type':'application/json'},H),body:JSON.stringify(item.body),signal:ac&&ac.signal}));})
-    .then(function(){clearTimeout(to);self._fq=false;var cur=jget('sa_terrain_queue',[]).filter(function(x){return x.id!==item.id;});jset('sa_terrain_queue',cur);self.queueN=cur.length;self.update();if(cur.length)self.flush();})
+    .then(function(r){clearTimeout(to);self._fq=false;var cur=jget('sa_terrain_queue',[]).filter(function(x){return x.id!==item.id;});jset('sa_terrain_queue',cur);self.queueN=cur.length;if(item.body&&item.body.envoi)self.envoiRetour(r);self.update();if(cur.length)self.flush();})
     .catch(function(){clearTimeout(to);self._fq=false;self.queueN=q.length;self.update();});return;}
   if(item._m==='TASK'){envoyerTache(item,0).then(function(){clearTimeout(to);self._fq=false;var cur=jget('sa_terrain_queue',[]).filter(function(x){return x.id!==item.id;});jset('sa_terrain_queue',cur);self.queueN=cur.length;self.sendErr='';self.update();if(cur.length)self.flush();})
     .catch(function(){clearTimeout(to);self._fq=false;self.queueN=q.length;self.update();});return;}
@@ -403,17 +403,33 @@ Comp.prototype.deletePunch=function(){var e=this.state.pe;if(!e)return;if(!e.con
 /* ---------- Logistique : sortie d'inventaire → bon de livraison signé (mêmes tables et formats que SA Platform) ---------- */
 Comp.prototype.logSiteObj=function(){var cj=this.curJob();return cj?(siteById(cj.site)||pseudoSite(cj.site,'')):null;};
 Comp.prototype.saveSortie=function(){var self=this,sel=this.state.sortie,items=this.inv.filter(function(p){return sel[p.id]>0;}).map(function(p){return{nom:p.nom,qty:sel[p.id],unite:p.unite||''};});
+  /* articles saisis à la main (hors inventaire) : même ligne, marquée « manuel » pour le bureau */
+  (this.state.soMan||[]).forEach(function(m){if(m.qty>0)items.push({nom:m.nom,qty:m.qty,unite:m.unite||'',manuel:true});});
   if(!items.length){this.flash('Choisissez au moins un article');return;}var s=this.logSiteObj(),dest=s?s.nom:'',now=new Date(),id=rid('so'),no=noBon('SA-INV-'),odt=this.soOdtVal(),loc=String(this.state.soLoc||'').trim();
   this.enqueue({_t:'sorties_inventaire',id:id,no_bon:no,nom:this.me.nom,no_employe:this.user.id,departement:this.user.dept||'',date:iso(now),client:dest,
-    lignes:items.map(function(i){var l={code:'',loc:loc,desc:i.nom,qteSortie:String(i.qty),qteRetour:'',projet:dest,unite:i.unite};if(odt)l.odt=odt;return l;}),status:'envoye',sent_at:now.toISOString(),created_by:this.user.id,created_at:now.toISOString(),updated_at:now.toISOString()});
-  this.notifier('sortie',id);
+    lignes:items.map(function(i){var l={code:'',loc:loc,desc:i.nom,qteSortie:String(i.qty),qteRetour:'',projet:dest,unite:i.unite};if(odt)l.odt=odt;if(i.manuel)l.manuel=true;return l;}),status:'envoye',sent_at:now.toISOString(),created_by:this.user.id,created_at:now.toISOString(),updated_at:now.toISOString()});
+  /* Envoi direct : courriel aux responsables de l'entrepôt et/ou à soi-même (adresse relue par le serveur dans le compte) — rien si les deux sont décochés */
+  var env=this.soEnvoi();if(env.responsables||env.moi)this.notifier('sortie',id,env);
   /* On propose tout de suite de passer en bon de livraison (signature du client sur le téléphone, ou livraison validée sans signature) */
-  this.lastSortie={site:s,items:items,no:no};this.setState({sortie:{},soAsk:true,soOdt:null});this.flash('Sortie enregistrée · '+items.length+' article(s)');};
+  this.lastSortie={site:s,items:items.map(function(i){return{nom:i.nom,qty:i.qty,unite:i.unite};}),no:no};this.setState({sortie:{},soMan:[],soAsk:true,soOdt:null});this.flash('Sortie enregistrée · '+items.length+' article(s)');};
 /* Courriel automatique aux responsables de l'entrepôt (fonction serveur logistique-courriel) : passe par la file d'attente,
    après la ligne qu'il annonce ; le serveur relit la ligne et les destinataires réglés dans sa-admin › Logistique › Entrepôt. */
 /* ODT de la sortie : saisi, sinon celui du punch en cours. Rangé dans chaque ligne (sorties_inventaire n'a pas de colonne odt). */
 Comp.prototype.soOdtVal=function(){var v=this.state.soOdt;if(v!=null)return String(v).trim();var t=this.activeTask(this.viewDays());return String(t&&t.odt||'').trim();};
-Comp.prototype.notifier=function(ev,id){this.enqueue({_t:'logistique-courriel',_m:'FN',id:'ce-'+ev+'-'+id,body:{evenement:ev,id:id}});};
+Comp.prototype.notifier=function(ev,id,envoi){var b={evenement:ev,id:id};if(envoi)b.envoi=envoi;this.enqueue({_t:'logistique-courriel',_m:'FN',id:'ce-'+ev+'-'+id,body:b});};
+/* Destinataires choisis pour la sortie : responsables cochés par défaut (comme avant), soi-même seulement si le compte a un courriel */
+Comp.prototype.soEnvoi=function(){var st=this.state;return{responsables:st.soEnvR!==false,moi:!!(st.soEnvM&&this.user.email)};};
+/* Article hors inventaire : nom libre (sinon le texte cherché), quantité au clavier, unité facultative */
+Comp.prototype.addManuel=function(){var st=this.state,nom=String(st.soManNom!=null&&st.soManNom!==''?st.soManNom:(st.invQ||'')).trim(),q=Number(String(st.soManQty==null?'1':st.soManQty).replace(',','.'));
+  if(!nom){this.flash('Écrivez le nom de l’article');return;}if(!(q>0)){this.flash('Quantité invalide');return;}
+  var m={id:rid('m'),nom:nom,qty:Math.round(q*100)/100,unite:String(st.soManU||'').trim()};
+  this.setState({soMan:(st.soMan||[]).concat([m]),soManNom:'',soManQty:'1',soManU:'',invQ:''});this.flash('Article ajouté : '+nom);};
+/* Réponse de la fonction serveur à un envoi direct : on dit au technicien si le courriel est parti */
+Comp.prototype.envoiRetour=function(r){var self=this;if(!r||!r.json){this.flash('Courriel non envoyé — service de courriel indisponible');return;}
+  r.json().then(function(j){if(j&&j.ok)self.flash('Courriel envoyé à '+(j.a||[]).join(', '));
+    else if(j&&j.raison==='aucun_destinataire')self.flash('Courriel non envoyé : aucun destinataire (responsables à régler dans sa-admin, ou courriel absent de votre compte)');
+    else self.flash('Courriel non envoyé'+(j&&j.raison?' ('+j.raison+')':'')+' — la sortie est enregistrée, prévenez le bureau');},
+    function(){self.flash('Courriel non envoyé — service de courriel indisponible');});};
 Comp.prototype.newBonFromSortie=function(){var L=this.lastSortie;if(!L)return;var s=L.site,now=new Date();
   /* même numéro que la sortie (SA-INV-AAAAMMJJ-NNN → SA-AAAAMMJJ-NNN) : le bureau relie ainsi le bon à sa sortie */
   var b={id:rid('bl'),no_bon:L.no?String(L.no).replace(/^SA-INV-/,'SA-'):noBon('SA-'),client:s?s.nom:'',tel:'',adresse:s?s.addr:'',date:iso(now),heure:hhmm(now),technicien:this.me.nom,urgent:false,status:'brouillon',
@@ -613,14 +629,23 @@ Comp.prototype.vals=function(){
   // ---- Logistique
   var ls=this.logSiteObj(),sel=st.sortie,iq=norm(st.invQ),bon=this.curBon(),mine=norm(this.me.nom);
   var inventaire=this.inv.filter(function(p){return!iq||norm(p.nom).indexOf(iq)>=0||(sel[p.id]>0);}).map(function(p){var q=sel[p.id]||0,set=function(n){self.setState(function(s2){var o=Object.assign({},s2.sortie);o[p.id]=Math.max(0,n);return{sortie:o};});};
-    return{nom:p.nom,unite:p.unite||'',qty:q,reste:p.qte==null?'—':fr(Math.round((Number(p.qte)-q)*100)/100),minus:function(){set(q-1);},plus:function(){set(q+1);}};});
-  var sortieCount=this.inv.filter(function(p){return sel[p.id]>0;}).length;
+    var reste=p.qte==null?'—':fr(Math.round((Number(p.qte)-q)*100)/100);return{nom:p.nom,unite:p.unite||'',qty:q,reste:reste,sous:'En stock : '+reste+' '+(p.unite||''),minus:function(){set(q-1);},plus:function(){set(q+1);}};});
+  var soMan=st.soMan||[],setMan=function(id,n){self.setState(function(s2){return{soMan:(s2.soMan||[]).map(function(m){return m.id===id?Object.assign({},m,{qty:Math.max(0,Math.round(n*100)/100)}):m;}).filter(function(m){return m.qty>0;})};});};
+  inventaire=inventaire.concat(soMan.map(function(m){return{nom:m.nom,unite:m.unite,qty:m.qty,reste:'—',sous:'Saisie manuelle (hors inventaire)'+(m.unite?' · '+m.unite:''),manuel:true,minus:function(){setMan(m.id,m.qty-1);},plus:function(){setMan(m.id,m.qty+1);}};}));
+  var sortieCount=this.inv.filter(function(p){return sel[p.id]>0;}).length+soMan.filter(function(m){return m.qty>0;}).length,env=this.soEnvoi(),invVide=!!(iq&&this.inv.length&&!this.inv.some(function(p){return norm(p.nom).indexOf(iq)>=0;}));
+  var coche=function(on){return on?{bg:'var(--color-text)',fg:'var(--color-bg)',box:'☑'}:{bg:'transparent',fg:'var(--color-text)',box:'☐'};};
   var bonList=this.bons.filter(function(b){return b.status!=='livre';}).map(function(b){var m=norm(b.technicien)===mine;return{_m:m,_d:b.date||'',no:b.no_bon||'—',client:b.client||'Client non précisé',sub:(b.date||'—')+(b.urgent?' · URGENT':'')+' · '+(m?'à vous':(b.technicien||'non assigné')),open:function(){self.openBon(b.id);}};})
     .sort(function(a,b){return(b._m-a._m)||a._d.localeCompare(b._d);});
   var logV={isLog:scr==='logistique',isSortie:st.logTab==='sortie',isBon:st.logTab==='bon',tabSortie:function(){self.setState({logTab:'sortie'});},tabBon:function(){self.setState({logTab:'bon'});},
     sortieTabBg:segStyle(st.logTab==='sortie').bg,sortieTabFg:segStyle(st.logTab==='sortie').fg,bonTabBg:segStyle(st.logTab==='bon').bg,bonTabFg:segStyle(st.logTab==='bon').fg,
     logSite:ls?ls.nom:'aucun site (pas de punch en cours)',inventaire:inventaire,noInv:!this.inv.length,sortieCount:sortieCount,saveSortie:function(){self.saveSortie();},invQ:st.invQ,onInvQ:function(e){self.setState({invQ:e.target.value});},
-    soOdt:this.soOdtVal(),onSoOdt:function(e){self.setState({soOdt:e.target.value});},soLoc:st.soLoc||'',onSoLoc:function(e){self.setState({soLoc:e.target.value});},
+    soOdt:this.soOdtVal(),invVide:invVide,invVideTxt:'Aucun article « '+(st.invQ||'')+' » dans l’inventaire — ajoutez-le manuellement ci-dessous.',
+    soManNom:st.soManNom!=null&&st.soManNom!==''?st.soManNom:(invVide?st.invQ:''),onSoManNom:function(e){self.setState({soManNom:e.target.value});},soManQty:st.soManQty==null?'1':st.soManQty,onSoManQty:function(e){self.setState({soManQty:e.target.value});},
+    soManU:st.soManU||'',onSoManU:function(e){self.setState({soManU:e.target.value});},addManuel:function(){self.addManuel();},
+    envR:env.responsables?'true':'false',envRBox:coche(env.responsables).box,envRBg:coche(env.responsables).bg,envRFg:coche(env.responsables).fg,togEnvR:function(){self.setState({soEnvR:!env.responsables});},
+    hasMoi:!!this.user.email,noMoi:!this.user.email,moiMail:this.user.email||'',envM:env.moi?'true':'false',envMBox:coche(env.moi).box,envMBg:coche(env.moi).bg,envMFg:coche(env.moi).fg,togEnvM:function(){self.setState({soEnvM:!env.moi});},
+    noMoiTxt:'Pas de courriel dans votre compte : le bureau peut l’ajouter dans sa-admin › Comptes.',
+    saveLbl:(env.responsables||env.moi?'Enregistrer et envoyer · ':'Enregistrer la sortie · ')+sortieCount+' article(s)',onSoOdt:function(e){self.setState({soOdt:e.target.value});},soLoc:st.soLoc||'',onSoLoc:function(e){self.setState({soLoc:e.target.value});},
     soAsk:!!(st.soAsk&&this.lastSortie),soAskTxt:this.lastSortie?('Sortie '+(this.lastSortie.no||'')+' enregistrée · '+this.lastSortie.items.length+' article(s)'+(this.lastSortie.site?' pour '+this.lastSortie.site.nom:'')):'',
     soAskGo:function(){self.newBonFromSortie();},soAskLater:function(){self.setState({soAsk:false});},
     noSigLbl:st.noSig?'Confirmer : livré sans signature':'Valider sans signature',validerSansSig:function(){self.validerSansSig();},
