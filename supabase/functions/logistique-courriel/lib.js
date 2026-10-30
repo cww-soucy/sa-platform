@@ -20,6 +20,22 @@ export function destinataires(cfg) {
   return out;
 }
 
+/** Courriel valide (forme seulement) */
+export function courrielValide(c) { return COURRIEL.test(String(c || "").trim()); }
+
+/**
+ * Destinataires d'un envoi. Sans « envoi » (appel automatique, sa-admin) : responsables si l'événement est activé.
+ * Avec « envoi » (envoi direct choisi par le technicien, sortie seulement) : responsables cochés et/ou l'adresse du compte
+ * connecté (« moi » : relue en base par le serveur, jamais prise du navigateur) — le choix explicite passe outre l'interrupteur.
+ */
+export function destinatairesEnvoi(cfg, evenement, envoi, moi) {
+  if (!envoi || typeof envoi !== "object" || evenement !== "sortie") return actif(cfg, evenement) ? destinataires(cfg) : [];
+  const out = envoi.responsables ? destinataires(cfg) : [];
+  const m = String(moi || "").trim().toLowerCase();
+  if (envoi.moi && COURRIEL.test(m) && !out.includes(m)) out.push(m);
+  return out;
+}
+
 /** L'événement est-il envoyé avec ce réglage ? */
 export function actif(cfg, evenement) {
   return evenement === "sortie" ? cfg.sortie : evenement === "livraison" ? cfg.livraison : false;
