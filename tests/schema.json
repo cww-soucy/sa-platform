@@ -163,7 +163,9 @@
     "status",
     "created_by",
     "created_at",
-    "updated_at"
+    "updated_at",
+    "wo_id",
+    "odt"
   ],
   "releves": [
     "id",
@@ -258,7 +260,8 @@
     "valide_at",
     "heure_debut",
     "heure_fin",
-    "ordre"
+    "ordre",
+    "odt"
   ],
   "feuilles_temps_envois": [
     "id",

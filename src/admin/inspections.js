@@ -364,7 +364,7 @@ Comp.prototype.hivSiteVals=function(site){var self=this,H=window.SAHiv,D=this.D;
   var L=this.hvDuSite(site).slice().sort(function(a,b){return String(b.date_inspection||'').localeCompare(String(a.date_inspection||''));}),adj=this.adjDe(site.id);
   var rows=L.map(function(r){var hv=H.isChecklist(r)?H.fromReport(r):null,pg=hv&&H.progress(hv),env=hv&&hv.envois.length?hv.envois[hv.envois.length-1]:null;
     return{date:r.date_inspection||'—',tech:r.technicien||'—',av:hv?pg.done+' / '+pg.total+' cases ('+pg.pct+' %)':'Ancien rapport de pré-hivernage',
-      etat:(r.status==='complete'?'Complété':'Brouillon')+(env?' · envoyé le '+String(env.le).slice(0,10):''),
+      etat:(r.status==='complete'?'Complété':r.status==='planifie'?hvPrevuTxt(r):'Brouillon')+(env?' · envoyé le '+String(env.le).slice(0,10):''),
       open:function(){self.openDoc('hv',r.id);},print:function(){self.printHtml(self.hvDocHtml(r));},send:function(){self.hvEnvoyerLigne(r);}};});
   var bs=(site.bassins||[]).filter(function(b){return b&&String(b.nom||'').trim();});
   var ouv=bs.map(function(b,i){var g=H.gabaritDe(b,D.gab),bid=String(b.id||''),mien=function(dom,act){return adj.filter(function(r){return r.domaine===dom&&r.action===act&&(!r.bassin_id||String(r.bassin_id)===bid);}).length;};
@@ -372,9 +372,10 @@ Comp.prototype.hivSiteVals=function(site){var self=this,H=window.SAHiv,D=this.D;
     return{nom:b.nom,gab:g?g.nom:'Aucun hivernement',choix:b.hiv&&b.hiv.gabarit?'choisi dans la fiche':'selon le type',
       adj:(ret?ret+' étape(s) retirée(s)':'')+(ret&&aj?' · ':'')+(aj?aj+' ajoutée(s)':'')||'liste complète du gabarit',
       cfg:function(){self.hvConfigOuvrage(site,(site.bassins||[]).indexOf(b));}};});
-  var dernier=L[0],faitAn=L.some(function(r){return String(r.date_inspection||'').slice(0,4)===String(new Date().getFullYear());});
+  var faits=L.filter(function(r){return r.status!=='planifie';}),prevu=L.filter(function(r){return r.status==='planifie';}).slice(-1)[0];
+  var dernier=faits[0],faitAn=faits.some(function(r){return String(r.date_inspection||'').slice(0,4)===String(new Date().getFullYear());});
   return{loading:this.docs.hv===null,err:this.docs.hv==='err'?'Lecture impossible : '+(this.docErr||''):'',rows:rows,none:Array.isArray(this.docs.hv)&&!rows.length,
-    resume:faitAn?'Hivernement fait cette année'+(dernier?' (dernier : '+(dernier.date_inspection||'—')+')':''):'Pas encore d’hivernement cette année',
+    resume:(faitAn?'Hivernement fait cette année'+(dernier?' (dernier : '+(dernier.date_inspection||'—')+')':''):'Pas encore d’hivernement cette année')+(prevu?' · '+hvPrevuTxt(prevu):''),
     nouveau:function(){self.hvNouveauSite(site);},ouv:ouv,sansOuv:!ouv.length,ficheSite:function(){self.openSiteFiche(site.id);},gabarits:function(){self.gbOpen('piscine');},
     plan:H.planPourSite(site,D.gab,adj).sections.reduce(function(n,s){return n+s.items.length;},0)+' étapes dans la liste de ce site',
     /* Sections propres au site (« Glissade », « Bâtiment des pompes »…) : une ligne d'ouvrage_ajustements par étape, comme sur le terrain */
