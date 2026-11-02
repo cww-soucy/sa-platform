@@ -184,7 +184,7 @@ for ws in wb.worksheets:
       'fill': {c.coordinate: c.fill.fgColor.rgb for row in ws.iter_rows() for c in row if c.fill.fill_type},
       'bold': [c.coordinate for row in ws.iter_rows() for c in row if c.font.b],
       'fmt': {c.coordinate: c.number_format for row in ws.iter_rows() for c in row if c.number_format != 'General'},
-      'freeze': ws.freeze_panes, 'merged': [str(m) for m in ws.merged_cells.ranges], 'h1': ws.row_dimensions[1].height, 'images': len(ws._images)}
+      'freeze': ws.freeze_panes, 'merged': [str(m) for m in ws.merged_cells.ranges], 'h1': ws.row_dimensions[1].height}
 z = zipfile.ZipFile(sys.argv[1])
 r['_files'] = z.namelist()
 r['_cm'] = sum(z.read(n).decode().count('cm="1"') for n in z.namelist() if n.startswith('xl/worksheets/sheet'))
@@ -213,7 +213,8 @@ test('Paie : Excel selon le gabarit — Heures par projet, Projets (site reconnu
   assert.deepEqual(Object.keys(wb).filter((k) => k[0] !== '_'), ['Sommaire', 'Heures par projet', 'Kaël Test', 'Autre Tech', 'Journal des punchs', 'Projets']);
   assert.ok(wb._files.includes('xl/metadata.xml') && wb._files.includes('xl/media/image1.png'), 'formules dynamiques + logo');
   assert.ok(wb._calc, 'recalcul à l’ouverture');
-  for (const k of Object.keys(wb).filter((k) => k[0] !== '_')) { assert.equal(wb[k].h1, 43.5, k); assert.equal(wb[k].images, 1, 'logo ' + k); }
+  // logo : un dessin par feuille (lu dans le zip — openpyxl ne lit les images qu'avec Pillow)
+  Object.keys(wb).filter((k) => k[0] !== '_').forEach((k, i) => { assert.equal(wb[k].h1, 43.5, k); assert.ok(wb._files.includes('xl/drawings/drawing' + (i + 1) + '.xml'), 'logo ' + k); });
 
   // Projets : lieu tel qu'exporté → site reconnu (fusion suivie, majuscules ignorées), sinon le lieu lui-même
   const P = wb.Projets.cells;
