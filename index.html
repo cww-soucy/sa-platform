@@ -3803,8 +3803,8 @@ function askConfirm(message, onOk, okLabel, title){
   openModal('confirmModal');
 }
 
-function woTypeLbl(t){var m={installation:'Installation',entretien:'Entretien',reparation:'Réparation',inspection:'Inspection',miseeneau:'Mise en eau',autre:'Autre'};return m[t]||t;}
-function woTypeIcon(t){var m={installation:'🔧',entretien:'🧹',reparation:'🔨',inspection:'🔍',miseeneau:'💧',autre:'📋'};return m[t]||'📋';}
+function woTypeLbl(t){var m={installation:'Installation',entretien:'Entretien',reparation:'Réparation',inspection:'Inspection',miseeneau:'Mise en eau',hivernement:'Hivernement',autre:'Autre'};return m[t]||t;}
+function woTypeIcon(t){var m={installation:'🔧',entretien:'🧹',reparation:'🔨',inspection:'🔍',miseeneau:'💧',hivernement:'❄️',autre:'📋'};return m[t]||'📋';}
 function woPrioClass(p){var m={urgent:'badge-red',normal:'badge-blue',planifie:'badge-green'};return m[p]||'badge-blue';}
 function woStatusClass(s){var m={ouvert:'badge-orange',en_cours:'badge-blue',complete:'badge-green',facture:'badge-purple'};return m[s]||'badge-blue';}
 function siteTypeIcon(t){var m={creusee:'🏊',horsterre:'🌊',spa:'♨️',commercial:'🏢',autre:'💦'};return m[t]||'💦';}
@@ -3832,7 +3832,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // a bien pris effet. Il reflète maintenant APP_BUILD ci-dessous, à mettre à jour à CHAQUE fois que
   // CACHE_NAME change dans sw.js (même valeur, ex: 'v48').
   try{
-    var APP_BUILD='v81';
+    var APP_BUILD='v82';
     var vb=document.createElement('div');
     vb.id='__buildBadge';
     vb.textContent='build '+APP_BUILD+' ⟲';
@@ -4539,7 +4539,7 @@ function boardCol(techId,nom,veh,b,pool){
   h+='</div>';
   col.innerHTML=h;return col;
 }
-function boardTypeHex(t){return {installation:'#1D9E75',entretien:'#1A5C9A',reparation:'#FF6B00',inspection:'#0E9C86',miseeneau:'#0E9C86',livraison:'#7C3AED',autre:'#6B8CAE'}[t]||'#1A5C9A';}
+function boardTypeHex(t){return {installation:'#1D9E75',entretien:'#1A5C9A',reparation:'#FF6B00',inspection:'#0E9C86',miseeneau:'#0E9C86',hivernement:'#3B6EA8',livraison:'#7C3AED',autre:'#6B8CAE'}[t]||'#1A5C9A';}
 function boardCardHTML(it){
   var hex=boardTypeHex(it.type);
   return '<div class="pm-card" draggable="true" data-kind="'+it.kind+'" data-id="'+it.id+'" style="border-left-color:'+hex+'">'

@@ -253,7 +253,9 @@ FEDLG=('<template data-sc="if" value="{{ feOpen }}"><div class="dialog-backdrop"
   +IF('feReady',IF('feNew',SEG('feKinds'))
     +'<datalist id="saSites"><sc-for list="{{ sitesList }}" as="s"><option value="{{ s.v }}"></option></sc-for></datalist>'
     +IF('isWO',G2(FL('Client','<input class="input" list="saSites" value="{{ fClient }}" onInput="{{ onClient }}" placeholder="Nom du client ou du site">'),FL('Site / adresse',INP('fSite','onSite')))
-       +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">'+FL('Type',SEL('fTypes','onType'))+FL('Priorité',SEL('fPrios','onPrio'))+FL('Statut',SEL('fStats','onStat'))+'</div>')
+       +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">'+FL('Type',SEL('fTypes','onType'))+FL('Priorité',SEL('fPrios','onPrio'))+FL('Statut',SEL('fStats','onStat'))+'</div>'
+       +FL('{{ odtLbl }}',INP('fOdt','onOdt','text',' placeholder="N° d’ODT (ex. 24-1187)"'))
+       +IF('isHivWO','<div style="font-size:13px;border-left:3px solid var(--color-text);padding:4px 10px">{{ hivWoNote }}</div>'))
     +IF('isPlanF',G2(FL('Client / site','<input class="input" list="saSites" value="{{ fClient }}" onInput="{{ onClient }}">'),FL('Adresse',INP('fAddr','onAddr')))
        +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">'+FL('Heure',INP('fHeure','onHeure','time'))+FL('Type',SEL('fTypes','onType'))+FL('Statut',SEL('fStats','onStat'))+'</div>'
        +IF('hasWoLinks',FL('Bon de travail lié (optionnel)','<select class="input" onChange="{{ onWo }}"><option value="">— Aucun —</option><sc-for list="{{ fWo }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></sc-for></select>')))

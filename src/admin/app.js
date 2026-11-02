@@ -432,12 +432,40 @@ Comp.prototype.teamReport=function(wk,prompt){var self=this,D=this.D,data=this.w
   L.push('','---','Soucy Aquatik · sa-admin');return L.join('\n');};
 
 /* ═════════════ Éditeur complet : bon de travail · créneau · tâche planning (mêmes champs que SA Platform) ═════════════ */
-var WO_TYPES=[['installation','Installation'],['entretien','Entretien'],['reparation','Réparation'],['inspection','Inspection'],['miseeneau','Mise en eau'],['autre','Autre']];
+var WO_TYPES=[['installation','Installation'],['entretien','Entretien'],['reparation','Réparation'],['inspection','Inspection'],['miseeneau','Mise en eau'],['hivernement','Hivernement'],['autre','Autre']];
 var WO_PRIO=[['normal','Normal'],['urgent','Urgent'],['planifie','Planifié']];
 var WO_STAT=[['ouvert','Ouvert'],['en_cours','En cours'],['complete','Complété'],['facture','Facturé']];
-var PM_TYPES=[['entretien','Entretien'],['installation','Installation'],['reparation','Réparation'],['inspection','Inspection'],['livraison','Livraison'],['autre','Autre']];
+var PM_TYPES=[['entretien','Entretien'],['installation','Installation'],['reparation','Réparation'],['inspection','Inspection'],['hivernement','Hivernement'],['livraison','Livraison'],['autre','Autre']];
 var PT_STAT=[['assigne','Assigné'],['approuve','Approuvé'],['en_attente','En attente'],['termine','Terminé'],['refuse','Refusé'],['annule','Annulé']];
 var FE_KIND={wo:['workorders','Bon de travail','bons de travail'],plan:['plan','Créneau','créneaux'],pt:['planning_tasks','Tâche planning','tâches planning']};
+/* ═════ Bon de travail « Hivernement » : ODT saisi à la main + cédule d'hivernement du site ═════
+   La cédule est une liste « Hivernement » du site (rapports_hivernage, status « planifie »), datée du bon de travail, liée par wo_id / odt.
+   Elle apparaît dans Sites et inspections › Hivernement et dans sa-terrain (« Prévu le … ») ; le technicien la remplit, elle devient alors un brouillon.
+   Tant que MIGRATION_2026-11-02_hivernement_wo.sql n'est pas appliquée (colonnes odt / wo_id absentes), on écrit sans ces colonnes :
+   l'ODT passe en tête de la description du bon, et reste dans la liste (info.odt). */
+function sansCols(rows,cols){return[].concat(rows).map(function(r){var o=Object.assign({},r);cols.forEach(function(c){delete o[c];});return o;});}
+function colManquante(e,cols){var m=String(e&&e.message||e);return /PGRST204|column|colonne/i.test(m)&&cols.some(function(c){return m.indexOf(c)>=0;});}
+function woEcrire(fn,rows){return fn(rows).catch(function(e){if(!colManquante(e,['odt']))throw e;
+  var r2=[].concat(rows).map(function(r){var o=sansCols(r,['odt'])[0],odt=String(r.odt||'').trim();if(odt&&String(o.descr||'').indexOf('ODT : '+odt)<0)o.descr='ODT : '+odt+(o.descr?'\n'+o.descr:'');return o;});
+  return fn(Array.isArray(rows)?r2:r2[0]);});}
+Comp.prototype.siteDuWo=function(f){var c=norm(f&&f.client);return c?this.D.sites.filter(function(s){return norm(s.nom)===c;})[0]||null:null;};
+Comp.prototype.ceduleHiv=function(wo,site,nouveau){var self=this,H=window.SAHiv,names=this.names(),now=nowIso(),odt=String(wo.odt||'').trim()||((/^ODT : (.+)$/m.exec(wo.descr||'')||[])[1]||'').trim();
+  var techs=idList(wo.assignes,wo.assigne).map(function(i){return names[i]||i;}).join(', ');
+  var creer=function(){var cl=self.clientById&&self.clientById(site.client_id);
+    var d=H.blank({date:wo.date||iso(new Date()),site:site.nom,chef:techs,courriel:site.email||'',plan:H.planPourSite(site,self.D.gab||[],self.adjDe?self.adjDe(site.id):[])});
+    d.info.odt=odt;d.info.wo_id=wo.id;
+    var row=Object.assign(H.toReport(d,{site_id:String(site.id),site_nom:site.nom,client:cl?cl.nom:'',prepare_par:'Soucy Aquatik'}),
+      {id:pmmId(),status:'planifie',wo_id:wo.id,odt:odt,created_by:self.user.id,created_at:now,updated_at:now});
+    return postRows('rapports_hivernage',[row]).catch(function(e){if(!colManquante(e,['wo_id','odt']))throw e;return postRows('rapports_hivernage',sansCols(row,['wo_id','odt']));})
+      .then(function(ins){auditT(self,'CREATION','rapports_hivernage',row.id,{cedule:true,wo_id:wo.id,odt:odt});self.docs.hv=undefined;return' · cédule d’hivernement créée dans le site';});};
+  /* Déjà une cédule pour ce bon ? encore planifiée → date, techniciens et ODT suivent le bon ; commencée → on n'y touche pas */
+  if(nouveau)return creer().catch(function(e){return' — cédule d’hivernement NON créée : '+netMsg(e);});
+  return rest('GET','rapports_hivernage?wo_id=eq.'+encodeURIComponent(wo.id)+'&select=id,status').then(function(L){
+      if(!L.length)return creer();var p=L.filter(function(r){return r.status==='planifie';});if(!p.length)return'';
+      return Promise.all(p.map(function(r){return rest('PATCH','rapports_hivernage?id=eq.'+encodeURIComponent(r.id),{date_inspection:wo.date,date_rapport:wo.date,technicien:techs,signataire_sa:techs,odt:odt,updated_at:now},'return=minimal');}))
+        .then(function(){self.docs.hv=undefined;return' · cédule d’hivernement mise à jour';});},
+    function(e){return colManquante(e,['wo_id'])?'':Promise.reject(e);})
+    .catch(function(e){return' — cédule d’hivernement NON créée : '+netMsg(e);});};
 function woDone(s){return s==='complete'||s==='facture'||s==='termine';}
 function splitIds(s){return String(s||'').split(/,\s*/).filter(Boolean);}
 /* Personnes d'un élément : assignes / emps sont des colonnes TEXTE en base ('["kael","cndiaye"]') ; repli sur assigne / emp (« a, b ») */
@@ -451,7 +479,7 @@ Comp.prototype.traiterDemande=function(d){var self=this;if(this._dt)return;this.
     .then(function(){self._dt=false;auditT(self,'MODIFICATION','demandes',d.id,{action:'demande_traitee',type:d.type,tech:d.tech||null});self.flash('Demande marquée traitée');return self.load().then(function(){self.update();});})
     .catch(function(e){self._dt=false;self.flash('Demande non modifiée : '+e.message);});};
 Comp.prototype.openFE=function(kind,id,preset){var self=this,p=preset||{},today=iso(new Date());
-  var blank={wo:{client:'',site:'',type:'entretien',priorite:'normal',status:'ouvert',assignes:[],descr:'',notes:'',tasks:[],files:[],req_bassin:false,req_photo:false,req_notes:false,date:today,groupe_id:null},
+  var blank={wo:{client:'',site:'',odt:'',type:'entretien',priorite:'normal',status:'ouvert',assignes:[],descr:'',notes:'',tasks:[],files:[],req_bassin:false,req_photo:false,req_notes:false,date:today,groupe_id:null},
     plan:{client:'',addr:'',site_id:null,heure:'07:00',emps:[],type:'entretien',descr:'',notes:'',wo_id:'',status:'assigned',date:today},
     pt:{titre:'',descr:'',emps:[],site_id:'',site_nom:'',date_debut:today,date_fin:today,heure_debut:'',heure_fin:'',statut:'assigne',recurrence:null}}[kind];
   if(!id){var f=Object.assign({},blank);
@@ -473,12 +501,15 @@ Comp.prototype.feDates=function(){var fe=this.state.fe,w=fe.when;if(fe.id)return
 Comp.prototype.feSave=function(){var self=this,fe=this.state.fe;if(!fe||fe.busy||fe.loading)return;var f=fe.f,k=fe.kind,tb=FE_KIND[k][0],now=new Date().toISOString(),D=this.D,names=this.names();
   var nm=function(ids){return ids.map(function(i){return names[i]||i;}).join(', ');};
   if(k==='wo'&&!String(f.client).trim()){this.flash('Le client est requis');return;}
+  var hivWo=k==='wo'&&f.type==='hivernement',hivSite=hivWo?this.siteDuWo(f):null;
+  if(hivWo&&!String(f.odt||'').trim()){this.flash('Le numéro d’ODT est requis pour un hivernement');return;}
+  if(hivWo&&!hivSite){this.flash('Hivernement : choisissez le client dans la liste des sites, pour créer la cédule du site');return;}
   if(k==='plan'&&!String(f.client).trim()&&!f.wo_id){this.flash('Indiquez le client / site, ou liez un bon de travail');return;}
   if(k==='pt'&&!String(f.titre).trim()){this.flash('Le titre est requis');return;}
   if(k==='pt'&&(!f.date_debut||!f.date_fin||f.date_fin<f.date_debut)){this.flash('Dates invalides (la fin doit suivre le début)');return;}
   var site=D.sites.filter(function(s){return norm(s.nom)===norm(k==='pt'?f.site_nom:f.client);})[0]||(f.site_id&&D.byId[f.site_id])||null;
   var body;
-  if(k==='wo')body={client:String(f.client).trim(),site:String(f.site||'').trim(),type:f.type,priorite:f.priorite,status:f.status,assignes:f.assignes,assigne:f.assignes.join(', '),descr:String(f.descr||'').trim(),notes:String(f.notes||'').trim(),
+  if(k==='wo')body={client:String(f.client).trim(),site:String(f.site||'').trim(),odt:String(f.odt||'').trim(),type:f.type,priorite:f.priorite,status:f.status,assignes:f.assignes,assigne:f.assignes.join(', '),descr:String(f.descr||'').trim(),notes:String(f.notes||'').trim(),
     tasks:f.tasks,files:f.files,req_bassin:!!f.req_bassin,req_photo:!!f.req_photo,req_notes:!!f.req_notes,updated_at:now};
   else if(k==='plan')body={client:String(f.client||'').trim(),addr:String(f.addr||'').trim()||(site?site.addr:''),site_id:site?site.id:(f.site_id||null),heure:f.heure||'',emps:f.emps,emp:f.emps.join(', '),type:f.type,descr:String(f.descr||'').trim(),notes:String(f.notes||''),wo_id:f.wo_id||null,status:f.status||'assigned',updated_at:now};
   else body={titre:String(f.titre).trim(),descr:String(f.descr||'').trim(),emp:f.emps.join(', '),emp_nom:nm(f.emps),site_id:site?site.id:'',site_nom:site?site.nom:String(f.site_nom||'').trim(),heure_debut:f.heure_debut||'',heure_fin:f.heure_fin||'',statut:f.statut,updated_at:now};
@@ -486,7 +517,9 @@ Comp.prototype.feSave=function(){var self=this,fe=this.state.fe;if(!fe||fe.busy|
   var fail=function(e){self.setState({fe:Object.assign({},self.state.fe,{busy:false})});self.flash('Échec — rien n’a été modifié : '+netMsg(e));};
   this.setState({fe:Object.assign({},fe,{busy:true})});
   if(fe.id){if(k==='pt'){body.date_debut=f.date_debut;body.date_fin=f.date_fin;}else body.date=f.date;
-    rest('PATCH',tb+'?id=eq.'+encodeURIComponent(fe.id),body).then(function(rows){if(!rows.length)throw new Error('élément introuvable');auditT(self,'MODIFICATION',tb,fe.id);return done(FE_KIND[k][1]+' enregistré'+(k==='pt'?'e':''));}).catch(fail);return;}
+    (k==='wo'?woEcrire(function(b){return rest('PATCH',tb+'?id=eq.'+encodeURIComponent(fe.id),b);},body):rest('PATCH',tb+'?id=eq.'+encodeURIComponent(fe.id),body))
+      .then(function(rows){if(!rows.length)throw new Error('élément introuvable');auditT(self,'MODIFICATION',tb,fe.id);
+        return(hivWo?self.ceduleHiv(rows[0],hivSite):Promise.resolve('')).then(function(m){return done(FE_KIND[k][1]+' enregistré'+(k==='pt'?'e':'')+m);});}).catch(fail);return;}
   var dates=this.feDates();if(!dates.length){this.setState({fe:Object.assign({},fe,{busy:false})});this.flash('Choisissez la ou les dates');return;}
   var rid=function(){return'adm-'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);},rows=[],gid=dates.length>1?('g'+Date.now().toString(36)):null;
   if(k==='pt'&&fe.when.mode==='plage'){dates=[fe.when.debut];}
@@ -496,12 +529,19 @@ Comp.prototype.feSave=function(){var self=this,fe=this.state.fe;if(!fe||fe.busy|
     else{var fin=fe.when.mode==='plage'?fe.when.fin:d,serie=gid?{serie:gid,freq:fe.when.rec,fin:fe.when.fin||null}:null;
       var groups=(fe.indep&&f.emps.length>1)?f.emps.map(function(e){return[e];}):[f.emps];
       groups.forEach(function(g){rows.push(Object.assign({},body,{id:rid(),emp:g.join(', '),emp_nom:nm(g),date_debut:d,date_fin:fin,recurrence:serie,created_by:self.user.id,created_at:now}));});}});
-  postRows(tb,rows).then(function(ins){ins.forEach(function(r){auditT(self,'CREATION',tb,r.id);});return done(ins.length>1?ins.length+' '+FE_KIND[k][2]+' créé'+(k==='pt'?'e':'')+'s':FE_KIND[k][1]+' créé'+(k==='pt'?'e':''));}).catch(fail);};
+  (k==='wo'?woEcrire(function(b){return postRows(tb,b);},rows):postRows(tb,rows)).then(function(ins){ins.forEach(function(r){auditT(self,'CREATION',tb,r.id);});
+    var msg=ins.length>1?ins.length+' '+FE_KIND[k][2]+' créé'+(k==='pt'?'e':'')+'s':FE_KIND[k][1]+' créé'+(k==='pt'?'e':'');
+    /* Hivernement : chaque bon de travail créé reçoit sa cédule d'hivernement dans le site (une à la fois, dans l'ordre des dates) */
+    if(!hivWo)return done(msg);
+    return ins.reduce(function(p,r){return p.then(function(acc){return self.ceduleHiv(r,hivSite,true).then(function(m){return acc||m;});});},Promise.resolve('')).then(function(m){return done(msg+m);});}).catch(fail);};
 Comp.prototype.feDelete=function(level){var self=this,fe=this.state.fe;if(!fe||!fe.id||fe.busy)return;if(fe.confirm!==level){this.setState({fe:Object.assign({},fe,{confirm:level})});return;}
   var tb=FE_KIND[fe.kind][0],td=iso(new Date()),path=tb+'?id=eq.'+encodeURIComponent(fe.id);
   if(level===2){if(fe.kind==='wo')path='workorders?groupe_id=eq.'+encodeURIComponent(fe.f.groupe_id)+'&status=eq.ouvert&date=gte.'+td;else path='planning_tasks?recurrence->>serie=eq.'+encodeURIComponent(fe.f.recurrence.serie)+'&statut=eq.assigne&date_debut=gte.'+td;}
   this.setState({fe:Object.assign({},fe,{busy:true})});
-  rest('DELETE',path).then(function(rows){rows.forEach(function(r){auditT(self,'SUPPRESSION',tb,r.id);});self.pl={};self._pl={};self.setState({fe:null});self.flash(rows.length+' supprimé'+(rows.length>1?'s':'')+' — une copie de sécurité est conservée');return self.load().then(function(){self.update();});})
+  rest('DELETE',path).then(function(rows){rows.forEach(function(r){auditT(self,'SUPPRESSION',tb,r.id);});
+    /* Bon de travail d'hivernement supprimé : sa cédule encore « planifiée » (rien de rempli) part avec lui ; une liste commencée reste */
+    if(fe.kind==='wo')rows.filter(function(r){return r.type==='hivernement';}).forEach(function(r){rest('DELETE','rapports_hivernage?wo_id=eq.'+encodeURIComponent(r.id)+'&status=eq.planifie').catch(function(){});});
+    self.pl={};self._pl={};self.setState({fe:null});self.flash(rows.length+' supprimé'+(rows.length>1?'s':'')+' — une copie de sécurité est conservée');return self.load().then(function(){self.update();});})
     .catch(function(e){self.setState({fe:Object.assign({},self.state.fe,{busy:false})});self.flash('Échec — rien n’a été supprimé : '+netMsg(e));});};
 /* Pièce jointe : image recompressée (comme au terrain), PDF gardé tel quel s'il reste raisonnable */
 Comp.prototype.feAddFile=function(){var self=this,inp=document.createElement('input');inp.type='file';inp.accept='image/*,application/pdf';inp.onchange=function(){var file=inp.files&&inp.files[0];if(!file)return;
@@ -532,7 +572,9 @@ Comp.prototype.feVals=function(){var self=this,fe=this.state.fe,D=this.D;if(!fe)
     fClient:f.client||'',onClient:function(e){var v=e.target.value,s=D.sites.filter(function(x){return norm(x.nom)===norm(v);})[0],o={client:v};if(s){if(k==='wo'&&!self.state.fe.f.site)o.site=s.addr;if(k==='plan'){o.addr=s.addr;o.site_id=s.id;}}
       self.setState({fe:Object.assign({},self.state.fe,{f:Object.assign({},self.state.fe.f,o),confirm:0})});},
     fSite:f.site||'',onSite:set('site'),fAddr:f.addr||'',onAddr:set('addr'),fTitre:f.titre||'',onTitre:set('titre'),fSiteNom:f.site_nom||'',onSiteNom:set('site_nom'),
-    fTypes:opts(k==='plan'?PM_TYPES:WO_TYPES,f.type),onType:set('type'),fPrios:opts(WO_PRIO,f.priorite),onPrio:set('priorite'),
+    fTypes:opts(k==='plan'?PM_TYPES:WO_TYPES,f.type),onType:set('type'),fOdt:f.odt||'',onOdt:set('odt'),isHivWO:k==='wo'&&f.type==='hivernement',
+    odtLbl:k==='wo'&&f.type==='hivernement'?'N° d’ODT (obligatoire)':'N° d’ODT (optionnel)',
+    hivWoNote:k==='wo'&&f.type==='hivernement'?(this.siteDuWo(f)?'La cédule d’hivernement de « '+this.siteDuWo(f).nom+' » sera créée'+(isNew?' pour chaque date choisie':' (si elle n’existe pas déjà)')+' : liste « Hivernement » du site, avec cet ODT et les techniciens choisis.':'Choisissez le client dans la liste des sites : la cédule d’hivernement est créée dans la fiche du site.'):'',fPrios:opts(WO_PRIO,f.priorite),onPrio:set('priorite'),
     fStats:k==='wo'?opts(WO_STAT,f.status):k==='pt'?opts(PT_STAT,f.statut):opts([['assigned','Planifié'],['termine','Terminé']],f.status),onStat:set(k==='pt'?'statut':'status'),
     fDescr:f.descr||'',onDescr:set('descr'),fNotes:f.notes||'',onNotes:set('notes'),fHeure:f.heure||'',onHeure:set('heure'),fHD:f.heure_debut||'',onHD:set('heure_debut'),fHF:f.heure_fin||'',onHF:set('heure_fin'),
     fDate:f.date||'',onDate:set('date'),fDD:f.date_debut||'',onDD:set('date_debut'),fDF:f.date_fin||'',onDF:set('date_fin'),fWo:linked,onWo:set('wo_id'),hasWoLinks:linked.length>0,
@@ -754,6 +796,8 @@ var ROWS={items_liv:[['item','Article',3],['qteSortie','Qté sortie',1],['unite'
   items_ret:[['item','Article récupéré',3],['qteRecuperee','Qté',1],['unite','Unité',1],['raison','Raison / remarque',3]],
   lignes:[['code','Code',1],['loc','Emplacement',1],['desc','Description',3],['qteSortie','Qté sortie',1],['qteRetour','Qté retour',1],['projet','Projet / client',2]],
   plan:[['num','N°',0.5],['element','Élément',2],['travaux','Travaux prévus',3],['periode','Période',1.2],['remarques','Remarques',2]]};
+/* Cédule d'hivernement pas encore commencée (créée par un bon de travail « Hivernement ») */
+function hvPrevuTxt(r){var o=r.odt||((((r.sections||[])[0]||{}).hivernement||{}).info||{}).odt||'';return'Planifié'+(r.date_inspection?' le '+r.date_inspection:'')+(o?' · ODT '+o:'');}
 function nowIso(){return new Date().toISOString();}
 function docNo(p){var d=new Date();return p+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+(Math.floor(Math.random()*900)+100);}
 function escH(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
@@ -780,7 +824,7 @@ Comp.prototype.deHv=function(fn){var de=JSON.parse(JSON.stringify(this.state.de)
 Comp.prototype.hvSiteOf=function(nom){return this.D.sites.filter(function(x){return norm(x.nom)===norm(nom);})[0]||null;};
 Comp.prototype.deMut=function(fn){var de=JSON.parse(JSON.stringify(this.state.de));fn(de.f,de);de.confirm=false;this.setState({de:de});};
 Comp.prototype.saveDoc=function(extra,msg,hvOver,apres){var self=this,de=this.state.de;if(!de||de.busy)return;var k=de.kind,tb=DOC[k].t,f=Object.assign({},de.f,extra||{});
-  if(de.hv)f=Object.assign(window.SAHiv.toReport(hvOver||de.hv,f,de.hvPh),{status:f.status||'brouillon'});
+  if(de.hv)f=Object.assign(window.SAHiv.toReport(hvOver||de.hv,f,de.hvPh),{status:f.status&&f.status!=='planifie'?f.status:'brouillon'});
   if(k==='bl'&&!String(f.client||'').trim()){this.flash('Le client est requis');return;}
   if(k==='hv'&&!String(f.site_nom||'').trim()){this.flash('Le site est requis');return;}
   if(k==='bl'){f.items_liv=f.items_liv.filter(function(r){return String(r.item||'').trim();});f.items_ret=f.items_ret.filter(function(r){return String(r.item||'').trim();});}
@@ -920,7 +964,7 @@ Comp.prototype.docsVals=function(){var self=this,st=this.state,D=this.D,mod=st.m
     if(kind==='so'){if(done&&!bl)acts.push({l:'Bon de livraison',go:function(){self.openSoBl(r);}});acts.push({l:'Courriel à l’entrepôt',go:function(){self.entCourriel(r);}});}
     return{acts:acts,a:kind==='hv'?r.site_nom||'—':r.no_bon||'—',b:kind==='hv'?(r.client||r.objet||''):(r.client||'—'),c:kind==='hv'?(r.date_inspection||'—')+' · '+(r.technicien||'—'):(r.date||'—')+' · '+(kind==='bl'?(r.technicien||'—'):(r.nom||'—')),
       d:(kind==='bl'?(r.items_liv||[]).length+' article(s)':kind==='so'?(r.lignes||[]).length+' ligne(s)':hv?'Hivernement · '+pg.done+' / '+pg.total+' cases ('+pg.pct+' %)':(r.sections||[]).length+' section(s)')+(r.urgent?' · URGENT':''),
-      etat:(done?(kind==='bl'?'Livré':kind==='so'?'Envoyée':'Complété'):kind==='bl'?BL_ETAPES[blEtape(r)]+(r.date&&r.date<iso(new Date())?' · en retard':''):'Brouillon')+(env?' · envoyé le '+String(env.le).slice(0,10):'')+(bl?' · bon '+bl.no_bon+(bl.status==='livre'?' livré':' à livrer'):''),open:function(){self.openDoc(kind,r.id);}};});
+      etat:(done?(kind==='bl'?'Livré':kind==='so'?'Envoyée':'Complété'):kind==='bl'?BL_ETAPES[blEtape(r)]+(r.date&&r.date<iso(new Date())?' · en retard':''):kind==='hv'&&r.status==='planifie'?hvPrevuTxt(r):'Brouillon')+(env?' · envoyé le '+String(env.le).slice(0,10):'')+(bl?' · bon '+bl.no_bon+(bl.status==='livre'?' livré':' à livrer'):''),open:function(){self.openDoc(kind,r.id);}};});
   var FL3=[['attente',kind==='bl'?'À livrer':'Brouillons'],['faits',kind==='bl'?'Livrés':kind==='so'?'Envoyées':'Complétés'],['tous','Tous']];
   var out={isLogi:mod==='logistique',isLogDocs:mod==='logistique'&&lt!=='ent',isLogEnt:mod==='logistique'&&lt==='ent',isHivB:mod==='hivernage',logTabs:[['bl','Bons de livraison'],['so','Sorties d’inventaire'],['ent','Entrepôt · courriels']].map(function(x){return Object.assign({label:x[1],go:function(){self.setState({logTab:x[0],docF:'tous',docQ:''});}},segS((lt||'bl')===x[0]));}),
     docFilters:FL3.map(function(x){return Object.assign({label:x[1],go:function(){self.setState({docF:x[0]});}},segS(flt===x[0]));}),docQ:st.docQ||'',onDocQ:function(e){self.setState({docQ:e.target.value});},
