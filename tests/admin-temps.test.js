@@ -156,13 +156,108 @@ test('Paie : fichier Excel (.xlsx) lisible — sommaire, feuille par employé, j
   const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Télécharger Excel' }).click()]);
   assert.match(dl.suggestedFilename(), /^SoucyAquatik_Feuilles_de_temps_\d{4}-\d\d-\d\d\.xlsx$/);
   const wb = lireXlsx(fs.readFileSync(await dl.path()));
-  assert.deepEqual(Object.keys(wb), ['Sommaire', 'Kaël Test', 'Journal des punchs']);
+  assert.deepEqual(Object.keys(wb), ['Sommaire', 'Heures par projet', 'Kaël Test', 'Journal des punchs', 'Projets']);
   assert.deepEqual(wb.Sommaire[3].slice(0, 5), ['Kaël Test', 2.5, 2.5, 0, 2]);
   const lignes = wb['Kaël Test'].filter((r) => r[2] === 'Entrepôt');
   assert.equal(lignes.length, 1, 'punchs regroupés en une ligne');
   assert.equal(lignes[0][7], 2.5);
   assert.equal(lignes[0][8], 2);
-  assert.equal(wb['Journal des punchs'].length, 3, 'en-tête + 2 punchs');
+  assert.equal(wb['Journal des punchs'].length, 4, 'titre + en-tête + 2 punchs');
+  await page.close();
+});
+
+/* Gabarit de Charles (SoucyAquatik_Feuilles_de_temps_2026-10-26.xlsx) : mêmes feuilles, colonnes, formules et mise en forme. */
+function lireGabarit(buffer) {
+  const f = path.join(os.tmpdir(), 'sa-g-' + Date.now() + '.xlsx');
+  fs.writeFileSync(f, buffer);
+  const out = execFileSync('python3', ['-c', `
+import openpyxl, json, sys, zipfile
+from openpyxl.worksheet.formula import ArrayFormula
+wb = openpyxl.load_workbook(sys.argv[1])
+def val(c):
+    v = c.value
+    if isinstance(v, ArrayFormula): return {'f': v.text, 'ref': v.ref}
+    return v
+r = {}
+for ws in wb.worksheets:
+    r[ws.title] = {'cells': {c.coordinate: val(c) for row in ws.iter_rows() for c in row if c.value is not None},
+      'fill': {c.coordinate: c.fill.fgColor.rgb for row in ws.iter_rows() for c in row if c.fill.fill_type},
+      'bold': [c.coordinate for row in ws.iter_rows() for c in row if c.font.b],
+      'fmt': {c.coordinate: c.number_format for row in ws.iter_rows() for c in row if c.number_format != 'General'},
+      'freeze': ws.freeze_panes, 'merged': [str(m) for m in ws.merged_cells.ranges], 'h1': ws.row_dimensions[1].height, 'images': len(ws._images)}
+z = zipfile.ZipFile(sys.argv[1])
+r['_files'] = z.namelist()
+r['_cm'] = sum(z.read(n).decode().count('cm="1"') for n in z.namelist() if n.startswith('xl/worksheets/sheet'))
+r['_calc'] = 'fullCalcOnLoad="1"' in z.read('xl/workbook.xml').decode()
+print(json.dumps(r, default=str))
+`, f]);
+  return JSON.parse(out);
+}
+
+test('Paie : Excel selon le gabarit — Heures par projet, Projets (site reconnu), sous-totaux, total officiel, formules', { skip: !openpyxl && 'openpyxl absent' }, async () => {
+  const tables = base(), di = dayIdx(), autre = (di + 1) % 7, wk = weekKey();
+  const d = tables.feuilles_temps[0].days;
+  d[di].tasks.push({ id: 2, lieu: 'Vieux doublon', siteId: 3, start: '09:00', end: '11:30', hrs: 2.5, active: false, approuve: true });
+  d[autre].tasks.push({ id: 3, lieu: 'piscine beta', start: '07:00', end: '08:20', hrs: 1.3333, active: false, odt: 'ODT-9' });
+  const days2 = d.map(() => ({ status: 'idle', tasks: [], saved: false, kmArr: '', stopFiles: [], del: [] }));
+  days2[di].tasks.push({ id: 1, lieu: 'Piscine Alpha', start: '07:00', end: '12:00', hrs: 5, active: false });
+  tables.feuilles_temps.push({ id: 'kael2_' + wk, uid: 'kael2', emp: 'Autre Tech', week: wk, days: days2, total_h: 5, updated_at: '2026-01-01T00:00:00Z' });
+  const { page, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables });
+  await temps(page);
+  await A(page, () => window.__admin.setState({ tempsTab: 'paie' }));
+  await A(page, () => window.__admin.vals().paieAll());
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Télécharger Excel' }).click()]);
+  const buf = fs.readFileSync(await dl.path());
+  if (process.env.SA_XLSX_OUT) fs.writeFileSync(process.env.SA_XLSX_OUT, buf);
+  const wb = lireGabarit(buf);
+  assert.deepEqual(Object.keys(wb).filter((k) => k[0] !== '_'), ['Sommaire', 'Heures par projet', 'Kaël Test', 'Autre Tech', 'Journal des punchs', 'Projets']);
+  assert.ok(wb._files.includes('xl/metadata.xml') && wb._files.includes('xl/media/image1.png'), 'formules dynamiques + logo');
+  assert.ok(wb._calc, 'recalcul à l’ouverture');
+  for (const k of Object.keys(wb).filter((k) => k[0] !== '_')) { assert.equal(wb[k].h1, 43.5, k); assert.equal(wb[k].images, 1, 'logo ' + k); }
+
+  // Projets : lieu tel qu'exporté → site reconnu (fusion suivie, majuscules ignorées), sinon le lieu lui-même
+  const P = wb.Projets.cells;
+  assert.equal(P.A4, "Lieu / site (tel qu'exporté)");
+  const map = {}; for (let r = 5; P['A' + r]; r++) map[P['A' + r]] = P['B' + r];
+  assert.deepEqual(map, { 'Entrepôt': 'Entrepôt', 'Piscine Alpha': 'Piscine Alpha', 'Vieux doublon': 'Piscine Alpha', 'piscine beta': 'Piscine Beta' });
+  assert.equal(wb.Projets.freeze, 'A5');
+
+  // Feuille employé : en-têtes, ligne de jour, lignes, sous-total, bloc total, colonne Projet en formule
+  const K = wb['Kaël Test'], C = K.cells;
+  assert.deepEqual(K.merged, ['A1:K1']); assert.equal(K.freeze, 'A4');
+  assert.deepEqual(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'M', 'N', 'O'].map((x) => C[x + '3']),
+    ['Jour', 'Date', 'Lieu / site', 'ODT', 'Détail', 'Début', 'Fin', 'Heures', 'Punchs', 'Note', 'Projet', 'Heures par projet', 'Heures', '% du total']);
+  assert.match(C.A4, /^\w+ — \d{4}-\d\d-\d\d$/);
+  assert.equal(K.fill.A4, 'FFD6E6F5');
+  assert.equal(C.K5, '=IFERROR(INDEX(Projets!$B:$B,MATCH(C5,Projets!$A:$A,0)),C5)');
+  const st = Object.keys(C).filter((k) => /^A\d+$/.test(k) && /^Sous-total /.test(C[k]));
+  assert.equal(st.length, 2, 'un sous-total par jour travaillé');
+  assert.match(C['H' + st[0].slice(1)], /^=SUM\(H\d+:H\d+\)$/);
+  const T = +Object.keys(C).find((k) => C[k] === 'Total (officiel, export)').slice(1);
+  assert.equal(C['H' + T], 4.83);
+  assert.equal(C['I' + T], '=SUMIFS($I$4:$I$' + (T - 1) + ',$A$4:$A$' + (T - 1) + ',"Sous-total*")');
+  assert.deepEqual([C['A' + (T + 1)], C['A' + (T + 2)], C['A' + (T + 3)], C['A' + (T + 4)]], ['Régulières', 'Supplémentaires', 'Somme des lignes (arrondies)', "Écart d'arrondi"]);
+  assert.equal(C['H' + (T + 4)], '=H' + (T + 3) + '-H' + T);
+  assert.deepEqual(C.M5, { f: '=_xlfn._xlws.SORT(_xlfn.UNIQUE(_xlfn._xlws.FILTER($K$4:$K$' + (T - 1) + ',$K$4:$K$' + (T - 1) + '<>"")))', ref: 'M5:M7' });
+  assert.equal(C.N4, '=SUM(_xlfn.ANCHORARRAY(N5))');
+
+  // Heures par projet : un bloc par projet, un par site, une colonne par employé
+  const H = wb['Heures par projet'].cells;
+  assert.deepEqual([H.A5, H.B5, H.C5, H.D5, H.E5, H.G5, H.H5, H.I5, H.J5, H.K5], ['Projet', 'Kaël Test', 'Autre Tech', 'Total', '% du total', 'Lieu / site', 'Kaël Test', 'Autre Tech', 'Total', 'Projet']);
+  assert.deepEqual(H.A7, { f: '=_xlfn._xlws.SORT(_xlfn.UNIQUE(_xlfn._xlws.FILTER(Projets!$B$5:$B$200,Projets!$B$5:$B$200<>"")))', ref: 'A7:A9' });
+  assert.deepEqual(H.B7, { f: "=SUMIFS('Kaël Test'!$H:$H,'Kaël Test'!$K:$K,_xlfn.ANCHORARRAY($A$7))", ref: 'B7:B9' });
+  assert.deepEqual(H.D7.f, '=_xlfn.ANCHORARRAY(B7)+_xlfn.ANCHORARRAY(C7)');
+  assert.deepEqual(H.I7, { f: "=SUMIFS('Autre Tech'!$H:$H,'Autre Tech'!$C:$C,_xlfn.ANCHORARRAY($G$7))", ref: 'I7:I10' });
+  assert.equal(H.D6, '=SUM(_xlfn.ANCHORARRAY(D7))');
+  assert.deepEqual([H.A8, H.D8], ['Piscine Alpha', 7.5], 'valeurs déjà calculées : Alpha = 2,5 (Kaël, via la fusion) + 5 (Autre)');
+  assert.equal(wb['Heures par projet'].freeze, 'A6');
+  assert.ok(wb._cm >= 12, 'formules dynamiques marquées pour Excel 365');
+
+  // Journal : titre, colonne Projet, bandes par journée
+  const J = wb['Journal des punchs'];
+  assert.equal(J.cells.A2, 'Employé'); assert.equal(J.cells.K2, 'Projet'); assert.equal(J.freeze, 'A3');
+  assert.equal(J.cells.K3, '=IFERROR(INDEX(Projets!$B:$B,MATCH(G3,Projets!$A:$A,0)),G3)');
+  assert.deepEqual(errors, []);
   await page.close();
 });
 
