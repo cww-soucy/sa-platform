@@ -64,11 +64,11 @@ export function eventsFor(emp, rows) {
   }
   for (const w of rows.wos || []) {
     if (!w.date || !assigned(w.assigne, emp) || ["termine", "complete", "facture"].includes(w.status)) continue;
-    out.push({ uid: "wo-" + w.id, titre: "Bon de travail — " + (w.client || "") + (w.type ? " (" + w.type + ")" : ""), date_debut: w.date, lieu: [w.client, w.site].filter(Boolean).join(", "), descr: w.descr, updated_at: w.updated_at });
+    out.push({ uid: "wo-" + w.id, titre: "Bon de travail — " + (w.client || "") + (w.type ? " (" + w.type + ")" : ""), date_debut: w.date, heure_debut: w.heure_debut || null, heure_fin: w.heure_fin || null, lieu: [w.client, w.site].filter(Boolean).join(", "), descr: w.descr, updated_at: w.updated_at });
   }
   for (const p of rows.plan || []) {
     if (!p.date || !assigned(p.emp, emp) || p.status === "termine") continue;
-    out.push({ uid: "pl-" + p.id, titre: "Créneau — " + (p.client || "") + (p.descr ? " : " + p.descr : ""), date_debut: p.date, heure_debut: p.heure || null, lieu: [p.client, p.addr].filter(Boolean).join(", "), descr: p.notes, updated_at: p.updated_at });
+    out.push({ uid: "pl-" + p.id, titre: "Créneau — " + (p.client || "") + (p.descr ? " : " + p.descr : ""), date_debut: p.date, heure_debut: p.heure || null, heure_fin: p.heure_fin || null, lieu: [p.client, p.addr].filter(Boolean).join(", "), descr: p.notes, updated_at: p.updated_at });
   }
   return out.sort((a, b) => (a.date_debut + (a.heure_debut || "")).localeCompare(b.date_debut + (b.heure_debut || "")));
 }

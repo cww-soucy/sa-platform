@@ -19,8 +19,8 @@ Deno.serve(async (req) => {
     const like = "%" + conn.emp + "%";
     const [tasks, wos, plan, who] = await Promise.all([
       sb.from("planning_tasks").select("*").ilike("emp", like).lte("date_debut", to).gte("date_fin", from),
-      sb.from("workorders").select("id,client,site,type,status,date,assigne,descr,updated_at").ilike("assigne", like).gte("date", from).lte("date", to),
-      sb.from("plan").select("id,client,addr,date,heure,emp,descr,notes,status,updated_at").ilike("emp", like).gte("date", from).lte("date", to),
+      sb.from("workorders").select("id,client,site,type,status,date,heure_debut,heure_fin,assigne,descr,updated_at").ilike("assigne", like).gte("date", from).lte("date", to),
+      sb.from("plan").select("id,client,addr,date,heure,heure_fin,emp,descr,notes,status,updated_at").ilike("emp", like).gte("date", from).lte("date", to),
       sb.from("comptes_publics").select("prenom,nom").eq("id", conn.emp).maybeSingle(),
     ]);
     if (tasks.error || wos.error || plan.error) return new Response("Erreur de lecture du planning", { status: 500 });
