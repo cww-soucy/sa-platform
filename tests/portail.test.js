@@ -307,3 +307,21 @@ test('portail : « J’ai déjà un code de Soucy Aquatik » — aucun nouveau c
   assert.deepEqual(errors, []);
   await page.close();
 });
+
+test('portail : sans QR, une adresse donnant accès à plusieurs installations — on demande laquelle ouvrir', async () => {
+  const { page, errors } = await open('', 'gestionnaire', ['1', '2']);
+  await page.fill('#ident', 'jeanne@ville.qc.ca');
+  await page.getByRole('button', { name: 'Recevoir un code' }).click();
+  for (const [i, d] of [...'123456'].entries()) await page.getByLabel('Chiffre ' + (i + 1)).fill(d);
+  await page.getByRole('button', { name: 'Accéder' }).click();
+  await page.getByRole('heading', { name: 'Quelle installation ?' }).waitFor();
+  assert.equal(await page.locator('.opere').count(), 0, 'aucune installation ouverte d’office');
+  await page.getByRole('button', { name: 'Piscine Beta' }).click();
+  await page.locator('.opere').getByText('Opéré par').waitFor();
+  assert.equal(await page.textContent('h1'), 'Piscine Beta');
+  // puis on passe de l'une à l'autre avec « Mes installations »
+  await page.getByLabel('Mes installations').selectOption('1');
+  assert.equal(await page.textContent('h1'), 'Piscine Alpha');
+  assert.deepEqual(errors, []);
+  await page.close();
+});

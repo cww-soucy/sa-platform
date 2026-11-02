@@ -117,8 +117,18 @@
     ecranIdent(h('div', { class: 'box', role: 'note' },
       h('p', { text: 'Votre adresse est inscrite pour ' + (noms || 'un autre accès') + ', pas pour ' + S.qr.site + '. Pour cette installation, entrez le courriel ou cellulaire inscrit par son gestionnaire.' }),
       h('div', { class: 'row' },
-        h('button', { class: 'btn', type: 'button', onclick: function () { S.reprise = false; S.horsQr = false; S.site = null; S.data = r; S.site = (r.sites[0] || {}).id || null; rendre(); } }, 'Continuer vers ' + (r.sites.length > 1 ? 'mes installations' : noms)),
+        h('button', { class: 'btn', type: 'button', onclick: function () { S.reprise = false; S.horsQr = false; S.site = null; S.data = r; if (r.sites.length > 1 && !r.saisie) return ecranChoix(r); S.site = (r.sites[0] || {}).id || null; rendre(); } }, 'Continuer vers ' + (r.sites.length > 1 ? 'mes installations' : noms)),
         h('button', { class: 'btn', type: 'button', onclick: ecranPersonnel }, 'Personnel Soucy Aquatik'))));
+  }
+  /* Plusieurs installations et aucune précisée (pas de QR) : on demande laquelle ouvrir au lieu d'ouvrir la première */
+  function ecranChoix(r) {
+    show(h('div', { class: 'stack', style: 'max-width:440px;margin:0 auto' }, marque(),
+      h('h1', { text: 'Quelle installation ?' }),
+      h('p', { class: 'muted', text: 'Votre adresse donne accès à plusieurs installations. Choisissez celle à ouvrir.' }),
+      r.sites.slice().sort(function (a, b) { return String(a.nom).localeCompare(String(b.nom), 'fr'); }).map(function (x) {
+        return h('button', { class: 'btn big', type: 'button', onclick: function () { S.data = r; S.site = x.id; S.bassin = null; rendre(); } }, x.nom);
+      }),
+      h('button', { class: 'btn', type: 'button', onclick: function () { call('deconnexion'); clearTok(); S.data = null; S.site = null; ecranIdent(); } }, 'Changer d’adresse')));
   }
   /* Personnel Soucy Aquatik (admin, superviseur) : identifiant et mot de passe de SA Platform → fiche complète du site du QR
      (mode aperçu, comme « Voir comme le client » dans sa-admin ; session de 11 h 30 partagée avec sa-admin sur ce navigateur). */
@@ -204,6 +214,7 @@
       if (S.horsQr && !S.apercu) { S.reprise = false; return ecranAutreAcces(r); }
       S.reprise = false;
       if (qs && !S.horsQr) S.site = qs;
+      if (!S.apercu && !r.saisie && r.sites.length > 1 && (!S.site || !r.sites.some(function (s) { return s.id === S.site; }))) return ecranChoix(r);
       if (!S.site || !r.sites.some(function (s) { return s.id === S.site; })) S.site = (r.sites[0] || {}).id || null;
       /* L'accès suit l'identifiant : un employé « tests d'eau » arrive directement sur son formulaire de saisie */
       if (r.saisie && !S.apercu) return rendreSaisie(); rendre();
