@@ -160,7 +160,9 @@
     "status",
     "created_by",
     "created_at",
-    "updated_at"
+    "updated_at",
+    "wo_id",
+    "odt"
   ],
   "releves": [
     "id",
@@ -252,7 +254,8 @@
     "termine_at",
     "valide",
     "valide_by",
-    "valide_at"
+    "valide_at",
+    "odt"
   ],
   "feuilles_temps_envois": [
     "id",

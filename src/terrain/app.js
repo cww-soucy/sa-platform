@@ -156,7 +156,7 @@ function Comp(user){
   this.online=navigator.onLine;this.syncAt=null;this.loadErr={};this.sendErr='';this.queueN=(jget('sa_terrain_queue',[])).length;
   var prefs=jget('sa_terrain_prefs',{});this.prefs={sun:!!prefs.sun,big:!!prefs.big};
   var saved=jget('sa_terrain_state_'+user.id+'_'+this.today,{});
-  this.inv=[];this.bons=[];this.hivRep={};this.lastSortie=null;this._sig={strokes:[],w:0};
+  this.inv=[];this.bons=[];this.hivRep={};this.hivPrevu={};this.lastSortie=null;this._sig={strokes:[],w:0};
   this.dem=[];this.ft=jget(LSK_FT+user.id+'_'+iso(mondayOf(new Date())),null);this.state=Object.assign({pf:{q:'',lieu:'',siteId:null,odt:'',detail:'',km:'',src:null},sf:{km:''},demande:null,demChip:null,demandeTxt:'',screen:'today',logTab:'sortie',sortie:{},invQ:'',bonSel:null,signer:'',hivFilter:'todo',hivSel:null,hivData:{},hivPh:{},hivSent:{},demPhoto:null,pe:null,openJob:null,vals:{},touched:{},checks:{},prods:{},photo:{},photoData:{},notes:{},validated:{},sync:{},pts:{},acts:{},step:{},planDay:0,toast:null,soon:''},saved);
   this.state.toast=null;this.state.screen='today';this.state.pf={q:'',lieu:'',siteId:null,odt:'',detail:'',km:'',src:null};this.state.sf={km:''};
 }
@@ -336,7 +336,10 @@ Comp.prototype.compteBons=function(L){var me=norm(this.me.nom);return L.filter(f
 Comp.prototype.loadBonsMoi=function(){var self=this;return get('bons_livraison?select=id,technicien,status&status=neq.livre').then(function(r){self.bonsMoi=self.compteBons(r);self.update();}).catch(function(){});};
 Comp.prototype.loadHiv=function(){var self=this,y=new Date().getFullYear();
   return get('rapports_hivernage?select=id,site_id,site_nom,status,date_inspection,technicien&date_inspection=gte.'+y+'-01-01&order=date_inspection.desc')
-  .then(function(r){self.hivRep={};r.filter(function(x){return String(x.date_inspection||'').slice(0,4)===String(y);}).forEach(function(x){if(x.site_id&&!self.hivRep[x.site_id])self.hivRep[x.site_id]=x;});self.okLoad('hiv');self.update();})
+  .then(function(r){self.hivRep={};self.hivPrevu={};r.filter(function(x){return String(x.date_inspection||'').slice(0,4)===String(y);}).forEach(function(x){if(!x.site_id)return;
+      /* Cédule « planifiée » (bon de travail Hivernement, sa-admin) : à faire, pas faite — la plus proche gardée */
+      if(x.status==='planifie'){var p=self.hivPrevu[x.site_id];if(!p||String(x.date_inspection||'')<String(p.date_inspection||''))self.hivPrevu[x.site_id]=x;return;}
+      if(!self.hivRep[x.site_id])self.hivRep[x.site_id]=x;});self.okLoad('hiv');self.update();})
   .catch(function(e){self.failLoad('hiv','hivernage',e);self.update();});};
 /* ---------- Communications du bureau (infolettre, informations, procédures) : lues ici, lecture confirmée au bureau ---------- */
 Comp.prototype.loadComm=function(){var self=this,c=jget('sa_terrain_comm_'+this.user.id,null);if(c&&!this.comm){this.comm=c.l;this.commLus=c.r;}
@@ -488,7 +491,8 @@ Comp.prototype.hivSet=function(sid,fn){var d=this.hivCur(sid);fn(d);var o={};o[s
 Comp.prototype.sendHiv=function(){var st=this.state,sid=st.hivSel,s=sid&&siteById(sid);if(!s)return;var now=new Date(),d=this.hivCur(sid);
   d.info.site=s.nom;if(!d.info.date)d.info.date=iso(now);if(!String(d.info.chef||'').trim())d.info.chef=this.me.nom;
   var row=window.SAHiv.toReport(d,{site_id:s.id,site_nom:s.nom,prepare_par:this.me.nom},st.hivPh[sid]||[]);
-  this.enqueue(Object.assign({_t:'rapports_hivernage',id:rid('hv')},row,{status:'brouillon',created_by:this.user.id,created_at:now.toISOString(),updated_at:now.toISOString()}));
+  var prevu=(this.hivPrevu||{})[sid];if(prevu)delete this.hivPrevu[sid];
+  this.enqueue(Object.assign({_t:'rapports_hivernage',id:prevu?prevu.id:rid('hv')},row,{status:'brouillon',created_by:this.user.id,created_at:now.toISOString(),updated_at:now.toISOString()}));
   var o={};o[sid]=iso(now);this.setState(function(s2){var hd=Object.assign({},s2.hivData),hp=Object.assign({},s2.hivPh);delete hd[sid];delete hp[sid];return{hivData:hd,hivPh:hp,hivSent:Object.assign({},s2.hivSent,o),screen:'hivernage'};});
   this.persist();this.flash('Liste envoyée au bureau — '+s.nom);};
 
@@ -642,7 +646,7 @@ Comp.prototype.vals=function(){
   var hivV={isHiv:scr==='hivernage',isHivForm:scr==='hivForm'&&!!hivSel,hivDoneCount:hivDoneCount,hivTotalSites:hs.length,
     hivCells:hs.map(function(s){return{bg:hivDone(s)?'var(--color-accent-700)':'transparent'};}),
     hivFilters:HF.map(function(f,i){var on=hf===f[0];return{label:f[1],go:function(){self.setState({hivFilter:f[0]});},bl:i?'1px solid var(--color-divider)':'none',bg:segStyle(on).bg,fg:segStyle(on).fg};}),
-    hivList:hs.filter(function(s){var d=!!hivDone(s);return hf==='all'||(hf==='done'?d:!d);}).map(function(s){var d=hivDone(s);return{nom:s.nom,ville:s.ville||'—',statutTxt:d?'Fait le '+d:'À faire',icon:d?'check':'right',open:function(){self.setState({hivSel:s.id,screen:'hivForm',hivPos:0,hivOpen:{}});}};}),
+    hivList:hs.filter(function(s){var d=!!hivDone(s);return hf==='all'||(hf==='done'?d:!d);}).map(function(s){var d=hivDone(s);return{nom:s.nom,ville:s.ville||'—',statutTxt:d?'Fait le '+d:(self.hivPrevu||{})[s.id]?'Prévu le '+((self.hivPrevu[s.id].date_inspection)||'—'):'À faire',icon:d?'check':'right',open:function(){self.setState({hivSel:s.id,screen:'hivForm',hivPos:0,hivOpen:{}});}};}),
     hivSite:hivSel?{nom:hivSel.nom,ville:hivSel.ville||'—'}:{},hivProgress:hpg.done,hivTotal:hpg.total,hivPct:hpg.pct+'%',
     hivCrit:hd&&H.critiquesManquants(hd).length?'Étape(s) critique(s) non cochée(s) : '+H.critiquesManquants(hd).map(function(x){return x.split('.')[0];}).join(', '):'',
     hivInfo:hd?H.INFO.filter(function(f){return f[0]!=='site'&&f[0]!=='date';}).map(function(f){return{l:f[1],type:f[2],v:hd.info[f[0]]||'',on:hset(function(d,v){d.info[f[0]]=v;})};}):[],
