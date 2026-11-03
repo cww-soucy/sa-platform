@@ -150,7 +150,7 @@
 // (v59 — Mise en page des fichiers Excel refaite d'après les maquettes validées avant codage. …)
 // (v58 … v49 — voir historique précédent, inchangé.)
 
-var CACHE_NAME = 'sa-platform-v82';
+var CACHE_NAME = 'sa-platform-v83';
 
 // Installation : s'activer tout de suite sans attendre
 self.addEventListener('install', function(event) {

@@ -2,7 +2,7 @@
 // Créneau horaire (début / fin) et ordre d'exécution sur les bons de travail, créneaux et tâches planning (02/11/2026).
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
-const { startServer, openApp, launch, today } = require('./harness');
+const { startServer, openApp, launch, today, iso, addDays } = require('./harness');
 const { base } = require('./fixtures');
 
 const ADMIN = { id: 'cwweil', prenom: 'Bureau', nom: 'SA', role: 'admin' };
@@ -75,6 +75,20 @@ test('sa-terrain : la tournée suit l’ordre du superviseur, puis l’heure, et
   const ids = await page.evaluate(() => window.__terrain.jobs.map((j) => [j.id.split(':')[0], j.hl]));
   assert.deepEqual(ids, [['pl', '1. 15:00–16:00'], ['wo', '3. 08:00'], ['pt', '07:00']]);
   await page.waitForFunction(() => /1\. 15:00–16:00/.test(document.body.innerText));
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+test('bon prolongé : le jour 1 suit le créneau du bon, chaque journée de plus garde ses heures', async () => {
+  const t = base(), d = today(), d1 = iso(addDays(new Date(), 1));
+  Object.assign(t.workorders.find((w) => w.id === 'wo-mine'), { heure_debut: '09:00', heure_fin: '11:00', ordre: 1 });
+  t.planning_tasks = [{ id: 'suite1', titre: 'Piscine Alpha', descr: 'Suite du bon de travail', site_nom: 'Piscine Alpha', emp: 'kael', wo_id: 'wo-mine', date_debut: d1, date_fin: d1, heure_debut: '13:00', heure_fin: '15:00', statut: 'assigne' }];
+  const { page, errors } = await openApp(browser, srv.url, { app: 'admin', user: ADMIN, tables: t });
+  await page.waitForFunction(() => window.__admin && window.__admin.D);
+  const r = await page.waitForFunction((L) => { const a = window.__admin, x = L.map((dd) => a.dayJobs('kael', dd).filter((j) => j.id === 'wo-mine').map((j) => j.h)); return x.every((y) => y.length) ? x : null; }, [d, d1]).then((h) => h.jsonValue());
+  assert.deepEqual(r, [['1. 09:00–11:00'], ['13:00–15:00']]);
+  await page.evaluate(() => window.__admin.openFE('wo', 'wo-mine'));
+  await dlg(page).getByText(/Créneau du bon : 1\. 09:00–11:00/).waitFor();
   assert.deepEqual(errors, []);
   await page.close();
 });

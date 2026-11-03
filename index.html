@@ -3832,7 +3832,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // a bien pris effet. Il reflète maintenant APP_BUILD ci-dessous, à mettre à jour à CHAQUE fois que
   // CACHE_NAME change dans sw.js (même valeur, ex: 'v48').
   try{
-    var APP_BUILD='v82';
+    var APP_BUILD='v83';
     var vb=document.createElement('div');
     vb.id='__buildBadge';
     vb.textContent='build '+APP_BUILD+' ⟲';
@@ -7528,7 +7528,10 @@ function plgAutoLinkOld(){
 function plgVirtualEntries(monday,lastDay,mode,passes){
   var out=[];
   var linkedPlanIds={},linkedWoIds={};
-  getPlanning().forEach(function(pt){if(pt.planId)linkedPlanIds[pt.planId]=true;if(pt.woId)linkedWoIds[pt.woId]=true;});
+  // ➕ Bon de travail prolongé (sa-admin › « Prolonger ») : ses journées de plus sont des tâches liées (woId) à d'AUTRES dates.
+  // Le WO n'est donc caché que si une tâche liée couvre sa propre date ; sinon il reste visible le jour du bon.
+  var woDates={};getWOs().forEach(function(w){woDates[w.id]=w.date;});
+  getPlanning().forEach(function(pt){if(pt.planId)linkedPlanIds[pt.planId]=true;if(pt.woId&&pt.statut!=='annule'&&(!woDates[pt.woId]||(pt.dateDebut<=woDates[pt.woId]&&woDates[pt.woId]<=pt.dateFin)))linkedWoIds[pt.woId]=true;});
 
   getPlan().filter(function(p){return p.date&&!linkedPlanIds[p.id]&&p.date>=monday&&p.date<=lastDay;}).forEach(function(p){
     var titre=p.descr||p.client||'Créneau';
