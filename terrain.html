@@ -1820,7 +1820,14 @@ Comp.prototype.loadJobs=function(){var self=this,uid=encodeURIComponent(this.use
   var me=this.user.id,ck='sa_terrain_jobs_'+me,cached=jget(ck,null);
   /* Tournée gardée sur le téléphone : la page rouverte sans réseau (salle mécanique) affiche quand même les visites du jour */
   if(cached&&cached.d===this.today&&!this.jobs.length){this.jobsFromRows(cached.r);this.update();}
-  return Promise.all(q).then(function(r){jset(ck,{d:self.today,r:r});self.jobsFromRows(r);self.syncAt=new Date();self.okLoad('jobs');}).catch(function(e){self.failLoad('jobs','tournée du jour',e);});};
+  /* Bon de travail prolongé au bureau (« Prolonger ») : la journée de plus est une tâche planning liée (wo_id) ; on relit le bon
+     lui-même, même s'il date d'avant cette semaine, pour l'afficher tel quel ce jour-là (tâches, notes, photos) */
+  return Promise.all(q).then(function(r){var have={},need=[];r[0].forEach(function(w){have[w.id]=1;});
+    r[1].forEach(function(t){if(t.wo_id&&!have[t.wo_id]&&need.indexOf(t.wo_id)<0)need.push(t.wo_id);});
+    if(!need.length)return r.concat([[]]);
+    return get('workorders?select=id,client,site,type,date,assigne,status,descr,notes,tasks,groupe_id&id=in.('+need.map(encodeURIComponent).join(',')+')')
+      .then(function(x){return r.concat([x.filter(function(w){return need.indexOf(w.id)>=0;})]);},function(){return r.concat([[]]);});})
+  .then(function(r){jset(ck,{d:self.today,r:r});self.jobsFromRows(r);self.syncAt=new Date();self.okLoad('jobs');}).catch(function(e){self.failLoad('jobs','tournée du jour',e);});};
 /* Travaux à faire saisis au bureau (SA Platform / sa-admin) : description complète, notes et liste de tâches du bon de travail */
 function todoView(t,h,self){var n=t.tasks.length,nd=t.tasks.filter(function(x){return x.done;}).length;
   return{quoi:t.quoi,titre:t.titre,h:h||'',descr:t.descr,hasDescr:!!t.descr,notes:t.notes,hasNotes:!!t.notes,hasTasks:n>0,nTxt:n?nd+'/'+n+' fait'+(nd>1?'s':''):'',
@@ -1833,11 +1840,18 @@ function todoOf(quoi,titre,descr,notes,tasks,wo){if(typeof tasks==='string'){try
   descr=String(descr||'').trim();notes=String(notes||'').trim();return{wo:wo||null,quoi:quoi,titre:titre,descr:descr,notes:notes,tasks:tasks,vide:!descr&&!notes&&!tasks.length};}
 Comp.prototype.jobsFromRows=function(r){var self=this,me=this.user.id;
   var coches={};jget('sa_terrain_queue',[]).forEach(function(q){if(q._m==='TASK')coches[q.wo+'|'+q.key]=q.done;});
-  r=[r[0].map(function(w){var ts=w.tasks;if(typeof ts==='string'){try{ts=JSON.parse(ts);}catch(e){ts=[];}}if(!Array.isArray(ts))return w;
-    return Object.assign({},w,{tasks:ts.map(function(t){if(!t||typeof t!=='object')return t;var k=w.id+'|'+taskKey({id:t.id,label:String(t.label||t.titre||t.text||'').trim()});return k in coches?Object.assign({},t,{done:coches[k]}):t;})});}),r[1],r[2]];{var wo=r[0].filter(function(w){return hasId(w.assigne,me);}),pt=r[1].filter(function(t){return hasId(t.emp,me);}),pl=r[2].filter(function(p){return hasId(p.emp,me);});var all=[];
+  var coche=function(w){var ts=w.tasks;if(typeof ts==='string'){try{ts=JSON.parse(ts);}catch(e){ts=[];}}if(!Array.isArray(ts))return w;
+    return Object.assign({},w,{tasks:ts.map(function(t){if(!t||typeof t!=='object')return t;var k=w.id+'|'+taskKey({id:t.id,label:String(t.label||t.titre||t.text||'').trim()});return k in coches?Object.assign({},t,{done:coches[k]}):t;})});};
+  r=[r[0].map(coche),r[1],r[2],(r[3]||[]).map(coche)];{var wo=r[0].filter(function(w){return hasId(w.assigne,me);}),pt=r[1].filter(function(t){return hasId(t.emp,me);}),pl=r[2].filter(function(p){return hasId(p.emp,me);});var all=[];
     var woIds={},plIds={};wo.forEach(function(w){woIds[w.id]=1;});pl.forEach(function(p){plIds[p.id]=1;});
-    wo.forEach(function(w){var s=matchSite(w.client,w.site)||pseudoSite(w.client,w.site);
-      all.push({id:'wo:'+w.id,date:w.date,site:s.id,h:'',fin:'',statut:(w.status==='termine'||w.status==='complete'||w.status==='facture')?'fait':'à venir',tache:(String(w.descr||'').split('\n')[0].slice(0,90))||cap(w.type||'Visite'),rec:w.groupe_id?'Visite récurrente':'',todo:todoOf('Bon de travail',cap(w.type||'Visite'),w.descr,w.notes,w.tasks,w.id)});});
+    var woJob=function(w,date,rec){var s=matchSite(w.client,w.site)||pseudoSite(w.client,w.site);
+      return{id:'wo:'+w.id,date:date,site:s.id,h:'',fin:'',statut:(w.status==='termine'||w.status==='complete'||w.status==='facture')?'fait':'à venir',tache:(String(w.descr||'').split('\n')[0].slice(0,90))||cap(w.type||'Visite'),rec:rec,todo:todoOf('Bon de travail',cap(w.type||'Visite'),w.descr,w.notes,w.tasks,w.id)};};
+    wo.forEach(function(w){all.push(woJob(w,w.date,w.groupe_id?'Visite récurrente':''));});
+    /* Journées de plus d'un bon prolongé : le bon lui-même ces jours-là, jamais deux fois le même jour */
+    var woTous={};r[0].concat(r[3]).forEach(function(w){woTous[w.id]=w;});
+    pt=pt.filter(function(t){var w=t.wo_id&&t.statut!=='annule'&&woTous[t.wo_id];if(!w||!w.date)return true;
+      for(var i=0;i<7;i++){var dd=iso(addDays(new Date(),i));if(dd>=t.date_debut&&dd<=t.date_fin&&dd!==w.date&&!all.some(function(j){return j.id==='wo:'+w.id&&j.date===dd;}))all.push(woJob(w,dd,'Suite du bon de travail'));}
+      return false;});
     pl.forEach(function(p){var s=(p.site_id&&siteById(p.site_id))||matchSite(p.client,p.addr)||pseudoSite(p.client,p.addr);
       all.push({id:'pl:'+p.id,date:p.date,site:s.id,h:p.heure||'',fin:'',statut:p.status==='termine'?'fait':'à venir',tache:(String(p.descr||'').split('\n')[0].slice(0,90))||cap(p.type||'Intervention'),rec:'',todo:todoOf('Créneau',cap(p.type||'Intervention'),p.descr,p.notes,[])});});
     pt.forEach(function(t){if((t.wo_id&&woIds[t.wo_id])||(t.plan_id&&plIds[t.plan_id]))return;
