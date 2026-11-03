@@ -238,13 +238,13 @@ Comp.prototype.jobsFromRows=function(r){var self=this,me=this.user.id;
     return Object.assign({},w,{tasks:ts.map(function(t){if(!t||typeof t!=='object')return t;var k=w.id+'|'+taskKey({id:t.id,label:String(t.label||t.titre||t.text||'').trim()});return k in coches?Object.assign({},t,{done:coches[k]}):t;})});};
   r=[r[0].map(coche),r[1],r[2],(r[3]||[]).map(coche)];{var wo=r[0].filter(function(w){return hasId(w.assigne,me);}),pt=r[1].filter(function(t){return hasId(t.emp,me);}),pl=r[2].filter(function(p){return hasId(p.emp,me);});var all=[];
     var woIds={},plIds={};wo.forEach(function(w){woIds[w.id]=1;});pl.forEach(function(p){plIds[p.id]=1;});
-    var woJob=function(w,date,rec){var s=matchSite(w.client,w.site)||pseudoSite(w.client,w.site);
-      return{id:'wo:'+w.id,date:date,site:s.id,h:'',fin:'',statut:(w.status==='termine'||w.status==='complete'||w.status==='facture')?'fait':'à venir',tache:(String(w.descr||'').split('\n')[0].slice(0,90))||cap(w.type||'Visite'),rec:rec,todo:todoOf('Bon de travail',cap(w.type||'Visite'),w.descr,w.notes,w.tasks,w.id)};};
+    var woJob=function(w,date,rec,t){var s=matchSite(w.client,w.site)||pseudoSite(w.client,w.site),tache=(String(w.descr||'').split('\n')[0].slice(0,90))||cap(w.type||'Visite');
+      return{id:'wo:'+w.id,date:date,site:s.id,h:t?(t.heure_debut||''):'',fin:t?(t.heure_fin||''):'',statut:(w.status==='termine'||w.status==='complete'||w.status==='facture')?'fait':'à venir',tache:t?'Suite · '+tache:tache,rec:rec,todo:todoOf('Bon de travail',cap(w.type||'Visite'),w.descr,w.notes,w.tasks,w.id)};};
     wo.forEach(function(w){all.push(woJob(w,w.date,w.groupe_id?'Visite récurrente':''));});
     /* Journées de plus d'un bon prolongé : le bon lui-même ces jours-là, jamais deux fois le même jour */
     var woTous={};r[0].concat(r[3]).forEach(function(w){woTous[w.id]=w;});
     pt=pt.filter(function(t){var w=t.wo_id&&t.statut!=='annule'&&woTous[t.wo_id];if(!w||!w.date)return true;
-      for(var i=0;i<7;i++){var dd=iso(addDays(new Date(),i));if(dd>=t.date_debut&&dd<=t.date_fin&&dd!==w.date&&!all.some(function(j){return j.id==='wo:'+w.id&&j.date===dd;}))all.push(woJob(w,dd,'Suite du bon de travail'));}
+      for(var i=0;i<7;i++){var dd=iso(addDays(new Date(),i));if(dd>=t.date_debut&&dd<=t.date_fin&&dd!==w.date&&!all.some(function(j){return j.id==='wo:'+w.id&&j.date===dd;}))all.push(woJob(w,dd,'',t));}
       return false;});
     pl.forEach(function(p){var s=(p.site_id&&siteById(p.site_id))||matchSite(p.client,p.addr)||pseudoSite(p.client,p.addr);
       all.push({id:'pl:'+p.id,date:p.date,site:s.id,h:p.heure||'',fin:'',statut:p.status==='termine'?'fait':'à venir',tache:(String(p.descr||'').split('\n')[0].slice(0,90))||cap(p.type||'Intervention'),rec:'',todo:todoOf('Créneau',cap(p.type||'Intervention'),p.descr,p.notes,[])});});
