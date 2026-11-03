@@ -523,5 +523,13 @@
     "annule_par",
     "annule_par_nom",
     "annule_le"
+  ],
+  "affichage_regles": [
+    "id",
+    "app",
+    "cible",
+    "masques",
+    "updated_by",
+    "updated_at"
   ]
 }

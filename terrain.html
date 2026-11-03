@@ -356,7 +356,7 @@ button{font-family:inherit}
             <div style="display:flex;flex-direction:column;gap:2px">
               <h1 style="margin:0;font-size:38px;line-height:1">{{ todayTxt }}</h1>
               <div style="font-size:16px">Tournée · {{ jobCount }} arrêts · {{ doneTxt }}</div>
-            </div><sc-if value="{{ hasCommUnread }}"><button onClick="{{ goComm }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;padding:14px 16px;background:var(--color-text);color:var(--color-bg);font:600 18px var(--font-heading)"><sa-i n="megaphone" s="22"></sa-i><span style="flex:1">{{ commBanner }}</span><sa-i n="right" s="20"></sa-i></button></sc-if>
+            </div><sc-if value="{{ hasCommUnread }}"><button data-aff="accueil.comm" onClick="{{ goComm }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;padding:14px 16px;background:var(--color-text);color:var(--color-bg);font:600 18px var(--font-heading)"><sa-i n="megaphone" s="22"></sa-i><span style="flex:1">{{ commBanner }}</span><sa-i n="right" s="20"></sa-i></button></sc-if>
 
 <div class="blueprint" style="padding:18px;display:flex;flex-direction:column;gap:12px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><div style="display:flex;align-items:center;gap:8px;font-size:15px"><span style="width:10px;height:10px;background:var(--color-accent);flex:none"></span><span>{{ pn.statusTxt }}</span></div><div style="font:600 26px/1.05 var(--font-heading)">{{ pn.title }}</div><div style="font-size:15px">Aujourd’hui {{ pn.dayTotal }} · Semaine {{ pn.weekTotal }}</div><sc-if value="{{ pn.active }}"><button class="btn btn-secondary" onClick="{{ pn.openStart }}" style="min-height:52px;font-size:18px;gap:10px"><sa-i n="login" s="22"></sa-i>Changer de site</button><button class="btn btn-primary" onClick="{{ pn.openStop }}" style="min-height:58px;font-size:20px;gap:10px"><sa-i n="logout" s="22"></sa-i>Terminer la journée</button></sc-if><sc-if value="{{ pn.idle }}"><button class="btn btn-primary" onClick="{{ pn.openStart }}" style="min-height:58px;font-size:20px;gap:10px"><sa-i n="login" s="22"></sa-i>Démarrer un punch</button></sc-if><sc-if value="{{ pn.hasPending }}"><div style="font-size:14px">{{ pn.pendingTxt }}</div></sc-if></div>
 
@@ -390,7 +390,7 @@ button{font-family:inherit}
               </div>
             </sc-if>
 
-            <div style="display:flex;flex-direction:column;gap:8px">
+            <div data-aff="accueil.tournee" style="display:flex;flex-direction:column;gap:8px">
               <h3 style="margin:0;font-size:24px">Tournée</h3><sc-if value="{{ emptyDay }}"><div style="padding:4px 0 12px;font-size:17px;line-height:1.4">Aucun arrêt planifié pour vous aujourd’hui. Consultez le Planning ou appelez le bureau.</div></sc-if>
 
               <div style="position:relative;display:flex;flex-direction:column">
@@ -415,11 +415,11 @@ button{font-family:inherit}
             </div>
 
             <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--color-divider);border:1px solid var(--color-divider)">
-              <button onClick="{{ goLog }}" style="all:unset;cursor:pointer;background:var(--color-bg);padding:16px;min-height:96px;display:flex;flex-direction:column;justify-content:space-between" data-hv="2"><sa-i n="truck" s="28"></sa-i><span style="display:flex;flex-direction:column;gap:2px"><span style="font:600 20px/1.1 var(--font-heading)">Logistique</span><sc-if value="{{ bonsMoiTxt }}"><span style="font-size:14px;font-weight:600">{{ bonsMoiTxt }}</span></sc-if></span></button>
-              <button onClick="{{ goHiv }}" style="all:unset;cursor:pointer;background:var(--color-bg);padding:16px;min-height:96px;display:flex;flex-direction:column;justify-content:space-between" data-hv="3"><sa-i n="snow" s="28"></sa-i><span style="font:600 20px/1.1 var(--font-heading)">Hivernage <span style="font-weight:400">{{ hivDoneCount }}/{{ hivTotalSites }}</span></span></button>
-              <button onClick="{{ goDemandes }}" style="all:unset;cursor:pointer;background:var(--color-bg);padding:16px;min-height:96px;display:flex;flex-direction:column;justify-content:space-between" data-hv="4"><sa-i n="message" s="28"></sa-i><span style="font:600 20px/1.1 var(--font-heading)">Demande</span></button>
-              <a href="tel:{{ bureauTel }}" style="text-decoration:none;color:inherit;background:var(--color-bg);padding:16px;min-height:96px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between" data-hv="5"><sa-i n="phone" s="28"></sa-i><span style="font:600 20px/1.1 var(--font-heading)">Appeler le bureau</span></a>
-            </div><button onClick="{{ goComm }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;padding:14px 16px;border:1px solid var(--color-divider);font:600 18px var(--font-heading)"><sa-i n="megaphone" s="22"></sa-i><span style="flex:1">Communications</span><sa-i n="right" s="20"></sa-i></button>
+              <button data-aff="accueil.logistique" onClick="{{ goLog }}" style="all:unset;cursor:pointer;background:var(--color-bg);padding:16px;min-height:96px;display:flex;flex-direction:column;justify-content:space-between" data-hv="2"><sa-i n="truck" s="28"></sa-i><span style="display:flex;flex-direction:column;gap:2px"><span style="font:600 20px/1.1 var(--font-heading)">Logistique</span><sc-if value="{{ bonsMoiTxt }}"><span style="font-size:14px;font-weight:600">{{ bonsMoiTxt }}</span></sc-if></span></button>
+              <button data-aff="accueil.hivernage" onClick="{{ goHiv }}" style="all:unset;cursor:pointer;background:var(--color-bg);padding:16px;min-height:96px;display:flex;flex-direction:column;justify-content:space-between" data-hv="3"><sa-i n="snow" s="28"></sa-i><span style="font:600 20px/1.1 var(--font-heading)">Hivernage <span style="font-weight:400">{{ hivDoneCount }}/{{ hivTotalSites }}</span></span></button>
+              <button data-aff="accueil.demande" onClick="{{ goDemandes }}" style="all:unset;cursor:pointer;background:var(--color-bg);padding:16px;min-height:96px;display:flex;flex-direction:column;justify-content:space-between" data-hv="4"><sa-i n="message" s="28"></sa-i><span style="font:600 20px/1.1 var(--font-heading)">Demande</span></button>
+              <a data-aff="accueil.bureau" href="tel:{{ bureauTel }}" style="text-decoration:none;color:inherit;background:var(--color-bg);padding:16px;min-height:96px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between" data-hv="5"><sa-i n="phone" s="28"></sa-i><span style="font:600 20px/1.1 var(--font-heading)">Appeler le bureau</span></a>
+            </div><button data-aff="accueil.comm" onClick="{{ goComm }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;padding:14px 16px;border:1px solid var(--color-divider);font:600 18px var(--font-heading)"><sa-i n="megaphone" s="22"></sa-i><span style="flex:1">Communications</span><sa-i n="right" s="20"></sa-i></button>
           </div>
         </sc-if>
 
@@ -524,7 +524,7 @@ button{font-family:inherit}
 
         <!-- ═════ LOGISTIQUE ═════ -->
         <sc-if value="{{ isTemps }}"><div style="padding:20px;display:flex;flex-direction:column;gap:20px"><h1 style="margin:0;font-size:38px;line-height:1">Temps</h1><div class="blueprint" style="padding:18px;display:flex;flex-direction:column;gap:12px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><div style="display:flex;align-items:center;gap:8px;font-size:15px"><span style="width:10px;height:10px;background:var(--color-accent);flex:none"></span><span>{{ pn.statusTxt }}</span></div><div style="font:600 26px/1.05 var(--font-heading)">{{ pn.title }}</div><div style="font-size:15px">Aujourd’hui {{ pn.dayTotal }} · Semaine {{ pn.weekTotal }}</div><sc-if value="{{ pn.active }}"><button class="btn btn-secondary" onClick="{{ pn.openStart }}" style="min-height:52px;font-size:18px;gap:10px"><sa-i n="login" s="22"></sa-i>Changer de site</button><button class="btn btn-primary" onClick="{{ pn.openStop }}" style="min-height:58px;font-size:20px;gap:10px"><sa-i n="logout" s="22"></sa-i>Terminer la journée</button></sc-if><sc-if value="{{ pn.idle }}"><button class="btn btn-primary" onClick="{{ pn.openStart }}" style="min-height:58px;font-size:20px;gap:10px"><sa-i n="login" s="22"></sa-i>Démarrer un punch</button></sc-if><sc-if value="{{ pn.hasPending }}"><div style="font-size:14px">{{ pn.pendingTxt }}</div></sc-if></div>
-<div style="display:flex;flex-direction:column"><h3 style="margin:0 0 6px;font-size:24px">Cette semaine</h3><sc-for list="{{ pn.days }}" as="d"><div style="border-top:1px solid var(--color-divider);padding:10px 8px;background:{{ d.bg }}"><div style="display:flex;justify-content:space-between;font:600 20px var(--font-heading)"><span>{{ d.label }}</span><span>{{ d.total }}</span></div><sc-for list="{{ d.tasks }}" as="t"><button onClick="{{ t.edit }}" style="all:unset;cursor:pointer;display:flex;gap:10px;font-size:15px;padding:8px 0;min-height:32px"><span style="flex:none;min-width:118px">{{ t.h }}</span><span style="flex:1;min-width:0;text-decoration:underline">{{ t.lieu }} <b>{{ t.pend }}</b></span><span style="flex:none">{{ t.dur }}</span></button></sc-for></div></sc-for></div><div style="font-size:14px;line-height:1.4">Touchez un punch de la semaine pour le corriger ou le supprimer. Chaque correction est soumise au superviseur.</div></div></sc-if>
+<div data-aff="temps.semaine" style="display:flex;flex-direction:column"><h3 style="margin:0 0 6px;font-size:24px">Cette semaine</h3><sc-for list="{{ pn.days }}" as="d"><div style="border-top:1px solid var(--color-divider);padding:10px 8px;background:{{ d.bg }}"><div style="display:flex;justify-content:space-between;font:600 20px var(--font-heading)"><span>{{ d.label }}</span><span>{{ d.total }}</span></div><sc-for list="{{ d.tasks }}" as="t"><button onClick="{{ t.edit }}" style="all:unset;cursor:pointer;display:flex;gap:10px;font-size:15px;padding:8px 0;min-height:32px"><span style="flex:none;min-width:118px">{{ t.h }}</span><span style="flex:1;min-width:0;text-decoration:underline">{{ t.lieu }} <b>{{ t.pend }}</b></span><span style="flex:none">{{ t.dur }}</span></button></sc-for></div></sc-for></div><div style="font-size:14px;line-height:1.4">Touchez un punch de la semaine pour le corriger ou le supprimer. Chaque correction est soumise au superviseur.</div></div></sc-if>
 <sc-if value="{{ isPunchForm }}"><div style="padding:20px;display:flex;flex-direction:column;gap:16px"><h1 style="margin:0;font-size:34px;line-height:1.05">Démarrer un punch</h1><sc-if value="{{ pf.willClose }}"><div style="font-size:15px;border:1px solid var(--color-divider);padding:10px;line-height:1.35">{{ pf.closeTxt }}</div></sc-if><sc-if value="{{ pf.hasJobs }}"><div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:15px">Depuis la tournée</div><sc-for list="{{ pf.jobs }}" as="j"><button onClick="{{ j.go }}" style="all:unset;cursor:pointer;padding:12px;border:1px solid var(--color-divider);background:{{ j.bg }};color:{{ j.fg }};display:flex;justify-content:space-between;font-size:17px"><span>{{ j.nom }}</span><span>{{ j.h }}</span></button></sc-for></div></sc-if><div class="field"><label style="font-size:15px">Chercher un site</label><input class="input" value="{{ pf.q }}" onInput="{{ pf.onQ }}" placeholder="Nom du site…" style="min-height:52px;font-size:18px"></div><div style="display:flex;flex-direction:column;border:1px solid var(--color-divider);max-height:260px;overflow-y:auto"><sc-for list="{{ pf.sites }}" as="s"><button onClick="{{ s.go }}" style="all:unset;cursor:pointer;padding:12px;border-bottom:1px solid var(--color-divider);background:{{ s.bg }};color:{{ s.fg }};display:flex;flex-direction:column"><span style="font-size:17px">{{ s.nom }}</span><span style="font-size:13px">{{ s.ville }}</span></button></sc-for></div><div class="field"><label style="font-size:15px">Lieu (ou tapez un autre lieu)</label><input class="input" value="{{ pf.lieu }}" onInput="{{ pf.onLieu }}" placeholder="Site ou lieu" style="min-height:52px;font-size:18px"></div><div class="field"><label style="font-size:15px">N° ODT (optionnel)</label><input class="input" value="{{ pf.odt }}" onInput="{{ pf.onOdt }}" style="min-height:52px;font-size:18px"></div><div class="field"><label style="font-size:15px">Détail (optionnel)</label><textarea class="input" value="{{ pf.detail }}" onInput="{{ pf.onDetail }}" style="min-height:70px;font-size:17px"></textarea></div><div class="field"><label style="font-size:15px">Km départ (optionnel)</label><input class="input" inputmode="decimal" value="{{ pf.km }}" onInput="{{ pf.onKm }}" style="min-height:52px;font-size:18px"></div><sc-if value="{{ pf.hasSource }}"><div style="font-size:15px">Lié à : {{ pf.sourceLabel }}</div></sc-if><button class="btn btn-primary" onClick="{{ pf.submit }}" style="min-height:58px;font-size:20px;gap:10px"><sa-i n="login" s="22"></sa-i>Démarrer le punch</button><button class="btn btn-secondary" onClick="{{ pf.cancel }}" style="min-height:52px;font-size:18px;gap:10px"><sa-i n="left" s="22"></sa-i>Annuler</button></div></sc-if>
 <sc-if value="{{ isStopForm }}"><div style="padding:20px;display:flex;flex-direction:column;gap:16px"><h1 style="margin:0;font-size:34px;line-height:1.05">Terminer la journée</h1><div class="blueprint" style="padding:18px;display:flex;flex-direction:column;gap:6px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><div style="font:600 34px/1 var(--font-heading)">{{ sf.total }}</div><div style="font-size:16px">{{ sf.nPunchs }} punch(s) · {{ sf.lieux }}</div></div><div class="field"><label style="font-size:15px">Km arrivée (optionnel)</label><input class="input" inputmode="decimal" value="{{ sf.km }}" onInput="{{ sf.onKm }}" style="min-height:52px;font-size:18px"></div><div style="font-size:15px;line-height:1.4">Le punch actif sera terminé maintenant et la journée enregistrée.</div><button class="btn btn-primary" onClick="{{ sf.submit }}" style="min-height:58px;font-size:20px;gap:10px"><sa-i n="check" s="22"></sa-i>Valider la journée</button><button class="btn btn-secondary" onClick="{{ sf.cancel }}" style="min-height:52px;font-size:18px;gap:10px"><sa-i n="left" s="22"></sa-i>Annuler</button></div></sc-if>
 <sc-if value="{{ isSoon }}"><div style="padding:24px 20px;display:flex;flex-direction:column;gap:16px">
@@ -650,7 +650,7 @@ button{font-family:inherit}
                 <button class="btn btn-secondary" onClick="{{ demPhotoBtn }}" style="min-height:52px;font-size:18px;gap:10px"><sa-i n="camera" s="20"></sa-i>{{ demPhotoLbl }}</button><button class="btn btn-primary" onClick="{{ sendDemande }}" style="min-height:58px;font-size:20px;gap:10px"><sa-i n="send" s="22"></sa-i>Envoyer</button>
               </div>
             </sc-if>
-            <div style="display:flex;flex-direction:column">
+            <div data-aff="demandes.historique" style="display:flex;flex-direction:column">
               <h3 style="margin:0 0 6px;font-size:24px">Mes demandes</h3>
               <sc-for list="{{ demHist }}" as="d">
                 <div style="display:flex;gap:12px;padding:12px 0;border-top:1px solid var(--color-divider)">
@@ -684,7 +684,7 @@ button{font-family:inherit}
                 </div>
               </sc-for>
             </div>
-            <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
+            <div data-aff="planning.recurrentes" style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
               <h3 style="margin:0;font-size:24px">Mes visites récurrentes</h3>
               <sc-for list="{{ recurrences }}" as="r">
                 <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--color-divider)">
@@ -728,7 +728,7 @@ button{font-family:inherit}
         <div style="position:absolute;left:16px;right:16px;bottom:100px;z-index:30;pointer-events:none;padding:14px 16px;background:var(--color-text);color:var(--color-bg);font-size:16px;display:flex;gap:10px;align-items:center;box-shadow:var(--shadow-lg)"><sa-i n="check" s="20" w="2"></sa-i>{{ toast }}</div>
       </sc-if>
 
-      <div style="flex:none;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));border-top:1px solid var(--color-text);padding-bottom:26px;background:var(--color-bg)">
+      <div style="flex:none;display:grid;grid-template-columns:repeat({{ nTabs }},minmax(0,1fr));border-top:1px solid var(--color-text);padding-bottom:26px;background:var(--color-bg)">
         <sc-for list="{{ tabs }}" as="t">
           <button onClick="{{ t.go }}" style="all:unset;cursor:pointer;height:62px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;position:relative;color:{{ t.fg }};box-shadow:{{ t.bar }};padding:0 1px">
             <sa-i n="{{ t.icon }}" s="24"></sa-i><span style="font-size:11px;font-weight:{{ t.fw }}">{{ t.label }}</span>
@@ -1546,6 +1546,116 @@ button{font-family:inherit}
     progress: progress, manquants: manquants, critiquesManquants: critiquesManquants, toReport: toReport, html: html, texte: texte, fichier: fichier };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.SAHiv = api;
 })(typeof window !== 'undefined' ? window : this);
+</script><script>/* Affichage configurable des apps (sa-admin, sa-terrain, portail client) — demande de la direction, 2026-11-03.
+   Le bureau choisit, dans sa-admin › Affichage des apps, ce que chaque profil voit : modules du menu, onglets, sections.
+   Règles en base : table affichage_regles (une ligne par app et par profil), docs/sql/MIGRATION_2026-11-03_affichage_modules.sql.
+
+   Principe : TOUT EST VISIBLE PAR DÉFAUT. Une règle ne fait que masquer (true) ou réafficher (false) un élément.
+   Ordre de priorité, du plus général au plus précis (le plus précis l'emporte) :
+     sa-admin / sa-terrain : tous  →  role:<rôle>  →  compte:<identifiant>
+     portail client        : tous  →  niveau:<niveau d'accès>  →  client:<compte client>
+   Un élément dont le « parent » est masqué l'est aussi (ex. les onglets de Planning quand Planning est masqué).
+   C'est de l'affichage, pas de la sécurité : les droits réels restent ceux de la base (RLS).
+
+   Aucune dépendance : intégré tel quel dans admin.html / terrain.html (build) et chargé par portail/ ;
+   testé par tests/affichage.test.js. Expose window.SAAff (navigateur) ou module.exports (Node). */
+(function (root) {
+  'use strict';
+  /* [clé, libellé, options] — options : parent (clé), verrou (true = jamais masqué ; 'admin' = jamais pour le rôle admin), sec (sous-titre) */
+  var G = function (id, nom, aide, items) { return { id: id, nom: nom, aide: aide, items: items.map(function (x) { return { cle: x[0], nom: x[1], parent: (x[2] || {}).parent || null, verrou: (x[2] || {}).verrou || null, sec: (x[2] || {}).sec || '' }; }) }; };
+  var P = function (p, o) { return Object.assign({ parent: p }, o || {}); };
+  var CATALOGUE = {
+    admin: { nom: 'sa-admin', sous: 'Centre des opérations (bureau)', groupes: [
+      G('menu', 'Menu de gauche', 'Les modules du menu. Un module masqué disparaît du menu et ne s’ouvre plus.', [
+        ['menu.monitoring', 'Monitoring', { sec: 'Terrain' }], ['menu.carte', 'Carte des sites', { sec: 'Terrain' }], ['menu.sites', 'Sites et inspections', { sec: 'Terrain' }],
+        ['menu.globale', 'Vue globale', { sec: 'Gestion' }], ['menu.planmatch', 'Plan de Match', { sec: 'Gestion' }], ['menu.operations', 'Opérations', { sec: 'Gestion' }],
+        ['menu.planning', 'Planning équipe', { sec: 'Gestion' }], ['menu.facturation', 'Facturation', { sec: 'Gestion' }],
+        ['menu.logistique', 'Logistique', { sec: 'Matériel' }], ['menu.stock', 'Stock', { sec: 'Matériel' }], ['menu.flotte', 'Flotte', { sec: 'Matériel' }], ['menu.outils', 'Outils · QR', { sec: 'Matériel' }],
+        ['menu.sondages', 'Sondages clients', { sec: 'Équipe' }], ['menu.communication', 'Communication', { sec: 'Équipe' }], ['menu.temps', 'Temps · Paie', { sec: 'Équipe' }],
+        ['menu.stats', 'Stats', { sec: 'Équipe' }], ['menu.comptes', 'Comptes', { sec: 'Équipe' }],
+        ['menu.affichage', 'Affichage des apps', { sec: 'Équipe', verrou: 'admin' }]]),
+      G('accueil', 'Page d’accueil', 'Les tuiles de la page qui s’ouvre après la connexion. La tuile sa-admin reste toujours.', [
+        ['accueil.platform', 'Tuile SA Platform'], ['accueil.temps', 'Tuile Temps · Paie', P('menu.temps')], ['accueil.terrain', 'Tuile sa-terrain']]),
+      G('sites', 'Sites et inspections · onglets', 'La barre d’onglets en haut de Sites et inspections.', [
+        ['sites.insp', 'Inspections et rapports', P('menu.sites')], ['sites.hiv', 'Hivernage', P('menu.sites')], ['sites.clients', 'Clients et sites', P('menu.sites')],
+        ['sites.lieux', 'Lieux à classer', P('menu.sites')], ['sites.rep', 'Répertoire', P('menu.sites')]]),
+      G('fiche', 'Fiche d’un site · onglets', 'Les onglets d’un site dans Inspections et rapports.', [
+        ['fiche.bilan', 'Bilan par système', P('sites.insp')], ['fiche.visite', 'Visites', P('sites.insp')], ['fiche.perso', 'Inspections personnalisées', P('sites.insp')],
+        ['fiche.tendances', 'Tendances de l’eau', P('sites.insp')], ['fiche.saisie', 'Nouvelle inspection', P('sites.insp')], ['fiche.bassins', 'Bassins et plan', P('sites.insp')],
+        ['fiche.hiver', 'Hivernement', P('sites.insp')], ['fiche.acces', 'Accès client', P('sites.insp')], ['fiche.points', 'Points de contrôle', P('sites.insp')]]),
+      G('monitoring', 'Monitoring · sections', 'Les blocs de l’écran Monitoring.', [
+        ['mon.mur', 'Bouton « Mur de contrôle »', P('menu.monitoring')], ['mon.livraisons', 'Livraisons en cours', P('menu.monitoring')], ['mon.equipe', 'Équipe en ce moment', P('menu.monitoring')],
+        ['mon.flux', 'Flux terrain', P('menu.monitoring')], ['mon.salles', 'Salles mécaniques', P('menu.monitoring')], ['mon.horszone', 'Relevés hors zone', P('menu.monitoring')]]),
+      G('globale', 'Vue globale · sections', 'Les blocs de l’écran Vue globale.', [
+        ['glob.livraisons', 'Livraisons en cours', P('menu.globale')], ['glob.kpis', 'Chiffres clés', P('menu.globale')], ['glob.charge', 'Charge par technicien', P('menu.globale')],
+        ['glob.alertes', 'Alertes', P('menu.globale')], ['glob.prochains', 'Les 7 prochains jours', P('menu.globale')], ['glob.valider', 'Terminé par l’équipe — à valider', P('menu.globale')]]),
+      G('planning', 'Planning équipe · vues', 'Les vues proposées en haut de Planning équipe.', [
+        ['planning.semaine', 'Semaine', P('menu.planning')], ['planning.mois', '4 semaines', P('menu.planning')], ['planning.gantt', 'Diagramme des travaux', P('menu.planning')], ['planning.series', 'Séries récurrentes', P('menu.planning')]]),
+      G('temps', 'Temps · Paie · onglets', 'Les onglets de Temps · Paie.', [
+        ['temps.semaine', 'Semaine', P('menu.temps')], ['temps.employe', 'Par employé', P('menu.temps')], ['temps.valider', 'À valider', P('menu.temps')], ['temps.paie', 'Paie', P('menu.temps')], ['temps.cumul', 'Cumul', P('menu.temps')]]),
+      G('logistique', 'Logistique · onglets', 'Les onglets de Logistique.', [
+        ['log.bl', 'Bons de livraison', P('menu.logistique')], ['log.so', 'Sorties d’inventaire', P('menu.logistique')], ['log.ent', 'Entrepôt · courriels', P('menu.logistique')]]),
+      G('outils', 'Outils · QR · onglets', 'Les onglets de Outils · QR.', [
+        ['outils.outils', 'Outils', P('menu.outils')], ['outils.emp', 'Emplacements', P('menu.outils')], ['outils.cfg', 'Configuration', P('menu.outils')]])] },
+    terrain: { nom: 'sa-terrain', sous: 'App du technicien (téléphone)', groupes: [
+      G('onglets', 'Barre du bas', 'Les onglets en bas de l’écran. « Aujourd’hui » et « Profil » restent toujours (accueil, déconnexion).', [
+        ['onglet.today', 'Aujourd’hui', { verrou: true }], ['onglet.temps', 'Temps (punch)'], ['onglet.fiche', 'Fiche (l’onglet ; la fiche s’ouvre toujours depuis la tournée)'], ['onglet.planning', 'Planning'], ['onglet.demandes', 'Demandes'], ['onglet.profil', 'Profil', { verrou: true }]]),
+      G('accueil', 'Écran « Aujourd’hui »', 'Ce qui s’affiche sur l’écran d’accueil du technicien.', [
+        ['accueil.tournee', 'Tournée du jour'], ['accueil.comm', 'Communications (bandeau et bouton)'],
+        ['accueil.logistique', 'Tuile Logistique'], ['accueil.hivernage', 'Tuile Hivernage'], ['accueil.demande', 'Tuile Demande', P('onglet.demandes')], ['accueil.bureau', 'Tuile Appeler le bureau']]),
+      G('ecrans', 'Autres écrans · sections', 'Sections des autres onglets.', [
+        ['temps.semaine', 'Temps : détail de la semaine', P('onglet.temps')], ['planning.recurrentes', 'Planning : mes visites récurrentes', P('onglet.planning')], ['demandes.historique', 'Demandes : mes demandes', P('onglet.demandes')]])] },
+    portail: { nom: 'Portail client', sous: 'Ce que voient les clients (QR et « Envoyer au client »)', groupes: [
+      G('onglets', 'Onglets', 'Les onglets sous l’état des systèmes. Les droits par niveau d’accès s’appliquent toujours en plus.', [
+        ['onglet.releves', 'Relevés'], ['onglet.historique', 'Historique'], ['onglet.rapports', 'Rapports'], ['onglet.documents', 'Plans et documents'], ['onglet.interventions', 'Interventions'], ['onglet.factures', 'Factures']]),
+      G('sections', 'Sections', 'Les blocs de la page d’une installation.', [
+        ['sec.bandeau', 'Bandeau « Tout est conforme » / interventions'], ['sec.systemes', 'État des systèmes'], ['sec.attention', 'À votre attention'],
+        ['sec.plan', 'Plan de l’installation'], ['sec.bassins', 'Vos bassins'], ['sec.rapport', 'Bouton « Rapport de la dernière visite »'], ['sec.urgence', 'Numéro d’urgence 24/7']])] }
+  };
+  var ITEMS = {};
+  Object.keys(CATALOGUE).forEach(function (app) { var o = ITEMS[app] = {}; CATALOGUE[app].groupes.forEach(function (g) { g.items.forEach(function (it) { it.groupe = g.id; o[it.cle] = it; }); }); });
+
+  var ROLES = [['employe', 'Employés (techniciens)'], ['superviseur', 'Superviseurs'], ['admin', 'Administrateurs']];
+  var NIVEAUX = [['operateur', 'Opérateurs'], ['gestionnaire', 'Gestionnaires'], ['direction', 'Direction'], ['saisie', 'Saisie des tests']];
+
+  /* Profils applicables, du plus général au plus précis. qui = {role, compte} (apps internes) ou {niveau, client} (portail). */
+  function cibles(app, qui) {
+    qui = qui || {};
+    if (app === 'portail') return ['tous'].concat(qui.niveau ? ['niveau:' + qui.niveau] : [], qui.client ? ['client:' + qui.client] : []);
+    var r = qui.role ? (qui.role === 'admin' || qui.role === 'superviseur' ? qui.role : 'employe') : ''; /* tout autre rôle (ex. technicien) = employé */
+    return ['tous'].concat(r ? ['role:' + r] : [], qui.compte ? ['compte:' + String(qui.compte).toLowerCase()] : []);
+  }
+  function idRegle(app, cible) { return app + '|' + cible; }
+  function index(regles, app) { var o = {}; (regles || []).forEach(function (r) { if (r && r.app === app && r.cible) o[r.cible] = r.masques || {}; }); return o; }
+  function verrouille(it, qui) { return !!it && (it.verrou === true || (it.verrou && qui && it.verrou === qui.role)); }
+
+  /* État calculé pour un profil : masque[cle] = true si masqué ; source[cle] = profil qui a décidé (ou '' = défaut). */
+  function resoudre(regles, app, qui, sauf) {
+    var idx = index(regles, app), brut = {}, src = {}, items = ITEMS[app] || {};
+    cibles(app, qui).forEach(function (c) { if (c === sauf) return; var m = idx[c]; if (!m) return; Object.keys(m).forEach(function (k) { if (typeof m[k] === 'boolean') { brut[k] = m[k]; src[k] = c; } }); });
+    var masque = {};
+    var cache = function (k, n) { if (n > 8) return false; var it = items[k]; if (verrouille(it, qui)) return false; if (brut[k] === true) return true; return !!(it && it.parent && cache(it.parent, n + 1)); };
+    Object.keys(items).forEach(function (k) { if (cache(k, 0)) masque[k] = true; });
+    return { app: app, qui: qui || {}, masque: masque, brut: brut, source: src };
+  }
+  function visible(etat, cle) { return !(etat && etat.masque && etat.masque[cle]); }
+  /* Règle CSS qui masque les éléments marqués data-aff="<clé>" (sections du gabarit) */
+  function css(etat) {
+    var k = Object.keys((etat && etat.masque) || {}).filter(function (x) { return /^[a-z0-9.-]+$/.test(x); });
+    return k.length ? k.map(function (x) { return '[data-aff~="' + x + '"]'; }).join(',') + '{display:none!important}' : '';
+  }
+  function appliquer(doc, etat) {
+    if (!doc || !doc.head) return; var el = doc.getElementById('sa-aff');
+    if (!el) { el = doc.createElement('style'); el.id = 'sa-aff'; doc.head.appendChild(el); }
+    var t = css(etat); if (el.textContent !== t) el.textContent = t;
+  }
+  /* Premier élément visible d'une liste de clés (pour rediriger un onglet ou un module masqué) */
+  function premier(etat, cles, defaut) { for (var i = 0; i < cles.length; i++) if (visible(etat, cles[i])) return cles[i]; return defaut; }
+  function nbMasques(etat) { return Object.keys((etat && etat.masque) || {}).length; }
+
+  var api = { CATALOGUE: CATALOGUE, ITEMS: ITEMS, ROLES: ROLES, NIVEAUX: NIVEAUX, cibles: cibles, idRegle: idRegle, resoudre: resoudre, visible: visible, css: css, appliquer: appliquer, premier: premier, nbMasques: nbMasques, verrouille: verrouille };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.SAAff = api;
+})(typeof window !== 'undefined' ? window : this);
 </script><script>/* Mini-rendu maison (vanilla) : <sc-if>, <sc-for>, {{ chemin }}, onClick, ref — sans framework. */
 (function(){
 var NS='http://www.w3.org/1999/xhtml',RE=/\{\{\s*([\w.$]+)\s*\}\}/g,WH=/^\s*\{\{\s*([\w.$]+)\s*\}\}\s*$/;
@@ -1980,7 +2090,7 @@ Comp.prototype.commRead=function(c){if(!this.commUnread(c))return;var now=new Da
   jset('sa_terrain_comm_'+this.user.id,{l:this.comm||[],r:this.commLus});
   this.enqueue({_t:'communication_lectures',id:c.id+'_'+this.user.id,comm_id:c.id,uid:this.user.id,emp_nom:this.me.nom,version:v,lu_at:now,updated_at:now});};
 Comp.prototype.loadBureau=function(){var self=this;return get('comptes_publics?id=eq.cwweil&select=tel').then(function(r){self.bureau=(r[0]&&r[0].tel)||'';}).catch(function(){});};
-Comp.prototype.refresh=function(){var self=this;this.loadComm();this.loadBonsMoi();return Promise.all([this.loadRef(),this.loadBureau(),this.loadDem()]).then(function(){return Promise.all([self.loadJobs(),self.loadPunch()]);}).then(function(){var c=self.curJob();if(c)self.loadLast(c.site);self.flush();self.flushOps();self.update();});};
+Comp.prototype.refresh=function(){var self=this;this.loadComm();this.loadBonsMoi();this.loadAff();return Promise.all([this.loadRef(),this.loadBureau(),this.loadDem()]).then(function(){return Promise.all([self.loadJobs(),self.loadPunch()]);}).then(function(){var c=self.curJob();if(c)self.loadLast(c.site);self.flush();self.flushOps();self.update();});};
 
 /* ---------- File d'attente : rien n'est perdu si le réseau tombe ---------- */
 Comp.prototype.flush=function(){var self=this,q=jget('sa_terrain_queue',[]);if(!q.length||!navigator.onLine||this._fq){self.queueN=q.length;return;}
@@ -2123,7 +2233,16 @@ Comp.prototype.sendHiv=function(){var st=this.state,sid=st.hivSel,s=sid&&siteByI
   this.persist();this.flash('Liste envoyée au bureau — '+s.nom);};
 
 /* ---------- Valeurs dérivées pour le gabarit ---------- */
+/* ---------- Affichage configurable (sa-admin › Affichage des apps) : onglets, tuiles et sections masqués par le bureau ----------
+   Règles lues à chaque actualisation (table affichage_regles), gardées sur le téléphone pour le hors-réseau.
+   Sans règle (ou table absente) : tout est visible, comme avant. */
+var AFF_ECRANS={temps:'onglet.temps',planning:'onglet.planning',demandes:'onglet.demandes',soon:'onglet.demandes',logistique:'accueil.logistique',hivernage:'accueil.hivernage',hivForm:'accueil.hivernage',comm:'accueil.comm',commView:'accueil.comm'};
+Comp.prototype.loadAff=function(){var self=this;return get('affichage_regles?select=*').then(function(r){if(!Array.isArray(r))return;self.affRegles=r;jset('sa_terrain_affichage',r);self.update();}).catch(function(){});};
+Comp.prototype.affEtat=function(){var A=window.SAAff;if(!A)return null;if(!this.affRegles)this.affRegles=jget('sa_terrain_affichage',[]);
+  return A.resoudre(this.affRegles,'terrain',{role:this.user.role,compte:this.user.id});};
 Comp.prototype.vals=function(){
+  var aff=this.affEtat(),affOk=function(k){return!window.SAAff||window.SAAff.visible(aff,k);};if(window.SAAff)window.SAAff.appliquer(document,aff);
+  if(AFF_ECRANS[this.state.screen]&&!affOk(AFF_ECRANS[this.state.screen]))this.state.screen='today';
   var self=this,st=this.state,scr=st.screen,me=this;this.syncDerived();
   var titles={logistique:'Logistique',hivernage:'Hivernage',hivForm:'Hivernage',punchedit:'Corriger un punch',temps:'Temps',punchform:'Démarrer un punch',stopform:'Terminer la journée',demandes:'Demandes',comm:'Communications',commView:'Communication',today:'La Tournée',fiche:'Fiche technique',planning:'Planning',profil:'Profil',soon:st.soon||'Bientôt'};
   var cj=this.curJob();
@@ -2209,7 +2328,7 @@ Comp.prototype.vals=function(){
   var recMap={};days.forEach(function(d){d.items.forEach(function(it){if(it[3]&&!recMap[it[1]+it[2]]){var s=siteById(it[1]);recMap[it[1]+it[2]]={nom:s?s.nom:'—',rec:it[3]+' · '+it[2]};}});});
   var segStyle=function(on){return{bg:on?'var(--color-text)':'transparent',fg:on?'var(--color-bg)':'var(--color-text)'};};
   var tabOf={logistique:'today',hivernage:'today',hivForm:'today',punchedit:'temps',temps:'temps',punchform:'temps',stopform:'temps',today:'today',fiche:'fiche',planning:'planning',profil:'profil',soon:'demandes',demandes:'demandes'}[scr];
-  var TABS=[['today','Aujourd’hui','home'],['temps','Temps','clock'],['fiche','Fiche','clipboard'],['planning','Planning','calendar'],['demandes','Demandes','message'],['profil','Profil','user']];
+  var TABS=[['today','Aujourd’hui','home'],['temps','Temps','clock'],['fiche','Fiche','clipboard'],['planning','Planning','calendar'],['demandes','Demandes','message'],['profil','Profil','user']].filter(function(t){return affOk('onglet.'+t[0]);});
 
   var DT={mat:{label:'Matériel',icon:'package',sub:'Produits, pièces',chips:['Hypochlorite 20 L','Trousse DPD','Bicarbonate','Joint ou pièce','Autre']},
     ren:{label:'Renfort',icon:'users',sub:'Un collègue sur place',chips:['1 personne · 1 h','Demi-journée','Levée de couverture','Autre']},
@@ -2390,7 +2509,7 @@ Comp.prototype.vals=function(){
     planTitle:dsel.title,planItems:dsel.items.map(function(it){var s=siteById(it[1])||pseudoSite(it[1],'');var td=it[4]&&!it[4].vide?todoView(it[4],it[0],self):null;return{h:it[0]||'—',nom:s.nom,ville:s.ville,tache:it[2],rec:it[3],hasTodo:!!td,todo:td||{tasks:[]}};}),recurrences:Object.keys(recMap).map(function(k){return recMap[k];}),
     myWeek:this.hours==null?'—':fr(Math.round(this.hours*100)/100),me:this.me,queueLbl:this.queueN?this.queueN+' fiche(s) à envoyer':'Rien en attente',
     bureauTel:String(this.bureau||'').replace(/[^\d+]/g,''),logout:function(){jetonFin();localStorage.removeItem('sa_terrain_user');location.reload();},mdp:this.mdpVals(),
-    tabs:TABS.map(function(t){return{label:t[1],icon:t[2],go:function(){self.go(t[0]);},fg:tabOf===t[0]?'var(--color-text)':'var(--color-neutral-600)',fw:tabOf===t[0]?600:400,bar:tabOf===t[0]?'inset 0 3px 0 var(--color-text)':'none',dot:t[0]==='fiche'&&!!cj};})
+    nTabs:TABS.length,tabs:TABS.map(function(t){return{label:t[1],icon:t[2],go:function(){self.go(t[0]);},fg:tabOf===t[0]?'var(--color-text)':'var(--color-neutral-600)',fw:tabOf===t[0]?600:400,bar:tabOf===t[0]?'inset 0 3px 0 var(--color-text)':'none',dot:t[0]==='fiche'&&!!cj};})
   },stepV||{});};
 /* Profil : l'employé change son propre mot de passe (RPC changer_mdp, demande le réseau). Champs gardés hors de state : jamais persistés. */
 Comp.prototype.mdpVals=function(){var self=this,m=this.mdp||{},on=navigator.onLine,set=function(k){return function(e){m[k]=e.target.value;self.mdp=m;};};

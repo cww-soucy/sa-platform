@@ -124,7 +124,7 @@ Comp.prototype.inspVals=function(){
   // Onglets personnalisables (ordre et visibilité), mémorisés sur ce navigateur
   var pref=this.inspTabsPref(),LIBT={};TABS.forEach(function(t){LIBT[t[0]]=t[1];});
   var ordre=pref.ordre.filter(function(k){return LIBT[k];}).concat(TABS.map(function(t){return t[0];}).filter(function(k){return pref.ordre.indexOf(k)<0;}));
-  var vis=ordre.filter(function(k){return pref.cache.indexOf(k)<0||k===view;});
+  var vis=ordre.filter(function(k){return(pref.cache.indexOf(k)<0||k===view)&&self.affOk('fiche.'+k);});
   var tabs=vis.map(function(k){return{label:LIBT[k],on:view===k,bd:view===k?'var(--color-accent-700)':'transparent',go:go(k)};});
   var perso=!!st.inspPerso,savePref=function(o,c){self.inspTabsPref({ordre:o,cache:c});self.setState({inspPrefV:(st.inspPrefV||0)+1});};
   var cp=this.compteOf(site),lv=S.lastV,nb=(site.bassins||[]).length;

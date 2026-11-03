@@ -36,6 +36,7 @@ def main():
     subprocess.run(['node', '--check', os.path.join(SRC, 'admin', 'ouvrages.js')], check=True)
     subprocess.run(['node', '--check', os.path.join(SRC, 'inspection', 'model.js')], check=True)
     subprocess.run(['node', '--check', os.path.join(SRC, 'hivernage', 'checklist.js')], check=True)
+    subprocess.run(['node', '--check', os.path.join(SRC, 'affichage', 'affichage.js')], check=True)
     extract()
     for app in ('admin', 'terrain'):
         subprocess.run([sys.executable, os.path.join(SRC, app, 'assemble.py')], check=True, cwd=OUT)

@@ -253,3 +253,29 @@ test('MIGRATION_2026-10-22_gabarits_ouvrages : nouvelles tables utilisables (dro
   assert.ok(as(null, ajout('a-anon3'), db).ok);
   assert.deepEqual(lignes(as(null, `select count(*) from ouvrage_ajustements`, db)), ['4']);
 });
+
+test('MIGRATION_2026-11-03_affichage_modules : tout connecté lit, la supervision écrit, la clé publique rien', { skip }, () => {
+  const db = 'affichage';
+  assert.ok(psql(`create database ${db}`, { db: 'postgres' }).ok);
+  assert.ok(psql('', { db, file: 'production.sql', cwd: path.join(__dirname, 'sql') }).ok);
+  assert.ok(psql(`insert into comptes(id,prenom,nom,role) values ('cwweil','Charles','W','admin'),('kael','Kaël','T','employe'),('chef','Chef','S','superviseur'),('vieux','V','X','employe');
+    update comptes set statut='inactif' where id='vieux';`, { db }).ok);
+  let r = psql('', { db, file: 'docs/sql/MIGRATION_2026-11-03_affichage_modules.sql' });
+  assert.ok(!r.ok && /sa_role\(\) absente/.test(r.err), 'refusée tant que la préparation de l’étape 3 manque');
+  assert.ok(psql('', { db, file: 'docs/sql/SECURISATION_ETAPE3_PREPARATION.sql' }).ok);
+  r = psql('', { db, file: 'docs/sql/MIGRATION_2026-11-03_affichage_modules.sql' });
+  assert.ok(r.ok, r.err);
+  assert.ok(psql('', { db, file: 'docs/sql/MIGRATION_2026-11-03_affichage_modules.sql' }).ok, 'réexécutable');
+  const ecrire = (id, m) => `insert into affichage_regles(id,app,cible,masques,updated_by) values ('${id}','${id.split('|')[0]}','${id.split('|')[1]}','${m}','t')
+    on conflict (id) do update set masques = excluded.masques`;
+  assert.ok(as('cwweil', ecrire('admin|role:superviseur', '{"menu.stats":true}'), db).ok, 'admin écrit');
+  assert.ok(as('chef', ecrire('terrain|role:employe', '{"onglet.planning":true}'), db).ok, 'superviseur écrit');
+  assert.ok(as('cwweil', ecrire('admin|role:superviseur', '{"menu.stats":false}'), db).ok, 'mise à jour (upsert)');
+  assert.ok(refuse(as('kael', ecrire('admin|compte:kael', '{}'), db)), 'employé : pas d’écriture');
+  assert.deepEqual(lignes(as('kael', `select id || '=' || masques::text from affichage_regles order by id`, db)), ['admin|role:superviseur={"menu.stats": false}', 'terrain|role:employe={"onglet.planning": true}'], 'employé : lecture');
+  assert.deepEqual(lignes(as('vieux', `select count(*) from affichage_regles`, db)), ['0'], 'compte inactif : rien');
+  assert.ok(refuse(as(null, `select * from affichage_regles`, db)), 'clé publique : refusé');
+  assert.ok(!as('cwweil', `insert into affichage_regles(id,app,cible) values ('admin|tous','terrain','tous')`, db).ok, 'id = app|cible');
+  assert.deepEqual(lignes(psql(`begin; set local role service_role; select count(*) from affichage_regles; commit;`, { db })), ['2'], 'fonction portail (service_role) : lecture');
+});
+
