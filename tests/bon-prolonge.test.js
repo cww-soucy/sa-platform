@@ -133,7 +133,8 @@ test('sa-terrain : la journée de plus montre le bon lui-même (tâches, notes) 
   wo.date = dans(-2); wo.notes = 'Code de la porte : 1234'; wo.tasks = [{ id: 'a', label: 'Finir le joint', done: false }];
   t.planning_tasks = [{ id: 'pt-s1', titre: 'Piscine Alpha', descr: 'Suite du bon de travail', emp: 'kael', site_id: '1', site_nom: 'Piscine Alpha', wo_id: 'wo-mine', date_debut: today(), date_fin: dans(1), heure_debut: '', heure_fin: '', statut: 'assigne', recurrence: null }];
   const { page, errors } = await openApp(browser, srv.url, { app: 'terrain', user: TECH, tables: t });
-  await page.waitForFunction(() => window.__terrain && window.__terrain.syncAt);
+  // syncAt est aussi posé par le chargement du référentiel : attendre la tournée elle-même
+  await page.waitForFunction(() => window.__terrain && (window.__terrain.jobs || []).some((x) => x.id === 'wo:wo-mine'));
   const j = await A(page, () => window.__terrain.jobs.filter((x) => x.id === 'wo:wo-mine').map((x) => ({ date: x.date, rec: x.rec, quoi: x.todo.quoi, n: x.todo.tasks.length })));
   assert.deepEqual(j, [{ date: today(), rec: 'Suite du bon de travail', quoi: 'Bon de travail', n: 1 }]);
   assert.equal(await A(page, () => window.__terrain.jobs.filter((x) => /^pt:/.test(x.id)).length), 0, 'pas en double comme « tâche planning »');
