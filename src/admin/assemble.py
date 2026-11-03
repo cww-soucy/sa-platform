@@ -263,6 +263,14 @@ FEDLG=('<template data-sc="if" value="{{ feOpen }}"><div class="dialog-backdrop"
        +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">'+FL('Heure début',INP('fHD','onHD','time'))+FL('Heure fin',INP('fHF','onHF','time'))+FL('Statut',SEL('fStats','onStat'))+'</div>')
     +WHEN
     +IF('feEditDate',IF('isPT',G2(FL('Du',INP('fDD','onDD','date')),FL('Au',INP('fDF','onDF','date'))))+IF('isNotPT',FL('Date',INP('fDate','onDate','date'))))
+    # Bon de travail prolongé : journées de plus (tâches planning liées), sans dupliquer le bon
+    +IF('woSuiteShow',FL('Journées de travail','<div style="display:flex;flex-direction:column;gap:8px">'
+        '<div style="font-size:13px">{{ woSuiteAide }}</div>'
+        +IF('woSuiteLoading','<div style="font-size:13px">Chargement…</div>')
+        +IF('woSuiteReady','<div style="display:flex;flex-direction:column"><sc-for list="{{ woSuite }}" as="j"><div style="display:flex;align-items:center;gap:8px;min-height:36px;border-bottom:1px solid var(--color-divider)">'
+          '<span style="flex:1;font-size:14px">{{ j.l }}</span><sc-if value="{{ j.canDel }}"><button class="btn btn-ghost btn-icon" onClick="{{ j.del }}" aria-label="Retirer cette journée" title="Retirer cette journée"><sa-i n="x" s="16"></sa-i></button></sc-if></div></sc-for></div>'
+          '<div style="display:flex;gap:8px;flex-wrap:wrap"><input class="input" type="date" value="{{ woSuiteDate }}" onInput="{{ onWoSuiteDate }}" aria-label="Journée à ajouter" style="flex:1;min-width:150px">'
+          '<button class="btn btn-secondary" onClick="{{ woProlonger }}">{{ woProlongerLbl }}</button></div>')+'</div>'))
     +FL('Technicien(s)',CHK('fTechs','l'))+IF('showIndep','<button class="btn btn-ghost" onClick="{{ toggleIndep }}" style="align-self:flex-start">{{ indepLbl }} (changer)</button>')
     +FL('Description / travaux à effectuer',TXT('fDescr','onDescr','Décrivez les travaux…'))
     +IF('isWO',FL('Liste de tâches','<div style="display:flex;flex-direction:column;gap:4px"><sc-for list="{{ fTasks }}" as="t"><div style="display:flex;align-items:center;gap:8px">'

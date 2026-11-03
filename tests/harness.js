@@ -32,7 +32,7 @@ function startServer() {
   });
 }
 
-/* Filtres PostgREST pris en charge : col=eq.x, col=neq.x, col=is.null, col=not.is.null (aussi sur col->>clé JSON). Les autres (gte, lte, ilike, order, limit…) sont
+/* Filtres PostgREST pris en charge : col=eq.x, col=neq.x, col=in.(a,b), col=is.null, col=not.is.null (aussi sur col->>clé JSON). Les autres (gte, lte, ilike, order, limit…) sont
    ignorés volontairement : la fausse base renvoie alors PLUS que le vrai serveur, ce qui teste le filtrage côté app. */
 function filters(qs) {
   const out = [];
@@ -44,6 +44,7 @@ function filters(qs) {
     else if (v === 'is.null') out.push((r) => get(r) == null);
     else if (v === 'not.is.null') out.push((r) => get(r) != null);
     else if (v.startsWith('neq.')) out.push((r) => String(get(r)) !== v.slice(4));
+    else if (v.startsWith('in.(') && v.endsWith(')')) { const L = v.slice(4, -1).split(',').map((x) => x.replace(/^"|"$/g, '')); out.push((r) => L.includes(String(get(r)))); }
   }
   return (r) => out.every((f) => f(r));
 }
