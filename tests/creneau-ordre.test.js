@@ -88,7 +88,8 @@ test('bon prolongé : le jour 1 suit le créneau du bon, chaque journée de plus
   const r = await page.waitForFunction((L) => { const a = window.__admin, x = L.map((dd) => a.dayJobs('kael', dd).filter((j) => j.id === 'wo-mine').map((j) => j.h)); return x.every((y) => y.length) ? x : null; }, [d, d1]).then((h) => h.jsonValue());
   assert.deepEqual(r, [['1. 09:00–11:00'], ['13:00–15:00']]);
   await page.evaluate(() => window.__admin.openFE('wo', 'wo-mine'));
-  await dlg(page).getByText(/Créneau du bon : 1\. 09:00–11:00/).waitFor();
+  await page.waitForFunction(() => { const fe = window.__admin.state.fe; return fe && Array.isArray(fe.suite); });
+  assert.deepEqual(await page.evaluate(() => { const j = window.__admin.vals().woSuite[0]; return [j.hd, j.hf]; }), ['09:00', '11:00'], 'jour 1 : heures du bon, modifiables sur sa ligne');
   assert.deepEqual(errors, []);
   await page.close();
 });

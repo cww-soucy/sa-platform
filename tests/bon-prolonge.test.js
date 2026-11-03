@@ -195,3 +195,36 @@ test('chaque journée a ses techniciens et ses heures : retirer un employé d’
   assert.deepEqual(errors, []);
   await page.close();
 });
+
+test('jour 1 : date et heures du bon modifiables en tout temps depuis Journées de travail, sans prolonger', async () => {
+  const t = base();
+  t.planning_tasks = [{ id: 'pt-s1', titre: 'Piscine Alpha', descr: 'Suite du bon de travail', emp: 'kael', site_nom: 'Piscine Alpha', wo_id: 'wo-mine', date_debut: dans(3), date_fin: dans(3), heure_debut: '', heure_fin: '', statut: 'assigne', recurrence: null }];
+  const { page, db, errors } = await openApp(browser, srv.url, { app: 'admin', user: ADMIN, tables: t });
+  await ouvrirBon(page, 'wo-mine');
+  const j0 = await A(page, () => { const j = window.__admin.vals().woSuite[0]; return { edit0: j.edit0, d: j.d, hd: j.hd }; });
+  assert.deepEqual(j0, { edit0: true, d: today(), hd: '' });
+  const wo = () => db.rows('workorders').find((w) => w.id === 'wo-mine');
+  await A(page, () => window.__admin.vals().woSuite[0].onHD({ target: { value: '07:30' } }));
+  await toast(page, /Heure du bon enregistrée/);
+  await A(page, () => window.__admin.vals().woSuite[0].onHF({ target: { value: '07:00' } }));
+  await toast(page, /fin doit suivre/);
+  await A(page, () => window.__admin.vals().woSuite[0].onHF({ target: { value: '11:00' } }));
+  await page.waitForFunction(() => /Heure du bon enregistrée/.test(window.__admin.state.toast || '') && window.__admin.state.fe.f.heure_fin === '11:00');
+  await new Promise((r) => setTimeout(r, 150));
+  assert.equal(wo().heure_debut, '07:30');
+  assert.equal(wo().heure_fin, '11:00');
+  // Date : vers un jour déjà prolongé → refusé ; sinon enregistrée
+  await A(page, (d) => window.__admin.vals().woSuite[0].onD({ target: { value: d } }), dans(3));
+  await toast(page, /déjà prolongé/);
+  assert.equal(wo().date, today());
+  await A(page, (d) => window.__admin.vals().woSuite[0].onD({ target: { value: d } }), dans(1));
+  await toast(page, /Date du bon/);
+  await new Promise((r) => setTimeout(r, 150));
+  assert.equal(wo().date, dans(1));
+  assert.equal(await A(page, () => window.__admin.state.fe.f.date), dans(1), 'le champ Date plus haut suit');
+  // Le planning suit : heure du bon le jour 1
+  const h = await page.waitForFunction((d) => { const x = window.__admin.dayJobs('kael', d).find((j) => j.id === 'wo-mine'); return x ? x.h : null; }, dans(1)).then((r) => r.jsonValue());
+  assert.match(h, /^07:30/);
+  assert.deepEqual(errors, []);
+  await page.close();
+});
