@@ -66,7 +66,7 @@ test('créneau : site choisi → site_id et adresse, plusieurs techniciens', asy
   await field(page, 'Client / site').fill('Piscine Alpha');
   await dlg(page).getByRole('button', { name: /Kaël Test/ }).click();
   await dlg(page).getByRole('button', { name: /Autre Tech/ }).click();
-  await field(page, 'Heure').fill('13:30');
+  await field(page, 'Heure début').fill('13:30');
   await dlg(page).getByRole('button', { name: 'Créer' }).click();
   await toast(page, /Créneau créé/);
   const p = db.rows('plan')[0];

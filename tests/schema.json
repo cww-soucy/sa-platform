@@ -92,7 +92,9 @@
     "termine_at",
     "valide",
     "valide_by",
-    "valide_at"
+    "valide_at",
+    "heure_fin",
+    "ordre"
   ],
   "planning_tasks": [
     "id",
@@ -119,7 +121,8 @@
     "termine_at",
     "valide",
     "valide_by",
-    "valide_at"
+    "valide_at",
+    "ordre"
   ],
   "punch_gps_log": [
     "id",
@@ -255,6 +258,9 @@
     "valide",
     "valide_by",
     "valide_at",
+    "heure_debut",
+    "heure_fin",
+    "ordre",
     "odt"
   ],
   "feuilles_temps_envois": [

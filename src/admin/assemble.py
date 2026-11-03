@@ -254,13 +254,16 @@ FEDLG=('<template data-sc="if" value="{{ feOpen }}"><div class="dialog-backdrop"
     +'<datalist id="saSites"><sc-for list="{{ sitesList }}" as="s"><option value="{{ s.v }}"></option></sc-for></datalist>'
     +IF('isWO',G2(FL('Client','<input class="input" list="saSites" value="{{ fClient }}" onInput="{{ onClient }}" placeholder="Nom du client ou du site">'),FL('Site / adresse',INP('fSite','onSite')))
        +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">'+FL('Type',SEL('fTypes','onType'))+FL('Priorité',SEL('fPrios','onPrio'))+FL('Statut',SEL('fStats','onStat'))+'</div>'
+       +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">'+FL('Heure début',INP('fHD','onHD','time'))+FL('Heure fin',INP('fHF','onHF','time'))+FL('Ordre','<input class="input" type="number" min="1" step="1" inputmode="numeric" value="{{ fOrdre }}" onInput="{{ onOrdre }}" placeholder="1, 2, 3…">')+'</div>'
        +FL('{{ odtLbl }}',INP('fOdt','onOdt','text',' placeholder="N° d’ODT (ex. 24-1187)"'))
        +IF('isHivWO','<div style="font-size:13px;border-left:3px solid var(--color-text);padding:4px 10px">{{ hivWoNote }}</div>'))
     +IF('isPlanF',G2(FL('Client / site','<input class="input" list="saSites" value="{{ fClient }}" onInput="{{ onClient }}">'),FL('Adresse',INP('fAddr','onAddr')))
-       +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">'+FL('Heure',INP('fHeure','onHeure','time'))+FL('Type',SEL('fTypes','onType'))+FL('Statut',SEL('fStats','onStat'))+'</div>'
+       +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">'+FL('Heure début',INP('fHeure','onHeure','time'))+FL('Heure fin',INP('fHF','onHF','time'))+FL('Ordre','<input class="input" type="number" min="1" step="1" inputmode="numeric" value="{{ fOrdre }}" onInput="{{ onOrdre }}" placeholder="1, 2, 3…">')+'</div>'
+       +G2(FL('Type',SEL('fTypes','onType')),FL('Statut',SEL('fStats','onStat')))
        +IF('hasWoLinks',FL('Bon de travail lié (optionnel)','<select class="input" onChange="{{ onWo }}"><option value="">— Aucun —</option><sc-for list="{{ fWo }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></sc-for></select>')))
     +IF('isPT',G2(FL('Titre',INP('fTitre','onTitre')),FL('Site (optionnel)','<input class="input" list="saSites" value="{{ fSiteNom }}" onInput="{{ onSiteNom }}">'))
-       +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">'+FL('Heure début',INP('fHD','onHD','time'))+FL('Heure fin',INP('fHF','onHF','time'))+FL('Statut',SEL('fStats','onStat'))+'</div>')
+       +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">'+FL('Heure début',INP('fHD','onHD','time'))+FL('Heure fin',INP('fHF','onHF','time'))+FL('Ordre','<input class="input" type="number" min="1" step="1" inputmode="numeric" value="{{ fOrdre }}" onInput="{{ onOrdre }}" placeholder="1, 2, 3…">')+'</div>'
+       +FL('Statut',SEL('fStats','onStat')))
     +WHEN
     +IF('feEditDate',IF('isPT',G2(FL('Du',INP('fDD','onDD','date')),FL('Au',INP('fDF','onDF','date'))))+IF('isNotPT',FL('Date',INP('fDate','onDate','date'))))
     # Bon de travail prolongé : journées de plus (tâches planning liées), sans dupliquer le bon

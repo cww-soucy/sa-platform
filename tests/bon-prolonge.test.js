@@ -182,7 +182,7 @@ test('chaque journée a ses techniciens et ses heures : retirer un employé d’
   // Les affichages suivent la journée : Autre Tech n'a plus le bon le jour 2, l'heure apparaît le jour 3
   const r = await page.waitForFunction((L) => { const a = window.__admin, f = (u, d) => a.dayJobs(u, d).filter((j) => j.id === 'wo-mine').map((j) => j.h + '|' + j.k);
     const x = [f('kael2', L[0]), f('kael', L[0]), f('kael2', L[1])]; return x[1].length && x[2].length ? x : null; }, [dans(1), dans(2)]).then((h) => h.jsonValue());
-  assert.deepEqual(r, [[], ['|Bon de travail (suite)'], ['08:00|Bon de travail (suite)']]);
+  assert.deepEqual(r, [[], ['|Bon de travail (suite)'], ['08:00–12:00|Bon de travail (suite)']]);
   // Prolonger avec des heures
   await A(page, (d) => { const v = window.__admin.vals(); v.onWoSuiteDate({ target: { value: d } }); }, dans(4));
   await A(page, () => window.__admin.vals().onWoSuiteHD({ target: { value: '09:30' } }));
