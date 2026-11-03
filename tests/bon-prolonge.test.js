@@ -105,15 +105,14 @@ test('bon d’avant-hier prolongé à aujourd’hui : plus « en retard » ; tec
   await page.waitForFunction(() => window.__admin && window.__admin.D);
   assert.equal(await A(page, () => window.__admin.woFin(window.__admin.D.wo.find((w) => w.id === 'wo-mine'))), today());
 
-  // Changer les techniciens du bon : la journée de plus suit
+  // Changer les techniciens du bon ne touche pas ses journées de plus (chaque journée a les siens)
   await ouvrirBon(page, 'wo-mine');
-  await A(page, () => window.__admin.feSet('assignes', ['kael', 'kael2']));
+  await A(page, () => window.__admin.feSet('assignes', ['kael2']));
   await A(page, () => window.__admin.feSave());
   await toast(page, /Bon de travail enregistré/);
-  await page.waitForFunction(() => true);
   await new Promise((r) => setTimeout(r, 150));
-  assert.equal(suites(db)[0].emp, 'kael, kael2');
-  assert.equal(suites(db)[0].emp_nom, 'Kaël Test, Autre Tech');
+  assert.equal(db.rows('workorders').find((w) => w.id === 'wo-mine').assigne, 'kael2');
+  assert.equal(suites(db)[0].emp, 'kael', 'la journée de plus garde son technicien');
 
   // Supprimer le bon : ses journées de plus partent avec lui, rien d'autre
   await ouvrirBon(page, 'wo-mine');
@@ -131,12 +130,13 @@ test('sa-terrain : la journée de plus montre le bon lui-même (tâches, notes) 
   const t = base();
   const wo = t.workorders.find((w) => w.id === 'wo-mine');
   wo.date = dans(-2); wo.notes = 'Code de la porte : 1234'; wo.tasks = [{ id: 'a', label: 'Finir le joint', done: false }];
-  t.planning_tasks = [{ id: 'pt-s1', titre: 'Piscine Alpha', descr: 'Suite du bon de travail', emp: 'kael', site_id: '1', site_nom: 'Piscine Alpha', wo_id: 'wo-mine', date_debut: today(), date_fin: dans(1), heure_debut: '', heure_fin: '', statut: 'assigne', recurrence: null }];
+  t.planning_tasks = [{ id: 'pt-s1', titre: 'Piscine Alpha', descr: 'Suite du bon de travail', emp: 'kael', site_id: '1', site_nom: 'Piscine Alpha', wo_id: 'wo-mine', date_debut: today(), date_fin: dans(1), heure_debut: '13:00', heure_fin: '16:00', statut: 'assigne', recurrence: null }];
   const { page, errors } = await openApp(browser, srv.url, { app: 'terrain', user: TECH, tables: t });
   // syncAt est aussi posé par le chargement du référentiel : attendre la tournée elle-même
   await page.waitForFunction(() => window.__terrain && (window.__terrain.jobs || []).some((x) => x.id === 'wo:wo-mine'));
   const j = await A(page, () => window.__terrain.jobs.filter((x) => x.id === 'wo:wo-mine').map((x) => ({ date: x.date, rec: x.rec, quoi: x.todo.quoi, n: x.todo.tasks.length })));
-  assert.deepEqual(j, [{ date: today(), rec: 'Suite du bon de travail', quoi: 'Bon de travail', n: 1 }]);
+  assert.deepEqual(j, [{ date: today(), rec: '', quoi: 'Bon de travail', n: 1 }], 'pas une « visite récurrente »');
+  assert.deepEqual(await A(page, () => { const x = window.__terrain.jobs.find((y) => y.id === 'wo:wo-mine'); return [x.h, x.fin, x.tache]; }), ['13:00', '16:00', 'Suite · Entretien hebdo']);
   assert.equal(await A(page, () => window.__terrain.jobs.filter((x) => /^pt:/.test(x.id)).length), 0, 'pas en double comme « tâche planning »');
   const demain = await A(page, () => window.__terrain.days[1].items.length);
   assert.equal(demain, 1, 'aussi demain');
@@ -145,6 +145,53 @@ test('sa-terrain : la journée de plus montre le bon lui-même (tâches, notes) 
   const txt = await page.locator('[data-todo]').innerText();
   assert.match(txt, /Finir le joint/);
   assert.match(txt, /Code de la porte : 1234/);
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+test('chaque journée a ses techniciens et ses heures : retirer un employé d’une journée ne touche pas les autres', async () => {
+  const t = base();
+  const wo = t.workorders.find((w) => w.id === 'wo-mine'); wo.assigne = 'kael, kael2'; wo.assignes = ['kael', 'kael2'];
+  const S = (id, d) => ({ id, titre: 'Piscine Alpha', descr: 'Suite du bon de travail', emp: 'kael, kael2', emp_nom: 'Kaël Test, Autre Tech', site_nom: 'Piscine Alpha', wo_id: 'wo-mine', date_debut: d, date_fin: d, heure_debut: '', heure_fin: '', statut: 'assigne', recurrence: null });
+  t.planning_tasks = [S('pt-s1', dans(1)), S('pt-s2', dans(2))];
+  const { page, db, errors } = await openApp(browser, srv.url, { app: 'admin', user: ADMIN, tables: t });
+  await ouvrirBon(page, 'wo-mine');
+  let v = await A(page, () => window.__admin.vals());
+  assert.equal(v.woSuite.length, 3);
+  assert.ok(!v.woSuite[0].edit, 'le jour du bon se règle avec les champs du bon');
+  assert.deepEqual(v.woSuite[1].techs.filter((c) => c.on).map((c) => c.l), ['Kaël Test', 'Autre Tech']);
+  // Retirer Autre Tech du jour 2 seulement
+  await A(page, () => window.__admin.vals().woSuite[1].techs.find((c) => c.l === 'Autre Tech').go());
+  await toast(page, /Retiré le .* seulement : Autre Tech/);
+  const row = (id) => db.rows('planning_tasks').find((x) => x.id === id);
+  assert.equal(row('pt-s1').emp, 'kael');
+  assert.equal(row('pt-s1').emp_nom, 'Kaël Test');
+  assert.equal(row('pt-s2').emp, 'kael, kael2', 'jour 3 inchangé');
+  assert.equal(db.rows('workorders').find((w) => w.id === 'wo-mine').assigne, 'kael, kael2', 'le bon inchangé');
+  // Heures du jour 3
+  await A(page, () => window.__admin.vals().woSuite[2].onHD({ target: { value: '08:00' } }));
+  await toast(page, /Heure enregistrée/);
+  await A(page, () => window.__admin.vals().woSuite[2].onHF({ target: { value: '07:00' } }));
+  await toast(page, /fin doit suivre/);
+  await A(page, () => window.__admin.vals().woSuite[2].onHF({ target: { value: '12:00' } }));
+  await page.waitForFunction(() => window.__admin.state.fe.suite.find((x) => x.id === 'pt-s2').heure_fin === '12:00');
+  await new Promise((r) => setTimeout(r, 150));
+  assert.equal(row('pt-s2').heure_debut, '08:00');
+  assert.equal(row('pt-s2').heure_fin, '12:00');
+  assert.equal(row('pt-s1').heure_debut, '');
+  // Les affichages suivent la journée : Autre Tech n'a plus le bon le jour 2, l'heure apparaît le jour 3
+  const r = await page.waitForFunction((L) => { const a = window.__admin, f = (u, d) => a.dayJobs(u, d).filter((j) => j.id === 'wo-mine').map((j) => j.h + '|' + j.k);
+    const x = [f('kael2', L[0]), f('kael', L[0]), f('kael2', L[1])]; return x[1].length && x[2].length ? x : null; }, [dans(1), dans(2)]).then((h) => h.jsonValue());
+  assert.deepEqual(r, [[], ['|Bon de travail (suite)'], ['08:00|Bon de travail (suite)']]);
+  // Prolonger avec des heures
+  await A(page, (d) => { const v = window.__admin.vals(); v.onWoSuiteDate({ target: { value: d } }); }, dans(4));
+  await A(page, () => window.__admin.vals().onWoSuiteHD({ target: { value: '09:30' } }));
+  await A(page, () => window.__admin.vals().onWoSuiteHF({ target: { value: '15:00' } }));
+  await A(page, () => window.__admin.vals().woProlonger());
+  await toast(page, /Bon de travail prolongé/);
+  const n = suites(db).find((x) => x.date_debut === dans(4));
+  assert.equal(n.heure_debut, '09:30');
+  assert.equal(n.heure_fin, '15:00');
   assert.deepEqual(errors, []);
   await page.close();
 });
