@@ -642,6 +642,17 @@ Comp.prototype.feSuiteMaj=function(t,patch,msg){var self=this,fe=this.state.fe;i
   loc(b);rest('PATCH','planning_tasks?id=eq.'+encodeURIComponent(t.id),b).then(function(r){if(!r.length)throw new Error('journée introuvable');auditT(self,'MODIFICATION','planning_tasks',t.id,{action:'journee_modifiee',wo_id:fe.id,date:t.date_debut,champs:Object.keys(patch)});
       self.pl={};self._pl={};self.rng={};self.flash(msg);})
     .catch(function(e){loc({emp:t.emp,emp_nom:t.emp_nom,heure_debut:t.heure_debut,heure_fin:t.heure_fin});self.flash('Échec — rien n’a été modifié : '+netMsg(e));});};
+/* Jour 1 (le bon lui-même) : date et heures modifiables en tout temps, enregistrées tout de suite comme les autres journées */
+Comp.prototype.feJour1=function(patch){var self=this,fe=this.state.fe;if(!fe||fe.kind!=='wo'||!fe.id||fe.busy)return;var f=fe.f,nf=Object.assign({},f,patch);
+  if(!nf.date){this.flash('Choisissez la date du bon');this.update();return;}
+  if(nf.heure_debut&&nf.heure_fin&&nf.heure_fin<=nf.heure_debut){this.flash('L’heure de fin doit suivre l’heure de début');this.update();return;}
+  if(patch.date&&this.feSuiteJours().indexOf(patch.date)>=0){this.flash('Le bon est déjà prolongé au '+jourTxt(patch.date)+' : retirez d’abord cette journée');this.update();return;}
+  var b=Object.assign({},patch,{updated_at:nowIso()}),av={date:f.date,heure_debut:f.heure_debut,heure_fin:f.heure_fin};
+  var set=function(o){var cur=self.state.fe;if(cur&&cur.id===fe.id)self.setState({fe:Object.assign({},cur,{f:Object.assign({},cur.f,o)})});};
+  set(patch);rest('PATCH','workorders?id=eq.'+encodeURIComponent(fe.id),b).then(function(r){if(!r.length)throw new Error('bon introuvable');auditT(self,'MODIFICATION','workorders',fe.id,{action:'jour1_modifie',champs:Object.keys(patch)});
+      var w=self.D.wo.filter(function(x){return x.id===fe.id;})[0];if(w)Object.assign(w,patch);self.pl={};self._pl={};self.rng={};
+      var hiv=patch.date&&nf.type==='hivernement'&&self.siteDuWo(nf);return(hiv?self.ceduleHiv(r[0],hiv):Promise.resolve('')).then(function(m){self.flash((patch.date?'Date du bon : '+jourTxt(patch.date).toLowerCase():'Heure du bon enregistrée')+m);self.update();});})
+    .catch(function(e){set(av);self.flash('Échec — rien n’a été modifié : '+netMsg(e));});};
 Comp.prototype.feSuiteRetirer=function(t){var self=this,fe=this.state.fe;if(!fe||fe.busy)return;this.setState({fe:Object.assign({},fe,{busy:true})});
   rest('DELETE','planning_tasks?id=eq.'+encodeURIComponent(t.id)).then(function(){auditT(self,'SUPPRESSION','planning_tasks',t.id,{action:'journee_retiree',wo_id:fe.id,date:t.date_debut});
     var cur=self.state.fe;if(cur&&cur.id===fe.id)self.setState({fe:Object.assign({},cur,{busy:false,suite:(cur.suite||[]).filter(function(x){return x.id!==t.id;})})});
@@ -757,7 +768,7 @@ Comp.prototype.feVals=function(){var self=this,fe=this.state.fe,D=this.D;if(!fe)
     feHasSerie:!isNew&&((k==='wo'&&!!f.groupe_id)||(k==='pt'&&!!(f.recurrence&&f.recurrence.serie))),feDel2Lbl:fe.confirm===2?'Confirmer : supprimer les à venir':'Supprimer les à venir de la série',feDel2:function(){self.feDelete(2);},
     fePrint:function(){self.printWO();},canPrint:k==='wo'&&!isNew,
     woSuiteShow:k==='wo'&&!isNew,woSuiteLoading:k==='wo'&&!isNew&&!fe.suite,woSuiteReady:k==='wo'&&!isNew&&!!fe.suite,
-    woSuite:k==='wo'&&!isNew&&fe.suite?(function(){var L=[{l:'Jour 1 · '+jourTxt(f.date)+' — date du bon',sous:(f.heure_debut?'Créneau du bon : '+creneauTxt(f.ordre,f.heure_debut,f.heure_fin)+' (Heure début / fin, plus haut)':'Heures : Heure début / fin du bon, plus haut')+' · techniciens : ceux du bon, plus bas',hasSous:true,canDel:false,edit:false,techs:[],del:function(){}}],n=1,
+    woSuite:k==='wo'&&!isNew&&fe.suite?(function(){var L=[{l:'Jour 1 · '+jourTxt(f.date)+' — date du bon',sous:'Techniciens du jour 1 : ceux du bon, plus bas. Date et heures enregistrées dès qu’on les change.',hasSous:true,edit0:true,d:f.date||'',hd:f.heure_debut||'',hf:f.heure_fin||'',onD:function(e){self.feJour1({date:e.target.value});},onHD:function(e){self.feJour1({heure_debut:e.target.value||''});},onHF:function(e){self.feJour1({heure_fin:e.target.value||''});},canDel:false,edit:false,techs:[],del:function(){}}],n=1,
       cpt=D.comptes.filter(function(c){return c.role!=='admin'&&D.statut[c.id]!=='inactif';});
       fe.suite.map(function(t){return{t:t,j:joursPT(t,f.date)};}).filter(function(x){return x.j.length;}).sort(function(x,y){return x.j[0].localeCompare(y.j[0]);}).forEach(function(x){var t=x.t;
         L.push({l:x.j.length>1?'Jours '+(n+1)+' à '+(n+x.j.length)+' · du '+jourTxt(x.j[0])+' au '+jourTxt(x.j[x.j.length-1]):'Jour '+(n+1)+' · '+jourTxt(x.j[0]),canDel:t.descr===SUITE_DESCR,del:function(){self.feSuiteRetirer(t);},
