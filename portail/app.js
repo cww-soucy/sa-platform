@@ -275,12 +275,17 @@
         return h('span', { class: 'm ' + e, style: 'left:' + b.plan_x + '%;top:' + b.plan_y + '%', title: b.nom, text: String(b.numero || i + 1) });
       }))) : null;
 
-    var TABS = [['releves', 'Relevés', 'releves'], ['historique', 'Historique', 'historique'], ['rapports', 'Rapports', 'rapports'], ['documents', 'Plans et documents', 'plans'], ['interventions', 'Interventions', 'interventions'], ['factures', 'Factures', 'factures']];
+    /* Affichage choisi par Soucy Aquatik (sa-admin › Affichage des apps) : onglets et sections masqués ; sans règle, tout est visible */
+    var A = window.SAAff, aff = A ? A.resoudre(D.affichage || [], 'portail', { niveau: (D.contact && D.contact.niveau) || S.niveau }) : null, vu = function (k) { return !A || A.visible(aff, k); };
+    if (!vu('sec.bandeau')) bandeau = null; if (!vu('sec.systemes')) sys = null; if (!vu('sec.attention')) attention = null; if (!vu('sec.plan')) plan = null; if (!vu('sec.bassins')) bassins = null;
+    var TABS = [['releves', 'Relevés', 'releves'], ['historique', 'Historique', 'historique'], ['rapports', 'Rapports', 'rapports'], ['documents', 'Plans et documents', 'plans'], ['interventions', 'Interventions', 'interventions'], ['factures', 'Factures', 'factures']].filter(function (t) { return vu('onglet.' + t[0]); });
+    if (TABS.length && !TABS.some(function (t) { return t[0] === S.tab; })) S.tab = TABS[0][0];
     var tabs = h('div', { class: 'tabs', role: 'tablist' }, TABS.map(function (t) {
       return h('button', { role: 'tab', 'aria-selected': String(S.tab === t[0]), class: dr[t[2]] ? '' : 'off', onclick: function () { S.tab = t[0]; rendre(); } }, t[1]);
     }));
     var cur = TABS.filter(function (t) { return t[0] === S.tab; })[0] || TABS[0];
-    var corps = !dr[cur[2]] ? h('div', { class: 'dash' }, h('b', { text: cur[1] + ' : accès ' + (cur[2] === 'factures' ? 'Direction' : 'Gestionnaire') + '.' }), h('div', { text: ' Demandez l’accès à votre gestionnaire.' }))
+    if (!cur) tabs = null;
+    var corps = !cur ? null : !dr[cur[2]] ? h('div', { class: 'dash' }, h('b', { text: cur[1] + ' : accès ' + (cur[2] === 'factures' ? 'Direction' : 'Gestionnaire') + '.' }), h('div', { text: ' Demandez l’accès à votre gestionnaire.' }))
       : cur[0] === 'releves' ? ongletReleves(site, vis) : cur[0] === 'historique' ? ongletHistorique(vis) : cur[0] === 'rapports' ? ongletRapport(vis)
       : cur[0] === 'documents' ? ongletDocs(site) : cur[0] === 'interventions' ? ongletInterventions(site, vis) : h('div', { class: 'dash', text: 'Les factures seront disponibles ici prochainement. Pour une copie, écrivez à Soucy Aquatik.' });
 
@@ -289,8 +294,8 @@
       h('button', { class: 'btn', onclick: function () { call('deconnexion'); clearTok(); S.horsQr = false; S.data = null; S.site = null; ecranIdent(); } }, 'Changer d’adresse')) : null;
     show(head, horsQr, h('div', { class: 'cols' },
       h('div', { class: 'stack' }, bandeau, sys, attention, plan, tabs, corps),
-      h('aside', { class: 'stack' }, bassins, lv && dr.rapports ? h('button', { class: 'btn big', onclick: function () { S.tab = 'rapports'; S.visite = lv.r.id; rendre(); } }, 'Rapport de la dernière visite') : null)),
-      h('div', { class: 'foot' }, D.urgence ? h('a', { href: 'tel:' + D.urgence.replace(/[^\d+]/g, '') }, 'Urgence 24/7 · ' + D.urgence) : null,
+      h('aside', { class: 'stack' }, bassins, lv && dr.rapports && vu('sec.rapport') ? h('button', { class: 'btn big', onclick: function () { S.tab = 'rapports'; S.visite = lv.r.id; rendre(); } }, 'Rapport de la dernière visite') : null)),
+      h('div', { class: 'foot' }, D.urgence && vu('sec.urgence') ? h('a', { href: 'tel:' + D.urgence.replace(/[^\d+]/g, '') }, 'Urgence 24/7 · ' + D.urgence) : null,
         S.apercu ? null : h('button', { class: 'btn', onclick: function () { call('deconnexion'); clearTok(); location.reload(); } }, 'Se déconnecter')));
   }
 

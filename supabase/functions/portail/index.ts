@@ -110,6 +110,10 @@ async function charger(compte: Record<string, any>, sitesOk: string[], niveau: s
   (out as any).contrats = ct;
   (out as any).compte = { nom: compte.nom, logo: await signe(compte.logo_path) };
   (out as any).urgence = URGENCE;
+  /* Affichage configurable (sa-admin › Affichage des apps) : seulement les profils qui s'appliquent à ce client.
+     Table absente ou erreur → aucune règle, tout reste visible. */
+  const aff = await sb.from("affichage_regles").select("app, cible, masques").eq("app", "portail").in("cible", ["tous", "niveau:" + niveau]);
+  (out as any).affichage = aff.error ? [] : aff.data || [];
   return out;
 }
 

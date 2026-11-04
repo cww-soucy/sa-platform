@@ -371,12 +371,35 @@ rep('<span style="font:600 28px/1 var(--font-heading)">{{ cur.nChecks }}/{{ cur.
 rep('<div style="font-size:13px;color:var(--color-neutral-700)">Dernier relevé : {{ f.lastTxt }}</div>','<div style="font-size:13px;color:var(--color-neutral-700)">Dernier relevé : {{ f.lastTxt }}</div><sc-if value="{{ f.bad }}"><div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:14px;font-weight:600">Qu’avez-vous fait ?</span><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ f.acts }}" as="a"><button onClick="{{ a.go }}" aria-pressed="{{ a.on }}" style="all:unset;cursor:pointer;padding:8px 12px;min-height:28px;border:1.5px solid var(--color-text);font-size:15px;background:{{ a.bg }};color:{{ a.fg }}">{{ a.label }}</button></sc-for></div></div></sc-if>',1)
 rep('<button class="btn btn-primary" onClick="{{ validate }}" style="min-height:60px;font-size:21px;width:100%">Valider la fiche</button>','<sc-if value="{{ stResume }}"><button class="btn btn-primary" onClick="{{ validate }}" style="min-height:60px;font-size:21px;width:100%">{{ validateLbl }}</button></sc-if><sc-if value="{{ notResume }}"><div style="display:flex;gap:8px"><sc-if value="{{ notStart }}"><button class="btn btn-secondary" onClick="{{ stepBack }}" aria-label="Étape précédente" style="min-height:60px;width:64px"><sa-i n="left" s="24"></sa-i></button></sc-if><button class="btn btn-primary" onClick="{{ stepNext }}" style="min-height:60px;font-size:19px;flex:1">{{ nextLbl }}</button></div></sc-if>',1)
 
+# ---------- Affichage configurable (sa-admin › Affichage des apps ; catalogue : src/affichage/affichage.js) ----------
+# data-aff="<clé>" sur chaque bloc masquable ; la règle CSS est produite par SAAff.appliquer
+def AFF(anchor,key,tag='div',tous=False):
+    global M
+    n=0;a=0
+    while True:
+        i=M.find(anchor,a)
+        if i<0: break
+        j=M.rfind('<'+tag,0,i); k=j+1+len(tag); M=M[:k]+' data-aff="%s"'%key+M[k:]; n+=1; a=i+len(' data-aff="%s"'%key)+len(anchor)
+        if not tous: break
+    assert n, ('bloc masquable introuvable',anchor)
+M=M.replace('display:grid;grid-template-columns:repeat(6,minmax(0,1fr));border-top:1px solid var(--color-text)','display:grid;grid-template-columns:repeat({{ nTabs }},minmax(0,1fr));border-top:1px solid var(--color-text)',1)
+assert '{{ nTabs }}' in M, 'barre du bas (nTabs)'
+AFF('<h3 style="margin:0;font-size:24px">Tournée</h3>','accueil.tournee')
+AFF('onClick="{{ goComm }}"','accueil.comm','button',tous=True)
+AFF('onClick="{{ goLog }}"','accueil.logistique','button')
+AFF('onClick="{{ goHiv }}" style="all:unset;cursor:pointer;background:var(--color-bg)','accueil.hivernage','button')
+AFF('onClick="{{ goDemandes }}" style="all:unset;cursor:pointer;background:var(--color-bg)','accueil.demande','button')
+AFF('href="tel:{{ bureauTel }}" style="text-decoration:none;color:inherit;background:var(--color-bg)','accueil.bureau','a')
+AFF('<h3 style="margin:0 0 6px;font-size:24px">Cette semaine</h3>','temps.semaine')
+AFF('<h3 style="margin:0;font-size:24px">Mes visites récurrentes</h3>','planning.recurrentes')
+AFF('<h3 style="margin:0 0 6px;font-size:24px">Mes demandes</h3>','demandes.historique')
 open(os.path.join(OUT,'terrain.markup.html'),'w',encoding='utf-8').write(M)
 ds=open(os.path.join(SRC,'design')+'/ds/styles.css',encoding='utf-8').read()
 ds=re.sub(r"@import url\([^)]*\);\s*",'',ds)
 icons=open(os.path.join(SRC,'design')+'/sa-icons.js',encoding='utf-8').read()
 insp=open(os.path.join(SRC,'inspection','model.js'),encoding='utf-8').read(); assert '</script' not in insp.lower()
 hiv=open(os.path.join(SRC,'hivernage','checklist.js'),encoding='utf-8').read(); assert '</script' not in hiv.lower()
+aff=open(os.path.join(SRC,'affichage','affichage.js'),encoding='utf-8').read(); assert '</script' not in aff.lower()
 rt=open(os.path.join(HERE,'runtime.js'),encoding='utf-8').read(); app=open(os.path.join(HERE,'app.js'),encoding='utf-8').read()
 # ---------- FICHE : « À faire » — description, notes et tâches du bon de travail saisis au bureau, avant les relevés ----------
 TODO_ITEM=('<div style="display:flex;flex-direction:column;gap:8px;padding:12px 0;border-top:1px solid var(--color-divider)">'
@@ -454,7 +477,7 @@ button{font-family:inherit}
 <input id="photoInput" type="file" accept="image/*" capture="environment" style="display:none">
 <template id="tpl">'''+M+'''</template>
 <script>'''+icons+'''</script>
-<script>'''+insp+'''</script><script>'''+hiv+'''</script><script>'''+rt+'''</script>
+<script>'''+insp+'''</script><script>'''+hiv+'''</script><script>'''+aff+'''</script><script>'''+rt+'''</script>
 <script>'''+app+'''</script>
 </body></html>'''
 open(os.path.join(OUT,'terrain.html'),'w',encoding='utf-8').write(html)

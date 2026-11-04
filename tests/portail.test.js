@@ -49,7 +49,7 @@ function serveur(niveau, sitesOk = ['1']) {
     if (b.action === 'verifier_code') { if (b.code !== '123456') return ok({ ok: false, message: 'Code incorrect ou expiré.' }); st.sessions.add('S-' + st.sessions.size + '-xxxxxxxxxxxxxxxxxxxx'); return ok({ ok: true, session: [...st.sessions].pop(), jours: b.souvenir ? 90 : 0 }); }
     if (b.action === 'donnees') {
       if (!st.sessions.has(tok)) return route.fulfill({ status: 401, contentType: 'application/json', body: '{"ok":false}' });
-      return ok({ ok: true, contact: { nom: 'Jeanne Gestion', niveau }, compte: { nom: 'Ville de Test', logo: null }, urgence: '418-555-0100', contrats: { 1: 'MI' },
+      return ok({ ok: true, contact: { nom: 'Jeanne Gestion', niveau }, compte: { nom: 'Ville de Test', logo: null }, urgence: '418-555-0100', contrats: { 1: 'MI' }, affichage: st.affichage || [],
         ...L.donneesClient({ ...src, sites: src.sites.filter((x) => sitesOk.includes(x.id)) }, { niveau, sitesOk }) });
     }
     if (b.action === 'admin_ouvrir') return ok(b.id === 'cwweil' && b.mdp === 'bon' ? { ok: true, session: 'ADM-xxxxxxxxxxxxxxxxxxxxxxxx', role: 'admin' } : { ok: false, message: 'Identifiant ou mot de passe incorrect, ou rôle insuffisant.' });
@@ -322,6 +322,26 @@ test('portail : sans QR, une adresse donnant accès à plusieurs installations �
   // puis on passe de l'une à l'autre avec « Mes installations »
   await page.getByLabel('Mes installations').selectOption('1');
   assert.equal(await page.textContent('h1'), 'Piscine Alpha');
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+test('portail : onglets et sections masqués par Soucy Aquatik (sa-admin › Affichage des apps)', async () => {
+  const { page, st, errors } = await open('?q=BON');
+  st.affichage = [{ app: 'portail', cible: 'tous', masques: { 'onglet.releves': true, 'onglet.factures': true, 'sec.urgence': true, 'sec.bassins': true } },
+    { app: 'portail', cible: 'niveau:gestionnaire', masques: { 'onglet.factures': false } }];
+  await page.getByRole('button', { name: 'Accès client' }).click();
+  await page.fill('#ident', 'jeanne@ville.qc.ca');
+  await page.getByRole('button', { name: 'Recevoir un code' }).click();
+  for (const [i, d] of [...'123456'].entries()) await page.getByLabel('Chiffre ' + (i + 1)).fill(d);
+  await page.getByRole('button', { name: 'Accéder' }).click();
+  await page.locator('.opere').getByText('Opéré par').waitFor();
+  const onglets = await page.getByRole('tab').allInnerTexts();
+  assert.deepEqual(onglets, ['Historique', 'Rapports', 'Plans et documents', 'Interventions', 'Factures'], 'Relevés masqué ; Factures réaffiché pour les gestionnaires');
+  assert.equal(await page.getByRole('tab', { selected: true }).innerText(), 'Historique', 'premier onglet visible ouvert');
+  const txt = await page.textContent('main');
+  assert.doesNotMatch(txt, /Vos bassins|Urgence 24\/7/);
+  assert.match(txt, /État des systèmes|Eau du bassin/);
   assert.deepEqual(errors, []);
   await page.close();
 });

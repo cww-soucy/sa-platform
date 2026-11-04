@@ -1001,6 +1001,36 @@ _p=min(_ps); M=M[:_p]+CATBAR+M[_p:]
 _h=re.search(r'<(template data-sc="if"|sc-if) value="\{\{ isHivB \}\}"',M)
 assert _h, 'ancre isHivB (barre Sites et inspections)'
 M=M[:_h.start()]+CATBAR.replace('{{ isSiteCat }}','{{ isHivCat }}',1)+M[_h.start():]
+# ---------- AFFICHAGE DES APPS (affichage.tpl.html + affichage.js ; catalogue : src/affichage/affichage.js) ----------
+ATPL=open(os.path.join(HERE,'affichage.tpl.html'),encoding='utf-8').read()
+ATPL=ATPL[ATPL.index('-->')+3:].strip()
+ATPL=re.sub(r'<sc-(for|if)\b',r'<template data-sc="\1"',ATPL); ATPL=ATPL.replace('</sc-for>','</template>').replace('</sc-if>','</template>')
+_g=M.find('<template data-sc="if" value="{{ isGlobale }}">'); assert _g>0, 'ancre isGlobale (affichage)'
+M=M[:_g]+ATPL+M[_g:]
+# Aperçu « voir sa-admin comme ce profil » : bandeau fixe en bas, toujours un bouton pour revenir
+M=M.rstrip()+'\n<template data-sc="if" value="{{ affApercuOn }}"><div role="status" style="position:fixed;left:50%;transform:translateX(-50%);bottom:16px;top:auto;height:auto!important;width:max-content;z-index:80;display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 12px 10px 18px;background:var(--color-text);color:var(--color-bg);box-shadow:0 6px 24px rgba(0,0,0,.25);max-width:calc(100vw - 32px)"><sa-i n="eye" s="18"></sa-i><span style="font:600 16px var(--font-heading)">{{ affApercuTxt }}</span><button class="btn" onClick="{{ affApercuFin }}" style="background:var(--color-bg);color:var(--color-text);min-height:36px">Quitter l’aperçu</button></div></template>\n'
+# Sections masquables : data-aff="<clé>" sur le bloc ; la règle CSS est produite par SAAff.appliquer
+def AFF(anchor,key,tag='section',after=None):
+    global M
+    a=M.find(after) if after else 0
+    assert a>=0, ('ancre de départ',after)
+    i=M.find(anchor,a); assert i>=0, ('section masquable introuvable',anchor)
+    j=M.rfind('<'+tag,0,i); assert j>=0
+    k=j+1+len(tag); M=M[:k]+' data-aff="%s"'%key+M[k:]
+_mon='{{ isMonitoring }}'
+AFF('Mur de contrôle (grand écran)','mon.mur','button',_mon)
+AFF('<span style="font:600 20px var(--font-heading)">Livraisons en cours</span>','mon.livraisons','section',_mon)
+AFF('Équipe en ce moment</h3>','mon.equipe','section',_mon)
+AFF('Flux terrain</h3>','mon.flux','section',_mon)
+AFF('Salles mécaniques</h3>','mon.salles','section',_mon)
+AFF('Relevés hors zone — dernière','mon.horszone','section',_mon)
+_gl='<template data-sc="if" value="{{ isGlobale }}">'
+AFF('Livraisons en cours','glob.livraisons','section',_gl)
+AFF('<template data-sc="for" list="{{ gKpis }}"','glob.kpis','div',_gl)
+AFF('Charge par technicien','glob.charge','section',_gl)
+AFF('>Alertes<','glob.alertes','section',_gl)
+AFF('Les 7 prochains jours','glob.prochains','section',_gl)
+AFF('Terminé par l’équipe — à valider','glob.valider','section',_gl)
 open(os.path.join(OUT,'admin.markup.html'),'w',encoding='utf-8').write(M)
 M=re.sub(r'(<template data-sc="if" value="\{\{ isCarte \}\}"[^>]*>\s*<div style="display:flex;flex-direction:column;gap:16px;height:100%">)',r'\1<div style="font-size:13px">{{ carteInfo }}</div>',M,count=1)
 ds=re.sub(r"@import url\([^)]*\);\s*",'',open(os.path.join(SRC,'design')+'/ds/styles.css',encoding='utf-8').read())
@@ -1013,11 +1043,13 @@ assert '</script' not in ljs.lower() and '</style' not in lcss.lower()
 qjs=open(os.path.join(SRC,'vendor','qrcodejs','qrcode.min.js'),encoding='utf-8').read(); assert '</script' not in qjs.lower()
 insp=open(os.path.join(SRC,'inspection','model.js'),encoding='utf-8').read(); assert '</script' not in insp.lower()
 hiv=open(os.path.join(SRC,'hivernage','checklist.js'),encoding='utf-8').read(); assert '</script' not in hiv.lower()
+aff=open(os.path.join(SRC,'affichage','affichage.js'),encoding='utf-8').read(); assert '</script' not in aff.lower()
 rt=open(os.path.join(HERE,'runtime.js'),encoding='utf-8').read(); app=open(os.path.join(HERE,'app.js'),encoding='utf-8').read()
 _k=app.rindex('})();'); app=app[:_k]+open(os.path.join(HERE,'inspections.js'),encoding='utf-8').read()+'\n'+app[_k:]
 _k=app.rindex('})();'); app=app[:_k]+open(os.path.join(HERE,'clients.js'),encoding='utf-8').read()+'\n'+app[_k:]
 _k=app.rindex('})();'); app=app[:_k]+open(os.path.join(HERE,'sondages.js'),encoding='utf-8').read()+'\n'+app[_k:]
 _k=app.rindex('})();'); app=app[:_k]+open(os.path.join(HERE,'ouvrages.js'),encoding='utf-8').read()+'\n'+app[_k:]
+_k=app.rindex('})();'); app=app[:_k]+open(os.path.join(HERE,'affichage.js'),encoding='utf-8').read()+'\n'+app[_k:]
 import base64
 LOGO='data:image/png;base64,'+base64.b64encode(open(os.path.join(SRC,'design','logo-soucy-aquatik.png'),'rb').read()).decode()
 html='''<!DOCTYPE html>
@@ -1033,6 +1065,36 @@ button{font-family:inherit}a{color:var(--color-accent-700)}
 #login{position:fixed;inset:0;background:var(--color-bg);display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px;z-index:50}
 #login form{width:100%;max-width:380px;display:flex;flex-direction:column;gap:16px}#login h1{margin:0;font-size:44px;line-height:1}
 '''+'\n'.join(css)+'''
+/* Affichage des apps */
+.aff-apps{display:flex;gap:0;border:1px solid var(--color-divider);align-self:flex-start;flex-wrap:wrap;max-width:100%}
+.aff-app{all:unset;cursor:pointer;display:flex;flex-direction:column;gap:2px;padding:10px 18px;border-right:1px solid var(--color-divider);position:relative;min-width:150px}
+.aff-app:last-child{border-right:0}.aff-app[aria-selected="true"]{background:var(--color-text);color:var(--color-bg)}
+.aff-app:focus-visible,.aff-profil:focus-visible,.aff-btn:focus-visible{outline:2px solid var(--color-accent-700);outline-offset:2px}
+.aff-app-nom{font:600 19px/1.1 var(--font-heading)}.aff-app-sous{font-size:12px;opacity:.85}
+.aff-app .aff-pastille{position:absolute;top:8px;right:8px}
+.aff-pastille{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;box-sizing:border-box;font:600 12px var(--font-heading);border:1px solid currentColor;white-space:nowrap}
+.aff-cols{display:grid;grid-template-columns:260px minmax(0,1fr);gap:22px;align-items:start}
+@media (max-width:900px){.aff-cols{grid-template-columns:minmax(0,1fr)}}
+.aff-profils{display:flex;flex-direction:column;gap:16px;position:sticky;top:0;max-height:calc(100vh - 160px);overflow-y:auto;padding-right:4px}
+.aff-titre{font:600 13px var(--font-heading);text-transform:uppercase;letter-spacing:.6px}
+.aff-bloc{display:flex;flex-direction:column;gap:2px}.aff-bloc-nom{font-size:13px;color:var(--color-neutral-600);margin:0 0 4px}
+.aff-profil{all:unset;cursor:pointer;display:flex;align-items:center;gap:8px;padding:8px 10px;min-height:24px;border-left:3px solid transparent}
+.aff-profil:hover{background:var(--color-accent-100)}
+.aff-profil[aria-pressed="true"]{background:var(--color-accent-100);border-left-color:var(--color-text);font-weight:600}
+.aff-profil-nom{flex:1;min-width:0;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.aff-profil-sub{font-size:12px;color:var(--color-neutral-600)}
+.aff-corps{display:flex;flex-direction:column;gap:18px;min-width:0}
+.aff-tete{padding:16px 18px;gap:12px}
+.aff-legende{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--color-neutral-700);border-top:1px solid var(--color-divider);padding-top:10px}
+.aff-groupe-tete{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 18px;border-bottom:1px solid var(--color-divider)}
+.aff-compte{font-size:13px;font-weight:600;white-space:nowrap}
+.aff-ligne{display:flex;align-items:center;gap:12px;padding:8px 18px;border-bottom:1px solid var(--color-divider);flex-wrap:wrap}
+.aff-ligne:last-child{border-bottom:0}
+.aff-oeil{flex:none;width:30px;height:30px;display:flex;align-items:center;justify-content:center;border:1px solid var(--color-text)}
+.aff-choix{display:flex;border:1px solid var(--color-text);flex:none}
+.aff-btn{all:unset;cursor:pointer;padding:6px 12px;font:600 14px var(--font-heading);border-right:1px solid var(--color-text);min-width:58px;text-align:center}
+.aff-btn:last-child{border-right:0}
+.aff-verrou{font-size:13px;padding:4px 10px;border:1px dashed var(--color-divider);white-space:nowrap}
+
 </style></head><body>
 <div id="app"></div>
 <div id="login"><form id="loginForm" autocomplete="on">
@@ -1053,7 +1115,7 @@ button{font-family:inherit}a{color:var(--color-accent-700)}
 <style>'''+lcss+'''</style>
 <script>'''+ljs+'''</script>
 <script>'''+qjs+'''</script>
-<script>'''+icons+'''</script><script>window.SA_LOGO='''+repr(LOGO)+''';</script><script>'''+insp+'''</script><script>'''+hiv+'''</script><script>'''+rt+'''</script><script>'''+app+'''</script>
+<script>'''+icons+'''</script><script>window.SA_LOGO='''+repr(LOGO)+''';</script><script>'''+insp+'''</script><script>'''+hiv+'''</script><script>'''+aff+'''</script><script>'''+rt+'''</script><script>'''+app+'''</script>
 </body></html>'''
 open(os.path.join(OUT,'admin.html'),'w',encoding='utf-8').write(html)
 print('taille',len(html),'| règles',len(css))

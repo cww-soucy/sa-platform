@@ -1,0 +1,71 @@
+<!-- sa-admin › Affichage des apps : ce que chaque profil voit dans sa-admin, sa-terrain et le portail client — inséré par assemble.py ; logique : affichage.js -->
+<sc-if value="{{ isAffichage }}">
+<div data-mod="affichage" class="aff" style="display:flex;flex-direction:column;gap:18px">
+<sc-if value="{{ af.sansTable }}"><div role="alert" style="padding:12px 16px;border:1px solid var(--color-text);background:var(--color-accent-100);font-size:15px;line-height:1.4"><b>Base pas encore prête.</b> Les choix s’affichent ici, mais l’enregistrement attend la migration « affichage des modules » (docs/sql/MIGRATION_2026-11-03_affichage_modules.sql). D’ici là, tout reste visible pour tout le monde.</div></sc-if>
+
+<div role="tablist" aria-label="Application" class="aff-apps">
+  <sc-for list="{{ af.apps }}" as="a"><button role="tab" aria-selected="{{ a.on }}" onClick="{{ a.go }}" class="aff-app">
+    <span class="aff-app-nom">{{ a.nom }}</span><span class="aff-app-sous">{{ a.sous }}</span><sc-if value="{{ a.n }}"><span class="aff-pastille">{{ a.n }}</span></sc-if></button></sc-for>
+</div>
+
+<div class="aff-cols">
+  <aside class="aff-profils" aria-label="Pour qui ?">
+    <div class="aff-titre">Pour qui ?</div>
+    <sc-for list="{{ af.blocs }}" as="b">
+      <div class="aff-bloc"><span class="aff-bloc-nom">{{ b.nom }}</span>
+        <sc-if value="{{ b.cherche }}"><input class="input" placeholder="Chercher un employé" aria-label="Chercher un employé" value="{{ af.q }}" onInput="{{ af.onQ }}" style="min-height:36px;font-size:14px"></sc-if>
+        <sc-for list="{{ b.profils }}" as="p"><button onClick="{{ p.go }}" aria-pressed="{{ p.on }}" class="aff-profil">
+          <span class="aff-profil-nom">{{ p.nom }}</span><sc-if value="{{ p.sub }}"><span class="aff-profil-sub">{{ p.sub }}</span></sc-if>
+          <sc-if value="{{ p.n }}"><span class="aff-pastille" title="Choix propres à ce profil">{{ p.n }}</span></sc-if></button></sc-for>
+        <sc-if value="{{ b.vide }}"><span style="font-size:13px;color:var(--color-neutral-600)">{{ b.vide }}</span></sc-if>
+      </div>
+    </sc-for>
+  </aside>
+
+  <div class="aff-corps">
+    <section class="blueprint aff-tete"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start">
+        <div style="flex:1 1 300px;display:flex;flex-direction:column;gap:4px;min-width:0">
+          <h2 style="margin:0;font-size:28px;line-height:1.1">{{ af.titre }}</h2>
+          <span style="font-size:14px;line-height:1.4">{{ af.herite }}</span>
+          <span style="font-size:14px;font-weight:600">{{ af.resume }}</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+          <sc-if value="{{ af.peutApercu }}"><button class="btn btn-secondary" onClick="{{ af.apercu }}" style="gap:8px"><sa-i n="eye" s="16"></sa-i>Voir sa-admin comme ce profil</button></sc-if>
+          <button class="btn btn-ghost" onClick="{{ af.toutAfficher }}">Tout afficher</button>
+          <sc-if value="{{ af.dirty }}"><button class="btn btn-ghost" onClick="{{ af.annuler }}">Annuler les changements</button></sc-if>
+          <button class="btn btn-primary" onClick="{{ af.save }}" aria-disabled="{{ af.saveOff }}" style="opacity:{{ af.saveOp }}">{{ af.saveLbl }}</button>
+        </div>
+      </div>
+      <div class="aff-legende"><span><b>Hériter</b> : comme le profil plus général</span><span><b>Afficher</b> / <b>Masquer</b> : choix propre à ce profil</span><span>Le choix le plus précis l’emporte : employé, puis rôle, puis tout le monde.</span></div>
+    </section>
+
+    <sc-for list="{{ af.groupes }}" as="g">
+      <section class="blueprint aff-groupe"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="aff-groupe-tete">
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><h3 style="margin:0;font-size:21px">{{ g.nom }}</h3><span style="font-size:13px;line-height:1.35">{{ g.aide }}</span></div>
+          <span class="aff-compte">{{ g.compte }}</span>
+          <button class="btn btn-ghost" onClick="{{ g.tousVis }}" style="min-height:32px;font-size:14px">Tout afficher</button>
+          <button class="btn btn-ghost" onClick="{{ g.tousMasq }}" style="min-height:32px;font-size:14px">Tout masquer</button>
+        </div>
+        <div role="list">
+        <sc-for list="{{ g.rows }}" as="r">
+          <div role="listitem" class="aff-ligne" style="opacity:{{ r.op }};background:{{ r.rowBg }}" data-cle="{{ r.cle }}">
+            <span class="aff-oeil" style="background:{{ r.eBg }};color:{{ r.eFg }}" aria-hidden="true"><sa-i n="{{ r.eIc }}" s="16"></sa-i></span>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px">
+              <span style="font-weight:600;font-size:16px">{{ r.nom }}<sc-if value="{{ r.sec }}"><span style="font-weight:400;font-size:13px"> · {{ r.sec }}</span></sc-if></span>
+              <span style="font-size:13px">{{ r.etat }}<sc-if value="{{ r.note }}"> — {{ r.note }}</sc-if></span>
+            </div>
+            <sc-if value="{{ r.lock }}"><span class="aff-verrou">{{ r.lockTxt }}</span></sc-if>
+            <sc-if value="{{ r.libre }}"><div class="aff-choix" role="group" aria-label="{{ r.aria }}">
+              <sc-for list="{{ r.b }}" as="x"><button onClick="{{ x.go }}" aria-pressed="{{ x.on }}" class="aff-btn" style="background:{{ x.bg }};color:{{ x.fg }}">{{ x.l }}</button></sc-for>
+            </div></sc-if>
+          </div>
+        </sc-for>
+        </div>
+      </section>
+    </sc-for>
+  </div>
+</div>
+</div>
+</sc-if>

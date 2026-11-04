@@ -374,7 +374,7 @@ Comp.prototype.commRead=function(c){if(!this.commUnread(c))return;var now=new Da
   jset('sa_terrain_comm_'+this.user.id,{l:this.comm||[],r:this.commLus});
   this.enqueue({_t:'communication_lectures',id:c.id+'_'+this.user.id,comm_id:c.id,uid:this.user.id,emp_nom:this.me.nom,version:v,lu_at:now,updated_at:now});};
 Comp.prototype.loadBureau=function(){var self=this;return get('comptes_publics?id=eq.cwweil&select=tel').then(function(r){self.bureau=(r[0]&&r[0].tel)||'';}).catch(function(){});};
-Comp.prototype.refresh=function(){var self=this;this.loadComm();this.loadBonsMoi();return Promise.all([this.loadRef(),this.loadBureau(),this.loadDem()]).then(function(){return Promise.all([self.loadJobs(),self.loadPunch()]);}).then(function(){var c=self.curJob();if(c)self.loadLast(c.site);self.flush();self.flushOps();self.update();});};
+Comp.prototype.refresh=function(){var self=this;this.loadComm();this.loadBonsMoi();this.loadAff();return Promise.all([this.loadRef(),this.loadBureau(),this.loadDem()]).then(function(){return Promise.all([self.loadJobs(),self.loadPunch()]);}).then(function(){var c=self.curJob();if(c)self.loadLast(c.site);self.flush();self.flushOps();self.update();});};
 
 /* ---------- File d'attente : rien n'est perdu si le réseau tombe ---------- */
 Comp.prototype.flush=function(){var self=this,q=jget('sa_terrain_queue',[]);if(!q.length||!navigator.onLine||this._fq){self.queueN=q.length;return;}
@@ -517,7 +517,16 @@ Comp.prototype.sendHiv=function(){var st=this.state,sid=st.hivSel,s=sid&&siteByI
   this.persist();this.flash('Liste envoyée au bureau — '+s.nom);};
 
 /* ---------- Valeurs dérivées pour le gabarit ---------- */
+/* ---------- Affichage configurable (sa-admin › Affichage des apps) : onglets, tuiles et sections masqués par le bureau ----------
+   Règles lues à chaque actualisation (table affichage_regles), gardées sur le téléphone pour le hors-réseau.
+   Sans règle (ou table absente) : tout est visible, comme avant. */
+var AFF_ECRANS={temps:'onglet.temps',planning:'onglet.planning',demandes:'onglet.demandes',soon:'onglet.demandes',logistique:'accueil.logistique',hivernage:'accueil.hivernage',hivForm:'accueil.hivernage',comm:'accueil.comm',commView:'accueil.comm'};
+Comp.prototype.loadAff=function(){var self=this;return get('affichage_regles?select=*').then(function(r){if(!Array.isArray(r))return;self.affRegles=r;jset('sa_terrain_affichage',r);self.update();}).catch(function(){});};
+Comp.prototype.affEtat=function(){var A=window.SAAff;if(!A)return null;if(!this.affRegles)this.affRegles=jget('sa_terrain_affichage',[]);
+  return A.resoudre(this.affRegles,'terrain',{role:this.user.role,compte:this.user.id});};
 Comp.prototype.vals=function(){
+  var aff=this.affEtat(),affOk=function(k){return!window.SAAff||window.SAAff.visible(aff,k);};if(window.SAAff)window.SAAff.appliquer(document,aff);
+  if(AFF_ECRANS[this.state.screen]&&!affOk(AFF_ECRANS[this.state.screen]))this.state.screen='today';
   var self=this,st=this.state,scr=st.screen,me=this;this.syncDerived();
   var titles={logistique:'Logistique',hivernage:'Hivernage',hivForm:'Hivernage',punchedit:'Corriger un punch',temps:'Temps',punchform:'Démarrer un punch',stopform:'Terminer la journée',demandes:'Demandes',comm:'Communications',commView:'Communication',today:'La Tournée',fiche:'Fiche technique',planning:'Planning',profil:'Profil',soon:st.soon||'Bientôt'};
   var cj=this.curJob();
@@ -603,7 +612,7 @@ Comp.prototype.vals=function(){
   var recMap={};days.forEach(function(d){d.items.forEach(function(it){if(it[3]&&!recMap[it[1]+it[2]]){var s=siteById(it[1]);recMap[it[1]+it[2]]={nom:s?s.nom:'—',rec:it[3]+' · '+it[2]};}});});
   var segStyle=function(on){return{bg:on?'var(--color-text)':'transparent',fg:on?'var(--color-bg)':'var(--color-text)'};};
   var tabOf={logistique:'today',hivernage:'today',hivForm:'today',punchedit:'temps',temps:'temps',punchform:'temps',stopform:'temps',today:'today',fiche:'fiche',planning:'planning',profil:'profil',soon:'demandes',demandes:'demandes'}[scr];
-  var TABS=[['today','Aujourd’hui','home'],['temps','Temps','clock'],['fiche','Fiche','clipboard'],['planning','Planning','calendar'],['demandes','Demandes','message'],['profil','Profil','user']];
+  var TABS=[['today','Aujourd’hui','home'],['temps','Temps','clock'],['fiche','Fiche','clipboard'],['planning','Planning','calendar'],['demandes','Demandes','message'],['profil','Profil','user']].filter(function(t){return affOk('onglet.'+t[0]);});
 
   var DT={mat:{label:'Matériel',icon:'package',sub:'Produits, pièces',chips:['Hypochlorite 20 L','Trousse DPD','Bicarbonate','Joint ou pièce','Autre']},
     ren:{label:'Renfort',icon:'users',sub:'Un collègue sur place',chips:['1 personne · 1 h','Demi-journée','Levée de couverture','Autre']},
@@ -784,7 +793,7 @@ Comp.prototype.vals=function(){
     planTitle:dsel.title,planItems:dsel.items.map(function(it){var s=siteById(it[1])||pseudoSite(it[1],'');var td=it[4]&&!it[4].vide?todoView(it[4],it[0],self):null;return{h:it[0]||'—',nom:s.nom,ville:s.ville,tache:it[2],rec:it[3],hasTodo:!!td,todo:td||{tasks:[]}};}),recurrences:Object.keys(recMap).map(function(k){return recMap[k];}),
     myWeek:this.hours==null?'—':fr(Math.round(this.hours*100)/100),me:this.me,queueLbl:this.queueN?this.queueN+' fiche(s) à envoyer':'Rien en attente',
     bureauTel:String(this.bureau||'').replace(/[^\d+]/g,''),logout:function(){jetonFin();localStorage.removeItem('sa_terrain_user');location.reload();},mdp:this.mdpVals(),
-    tabs:TABS.map(function(t){return{label:t[1],icon:t[2],go:function(){self.go(t[0]);},fg:tabOf===t[0]?'var(--color-text)':'var(--color-neutral-600)',fw:tabOf===t[0]?600:400,bar:tabOf===t[0]?'inset 0 3px 0 var(--color-text)':'none',dot:t[0]==='fiche'&&!!cj};})
+    nTabs:TABS.length,tabs:TABS.map(function(t){return{label:t[1],icon:t[2],go:function(){self.go(t[0]);},fg:tabOf===t[0]?'var(--color-text)':'var(--color-neutral-600)',fw:tabOf===t[0]?600:400,bar:tabOf===t[0]?'inset 0 3px 0 var(--color-text)':'none',dot:t[0]==='fiche'&&!!cj};})
   },stepV||{});};
 /* Profil : l'employé change son propre mot de passe (RPC changer_mdp, demande le réseau). Champs gardés hors de state : jamais persistés. */
 Comp.prototype.mdpVals=function(){var self=this,m=this.mdp||{},on=navigator.onLine,set=function(k){return function(e){m[k]=e.target.value;self.mdp=m;};};

@@ -66,6 +66,9 @@
 /src/inspection/*
   Cache-Control: no-cache, must-revalidate
 
+/src/affichage/*
+  Cache-Control: no-cache, must-revalidate
+
 /src/services/*
   Cache-Control: no-cache, must-revalidate
 
