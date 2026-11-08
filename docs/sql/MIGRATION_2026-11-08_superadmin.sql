@@ -44,13 +44,15 @@ grant  execute on function public.sa_role(), public.sa_role_reel() to authentica
 --    Une ligne dont le rôle réel est 'superadmin' n'est modifiable/supprimable que par
 --    un superadmin. Les lignes normales ne sont pas affectées.
 drop policy if exists sa_superadmin_protege_update on public.comptes;
-create policy sa_superadmin_protege_update as restrictive on public.comptes
+create policy sa_superadmin_protege_update on public.comptes
+  as restrictive
   for update to authenticated
   using  (role is distinct from 'superadmin' or public.sa_role_reel() = 'superadmin')
   with check (role is distinct from 'superadmin' or public.sa_role_reel() = 'superadmin');
 
 drop policy if exists sa_superadmin_protege_delete on public.comptes;
-create policy sa_superadmin_protege_delete as restrictive on public.comptes
+create policy sa_superadmin_protege_delete on public.comptes
+  as restrictive
   for delete to authenticated
   using (role is distinct from 'superadmin' or public.sa_role_reel() = 'superadmin');
 
