@@ -349,7 +349,10 @@ M=M.rstrip()+'\n'+PB
 # ---------- COMPTES ----------
 CPT=('<sc-if value="{{ isComptes }}"><div style="display:flex;flex-direction:column;gap:18px">'
   '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="font-size:14px">{{ cCount }}</span><span style="flex:1"></span>'
-  '<button class="btn btn-secondary" onClick="{{ cExport }}">Sauvegarde complète (.json)</button><sc-if value="{{ cCanEdit }}"><button class="btn btn-primary" onClick="{{ cNew }}">Nouveau compte</button></sc-if></div>'
+  '<button class="btn btn-secondary" onClick="{{ cExport }}">Sauvegarde complète (.json)</button>'
+  '<button class="btn btn-secondary" onClick="{{ cHoursCsv }}">Heures (.csv)</button>'
+  '<sc-if value="{{ cVaultShow }}"><button class="btn btn-secondary" onClick="{{ cVault }}" title="Récupère les lignes manquantes depuis la dernière sauvegarde locale de ce navigateur (sans toucher aux données existantes, sans les photos)">{{ cVaultLbl }}</button></sc-if>'
+  '<sc-if value="{{ cCanEdit }}"><button class="btn btn-primary" onClick="{{ cNew }}">Nouveau compte</button></sc-if></div>'
   '<sc-if value="{{ cReadOnly }}"><div style="font-size:14px;border:1px dashed var(--color-text);padding:10px 14px">Lecture seule : seul un administrateur peut créer ou modifier des comptes.</div></sc-if>'
   '<sc-if value="{{ cLoading }}"><div>Chargement…</div></sc-if><sc-if value="{{ cErr }}"><div role="alert" style="padding:10px 14px;border:2px solid var(--color-accent-900)">{{ cErr }}</div></sc-if>'
   +CARD('<table class="table" style="font-size:14px"><thead><tr>'+TH%('padding-left:18px','Nom')+TH%('','Identifiant')+TH%('','Rôle')+TH%('','Département')+TH%('','État')+TH%('','')+'</tr></thead><tbody>'
