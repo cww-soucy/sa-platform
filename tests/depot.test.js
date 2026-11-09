@@ -19,10 +19,10 @@ test('racine du dépôt : seulement les fichiers en service (pas de copies, d’
   assert.deepEqual(sensibles, [], 'aucune archive ni feuille de calcul : elles seraient publiques sur le site');
 });
 
-test('SA Platform : la version affichée (APP_BUILD) suit celle du service worker (CACHE_NAME)', () => {
-  const idx = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').match(/var APP_BUILD='(v\d+)'/);
+test('index.html est un shim de redirection vers /admin.html ; sw.js garde une version ≥ v80', () => {
+  const idx = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  assert.match(idx, /url=\/admin\.html/, 'index.html redirige vers /admin.html (SA Platform en fantôme)');
   const sw = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8').match(/var CACHE_NAME = 'sa-platform-(v\d+)'/);
-  assert.ok(idx && sw, 'APP_BUILD ou CACHE_NAME introuvable');
-  assert.equal(idx[1], sw[1]);
+  assert.ok(sw, 'CACHE_NAME introuvable');
   assert.ok(Number(sw[1].slice(1)) >= 80, 'jamais revenir sous la v80 (version restaurée le 03/10/2026)');
 });

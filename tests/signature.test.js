@@ -55,14 +55,6 @@ test('sa-admin : sous la connexion et en bas du menu de gauche, sous le nom', as
   await o.page.close();
 });
 
-test('SA Platform : sous l’écran de connexion, à la place de l’ancienne signature, même hauteur', async () => {
-  const { page, errors } = await openPlatform(browser, srv.url, { tables: base() });
-  await sig(page, '#screenLogin');
-  await nePasDeplacer(page, '#loginBtn', () => { const s = document.querySelector('.login-sig'); s.innerHTML = '<p>Made by</p><span>CWW · Central+</span>'; s.style.padding = '0'; });
-  assert.deepEqual(errors, []);
-  await page.close();
-});
-
 test('portail client : en pied de page', async () => {
   const page = await browser.newPage();
   await page.route('https://ldqvdiaewvhnukuaxdmc.supabase.co/**', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":false}' }));

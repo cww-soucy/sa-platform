@@ -150,7 +150,11 @@
 // (v59 — Mise en page des fichiers Excel refaite d'après les maquettes validées avant codage. …)
 // (v58 … v49 — voir historique précédent, inchangé.)
 
-var CACHE_NAME = 'sa-platform-v83';
+// v84 — SA Platform mise en fantôme : /index.html est maintenant une simple redirection vers
+// /admin.html (SA Admin devient le corps officiel du projet). La montée de CACHE_NAME force chaque
+// appareil à purger l'ancienne copie en cache de SA Platform et à recevoir la redirection.
+// sa-terrain (/terrain.html) continue d'utiliser ce service worker (même origine, scope « / »).
+var CACHE_NAME = 'sa-platform-v84';
 
 // Installation : s'activer tout de suite sans attendre
 self.addEventListener('install', function(event) {

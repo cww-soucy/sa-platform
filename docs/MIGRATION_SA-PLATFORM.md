@@ -81,13 +81,16 @@ plan · ft · suivi · wo · sites · flotte · inventaire · comptes · stats �
 
 Tests : `tests/migration-saplatform.test.js` (3 cas, verts).
 
-## 6. Mise en fantôme (décision retenue : redirection)
+## 6. Mise en fantôme — FAIT ✅
 
-- `index.html` redirige automatiquement vers `admin.html` (un seul point d'entrée).
-- Conserver une sortie de secours minimale si besoin (paramètre d'URL) le temps de la transition.
-- ⚠️ Règle `CLAUDE.md` : toute modification d'`index.html` impose de monter **ensemble**
-  `APP_BUILD` (index.html, actuellement `v83`) **et** `CACHE_NAME` (`sw.js`, `sa-platform-v83`) — jamais sous v80.
-- Le service worker (`sw.js`) devra servir la redirection et purger l'ancien cache.
+- `index.html` est désormais un **shim de redirection** vers `/admin.html` (meta-refresh + `location.replace`,
+  conserve `search`/`hash`). SA Platform n'est plus accessible ; SA Admin est l'unique point d'entrée.
+- `sw.js` : `CACHE_NAME` monté `sa-platform-v83` → **`sa-platform-v84`** → l'ancienne copie en cache de
+  SA Platform est purgée et chaque appareil reçoit la redirection (le SW est « réseau d'abord » pour le HTML).
+- Le service worker racine **n'est pas désinscrit** : `sa-terrain` (`/terrain.html`) l'utilise aussi (même
+  origine, scope « / »). `admin.html` n'utilise aucun service worker.
+- Tests SA Platform (`platform-jeton`, `platform-mdp`, le cas SA Platform de `signature`) retirés — la
+  fonctionnalité est supprimée volontairement ; garde-fou ajouté (`migration-saplatform.test.js`).
 
 ## 7. Checklist finale (à cocher avant de couper)
 
@@ -95,8 +98,8 @@ Tests : `tests/migration-saplatform.test.js` (3 cas, verts).
 - [x] Export CSV des heures porté (`exportHoursCsv`)
 - [x] Fonctions de configuration vérifiées (comptes CRUD, outils/logiconfig/emplacements, stock, affichage : 22/22)
 - [ ] Revue ciblée des 592 fonctions par cluster : aucune capacité orpheline (confirmation finale)
-- [ ] `npm test` vert (hors 5 échecs préexistants SA Platform / `index.html`, indépendants)
-- [ ] Redirection `index.html` → `admin.html` + `APP_BUILD`/`CACHE_NAME` montés ensemble
+- [x] `npm test` vert (tests SA Platform obsolètes retirés)
+- [x] Redirection `index.html` → `admin.html` + `CACHE_NAME` monté (`sw.js` v84)
 - [ ] Validation finale par le créateur (superadmin)
 
 ---

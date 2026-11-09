@@ -397,8 +397,7 @@ html.nav-repli .sa-shell{grid-template-columns:72px minmax(0,1fr)!important}html
 <template data-sc="if" value="{{ isLoading }}"><div style="padding:32px 28px;font-size:16px">Chargement des données réelles…<br><span style="font-size:14px">{{ loadErr }}</span></div></template>
 <template data-sc="if" value="{{ isSoon }}"><div style="padding:28px;max-width:640px;display:flex;flex-direction:column;gap:14px">
 <h2 style="margin:0;font-size:34px">{{ soonTitle }}</h2>
-<p style="margin:0;font-size:16px;line-height:1.5">Ce module arrive dans une prochaine version de sa-admin. En attendant, il reste disponible dans SA Platform, qui continue de fonctionner normalement.</p>
-<a class="btn btn-primary" href="/" style="text-decoration:none;width:fit-content;padding:0 18px;min-height:44px;display:inline-flex;align-items:center">Ouvrir SA Platform</a></div></template>
+<p style="margin:0;font-size:16px;line-height:1.5">Ce module arrive dans une prochaine version de sa-admin.</p></div></template>
 
 
       <!-- ═════ MONITORING ═════ -->
@@ -4615,7 +4614,6 @@ Comp.prototype.portalVals=function(){var self=this,st=this.state,D=this.D,now=ne
   var go=function(m){return function(){self.setState({portail:false});self.go(m);try{history.replaceState(null,'','#'+m);}catch(e){}};};
   return{isPortail:!!st.portail,portHello:(h<12?'Bonjour':h<18?'Bon après-midi':'Bonsoir')+' '+(this.user.prenom||''),portDate:JS[now.getDay()]+' '+now.getDate()+' '+MOIS[now.getMonth()]+' '+now.getFullYear(),
     portTiles:[
-      {icon:'layers',title:'SA Platform',sub:'L’application complète d’origine — punch, bons de travail, planning, feuilles de temps, logistique.',info:'Se connecte avec le même identifiant',btn:'Ouvrir SA Platform',go:function(){self.openApp('index.html');},primary:false,sec:true,_k:'platform'},
       {icon:'activity',title:'sa-admin',sub:'Centre des opérations — monitoring en direct, opérations, sites, matériel, comptes.',info:D?n(live,'employé en punch','employés en punch')+' · '+n(urg,'urgence','urgences'):'Chargement des données…',btn:'Entrer dans sa-admin',go:go('monitoring'),primary:true,sec:false},
       {icon:'timer',title:'Temps · Paie',sub:'Feuilles de temps de l’équipe — corriger, approuver, sortir la paie en Excel ou par courriel.',info:D?n(av,'punch à valider','punchs à valider'):'Chargement des données…',btn:'Ouvrir Temps · Paie',go:go('temps'),primary:false,sec:true,_k:'temps'},
       {icon:'nav',title:'sa-terrain',sub:'L’app du technicien — punch, fiche du site, relevés, demandes, logistique.',info:'Pour téléphone ; s’ouvre aussi ici',btn:'Ouvrir sa-terrain',go:function(){self.openApp('terrain.html');},primary:false,sec:true,_k:'terrain'}].filter(function(t){return!t._k||self.affOk('accueil.'+t._k);}),

@@ -13,7 +13,7 @@ after(async () => { await browser.close(); srv.close(); });
 test('portail : affiché après la connexion, avec les compteurs réels, et mène à Temps · Paie', async () => {
   const { page, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: base(), portail: true });
   await page.getByText(/^(Bonjour|Bon après-midi|Bonsoir) Charles$/).waitFor();
-  for (const t of ['SA Platform', 'sa-admin', 'Temps · Paie', 'sa-terrain']) await page.getByRole('dialog').getByText(t, { exact: true }).waitFor();
+  for (const t of ['sa-admin', 'Temps · Paie', 'sa-terrain']) await page.getByRole('dialog').getByText(t, { exact: true }).waitFor();
   await page.waitForFunction(() => window.__admin.D);
   await page.getByText(/\d+ punchs? à valider/).waitFor();
   await page.getByRole('button', { name: 'Ouvrir Temps · Paie' }).click();
@@ -28,14 +28,13 @@ test('portail : affiché après la connexion, avec les compteurs réels, et mèn
   await page.close();
 });
 
-test('portail : SA Platform et sa-terrain (session sa-terrain préparée avec le même compte)', async () => {
+test('portail : sa-terrain (session préparée avec le même compte) ; plus de bouton SA Platform', async () => {
   const { page } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: base(), portail: true });
+  // SA Platform est en fantôme : sa tuile a disparu du portail.
+  assert.equal(await page.getByRole('button', { name: 'Ouvrir SA Platform' }).count(), 0);
   await page.getByRole('button', { name: 'Ouvrir sa-terrain' }).click();
   await page.waitForURL(/terrain\.html$/);
   assert.equal(JSON.parse(await page.evaluate(() => localStorage.getItem('sa_terrain_user'))).id, 'cwweil');
-  await page.goto(srv.url + '/admin.html');
-  await page.getByRole('button', { name: 'Ouvrir SA Platform' }).click();
-  await page.waitForURL(/index\.html$/);
   await page.close();
 });
 
