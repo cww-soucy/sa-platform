@@ -93,12 +93,13 @@ PUNCHF=('<sc-if value="{{ isPunchForm }}"><div style="padding:20px;display:flex;
  +FIELD('Détail (optionnel)','<textarea class="input" value="{{ pf.detail }}" onInput="{{ pf.onDetail }}" style="min-height:70px;font-size:17px"></textarea>')
  +FIELD('Km départ (optionnel)','<input class="input" inputmode="decimal" value="{{ pf.km }}" onInput="{{ pf.onKm }}" style="min-height:52px;font-size:18px">')
  +'<sc-if value="{{ pf.hasSource }}"><div style="font-size:15px">Lié à : {{ pf.sourceLabel }}</div></sc-if>'
- +BTN('btn-primary','pf.submit','login','Démarrer le punch')+BTN('btn-secondary','pf.cancel','left','Annuler','52px;font-size:18px')+'</div></sc-if>\n')
+ +BTN('btn-primary','pf.submit','login','{{ pf.submitLbl }}')+BTN('btn-secondary','pf.cancel','left','Annuler','52px;font-size:18px')+'</div></sc-if>\n')
 STOPF=('<sc-if value="{{ isStopForm }}"><div style="padding:20px;display:flex;flex-direction:column;gap:16px"><h1 style="margin:0;font-size:34px;line-height:1.05">Terminer la journée</h1>'
  '<div class="blueprint" style="padding:18px;display:flex;flex-direction:column;gap:6px">'+CORN+'<div style="font:600 34px/1 var(--font-heading)">{{ sf.total }}</div><div style="font-size:16px">{{ sf.nPunchs }} punch(s) · {{ sf.lieux }}</div></div>'
  +FIELD('Km arrivée (optionnel)','<input class="input" inputmode="decimal" value="{{ sf.km }}" onInput="{{ sf.onKm }}" style="min-height:52px;font-size:18px">')
  +'<div style="font-size:15px;line-height:1.4">Le punch actif sera terminé maintenant et la journée enregistrée.</div>'
- +BTN('btn-primary','sf.submit','check','Valider la journée')+BTN('btn-secondary','sf.cancel','left','Annuler','52px;font-size:18px')+'</div></sc-if>\n')
+ +'<sc-if value="{{ sf.hasWarn }}"><div style="font-size:15px;line-height:1.4;border:1px solid var(--color-divider);padding:10px">{{ sf.warn }}</div></sc-if>'
+ +BTN('btn-primary','sf.submit','check','{{ sf.submitLbl }}')+BTN('btn-secondary','sf.cancel','left','Annuler','52px;font-size:18px')+'</div></sc-if>\n')
 anchor2='<sc-if value="{{ isLog }}">'
 if anchor2 in M: M=M.replace(anchor2,TEMPS+PUNCHF+STOPF+anchor2,1)
 else: print('!! ancre isLog')

@@ -79,19 +79,25 @@ function phOut(o){var w=[],r=phWalk(o,function(x){if(!isPh(x))return x;var k=PH.
 /* idb:clé → data:image (une photo introuvable est retirée plutôt que d'envoyer une référence) */
 function phFill(o){return phWalk(o,function(x){if(!isRef(x))return x;var v=PH.mem[x.slice(4)];return v?v:undefined;});}
 function phIn(o){var ks=Object.keys(phRefs(o));return Promise.all(ks.map(PH.get)).then(function(){return phFill(o);});}
+/* Ferme une tâche active en portant l'état de validation choisi à la fermeture :
+   closeComplete → auto-validée (toutes les tâches de l'ouvrage faites) ; closeForce → fermée « quand même »
+   malgré des tâches manquantes : reste « à valider » et signalée au superviseur (forceValide + incomplet). */
+function closeTask(t,op,at){t.end=at;t.hrs=hrsFrom(t.start,at);t.active=false;
+  if(op.closeForce){t.forceValide=true;t.pendingValidation=true;t.pendingReason=t.pendingReason||'incomplet_force';if(op.closeManque)t.incomplet=op.closeManque;}
+  else if(op.closeComplete){t.autoValide=true;}}
 /* Applique UNE opération de punch à la liste des 7 jours — même format que SA Platform. Idempotent. */
 function applyOp(days,op){
   days=clone(days||[]);while(days.length<7)days.push(emptyDay());
   var d=days[op.dayIdx];d.tasks=d.tasks||[];
   if(op.type==='start'){
     if(d.tasks.some(function(t){return t.opId===op.id;}))return days;
-    d.tasks.forEach(function(t){if(t.active){t.end=op.hhmm;t.hrs=hrsFrom(t.start,op.hhmm);t.active=false;}});
+    d.tasks.forEach(function(t){if(t.active)closeTask(t,op,op.hhmm);});
     var mx=0;days.forEach(function(dd){(dd.tasks||[]).forEach(function(t){if(typeof t.id==='number'&&t.id>mx)mx=t.id;});});
     var t={id:mx+1,lieu:op.lieu,odt:op.odt||'',detail:op.detail||'',addr:op.addr||'',siteId:op.siteId||null,start:op.hhmm,startTs:op.ts,end:'',hrs:0,active:true,kmDep:op.kmDep||'',kmArr:'',files:[],gps:null,
       pendingValidation:!!op.pendingReason,pendingReason:op.pendingReason||null,sourceType:op.srcType||null,sourceId:op.srcId||null,sourceLabel:op.srcLabel||null,opId:op.id,k:op.id};
     t.k0=t.start+'|'+t.lieu;d.tasks.push(t);d.status='running';
   }else if(op.type==='stop'){
-    var any=false;d.tasks.forEach(function(t){if(t.active){t.end=op.hhmm;t.hrs=hrsFrom(t.start,op.hhmm);t.kmArr=op.kmArr||'';t.active=false;any=true;}});
+    var any=false;d.tasks.forEach(function(t){if(t.active){closeTask(t,op,op.hhmm);t.kmArr=op.kmArr||'';any=true;}});
     if(any){d.kmArr=op.kmArr||d.kmArr||'';d.status='done';}
   }else if(op.type==='autoclose'){
     var c=false;d.tasks.forEach(function(t){if(t.active){t.end='20:00';t.hrs=hrsFrom(t.start,'20:00');t.active=false;t.autoClosed=true;c=true;}});
@@ -324,17 +330,32 @@ Comp.prototype.openPunchForm=function(job){var pf={q:'',lieu:'',siteId:null,odt:
   if(job){var s=siteById(job.site);if(s){pf.siteId=s.id;pf.lieu=s.nom;}var m=String(job.id).split(':');if(m[0]==='wo')pf.src={type:'wo',id:m[1],label:job.tache};else if(m[0]==='pl')pf.src={type:'plan',id:m[1],label:job.tache};}
   this.setState({pf:pf,screen:'punchform'});};
 Comp.prototype.openStopForm=function(){this.setState({sf:{km:''},screen:'stopform'});};
+/* Tâches demandées (ouvrage/bon) non encore cochées pour un site, aujourd'hui — sert à l'auto-validation
+   du punch à la fermeture : si vide → le punch s'auto-valide ; sinon l'employé doit « Terminer quand même ». */
+Comp.prototype.siteManque=function(siteId){if(!siteId)return[];var m=[];(this.jobs||[]).filter(function(j){return String(j.site)===String(siteId);}).forEach(function(j){((j.todo&&j.todo.tasks)||[]).forEach(function(t){if(!t.done&&m.indexOf(t.label)<0)m.push(t.label);});});return m;};
 Comp.prototype.submitPunch=function(){var st=this.state,pf=st.pf,s=pf.siteId?siteById(pf.siteId):null,lieu=String(pf.lieu||'').trim()||(s?s.nom:'');
   if(!lieu){this.flash('Choisissez un site ou tapez un lieu');return;}
   var km=String(pf.km||'').trim().replace(',','.');if(km&&(isNaN(parseFloat(km))||parseFloat(km)<0)){this.flash('Km départ invalide');return;}
   var now=new Date(),op={type:'start',id:'p'+now.getTime().toString(36)+Math.random().toString(36).slice(2,5),week:this.weekKey(),dayIdx:(now.getDay()+6)%7,date:iso(now),hhmm:hhmm(now),ts:now.getTime(),
     lieu:lieu,addr:s?s.addr:'',siteId:s?s.id:null,odt:String(pf.odt||'').trim(),detail:String(pf.detail||'').trim(),kmDep:km,pendingReason:isBureau(lieu)?'entrepot_bureau':null,
     srcType:pf.src?pf.src.type:null,srcId:pf.src?pf.src.id:null,srcLabel:pf.src?pf.src.label:null};
-  this.setState({screen:'today'});this.enqueueOp(op);this.captureGps(op);
+  /* Fermeture du punch précédent : si des tâches demandées restent, on avertit et il faut « Terminer quand même »
+     (une 2e touche) ; sinon le punch précédent s'auto-valide. */
+  var act=this.activeTask(this.viewDays());
+  if(act){var manque=act.siteId?this.siteManque(act.siteId):[];
+    if(manque.length){if(!st.pfForce){this.setState({pfForce:true});this.flash('Tâches non terminées sur '+act.lieu+' — touchez à nouveau pour terminer quand même');return;}
+      op.closeForce=true;op.closeManque=manque.join(', ');}
+    else op.closeComplete=true;}
+  this.setState({screen:'today',pfForce:false});this.enqueueOp(op);this.captureGps(op);
   if(s)this.loadLast(s.id);this.flash('Punch démarré : '+lieu+' à '+op.hhmm);};
-Comp.prototype.submitStop=function(){var km=String(this.state.sf.km||'').trim().replace(',','.');if(km&&(isNaN(parseFloat(km))||parseFloat(km)<0)){this.flash('Km arrivée invalide');return;}
+Comp.prototype.submitStop=function(){var st=this.state,km=String(st.sf.km||'').trim().replace(',','.');if(km&&(isNaN(parseFloat(km))||parseFloat(km)<0)){this.flash('Km arrivée invalide');return;}
   var now=new Date(),op={type:'stop',id:'s'+now.getTime().toString(36)+Math.random().toString(36).slice(2,5),week:this.weekKey(),dayIdx:(now.getDay()+6)%7,hhmm:hhmm(now),kmArr:km};
-  this.setState({screen:'today'});this.enqueueOp(op);this.flash('Journée terminée à '+op.hhmm);};
+  var act=this.activeTask(this.viewDays());
+  if(act){var manque=act.siteId?this.siteManque(act.siteId):[];
+    if(manque.length){if(!st.sfForce){this.setState({sfForce:true});this.flash('Tâches non terminées sur '+act.lieu+' — touchez à nouveau pour terminer quand même');return;}
+      op.closeForce=true;op.closeManque=manque.join(', ');}
+    else op.closeComplete=true;}
+  this.setState({screen:'today',sfForce:false});this.enqueueOp(op);this.flash('Journée terminée à '+op.hhmm);};
 Comp.prototype.loadPunchOLD=function(){var self=this,wk=iso(mondayOf(new Date())),di=(new Date().getDay()+6)%7;
   return get('feuilles_temps?uid=eq.'+encodeURIComponent(this.user.id)+'&week=eq.'+wk+'&select=days,total_h').then(function(r){var row=r[0];self.hours=row?Number(row.total_h)||0:0;
     var d=row&&row.days&&row.days[di];var t=d&&d.tasks&&d.tasks.slice().reverse().filter(function(x){return x.active;})[0];
@@ -635,13 +656,19 @@ Comp.prototype.vals=function(){
   var pfSites=REF.list.filter(function(s){return!pq||norm(s.nom+' '+s.ville).indexOf(pq)>=0;}).slice(0,pq?20:8).map(function(s){var on=st.pf.siteId===s.id;
     return{nom:s.nom,ville:s.ville||'—',bg:on?'var(--color-text)':'transparent',fg:on?'var(--color-bg)':'var(--color-text)',go:function(){self.setState({pf:Object.assign({},st.pf,{siteId:s.id,lieu:s.nom})});}};});
   var pfJobs=jobs.filter(function(j){return!j.isDone;}).map(function(j){var on=st.pf.src&&String(j.id).split(':')[1]===st.pf.src.id;return{nom:j.nom,h:j.h||'',bg:on?'var(--color-text)':'transparent',fg:on?'var(--color-bg)':'var(--color-text)',go:function(){self.openPunchForm(j);}};});
+  var pfManque=act&&act.siteId?this.siteManque(act.siteId):[];
   var pf={q:st.pf.q,onQ:function(e){self.setState({pf:Object.assign({},st.pf,{q:e.target.value})});},lieu:st.pf.lieu,onLieu:function(e){self.setState({pf:Object.assign({},st.pf,{lieu:e.target.value,siteId:null})});},
     odt:st.pf.odt,onOdt:function(e){self.setState({pf:Object.assign({},st.pf,{odt:e.target.value})});},detail:st.pf.detail,onDetail:function(e){self.setState({pf:Object.assign({},st.pf,{detail:e.target.value})});},
     km:st.pf.km,onKm:function(e){self.setState({pf:Object.assign({},st.pf,{km:e.target.value})});},sites:pfSites,hasJobs:pfJobs.length>0,jobs:pfJobs,hasSource:!!st.pf.src,sourceLabel:st.pf.src?st.pf.src.label:'',
-    willClose:!!act,closeTxt:act?('Le punch en cours « '+act.lieu+' » (depuis '+act.start+') sera terminé à '+hhmm(nw)+'.'):'',hasSite:!!st.pf.siteId,siteNom:st.pf.siteId?(siteById(st.pf.siteId)||{}).nom:'',
-    submit:function(){self.submitPunch();},cancel:function(){self.go('today');}};
+    willClose:!!act,closeTxt:act?('Le punch en cours « '+act.lieu+' » (depuis '+act.start+') sera terminé à '+hhmm(nw)+'.'+(pfManque.length?' ⚠️ Tâches non terminées sur ce site : '+pfManque.join(', ')+'.':'')):'',hasSite:!!st.pf.siteId,siteNom:st.pf.siteId?(siteById(st.pf.siteId)||{}).nom:'',
+    submitLbl:(pfManque.length&&st.pfForce)?'Terminer quand même et démarrer':'Démarrer le punch',
+    submit:function(){self.submitPunch();},cancel:function(){self.setState({pfForce:false});self.go('today');}};
   var lieux=[];(vd[tIdx].tasks||[]).forEach(function(t){if(t.lieu&&lieux.indexOf(t.lieu)<0)lieux.push(t.lieu);});
-  var sf={total:fmtH(dayH),nPunchs:(vd[tIdx].tasks||[]).length,lieux:lieux.join(', ')||'—',km:st.sf.km,onKm:function(e){self.setState({sf:{km:e.target.value}});},submit:function(){self.submitStop();},cancel:function(){self.go('today');}};
+  var sfManque=act&&act.siteId?this.siteManque(act.siteId):[];
+  var sf={total:fmtH(dayH),nPunchs:(vd[tIdx].tasks||[]).length,lieux:lieux.join(', ')||'—',km:st.sf.km,onKm:function(e){self.setState({sf:{km:e.target.value}});},
+    hasWarn:sfManque.length>0,warn:sfManque.length?('⚠️ Tâches non terminées sur '+(act?act.lieu:'')+' : '+sfManque.join(', ')+'.'):'',
+    submitLbl:(sfManque.length&&st.sfForce)?'Terminer quand même':'Valider la journée',
+    submit:function(){self.submitStop();},cancel:function(){self.setState({sfForce:false});self.go('today');}};
 
   // ---- Logistique
   var ls=this.logSiteObj(),sel=st.sortie,iq=norm(st.invQ),bon=this.curBon(),mine=norm(this.me.nom);
