@@ -100,6 +100,9 @@ Comp.prototype.load=function(){
     (r.comptes||[]).forEach(function(c){if(c.email==null&&email[c.id])c.email=email[c.id];});
     var suiteFin={};(r.suites||[]).forEach(function(t){if(t.statut!=='annule'&&t.wo_id&&t.date_fin&&!(suiteFin[t.wo_id]>=t.date_fin))suiteFin[t.wo_id]=t.date_fin;});
     self.D={suiteFin:suiteFin,sites:sites,sitesAll:sitesAll,byId:byId,types:T,comptes:r.comptes,ft:r.ft,wo:r.wo,rel:r.rel.map(function(x){x.site_id=String(x.site_id);return x;}).filter(function(x){var s=byId[x.site_id];return!(s?s.interne:isInterne('',x.site_nom));}),gps:r.gps,nPlan:r.plan.length,nPt:r.pt.length,planT:r.plan||[],ptT:r.pt||[],dem:r.dem||[],ftAll:r.ftAll||[],fact:r.fact||[],proj:r.proj||[],sond:r.sond||[],geo:r.geo||[],inv:r.inv||[],flotte:r.flotte||[],cat:r.cat||[],gab:r.gab||[],adj:r.adj||[],statut:statut,today:today,clients:cli,hasClients:!!r.cli,alias:alias};
+    /* actifsPunch : comptes (tout rôle) ayant réellement des punchs — un bureau/admin/superadmin n'apparaît
+       dans les rapports de paie/punch QUE s'il figure ici (sinon les rapports restent au terrain). */
+    var ap={};(r.ft||[]).forEach(function(f){if((f.days||[]).some(function(d){return d&&d.tasks&&d.tasks.length;}))ap[f.uid]=1;});self.D.actifsPunch=ap;
     self.loadedAt=new Date();self.err='';self.softErr=SOFT_ERR.slice();self.monSync(r.prefs);
     /* affichage configurable : null = table absente (migration pas appliquée) → règles en cache ou tout visible */
     self.affPret=Array.isArray(r.aff);if(self.affPret)self.affSet(r.aff);
@@ -392,7 +395,7 @@ Comp.prototype.approve=function(uid,wk,di){var who=this.user.id,now=new Date().t
 /* Agrégation d'une semaine — mêmes règles que SA Platform : heures des punchs terminés ; 40 h régulières, le reste en supplémentaire ;
    feuille « synthèse » = punchs d'un même jour sur un même job (lieu + ODT) regroupés en une ligne. */
 Comp.prototype.weekData=function(wk){var D=this.D,rows=Array.isArray(this.ftw[wk])?this.ftw[wk]:[],by={};rows.forEach(function(r){by[r.uid]=r;});
-  var st=D.statut,emps=D.comptes.filter(function(c){return estTravailleur(c.role)&&(st[c.id]!=='inactif'||by[c.id]);}),env={};(this.envois[wk]||[]).forEach(function(e){env[e.uid]=e;});
+  var st=D.statut,emps=D.comptes.filter(function(c){return (estTravailleur(c.role)||(D.actifsPunch||{})[c.id])&&(st[c.id]!=='inactif'||by[c.id]);}),env={};(this.envois[wk]||[]).forEach(function(e){env[e.uid]=e;});
   return emps.map(function(c){var row=by[c.id],jours=[],tot=0,nbP=0,nbAV=0,enCours=false,ap=true,any=false,punchs=[];
     for(var i=0;i<7;i++){var d=row&&row.days&&row.days[i],ts=(d&&d.tasks)||[],h=0,live=false,dap=true,nFin=0;
       ts.forEach(function(t,ti){var act=!!(t.active||!t.end);if(act){live=true;enCours=true;}else{h+=Number(t.hrs)||0;nFin++;}nbP++;any=true;if(t.pendingValidation)nbAV++;if(!t.approuve&&!act){dap=false;ap=false;}
@@ -733,7 +736,7 @@ Comp.prototype.feVals=function(){var self=this,fe=this.state.fe,D=this.D;if(!fe)
   if(fe.loading)return{feOpen:true,feLoading:true,feReady:false,feTitle:'Chargement…',feClose:function(){self.setState({fe:null});},feCloseBg:function(e){if(e.target===e.currentTarget)self.setState({fe:null});}};
   var f=fe.f,k=fe.kind,isNew=!fe.id,set=function(key){return function(e){self.feSet(key,e.target.type==='checkbox'?e.target.checked:e.target.value);};};
   var opts=function(L,v){return L.map(function(x){return{v:x[0],l:x[1],sel:x[0]===v};});};
-  var ids=k==='wo'?f.assignes:f.emps,techs=D.comptes.filter(function(c){return estTravailleur(c.role)&&(D.statut[c.id]!=='inactif'||ids.indexOf(c.id)>=0);});
+  var ids=k==='wo'?f.assignes:f.emps,techs=D.comptes.filter(function(c){return estAssignable(c)&&(D.statut[c.id]!=='inactif'||ids.indexOf(c.id)>=0);}).sort(triPersonne);
   var dates=this.feDates(),w=fe.when||{};
   var setW=function(key,v){self.setState({fe:Object.assign({},self.state.fe,{when:Object.assign({},self.state.fe.when,(function(){var o={};o[key]=v;return o;})())})});};
   var DLd=[['L',1],['M',2],['M',3],['J',4],['V',5],['S',6],['D',0]];
@@ -771,7 +774,7 @@ Comp.prototype.feVals=function(){var self=this,fe=this.state.fe,D=this.D;if(!fe)
     fePrint:function(){self.printWO();},canPrint:k==='wo'&&!isNew,
     woSuiteShow:k==='wo'&&!isNew,woSuiteLoading:k==='wo'&&!isNew&&!fe.suite,woSuiteReady:k==='wo'&&!isNew&&!!fe.suite,
     woSuite:k==='wo'&&!isNew&&fe.suite?(function(){var L=[{l:'Jour 1 · '+jourTxt(f.date)+' — date du bon',sous:'Techniciens du jour 1 : ceux du bon, plus bas. Date et heures enregistrées dès qu’on les change.',hasSous:true,edit0:true,d:f.date||'',hd:f.heure_debut||'',hf:f.heure_fin||'',onD:function(e){self.feJour1({date:e.target.value});},onHD:function(e){self.feJour1({heure_debut:e.target.value||''});},onHF:function(e){self.feJour1({heure_fin:e.target.value||''});},canDel:false,edit:false,techs:[],del:function(){}}],n=1,
-      cpt=D.comptes.filter(function(c){return estTravailleur(c.role)&&D.statut[c.id]!=='inactif';});
+      cpt=D.comptes.filter(function(c){return estAssignable(c)&&D.statut[c.id]!=='inactif';});
       fe.suite.map(function(t){return{t:t,j:joursPT(t,f.date)};}).filter(function(x){return x.j.length;}).sort(function(x,y){return x.j[0].localeCompare(y.j[0]);}).forEach(function(x){var t=x.t;
         L.push({l:x.j.length>1?'Jours '+(n+1)+' à '+(n+x.j.length)+' · du '+jourTxt(x.j[0])+' au '+jourTxt(x.j[x.j.length-1]):'Jour '+(n+1)+' · '+jourTxt(x.j[0]),canDel:t.descr===SUITE_DESCR,del:function(){self.feSuiteRetirer(t);},
           edit:t.descr===SUITE_DESCR,hasSous:false,sous:'',hd:t.heure_debut||'',hf:t.heure_fin||'',
@@ -836,7 +839,7 @@ Comp.prototype.dayJobs=function(uid,day){var D=this.D,mon=iso(mondayOf(new Date(
     if(t.date_debut<=day&&t.date_fin>=day&&has(t.emp))out.push({kind:'pt',id:t.id,k:'Tâche',t:(t.titre||'')+(t.site_nom&&t.site_nom!==t.titre?' — '+t.site_nom:''),h:t.heure_debut||'',o:t.ordre,fin:t.heure_fin||'',done:t.statut==='termine',cur:false,st:t.statut});});
   out.sort(parOrdre);out.forEach(function(j){j.hr=j.h;j.h=creneauTxt(j.o,j.h,j.fin);});return out;};
 Comp.prototype.printPMMDay=function(){var self=this,day=this.pmmDay(),plans=Array.isArray(this.pmm[day])?this.pmm[day]:[],names=this.names(),D=this.D,E=function(s){return String(s==null?'':s).replace(/[&<>]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});};
-  var emps=D.comptes.filter(function(c){return estTravailleur(c.role)&&D.statut[c.id]!=='inactif';}),col={};PMM_COLORS.forEach(function(c){col[c[0]]=c[2];});
+  var emps=D.comptes.filter(function(c){return (estTravailleur(c.role)||(D.actifsPunch||{})[c.id])&&D.statut[c.id]!=='inactif';}).sort(triPersonne),col={};PMM_COLORS.forEach(function(c){col[c[0]]=c[2];});
   var h='<!doctype html><meta charset="utf-8"><title>Plan de Match '+day+'</title><style>body{font:12px Arial,sans-serif;margin:16px}section{page-break-after:always}h1{font-size:18px;margin:0 0 2px}.m{margin:0 0 10px;color:#333}h3{color:#fff;padding:4px 8px;margin:10px 0 0;font-size:13px}.n{border:1px solid #c00;color:#900;padding:4px 8px;margin-top:6px}table{border-collapse:collapse;width:100%}td{border:1px solid #bbb;padding:4px 6px}.b{width:18px;text-align:center}.l{margin-top:14px}.ff{margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px}.ff div{border:1px solid #bbb;min-height:60px;padding:4px}</style>';
   var n=0;emps.forEach(function(c){var p=plans.filter(function(x){return splitIds(x.emp).indexOf(c.id)>=0;})[0],jobs=self.dayJobs(c.id,day);if(!p&&!jobs.length)return;n++;
     h+='<section><h1>Plan de Match — '+E((c.prenom+' '+c.nom).trim())+'</h1><div class="m">'+E(fdate(day))+(p&&p.vehicule?' · Véhicule : '+E(p.vehicule):'')+(p&&p.superviseur?' · Superviseur : '+E(p.superviseur):'')+(p&&p.resume?'<br>'+E(p.resume):'')+'</div>';
@@ -849,7 +852,7 @@ Comp.prototype.pmmVals=function(){var self=this,st=this.state,D=this.D,day=this.
   if(st.mod==='planmatch'&&this.pmm[day]===undefined)this.loadPMM(day);
   var plans=Array.isArray(this.pmm[day])?this.pmm[day]:[],col={};PMM_COLORS.forEach(function(c){col[c[0]]=c[2];});
   var shift=function(n){self.setState({pmmDate:iso(addDays(new Date(day+'T12:00:00'),n))});};
-  var emps=st.mod==='planmatch'?D.comptes.filter(function(c){return estTravailleur(c.role)&&D.statut[c.id]!=='inactif';}):[];
+  var emps=st.mod==='planmatch'?D.comptes.filter(function(c){return (estTravailleur(c.role)||(D.actifsPunch||{})[c.id])&&D.statut[c.id]!=='inactif';}).sort(triPersonne):[];
   /* Activité réelle de la journée : punchs de la feuille de temps + travaux (bons, créneaux, tâches), en cours / à faire / faits / en retard */
   var dMon=iso(mondayOf(new Date(day+'T12:00:00'))),dIdx=(new Date(day+'T12:00:00').getDay()+6)%7,isToday=day===iso(new Date());
   if(st.mod==='planmatch'&&!(D.ft||[]).some(function(f){return f.week===dMon;})&&this.ftw[dMon]===undefined)this.loadWeekFT(dMon);
@@ -878,7 +881,7 @@ Comp.prototype.pmmVals=function(){var self=this,st=this.state,D=this.D,day=this.
   if(pb){pbV=Object.assign(pbV,{pbTitle:pb.id?'Modifier le Plan de Match':'Créer un Plan de Match',pbDate:pb.date,onPbDate:function(e){self.pbSet(function(x){x.date=e.target.value;});},
     pbVeh:pb.vehicule,onPbVeh:function(e){self.pbSet(function(x){x.vehicule=e.target.value;});},pbSup:pb.superviseur,onPbSup:function(e){self.pbSet(function(x){x.superviseur=e.target.value;});},
     pbRes:pb.resume,onPbRes:function(e){self.pbSet(function(x){x.resume=e.target.value;});},vehList:(D.flotte||[]).map(function(v){return{v:v.nom+(v.plaque?' · '+v.plaque:'')};}),
-    pbTechs:D.comptes.filter(function(c){return estTravailleur(c.role)&&(D.statut[c.id]!=='inactif'||pb.emps.indexOf(c.id)>=0);}).map(function(c){var on=pb.emps.indexOf(c.id)>=0;return{l:(c.prenom+' '+c.nom).trim(),on:on,box:on?'var(--color-text)':'transparent',go:function(){self.pbSet(function(x){var i=x.emps.indexOf(c.id);if(i>=0)x.emps.splice(i,1);else x.emps.push(c.id);});}};}),
+    pbTechs:D.comptes.filter(function(c){return estAssignable(c)&&(D.statut[c.id]!=='inactif'||pb.emps.indexOf(c.id)>=0);}).sort(triPersonne).map(function(c){var on=pb.emps.indexOf(c.id)>=0;return{l:nomFonction(c),on:on,box:on?'var(--color-text)':'transparent',go:function(){self.pbSet(function(x){var i=x.emps.indexOf(c.id);if(i>=0)x.emps.splice(i,1);else x.emps.push(c.id);});}};}),
     pbSecs:pb.sections.map(function(s,si){return{title:s.title||'',onTitle:function(e){self.pbSet(function(x){x.sections[si].title=e.target.value;});},note:s.note||'',onNote:function(e){self.pbSet(function(x){x.sections[si].note=e.target.value;if(!x.sections[si].noteColor)x.sections[si].noteColor='rouge';});},
       colors:PMM_COLORS.map(function(c){return{v:c[0],l:c[1],sel:(s.color||'bleu')===c[0]};}),onColor:function(e){self.pbSet(function(x){x.sections[si].color=e.target.value;});},bar:col[s.color]||col.bleu,
       del:function(){self.pbSet(function(x){x.sections.splice(si,1);});},addTask:function(){self.pbSet(function(x){x.sections[si].tasks.push({id:pmmId(),label:'',est:'',notes:'',status:'À faire',done:false,photos:[]});});},
@@ -909,8 +912,14 @@ var ROLES=[['employe','Employé'],['superviseur','Superviseur'],['admin','Admini
    Traçabilité conservée : audit_log garde toujours le vrai identifiant de l'acteur. */
 function estAdmin(r){return r==='admin'||r==='superadmin';}          // détient les pouvoirs d'administrateur
 function estSuper(r){return r==='superadmin';}
-function estTravailleur(r){return r!=='admin'&&r!=='superadmin';}    // figure dans les listes employés / punch / paie
+function estTravailleur(r){return r!=='admin'&&r!=='superadmin';}    // personnel de TERRAIN (rapports de paie/punch)
 function saVisib(c){return(c&&c.droits&&c.droits.sa_visibilite)||'fantome';}
+/* Assignation : tout compte ACTIF est choisissable sur un job (terrain, bureau, admin, superadmin) —
+   les rapports de paie/punch, eux, restent terrain + ceux qui ont réellement punché (D.actifsPunch). */
+function estAssignable(c){return!!(c&&c.role);}
+function fonctionDe(c){return!c?'':c.role==='superadmin'?'Direction':c.role==='admin'?'Bureau':c.role==='superviseur'?'Superviseur':(String(c.dept||'').toLowerCase().indexOf('bureau')>=0?'Bureau':'Terrain');}
+function nomFonction(c){return(((c.prenom||'')+' '+(c.nom||'')).trim()||c.id)+(estTravailleur(c.role)?'':' — '+fonctionDe(c));}  // étiquette : hors-terrain marqué (Bureau / Direction)
+function triPersonne(a,b){var ga=estTravailleur(a.role)?0:1,gb=estTravailleur(b.role)?0:1;return ga-gb||(((a.prenom||'')+(a.nom||'')).localeCompare(((b.prenom||'')+(b.nom||'')),'fr'));}  // terrain d'abord, puis bureau/direction
 Comp.prototype.loadComptes=function(force){var self=this;if(!force&&this.cptes)return;this.cptes='loading';
   get('comptes?select=id,prenom,nom,dept,email,tel,role,droits,statut,saisonnier,updated_at&order=nom.asc').then(function(r){self.cptes=r;self.update();}).catch(function(e){self.cptes='err';self.cptErr=netMsg(e);self.update();});};
 Comp.prototype.openCompte=function(id){var c=id&&Array.isArray(this.cptes)?this.cptes.filter(function(x){return x.id===id;})[0]:null;
@@ -1139,7 +1148,7 @@ Comp.prototype.creerBlDeSortie=function(){var self=this,sb=this.state.sb;if(!sb|
     self.flash('Bon '+b.no_bon+' créé'+(b.technicien?' — à livrer par '+b.technicien+' (sa-terrain : Logistique › Bon de livraison)':' — choisissez le livreur'));})
     .catch(function(e){self.setState({sb:Object.assign({},self.state.sb,{busy:false})});self.flash('Échec — bon non créé : '+netMsg(e));});};
 Comp.prototype.soBlVals=function(){var self=this,sb=this.state.sb;if(!sb)return{sbOpen:false};var so=sb.so,n=(so.lignes||[]).filter(function(l){return String(l.desc||l.code||'').trim();}).length;
-  var techs=this.D.comptes.filter(function(c){return estTravailleur(c.role)&&self.D.statut[c.id]!=='inactif';}).map(function(c){var v=(c.prenom+' '+c.nom).trim();return{v:v,l:v,sel:sb.tech===v};});
+  var techs=this.D.comptes.filter(function(c){return estAssignable(c)&&self.D.statut[c.id]!=='inactif';}).sort(triPersonne).map(function(c){var v=(c.prenom+' '+c.nom).trim();return{v:v,l:nomFonction(c),sel:sb.tech===v};});
   return{sbOpen:true,sbTitle:'Sortie '+(so.no_bon||'')+' émise',sbTxt:'Passer en bon de livraison ? '+n+' article(s) pour '+(so.client||'client à préciser')+'. Le bon apparaît dans sa-terrain : le livreur fait signer le client au doigt sur son téléphone, ou valide la livraison sans signature — pas de papier.',
     sbTechs:[{v:'',l:'— à choisir —',sel:!sb.tech}].concat(techs),onSbTech:function(e){self.setState({sb:Object.assign({},self.state.sb,{tech:e.target.value})});},
     sbGo:function(){self.creerBlDeSortie();},sbGoLbl:sb.busy?'Création…':'Créer le bon de livraison',sbLater:function(){self.setState({sb:null});},sbCloseBg:function(e){if(e.target===e.currentTarget)self.setState({sb:null});}};};
@@ -1220,7 +1229,7 @@ Comp.prototype.docsVals=function(){var self=this,st=this.state,D=this.D,mod=st.m
   var add=function(key,o){return function(){self.deMut(function(ff){ff[key]=(ff[key]||[]).concat([o()]);});};};
   var photos=function(arr,setArr){return(arr||[]).map(function(p,i){var src=p.data||p.url||'';return{name:p.name||('Photo '+(i+1)),src:src,has:/^data:image|^https?:/.test(src),open:function(){var w=window.open('','_blank');if(w){w.document.write('<img src="'+src+'" style="max-width:100%">');w.document.close();}},del:function(){setArr(function(a){a.splice(i,1);});}};});};
   var pick=function(cb){var inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.onchange=function(){var file=inp.files&&inp.files[0];if(!file)return;var img=new Image(),u=URL.createObjectURL(file);img.onload=function(){var s=Math.min(1,1400/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);cb({data:c.toDataURL('image/jpeg',0.7),name:file.name,addedBy:self.user.id,addedAt:nowIso()});};img.src=u;};inp.click();};
-  var techs=D.comptes.filter(function(c){return estTravailleur(c.role)&&D.statut[c.id]!=='inactif';}).map(function(c){var n=(c.prenom+' '+c.nom).trim();return{v:n,l:n,id:c.id,sel:(k==='bl'?f.technicien:k==='so'?f.nom:f.technicien)===n};});
+  var techs=D.comptes.filter(function(c){return estAssignable(c)&&D.statut[c.id]!=='inactif';}).sort(triPersonne).map(function(c){var n=(c.prenom+' '+c.nom).trim();return{v:n,l:nomFonction(c),id:c.id,sel:(k==='bl'?f.technicien:k==='so'?f.nom:f.technicien)===n};});
   var done=k==='bl'?f.status==='livre':k==='so'?f.status==='envoye':f.status==='complete',me=(self.user.prenom+' '+self.user.nom).trim();
   var deV={deTitle:(de.id?'':'Nouveau · ')+DOC[k].lbl+(f.no_bon?' '+f.no_bon:''),isBL:k==='bl',isSO:k==='so',isHV:k==='hv',sitesList2:D.sites.map(function(s){return{v:s.nom};}),invList:(D.inv||[]).map(function(i){return{v:i.nom};}),
     dOdt:fld('odt'),dClient:fld('client'),dTel:fld('tel'),dAdr:fld('adresse'),dDate:fld('date'),dHeure:fld('heure'),dUrg:fld('urgent'),dNom:fld('nom'),dDept:fld('departement'),dNoEmp:fld('no_employe'),
@@ -1259,7 +1268,7 @@ Comp.prototype.hvVals=function(de){var self=this,H=window.SAHiv,hv=H.norm(de.hv)
   /* Saisie : travaux et matériel toujours affichés (même vides), donc numérotés à la suite des sections */
   var insp=H.estInspD(hv),NO={trav:H.sectionsDe(hv).length+2};NO.mat=NO.trav+1;NO.rem=insp?NO.trav:NO.mat+1;
   var set=function(fn){return function(e){var v=e.target.type==='checkbox'?e.target.checked:e.target.value;self.deHv(function(h,d){fn(h,v,d);});};};
-  var techs=this.D.comptes.filter(function(c){return estTravailleur(c.role)&&self.D.statut[c.id]!=='inactif';}).map(function(c){return{v:(c.prenom+' '+c.nom).trim()};});
+  var techs=this.D.comptes.filter(function(c){return estAssignable(c)&&self.D.statut[c.id]!=='inactif';}).sort(triPersonne).map(function(c){return{v:(c.prenom+' '+c.nom).trim(),l:nomFonction(c)};});
   return{hvProg:p.done+' / '+p.total+' cases cochées ('+p.pct+' %)',hvPct:p.pct+'%',hvCrit:crit.length?'Étape(s) critique(s) non cochée(s) : '+crit.map(function(x){return x.split('.')[0];}).join(', '):'',hvTechs:techs,
     hvInfo:H.INFO.map(function(f){return{l:f[1],type:f[2],v:hv.info[f[0]]||'',span:f[3]?'span 2':'auto',list:f[0]==='site'?'deSites':(f[0]==='chef'?'deTechs':''),
       on:set(function(h,v,d){h.info[f[0]]=v;if(f[0]==='site'){d.f.site_nom=v;var s=self.hvSiteOf(v);if(s&&!h.courriel&&s.email)h.courriel=s.email;
@@ -1506,7 +1515,7 @@ Comp.prototype.portalVals=function(){var self=this,st=this.state,D=this.D,now=ne
    et toutes les actions de publication pour lui seul (imprimer, Excel, courriel, envoyée à la paie, approuver). */
 var BP=[['cl','Chlore libre','ppm'],['ph','pH',''],['alc','Alcalinité','ppm'],['temp','Temp.','°C']];
 Comp.prototype.empVals=function(){var self=this,st=this.state,D=this.D;if(!D)return{};var tMon=addDays(mondayOf(new Date()),7*st.tOff),wk=iso(tMon),today=iso(new Date()),yest=iso(addDays(new Date(),-1));
-  var emps=D.comptes.filter(function(c){return estTravailleur(c.role)&&D.statut[c.id]!=='inactif';}).sort(function(a,b){return(a.prenom+a.nom).localeCompare(b.prenom+b.nom,'fr');});
+  var emps=D.comptes.filter(function(c){return (estTravailleur(c.role)||(D.actifsPunch||{})[c.id])&&D.statut[c.id]!=='inactif';}).sort(triPersonne);
   var uid=st.eUid&&emps.some(function(c){return c.id===st.eUid;})?st.eUid:(emps[0]&&emps[0].id);
   var rows=Array.isArray(this.ftw[wk])?this.ftw[wk]:null,row=rows&&rows.filter(function(r){return r.uid===uid;})[0],e=rows?this.weekData(wk).filter(function(x){return x.id===uid;})[0]:null;
   var nm=this.names(),eDay=st.eDay==null?null:st.eDay,siteBy=function(l){return D.sites.filter(function(s){return norm(s.nom)===norm(l);})[0];};
@@ -1808,11 +1817,11 @@ Comp.prototype.loadTour=function(){var self=this,st=this.state,t=st.carteTour;if
     .catch(function(e){self._tour=[];self.flash('Tournée illisible : '+netMsg(e));});};
 Comp.prototype.carteCtlVals=function(){var self=this,st=this.state,D=this.D;if(!D)return{};var G=st.mod==='carte'?this.carteGeo():{sites:[],sans:[],techs:{}},t=st.carteTour||{emp:'',date:D.today};
   if(st.mod==='carte')this.loadTour();var tour=Array.isArray(this._tour)?this._tour:[];
-  var emps=D.comptes.filter(function(c){return estTravailleur(c.role);}).map(function(c){return(c.prenom+' '+c.nom).trim();});
+  var emps=D.comptes.filter(function(c){return estTravailleur(c.role)||(D.actifsPunch||{})[c.id];}).map(function(c){return(c.prenom+' '+c.nom).trim();});
   var chk=function(k,l){var on=st[k]!==false;return{l:l,on:on,box:on?'var(--color-text)':'transparent',go:function(){var o={};o[k]=!on;self._mapDirty=true;self.setState(o);}};};
   /* Schéma des tournées : pour chaque employé, ses travaux du jour dans l'ordre (fait / en cours / à venir) et ses punchs */
   var lines=[];if(st.mod==='carte'&&st.carteView==='schema'){var wk=iso(mondayOf(new Date())),di=(new Date().getDay()+6)%7;
-    D.comptes.filter(function(c){return estTravailleur(c.role)&&D.statut[c.id]!=='inactif';}).forEach(function(c){var jobs=self.dayJobs(c.id,D.today),f=(D.ft||[]).filter(function(x){return x.uid===c.id&&x.week===wk;})[0],ts=(f&&f.days&&f.days[di]&&f.days[di].tasks)||[],run=ts.filter(function(t){return t.active;})[0];
+    D.comptes.filter(function(c){return (estTravailleur(c.role)||(D.actifsPunch||{})[c.id])&&D.statut[c.id]!=='inactif';}).forEach(function(c){var jobs=self.dayJobs(c.id,D.today),f=(D.ft||[]).filter(function(x){return x.uid===c.id&&x.week===wk;})[0],ts=(f&&f.days&&f.days[di]&&f.days[di].tasks)||[],run=ts.filter(function(t){return t.active;})[0];
       jobs.forEach(function(j){if(run&&run.sourceId&&String(run.sourceId)===String(j.id))j.cur=true;});
       var stops=jobs.length?jobs.map(function(j){return{h:j.h||'—',nom:j.t,done:j.done,cur:j.cur,go:function(){self.openFE(j.kind,j.id);}};}):ts.map(function(t){return{h:t.start||'—',nom:t.lieu||'—',done:!t.active&&!!t.end,cur:!!t.active,go:function(){self.setState({mod:'temps',tempsTab:'employe',eUid:c.id,eDay:di,tOff:0});}};});
       if(!stops.length)return;var dn=stops.filter(function(s){return s.done;}).length;
@@ -1896,7 +1905,7 @@ Comp.prototype.calVals=function(){var self=this,e=this.state.ce;if(!e||e.isNew||
 Comp.prototype.plannedRoutes=function(day){var self=this,D=this.D,mon=iso(mondayOf(new Date(day+'T12:00:00'))),PL=this.pl[mon];
   if(!PL){if(!this._pl[mon]){this._pl[mon]=1;this.loadPlan(mondayOf(new Date(day+'T12:00:00'))).then(function(){self._mapDirty=true;self.update();});}return null;}
   var G=this.carteGeo(),pos={};G.sites.forEach(function(s){pos[norm(s.nom)]=s;});var byNom=function(n){return pos[norm(n)]||null;};
-  var techs=D.comptes.filter(function(c){return estTravailleur(c.role)&&D.statut[c.id]!=='inactif';});
+  var techs=D.comptes.filter(function(c){return (estTravailleur(c.role)||(D.actifsPunch||{})[c.id])&&D.statut[c.id]!=='inactif';});
   return techs.map(function(c,i){var has=function(v){return splitIds(v).indexOf(c.id)>=0;},st=[];
     PL.wo.forEach(function(w){if(w.date===day&&has(w.assigne))st.push({h:w.heure_debut||'',o:w.ordre,fin:w.heure_fin||'',nom:w.client,kind:'wo',id:w.id});});
     PL.plan.forEach(function(p){if(p.date===day&&has(p.emp))st.push({h:p.heure||'',o:p.ordre,fin:p.heure_fin||'',nom:p.client,kind:'plan',id:p.id});});
@@ -1934,7 +1943,7 @@ Comp.prototype.seriesVals=function(){var self=this,st=this.state,D=this.D;if(!D|
     etat:s.fut?s.fut+' à venir · prochaine le '+fdate(s.next):'Terminée (dernière le '+fdate(s.last)+')',op:s.fut?1:0.55,canEdit:s.fut>0,edit:function(){self.setState({sr:{s:s,titre:s.titre,h:s.h,emps:s.emps.slice(),from:iso(new Date()),confirm:false,busy:false}});}};})};
   var e=st.sr;out.srOpen=!!e;if(!e)return out;var set=function(k){return function(ev){var o={};o[k]=ev.target.value;self.setState({sr:Object.assign({},self.state.sr,o,{confirm:false})});};};
   return Object.assign(out,{srTitle:'Série — '+e.s.titre,srIsPt:e.s.kind==='pt',srT:e.titre,onSrT:set('titre'),srH:e.h,onSrH:set('h'),srFrom:e.from,onSrFrom:set('from'),
-    srEmps:D.comptes.filter(function(c){return estTravailleur(c.role)&&(D.statut[c.id]!=='inactif'||e.emps.indexOf(c.id)>=0);}).map(function(c){var on=e.emps.indexOf(c.id)>=0;return{l:(c.prenom+' '+c.nom).trim(),on:on,box:on?'var(--color-text)':'transparent',go:function(){var a=self.state.sr.emps.slice(),i=a.indexOf(c.id);if(i>=0)a.splice(i,1);else a.push(c.id);self.setState({sr:Object.assign({},self.state.sr,{emps:a,confirm:false})});}};}),
+    srEmps:D.comptes.filter(function(c){return estAssignable(c)&&(D.statut[c.id]!=='inactif'||e.emps.indexOf(c.id)>=0);}).sort(triPersonne).map(function(c){var on=e.emps.indexOf(c.id)>=0;return{l:nomFonction(c),on:on,box:on?'var(--color-text)':'transparent',go:function(){var a=self.state.sr.emps.slice(),i=a.indexOf(c.id);if(i>=0)a.splice(i,1);else a.push(c.id);self.setState({sr:Object.assign({},self.state.sr,{emps:a,confirm:false})});}};}),
     srSave:function(){self.serieSave();},srSaveLbl:e.busy?'Enregistrement…':'Modifier les éléments à venir',srStop:function(){self.serieStop();},srStopLbl:e.confirm?'Confirmer : supprimer à partir de cette date':'Arrêter la série à partir de cette date',
     srClose:function(){self.setState({sr:null});},srCloseBg:function(ev){if(ev.target===ev.currentTarget)self.setState({sr:null});}});};
 
@@ -1959,7 +1968,7 @@ Comp.prototype.globData=function(){var self=this,D=this.D,G=this.glob,today=iso(
   G.plan.forEach(function(p){if(p.termine&&!p.valide)q.push({kind:'plan',table:'plan',id:p.id,u:p.updated_at,quoi:'Créneau',nom:p.client||'Créneau',d:p.date,qui:p.termine_by,at:p.termine_at,txt:p.descr||''});});
   G.pt.forEach(function(t){if(t.termine&&!t.valide)q.push({kind:'pt',table:'planning_tasks',id:t.id,u:t.updated_at,quoi:'Tâche planning',nom:t.titre||t.site_nom||'Tâche',d:t.date_debut,qui:t.termine_by,at:t.termine_at,txt:t.site_nom&&t.titre?t.site_nom:''});});
   q.sort(function(a,b){return String(b.at||'').localeCompare(String(a.at||''));});
-  var techs=D.comptes.filter(function(c){return estTravailleur(c.role)&&D.statut[c.id]!=='inactif';});
+  var techs=D.comptes.filter(function(c){return (estTravailleur(c.role)||(D.actifsPunch||{})[c.id])&&D.statut[c.id]!=='inactif';}).sort(triPersonne);
   var busy=function(id,day){return pts.some(function(t){return t.date_debut<=day&&t.date_fin>=day&&!ABS_RE.test(t.titre||'')&&self.globIds(null,t.emp).indexOf(id)>=0;})
       ||open.some(function(w){return w.date===day&&self.globIds(w.assignes,w.assigne).indexOf(id)>=0;})
       ||G.plan.some(function(p){return p.date===day&&self.globIds(p.emps,p.emp).indexOf(id)>=0;});},
@@ -2012,7 +2021,7 @@ var COM_S={brouillon:'Brouillon',publie:'Publiée',archive:'Archivée'};
 Comp.prototype.loadComms=function(force){var self=this;if(!force&&this.comms!==undefined)return;this.comms=null;
   Promise.all([soft('communications?select=*&order=created_at.desc',[]),soft('communication_lectures?select=id,comm_id,uid,emp_nom,version,lu_at',[])])
     .then(function(r){self.comms=r[0];self.comLect=r[1];self.update();});};
-Comp.prototype.comEquipe=function(){var D=this.D;return D.comptes.filter(function(c){return D.statut[c.id]!=='inactif'&&estTravailleur(c.role);});};
+Comp.prototype.comEquipe=function(){var D=this.D;return D.comptes.filter(function(c){return D.statut[c.id]!=='inactif'&&(estTravailleur(c.role)||(D.actifsPunch||{})[c.id]);}).sort(triPersonne);};
 /* Qui a lu (la version en cours, pour une procédure) — et qui ne l'a pas encore fait */
 Comp.prototype.comLus=function(c){var v=c.version||1,L=(this.comLect||[]).filter(function(l){return l.comm_id===c.id&&(c.type!=='procedure'||(l.version||1)>=v);}),by={};L.forEach(function(l){by[l.uid]=l;});
   var eq=this.comEquipe();return{lus:eq.filter(function(e){return by[e.id];}).map(function(e){return{nom:(e.prenom+' '+e.nom).trim(),at:by[e.id].lu_at};}),manque:eq.filter(function(e){return!by[e.id];}).map(function(e){return(e.prenom+' '+e.nom).trim();}),n:eq.length};};
@@ -2272,7 +2281,7 @@ Comp.prototype.vals=function(){
     var cli_=self.clientById(s.client_id);return{nom:s.nom,client:cli_?cli_.nom:'—',ville:(s.ville||'—')+' · '+(nb?nb+' bassin'+(nb>1?'s':''):'1 bassin'),court:self.T(s.type).court,freq:r?fdate(r.date):'—',tech:wo?wo+' ouvert(s)':'—',gps:s.gps?'Défini':(s.addr?'Adresse':'—'),bassin:s.addr||'sans adresse',contrat:s.contrat||'—',go:function(){self.openSiteEdit(s.id);}};});
 
   // ---- TEMPS · SUIVI · CUMUL (lecture seule des feuilles de temps existantes)
-  var tMon=addDays(mondayOf(now),7*st.tOff),tWk=iso(tMon),allTeam=D.comptes.filter(function(c){return estTravailleur(c.role);}),actif=function(id){return D.statut[id]!=='inactif';},team=allTeam.filter(function(c){return actif(c.id);}),cn={};D.comptes.forEach(function(c){cn[c.id]=(c.prenom+' '+c.nom).trim();});
+  var tMon=addDays(mondayOf(now),7*st.tOff),tWk=iso(tMon),allTeam=D.comptes.filter(function(c){return estTravailleur(c.role)||(D.actifsPunch||{})[c.id];}),actif=function(id){return D.statut[id]!=='inactif';},team=allTeam.filter(function(c){return actif(c.id);}),cn={};D.comptes.forEach(function(c){cn[c.id]=(c.prenom+' '+c.nom).trim();});
   var tempsRows=allTeam.map(function(c){var row=D.ft.filter(function(f){return f.uid===c.id&&f.week===tWk;})[0],tot=0,live=false,jours=[];
     for(var i=0;i<7;i++){var d=row&&row.days&&row.days[i],h=0,lv=false;((d&&d.tasks)||[]).forEach(function(t){h+=Number(t.hrs)||0;if(t.active)lv=true;});tot+=h;if(lv)live=true;jours.push((h>0?fmtH(h):'—')+(lv?' ●':''));}
     var cum=D.ftAll.filter(function(f){return f.uid===c.id;}).reduce(function(s,f){return s+(Number(f.total_h)||0);},0);
@@ -2308,7 +2317,7 @@ Comp.prototype.vals=function(){
 
 
   var f=st.f,setF=function(k,v){var o={};o[k]=v;self.setState({f:Object.assign({},st.f,o)});},occ=occurrences(f);
-  var techOpts=[{v:'',l:'Non assigné',sel:!f.tech}].concat(D.comptes.filter(function(c){return estTravailleur(c.role)&&D.statut[c.id]!=='inactif';}).map(function(c){return{v:c.id,l:(c.prenom+' '+c.nom).trim(),sel:c.id===f.tech};}));
+  var techOpts=[{v:'',l:'Non assigné',sel:!f.tech}].concat(D.comptes.filter(function(c){return estAssignable(c)&&D.statut[c.id]!=='inactif';}).sort(triPersonne).map(function(c){return{v:c.id,l:nomFonction(c),sel:c.id===f.tech};}));
   var siteOpts=[{v:'',l:'— Choisir un site —',sel:!f.site}].concat(D.sites.map(function(s){return{v:s.id,l:s.nom+(s.ville?' — '+s.ville:''),sel:s.id===f.site};}));
   var DLd=[['L',1],['M',2],['M',3],['J',4],['V',5],['S',6],['D',0]],fd=function(d){return DJ[(d.getDay()+6)%7]+' '+d.getDate()+' '+MOIS[d.getMonth()].slice(0,4)+'.';};
   var dlgV={dlgOpen:!!st.dlg,closeDlg:function(){self.setState({dlg:false});},closeDlgBg:function(e){if(e.target===e.currentTarget)self.setState({dlg:false});},stop:function(e){e.stopPropagation();},
@@ -2320,7 +2329,7 @@ Comp.prototype.vals=function(){
     createLabel:st.busy?'Création…':(occ.length>1?'Créer la série ('+occ.length+')':'Créer'),createSeries:function(){self.createSeries();}};
 
   var ed=st.ed,sd=st.sed,setE=function(k,v){var o={};o[k]=v;self.setState({ed:Object.assign({},st.ed,o)});},setS=function(k,v){var o={};o[k]=v;self.setState({sed:Object.assign({},st.sed,o)});};
-  var edTechs=[{v:'',l:'Non assigné',sel:ed&&!ed.tech}].concat(D.comptes.filter(function(c){return estTravailleur(c.role)&&(D.statut[c.id]!=='inactif'||(ed&&ed.tech===c.id));}).map(function(c){return{v:c.id,l:(c.prenom+' '+c.nom).trim(),sel:!!ed&&c.id===ed.tech};}));
+  var edTechs=[{v:'',l:'Non assigné',sel:ed&&!ed.tech}].concat(D.comptes.filter(function(c){return estAssignable(c)&&(D.statut[c.id]!=='inactif'||(ed&&ed.tech===c.id));}).sort(triPersonne).map(function(c){return{v:c.id,l:nomFonction(c),sel:!!ed&&c.id===ed.tech};}));
   var edStat=ed?(ed.kind==='wo'?[['ouvert','À faire'],['en_cours','En cours'],['termine','Terminé']]:[['ouvert','À faire'],['termine','Terminé']]).map(function(x){return Object.assign({label:x[1],go:function(){setE('statut',x[0]);}},segS(ed.statut===x[0]));}):[];
   var edV={edOpen:!!ed,edLoading:!!(ed&&ed.loading),edReady:!!(ed&&!ed.loading),edTitle:ed&&!ed.loading?ed.label+' — '+ed.titre:'Chargement…',edDate:ed?ed.date:'',edHeure:ed?ed.heure:'',edShowHeure:!!(ed&&ed.kind!=='wo'),edCanDate:!!(ed&&!ed.multiJour),edMulti:!!(ed&&ed.multi),edMultiJour:!!(ed&&ed.multiJour),
     edTechOpts:edTechs,edStatuts:edStat,edSerie:!!(ed&&ed.serie),edC0:!!(ed&&ed.confirm===0),edC1:!!(ed&&ed.confirm===1),edC2:!!(ed&&ed.confirm===2),edSerieN:ed?ed.serieN:0,edBusy:!!(ed&&ed.busy),
