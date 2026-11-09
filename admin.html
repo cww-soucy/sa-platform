@@ -4650,7 +4650,7 @@ Comp.prototype.empVals=function(){var self=this,st=this.state,D=this.D;if(!D)ret
           files:files.length?files.length+' pièce(s) : '+files.join(', ')+((t.files||[]).some(function(f){return f&&f._local;})?' — les photos restent sur le téléphone et dans le journal du site':''):'',hasFiles:files.length>0,
           lien:t.sourceLabel?'Lié à : '+t.sourceLabel:'',hasLien:!!t.sourceLabel,km:(t.kmDep||t.kmArr)?'Km : '+(t.kmDep||'?')+' → '+(t.kmArr||'?'):'',hasKm:!!(t.kmDep||t.kmArr),
           gps:t.gps&&t.gps.lat?'https://maps.google.com/?q='+t.gps.lat+','+t.gps.lng:'',hasGps:!!(t.gps&&t.gps.lat),gpsLbl:t.gps&&t.gps.acc?'Position GPS (±'+Math.round(t.gps.acc)+' m)':'Position GPS',
-          tags:[t.pendingValidation?'À valider':'',t.approuve?'Approuvé'+(t.approuvePar?' par '+(nm[t.approuvePar]||t.approuvePar):''):'',t.correctedBy?'Corrigé par '+(nm[t.correctedBy]||t.correctedBy):'',t.ajoutePar?'Ajouté au bureau':'',t.autoClosed?'Fermé automatiquement':''].filter(Boolean).join(' · '),
+          tags:[t.pendingValidation?'À valider':'',t.forceValide?'Forcé — tâches non faites'+(t.incomplet?' ('+t.incomplet+')':''):'',t.autoValide?'Auto-validé (tâches complètes)':'',t.approuve?'Approuvé'+(t.approuvePar?' par '+(nm[t.approuvePar]||t.approuvePar):''):'',t.correctedBy?'Corrigé par '+(nm[t.correctedBy]||t.correctedBy):'',t.ajoutePar?'Ajouté au bureau':'',t.autoClosed?'Fermé automatiquement':''].filter(Boolean).join(' · '),
           bd:act?'var(--color-accent-700)':(t.pendingValidation?'var(--color-accent-900)':'var(--color-text)'),
           edit:function(){self.openDay(uid,wk,i);self.editPunch(ti);},
           odtNew:function(){self.openFE('wo',null,{site:s?s.id:null,client:s?null:t.lieu,tech:uid,debut:today});}};})});})(i);}
