@@ -77,3 +77,29 @@ test('Superadmin connecté : pouvoirs admin complets, se voit en « Superadmin �
 
   assert.deepEqual(errors, []);
 });
+
+// Après refonte « assignation vs rapports » (2026-11-09) : un compte bureau/superadmin qui a
+// réellement punché figure dans l'équipe (rapports) ; un compte bureau idle n'y figure pas.
+test('Rapports : un superadmin qui a punché figure dans l’équipe ; idle, il en reste exclu', async () => {
+  const { weekKey, dayIdx } = require('./harness');
+  const t1 = avecPatron('superviseur');            // patron (superadmin) sans punch
+  assert.ok(!t1.feuilles_temps.some((f) => f.uid === 'patron'), 'patron n’a pas de feuille');
+
+  const { page: p1 } = await openApp(browser, srv.url, { app: 'admin', user: { id: 'cwweil', prenom: 'Bureau', nom: 'SA', role: 'admin' }, tables: t1 });
+  await p1.waitForFunction(() => window.__admin && window.__admin.D);
+  assert.ok(!(await p1.evaluate(() => window.__admin.comEquipe().map((c) => c.id))).includes('patron'),
+    'idle : exclu des rapports/équipe');
+  await p1.close();
+
+  // patron a punché cette semaine → doit apparaître
+  const t2 = avecPatron('superviseur');
+  const days = Array.from({ length: 7 }, () => ({ status: 'idle', tasks: [], saved: false }));
+  days[dayIdx()].tasks.push({ id: 9, lieu: 'Bureau', start: '08:00', end: '09:00', hrs: 1, active: false });
+  t2.feuilles_temps.push({ id: 'patron_' + weekKey(), uid: 'patron', emp: 'Le Patron', week: weekKey(), days, total_h: 1, updated_at: '2026-01-01T00:00:00Z' });
+
+  const { page: p2 } = await openApp(browser, srv.url, { app: 'admin', user: { id: 'cwweil', prenom: 'Bureau', nom: 'SA', role: 'admin' }, tables: t2 });
+  await p2.waitForFunction(() => window.__admin && window.__admin.D);
+  assert.ok((await p2.evaluate(() => window.__admin.comEquipe().map((c) => c.id))).includes('patron'),
+    'a punché : figure dans l’équipe');
+  await p2.close();
+});
