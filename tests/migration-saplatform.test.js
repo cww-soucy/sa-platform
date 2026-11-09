@@ -65,3 +65,11 @@ test('Coffre : la restauration recrée une ligne manquante sans toucher aux exis
   assert.equal(new Set(ids).size, ids.length, 'aucun doublon');
   assert.deepEqual(errors, []);
 });
+
+test('Fantôme : index.html (SA Platform) redirige vers /admin.html', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  assert.match(html, /http-equiv="refresh"[^>]*url=\/admin\.html/, 'meta refresh vers /admin.html');
+  assert.match(html, /location\.replace\('\/admin\.html'/, 'redirection JS vers /admin.html');
+  assert.ok(html.length < 4000, 'index.html est désormais un shim léger, plus l’app complète');
+  assert.doesNotMatch(html, /navigator\.serviceWorker\.getRegistrations[\s\S]*unregister/, 'ne désinscrit pas le SW racine (partagé avec sa-terrain)');
+});
