@@ -952,6 +952,41 @@ Comp.prototype.exportAll=function(){var self=this,T=['sites','contrats','workord
   this.flash('Préparation de la sauvegarde…');
   Promise.all(T.map(function(t){return get(t+'?select=*').catch(function(e){return{_erreur:netMsg(e)};});})).then(function(r){var o={_app:'sa-admin',_date:new Date().toISOString(),_par:self.user.id,comptes:Array.isArray(self.cptes)?self.cptes:[]};
     T.forEach(function(t,i){o[t]=r[i];});saveBlob(new Blob([JSON.stringify(o)],{type:'application/json'}),'SoucyAquatik_sauvegarde_'+iso(new Date())+'.json');auditT(self,'EXPORT','sauvegarde','complete');self.flash('Sauvegarde téléchargée ('+T.length+' tables, sans aucun mot de passe)');});};
+/* Export CSV des heures (porté de SA Platform › exportHoursCSV) : une ligne par punch, toutes semaines confondues. */
+Comp.prototype.exportHoursCsv=function(){var self=this;this.flash('Préparation du CSV des heures…');
+  var J=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+  get('feuilles_temps?select=uid,emp,week,days').then(function(list){
+    var rows=[['Employé','Semaine','Jour','Lieu','Début','Fin','Heures']];
+    (list||[]).forEach(function(w){(w.days||[]).forEach(function(day,di){((day&&day.tasks)||[]).forEach(function(t){
+      rows.push([w.emp||w.uid||'',w.week||'',J[di]||'',t.lieu||'',t.start||'',t.end||'',t.hrs!=null?t.hrs:'']);});});});
+    var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c==null?'':c).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
+    saveBlob(new Blob(['﻿'+csv],{type:'text/csv'}),'SA_heures_'+iso(new Date())+'.csv');auditT(self,'EXPORT','heures','csv');self.flash('Heures exportées ('+(rows.length-1)+' ligne(s), CSV)');
+  }).catch(function(e){self.flash('Échec export CSV : '+netMsg(e));});};
+/* ═════════════ COFFRE DE SAUVEGARDE LOCAL (porté de SA Platform › vault) ═════════════
+   Filet de sécurité : snapshots périodiques dans ce navigateur (photos retirées, 4 derniers gardés).
+   La restauration est NON destructive : elle ne recrée que les lignes MANQUANTES au serveur
+   (postRows ignore-duplicates), ne touche jamais une ligne existante, et ne restaure pas les photos. */
+var VAULT_KEY='sa_admin_vault', VAULT_TABLES=['sites','contrats','workorders','plan','planning_tasks','plan_match','feuilles_temps','feuilles_temps_envois','releves','demandes','facturation','projets_excel','inventaire','flotte','sorties_inventaire','bons_livraison','rapports_hivernage','types_bassin','sondages'];
+function stripPhotosVault(list){if(!Array.isArray(list))return list;try{return list.map(function(rec){if(!rec||typeof rec!=='object')return rec;var copy=null;['files','photos','items_liv','items_ret','photo','signatures','sections'].forEach(function(ch){var arr=rec[ch];if(!Array.isArray(arr))return;var aPhoto=arr.some(function(f){return f&&(f.data||f._b64||(typeof f==='string'&&f.indexOf('data:')===0));});if(!aPhoto)return;if(!copy)copy=Object.assign({},rec);copy[ch]=arr.map(function(f){if(f&&f.data)return{name:f.name||'photo',_stripped:true};if(typeof f==='string'&&f.indexOf('data:')===0)return'_stripped';return f;});});return copy||rec;});}catch(e){return list;}}
+Comp.prototype.vaultList=function(){try{return JSON.parse(localStorage.getItem(VAULT_KEY)||'[]');}catch(e){return[];}};
+Comp.prototype.vaultSnapshot=function(){var self=this;return Promise.all(VAULT_TABLES.map(function(t){return get(t+'?select=*').catch(function(){return null;});})).then(function(r){
+    var snap={ts:new Date().toISOString(),data:{}},nonEmpty=0;
+    VAULT_TABLES.forEach(function(t,i){var v=r[i];if(v==null||!Array.isArray(v))return;snap.data[t]=stripPhotosVault(v);if(v.length)nonEmpty++;});
+    if(!nonEmpty)return false; /* ne jamais écraser le coffre avec un état vide */
+    var hist=self.vaultList();hist.unshift(snap);hist=hist.slice(0,4);
+    try{localStorage.setItem(VAULT_KEY,JSON.stringify(hist));}catch(e){try{localStorage.setItem(VAULT_KEY,JSON.stringify(hist.slice(0,2)));}catch(e2){try{localStorage.setItem(VAULT_KEY,JSON.stringify(hist.slice(0,1)));}catch(e3){}}}
+    return true;}).catch(function(){return false;});};
+Comp.prototype.vaultRestore=function(idx){var self=this,hist=this.vaultList();if(!hist.length){this.flash('Aucune sauvegarde locale dans ce navigateur');this.setState({vaultArm:false});return;}
+  var snap=hist[idx||0],T=Object.keys(snap.data||{});this.setState({vaultBusy:true,vaultArm:false});
+  return Promise.all(T.map(function(t){var rows=snap.data[t]||[];if(!rows.length)return Promise.resolve(0);
+    return get(t+'?select=id').then(function(cur){var have={};(cur||[]).forEach(function(x){have[String(x.id)]=1;});
+      var miss=rows.filter(function(r){return r&&r.id!=null&&!have[String(r.id)];});
+      if(!miss.length)return 0;return postRows(t,miss).then(function(){return miss.length;}).catch(function(){return 0;});}).catch(function(){return 0;});}))
+  .then(function(counts){var n=counts.reduce(function(a,b){return a+b;},0);self.setState({vaultBusy:false});
+    auditT(self,'RESTAURATION','coffre',snap.ts+' ('+n+' lignes)');
+    self.flash(n?('Coffre restauré : '+n+' ligne(s) récupérée(s) — sans les photos'):'Rien à restaurer : tout est déjà présent au serveur');
+    if(n)self.load().then(function(){self.update();});})
+  .catch(function(e){self.setState({vaultBusy:false});self.flash('Échec restauration : '+netMsg(e));});};
 Comp.prototype.comptesVals=function(){var self=this,st=this.state,isAdm=estAdmin(this.user.role);if(st.mod==='comptes'&&!this.cptes)this.loadComptes();
   var moiSuper=estSuper(self.user.role);
   var L=(Array.isArray(this.cptes)?this.cptes:[]).filter(function(c){
@@ -972,7 +1007,10 @@ Comp.prototype.comptesVals=function(){var self=this,st=this.state,isAdm=estAdmin
       ceCanDel:isAdm&&!e.isNew&&e.id!==self.user.id&&e.id!=='admin',ceDelLbl:e.confirm?'Confirmer la suppression':'Supprimer le compte',ceDel:function(){self.deleteCompte();},
       ceClose:function(){self.setState({ce:null});},ceCloseBg:function(ev){if(ev.target===ev.currentTarget)self.setState({ce:null});}});}
   return Object.assign(ceV,{isComptes:st.mod==='comptes',cRows:rows,cLoading:this.cptes==='loading',cErr:this.cptes==='err'?'Comptes illisibles : '+(this.cptErr||''):'',cCanEdit:isAdm,cReadOnly:!isAdm,
-    cNew:function(){self.openCompte(null);},cExport:function(){self.exportAll();},cCount:rows.length+' compte(s)'});};
+    cNew:function(){self.openCompte(null);},cExport:function(){self.exportAll();},cCount:rows.length+' compte(s)',
+    cHoursCsv:function(){self.exportHoursCsv();},
+    cVaultShow:isAdm,cVaultLbl:st.vaultBusy?'Restauration…':(st.vaultArm?'Confirmer la restauration du coffre':'Restaurer le coffre'+(this.vaultList().length?' ('+this.vaultList().length+')':'')),
+    cVault:function(){if(self.state.vaultBusy)return;if(!self.state.vaultArm){if(!self.vaultList().length){self.flash('Aucune sauvegarde locale dans ce navigateur');return;}self.setState({vaultArm:true});return;}self.vaultRestore(0);}});};
 
 
 /* ═════════════ LOGISTIQUE (bons de livraison, sorties d'inventaire) et HIVERNAGE — côté bureau ═════════════
@@ -2374,7 +2412,9 @@ Comp.prototype.vals=function(){
 Comp.prototype.update=function(){if(!this._host)return;SARender(document.getElementById('tpl'),this._host,this.vals());this.syncMap();var el=this.rootRef.current;if(el)el.style.setProperty('--sa-row','10px');};
 Comp.prototype.mount=function(host){var self=this;this._host=host;var hm=hashMod();if(hm&&TITLES_OK(hm))this.state.mod=hm;this.update();
   window.addEventListener('hashchange',function(){var m=hashMod();if(m&&TITLES_OK(m)&&(m!==self.state.mod||self.state.portail)){self.setState({portail:false});self.go(m);}});
-  this.load().then(function(){self.update();});
+  this.load().then(function(){self.update();
+    /* Coffre : un snapshot local par session, pour l'admin/superadmin — filet de sécurité silencieux. */
+    if(estAdmin(self.user.role)){try{if(!sessionStorage.getItem('sa_admin_vault_done')){sessionStorage.setItem('sa_admin_vault_done','1');setTimeout(function(){self.vaultSnapshot();},5000);}}catch(e){}}});
   setInterval(function(){if(document.visibilityState==='visible')self.load().then(function(){self.update();});},60000);
   document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')self.load().then(function(){self.update();});});};
 

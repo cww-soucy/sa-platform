@@ -69,12 +69,17 @@ plan · ft · suivi · wo · sites · flotte · inventaire · comptes · stats �
 | **Coffre de sauvegarde local** (snapshots navigateur auto + restauration) | `scheduleVault`, `doVault`, `stripPhotosForVault`, `getVault`, `restoreVault` | — | ❌ **à porter** |
 | Import de données | *aucune fonction d'import réelle* (les « import » du code sont des faux positifs) | — | ✅ (rien à porter) |
 
-## 5. Écarts à implémenter avant la mise en fantôme
+## 5. Écarts — PORTÉS ✅
 
-1. ❌ **Coffre de sauvegarde local** → **à porter dans sa-admin** (décision retenue).
-   Snapshot auto périodique dans le navigateur (sans photos, pour l'espace), restaurable via le badge
-   de version ; fusion non destructive. Référence : `index.html:2439` (`scheduleVault`) → `2650` (`restoreVault`).
-2. 🟡 **Export CSV des heures** (`exportHoursCSV`) → à trancher : porter, ou considérer couvert par l'Excel de paie.
+1. ✅ **Coffre de sauvegarde local** → porté dans sa-admin (`vaultSnapshot`/`vaultRestore`).
+   - Snapshot auto **une fois par session** pour admin/superadmin, photos retirées, **4 derniers** gardés
+     (repli 2 puis 1 si l'espace manque), jamais d'écrasement par un état vide.
+   - Restauration **non destructive** : ne recrée que les lignes **manquantes** au serveur
+     (`postRows` ignore-duplicates), ne touche aucune ligne existante, ne restaure pas les photos.
+   - Bouton **« Restaurer le coffre »** dans Comptes (admin), confirmation en deux temps ; tracé dans `audit_log`.
+2. ✅ **Export CSV des heures** (`exportHoursCsv`) → porté, bouton **« Heures (.csv) »** dans Comptes.
+
+Tests : `tests/migration-saplatform.test.js` (3 cas, verts).
 
 ## 6. Mise en fantôme (décision retenue : redirection)
 
@@ -86,10 +91,11 @@ plan · ft · suivi · wo · sites · flotte · inventaire · comptes · stats �
 
 ## 7. Checklist finale (à cocher avant de couper)
 
-- [ ] Coffre de sauvegarde porté et testé dans sa-admin (`tests/harness.js`)
-- [ ] Décision export CSV des heures (porté ou abandonné, tracé ici)
-- [ ] Revue ciblée des 592 fonctions par cluster : aucune capacité orpheline (à confirmer pendant l'implémentation)
-- [ ] `npm test` vert
+- [x] Coffre de sauvegarde porté et testé dans sa-admin (`tests/migration-saplatform.test.js`)
+- [x] Export CSV des heures porté (`exportHoursCsv`)
+- [x] Fonctions de configuration vérifiées (comptes CRUD, outils/logiconfig/emplacements, stock, affichage : 22/22)
+- [ ] Revue ciblée des 592 fonctions par cluster : aucune capacité orpheline (confirmation finale)
+- [ ] `npm test` vert (hors 5 échecs préexistants SA Platform / `index.html`, indépendants)
 - [ ] Redirection `index.html` → `admin.html` + `APP_BUILD`/`CACHE_NAME` montés ensemble
 - [ ] Validation finale par le créateur (superadmin)
 
