@@ -401,6 +401,7 @@ icons=open(os.path.join(SRC,'design')+'/sa-icons.js',encoding='utf-8').read()
 insp=open(os.path.join(SRC,'inspection','model.js'),encoding='utf-8').read(); assert '</script' not in insp.lower()
 hiv=open(os.path.join(SRC,'hivernage','checklist.js'),encoding='utf-8').read(); assert '</script' not in hiv.lower()
 aff=open(os.path.join(SRC,'affichage','affichage.js'),encoding='utf-8').read(); assert '</script' not in aff.lower()
+garde=open(os.path.join(SRC,'garde','garde.js'),encoding='utf-8').read(); assert '</script' not in garde.lower()
 rt=open(os.path.join(HERE,'runtime.js'),encoding='utf-8').read(); app=open(os.path.join(HERE,'app.js'),encoding='utf-8').read()
 # ---------- FICHE : « À faire » — description, notes et tâches du bon de travail saisis au bureau, avant les relevés ----------
 TODO_ITEM=('<div style="display:flex;flex-direction:column;gap:8px;padding:12px 0;border-top:1px solid var(--color-divider)">'
@@ -478,7 +479,7 @@ button{font-family:inherit}
 <input id="photoInput" type="file" accept="image/*" capture="environment" style="display:none">
 <template id="tpl">'''+M+'''</template>
 <script>'''+icons+'''</script>
-<script>'''+insp+'''</script><script>'''+hiv+'''</script><script>'''+aff+'''</script><script>'''+rt+'''</script>
+<script>'''+insp+'''</script><script>'''+hiv+'''</script><script>'''+aff+'''</script><script>'''+garde+'''</script><script>'''+rt+'''</script>
 <script>'''+app+'''</script>
 </body></html>'''
 open(os.path.join(OUT,'terrain.html'),'w',encoding='utf-8').write(html)

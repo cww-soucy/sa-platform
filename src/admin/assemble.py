@@ -1046,6 +1046,7 @@ qjs=open(os.path.join(SRC,'vendor','qrcodejs','qrcode.min.js'),encoding='utf-8')
 insp=open(os.path.join(SRC,'inspection','model.js'),encoding='utf-8').read(); assert '</script' not in insp.lower()
 hiv=open(os.path.join(SRC,'hivernage','checklist.js'),encoding='utf-8').read(); assert '</script' not in hiv.lower()
 aff=open(os.path.join(SRC,'affichage','affichage.js'),encoding='utf-8').read(); assert '</script' not in aff.lower()
+garde=open(os.path.join(SRC,'garde','garde.js'),encoding='utf-8').read(); assert '</script' not in garde.lower()
 rt=open(os.path.join(HERE,'runtime.js'),encoding='utf-8').read(); app=open(os.path.join(HERE,'app.js'),encoding='utf-8').read()
 _k=app.rindex('})();'); app=app[:_k]+open(os.path.join(HERE,'inspections.js'),encoding='utf-8').read()+'\n'+app[_k:]
 _k=app.rindex('})();'); app=app[:_k]+open(os.path.join(HERE,'clients.js'),encoding='utf-8').read()+'\n'+app[_k:]
@@ -1061,7 +1062,7 @@ html='''<!DOCTYPE html>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600&display=swap" rel="stylesheet">
 <style>
 '''+ds+'''
-html,body{margin:0;height:100%;background:var(--color-bg)}
+html,body{margin:0;height:100%;background:var(--color-bg);overscroll-behavior:none}/* pas de « page précédente » au glisser sur le pavé tactile */
 #app{position:fixed;inset:0}#app>div{height:100%}
 button{font-family:inherit}a{color:var(--color-accent-700)}
 #login{position:fixed;inset:0;background:var(--color-bg);display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px;z-index:50}
@@ -1117,7 +1118,7 @@ button{font-family:inherit}a{color:var(--color-accent-700)}
 <style>'''+lcss+'''</style>
 <script>'''+ljs+'''</script>
 <script>'''+qjs+'''</script>
-<script>'''+icons+'''</script><script>window.SA_LOGO='''+repr(LOGO)+''';</script><script>'''+insp+'''</script><script>'''+hiv+'''</script><script>'''+aff+'''</script><script>'''+rt+'''</script><script>'''+app+'''</script>
+<script>'''+icons+'''</script><script>window.SA_LOGO='''+repr(LOGO)+''';</script><script>'''+insp+'''</script><script>'''+hiv+'''</script><script>'''+aff+'''</script><script>'''+garde+'''</script><script>'''+rt+'''</script><script>'''+app+'''</script>
 </body></html>'''
 open(os.path.join(OUT,'admin.html'),'w',encoding='utf-8').write(html)
 print('taille',len(html),'| règles',len(css))

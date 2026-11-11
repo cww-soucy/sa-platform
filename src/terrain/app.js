@@ -165,11 +165,40 @@ function Comp(user){
   this.inv=[];this.bons=[];this.hivRep={};this.hivPrevu={};this.lastSortie=null;this._sig={strokes:[],w:0};
   this.dem=[];this.ft=jget(LSK_FT+user.id+'_'+iso(mondayOf(new Date())),null);this.state=Object.assign({pf:{q:'',lieu:'',siteId:null,odt:'',detail:'',km:'',src:null},sf:{km:''},demande:null,demChip:null,demandeTxt:'',screen:'today',logTab:'sortie',sortie:{},invQ:'',bonSel:null,signer:'',hivFilter:'todo',hivSel:null,hivData:{},hivPh:{},hivSent:{},demPhoto:null,pe:null,openJob:null,vals:{},touched:{},checks:{},prods:{},photo:{},photoData:{},notes:{},validated:{},sync:{},pts:{},acts:{},step:{},planDay:0,toast:null,soon:''},saved);
   this.state.toast=null;this.state.screen='today';this.state.pf={q:'',lieu:'',siteId:null,odt:'',detail:'',km:'',src:null};this.state.sf={km:''};
+  /* Saisie en cours (punch, fin de journée, correction, demande, sortie) retrouvée après une sortie involontaire de l'app */
+  var br=jget(BRK+user.id,null);this._recup=false;
+  if(br&&br.jour===this.today&&Date.now()-(br.t||0)<12*3600e3){var self0=this;['pf','sf','pe','demande','demChip','demandeTxt','sortie','soLoc','signer'].forEach(function(k){if(br[k]!==undefined&&br[k]!==null)self0.state[k]=br[k];});
+    if(['punchform','stopform','punchedit','demandes'].indexOf(br.screen)>=0&&(br.screen!=='punchedit'||br.pe))this.state.screen=br.screen;this._recup=true;}
 }
+var BRK='sa_terrain_brouillon_';
+/* Vrai quand l'écran contient une saisie qui n'est pas encore enregistrée (les fiches, elles, sont déjà gardées sur l'appareil) */
+Comp.prototype.saisieEnCours=function(){var s=this.state,scr=s.screen,pf=s.pf||{};
+  if(scr==='punchform'&&(pf.odt||pf.detail||pf.km||(pf.lieu&&!pf.siteId)))return true;
+  if(scr==='stopform'&&s.sf&&s.sf.km)return true;
+  if(scr==='punchedit'&&s.pe)return true;
+  if(s.demande&&(s.demandeTxt||s.demChip||s.demPhoto))return true;
+  if(s.sortie&&Object.keys(s.sortie).some(function(k){return s.sortie[k]>0;}))return true;
+  if(s.bonSel&&String(s.signer||'').trim())return true;
+  return false;};
+Comp.prototype.brouillon=function(){var s=this.state,k=BRK+this.user.id;
+  if(!this.saisieEnCours()){try{localStorage.removeItem(k);}catch(e){}return;}
+  jset(k,{t:Date.now(),jour:this.today,screen:s.screen,pf:s.pf,sf:s.sf,pe:s.pe,demande:s.demande,demChip:s.demChip,demandeTxt:s.demandeTxt,sortie:s.sortie,soLoc:s.soLoc,signer:s.signer});};
+/* Geste ou bouton « retour » du téléphone : revient à l'écran précédent de l'app au lieu de la quitter ;
+   une saisie en cours reste à l'écran (Annuler pour l'abandonner). */
+Comp.prototype.armerRetour=function(){if(this._arme)return;try{history.pushState({saRetour:1},'');this._arme=true;}catch(e){}};
+Comp.prototype.retour=function(){var s=this.state,scr=s.screen;
+  if(this.saisieEnCours()){this.flash('Saisie en cours — touchez « Annuler » pour la quitter');return true;}
+  if(s.demande){this.setState({demande:null});return true;}
+  if(scr==='punchedit'){this.setState({pe:null,screen:'temps'});return true;}
+  if(scr==='commView'){this.go('comm');return true;}
+  if(scr==='hivForm'){this.setState({hivSel:null,screen:'hivernage'});return true;}
+  if(scr!=='today'){this.go('today');return true;}
+  return false;};
 Comp.prototype.persist=function(){var s=this.state,keep={vals:s.vals,touched:s.touched,checks:s.checks,prods:s.prods,photo:s.photo,notes:s.notes,validated:s.validated,sync:s.sync,photoData:s.photoData,pts:s.pts,acts:s.acts,step:s.step,hivData:s.hivData,hivPh:s.hivPh,hivSent:s.hivSent};
   var self=this,n=this._pseq=(this._pseq||0)+1,key='sa_terrain_state_'+this.user.id+'_'+this.today;
   phOut(keep).then(function(k2){if(n!==self._pseq)return;if(!jset(key,k2)){k2.photoData={};jset(key,k2);}});};
-Comp.prototype.setState=function(p){var n=typeof p==='function'?p(this.state):p;this.state=Object.assign({},this.state,n);this.persist();this.update();};
+Comp.prototype.setState=function(p){var n=typeof p==='function'?p(this.state):p;this.state=Object.assign({},this.state,n);this.persist();this.brouillon();this.update();
+  if(this.state.screen!=='today'||this.state.demande)this.armerRetour();};
 Comp.prototype.flash=function(t){var s=this;clearTimeout(this._tt);this.state.toast=t;this.update();this._tt=setTimeout(function(){s.state.toast=null;s.update();},2600);};
 Comp.prototype.go=function(s){this.setState({screen:s});var c=this.contentRef.current;if(c)c.scrollTop=0;if(s==='logistique')this.loadLog();if(s==='hivernage')this.loadHiv();if(s==='comm')this.loadComm();};
 Comp.prototype.applyTheme=function(){var el=this.rootRef.current;if(!el)return;
@@ -846,6 +875,10 @@ function bienvenue(u){var f=false;try{f=localStorage.getItem('sa_terrain_bienven
   el.querySelector('h1').textContent='Bienvenue'+(u.prenom?', '+u.prenom:'')+'\u00a0!';el.querySelector('h1+div').textContent=JOURS[d.getDay()]+' '+d.getDate()+' '+MOIS[d.getMonth()];
   var bye=function(){el.style.opacity='0';setTimeout(function(){if(el.parentNode)el.parentNode.removeChild(el);},500);};el.addEventListener('click',bye);document.body.appendChild(el);setTimeout(bye,2600);}
 Comp.prototype.mount=function(host){var self=this;this._host=host;this.update();bienvenue(this.user);
+  if(window.SAGarde)SAGarde.init({dom:false,estSale:function(){return self.saisieEnCours();}});
+  window.addEventListener('popstate',function(){self._arme=false;if(self.retour())self.armerRetour();});
+  if(this.state.screen!=='today'||this.state.demande)this.armerRetour();
+  if(this._recup&&this.saisieEnCours())this.flash('Saisie non envoyée retrouvée — vérifiez puis envoyez');
   /* Photos de la journée : remises en place depuis IndexedDB ; ménage des vieilles photos déjà envoyées */
   var st0={photoData:this.state.photoData,pts:this.state.pts};
   phIn(st0).then(function(){self.state=Object.assign({},self.state,{photoData:phFill(self.state.photoData||{}),pts:phFill(self.state.pts||{})});self.update();

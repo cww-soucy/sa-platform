@@ -82,7 +82,7 @@ Comp.prototype.envoyerClient=function(site,relId){var self=this,t=this.admTok(),
   var txt='Bonjour,\n\nLe rapport de la visite du '+fdateL(r&&r.date)+' à '+site.nom+' est disponible sur votre portail.\n\n'+(r?window.SAInsp.resume(this.inspItems(r),true):'');
   pfn('admin_envoyer',{releves:[relId],contacts:cts.map(function(x){return x.id;}),sujet:'Rapport de visite — '+site.nom,texte:txt},t).then(function(x){if(!x.ok){self.flash('Envoi refusé : '+(x.message||'erreur'));return;}
     if(r)r.envoyee_le=new Date().toISOString();
-    if(x.aEnvoyer&&x.aEnvoyer.length)location.href='mailto:'+x.aEnvoyer.join(',')+'?subject='+encodeURIComponent('Rapport de visite — '+site.nom)+'&body='+encodeURIComponent(txt+'\n\nConsulter le rapport : '+x.portail);
+    if(x.aEnvoyer&&x.aEnvoyer.length){if(window.SAGarde)SAGarde.ignorer();location.href='mailto:'+x.aEnvoyer.join(',')+'?subject='+encodeURIComponent('Rapport de visite — '+site.nom)+'&body='+encodeURIComponent(txt+'\n\nConsulter le rapport : '+x.portail);}
     self.flash(x.envoyes&&x.envoyes.length?'Rapport publié et envoyé à '+x.envoyes.length+' contact(s)':(x.aEnvoyer&&x.aEnvoyer.length?'Rapport publié — courriel préparé dans votre logiciel':'Rapport publié sur le portail (aucun contact gestionnaire à aviser)'));self.update();});};
 Comp.prototype.printVisite=function(site,v){var I=window.SAInsp,E=escH,se=I.etatsSystemes(v.items),r=v.r;
   var sec=I.SYSTEMES.filter(function(s){return se[s.code]!=='na';}).map(function(s){var its=v.items.filter(function(i){return i.systeme===s.code;});
