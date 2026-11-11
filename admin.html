@@ -289,7 +289,7 @@ textarea.input { min-height: 90px; resize: vertical; }
 .btn-ghost { border-color: transparent; }
 
 
-html,body{margin:0;height:100%;background:var(--color-bg)}
+html,body{margin:0;height:100%;background:var(--color-bg);overscroll-behavior:none}/* pas de « page précédente » au glisser sur le pavé tactile */
 #app{position:fixed;inset:0}#app>div{height:100%}
 button{font-family:inherit}a{color:var(--color-accent-700)}
 #login{position:fixed;inset:0;background:var(--color-bg);display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px;z-index:50}
@@ -3059,6 +3059,125 @@ svg.leaflet-image-layer.leaflet-interactive path {
   var api = { CATALOGUE: CATALOGUE, ITEMS: ITEMS, ROLES: ROLES, NIVEAUX: NIVEAUX, cibles: cibles, idRegle: idRegle, resoudre: resoudre, visible: visible, css: css, appliquer: appliquer, premier: premier, nbMasques: nbMasques, verrouille: verrouille };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.SAAff = api;
 })(typeof window !== 'undefined' ? window : this);
+</script><script>/* Garde-saisie (sa-admin et sa-terrain) — empêche de perdre une saisie non enregistrée.
+   window.SAGarde.init(options) :
+     dom        : true → suit les champs modifiés par l'utilisateur (sa-admin) ; false → seul options.estSale compte (sa-terrain)
+     estSale    : function() → true quand l'app a une saisie en cours (en plus des champs suivis)
+     brouillons : préfixe localStorage → copie automatique des fenêtres (.dialog) en cours de saisie, proposée à la réouverture
+   Ce que la garde fait :
+   - clic à côté d'une fenêtre (fond grisé) : ne ferme plus si quelque chose a été tapé, ni si le clic a commencé dans la fenêtre
+     (sélection de texte à la souris qui se termine sur le fond) ;
+   - Retour arrière hors d'un champ, Alt+←, Cmd+[, Cmd+←, F5, Ctrl/Cmd+R : sans effet tant qu'une saisie est en cours ;
+   - fermeture, rechargement ou départ de la page : le navigateur demande confirmation ;
+   - brouillon : chaque fenêtre en cours de saisie est copiée sur l'appareil ; si la page est quittée sans « Enregistrer »
+     ni « Annuler », la saisie est proposée (« Récupérer ») à la prochaine ouverture de la même fenêtre. */
+(function(){
+var O={dom:true,estSale:null,brouillons:''},edits=[],ignoreJusqua=0,downEl=null,pret=false,zones=[],offre=null,TTL=48*3600e3;
+function champ(el){if(!el||el.nodeType!==1)return false;var t=el.tagName;return t==='INPUT'||t==='TEXTAREA'||t==='SELECT';}
+function val(el){var ty=(el.type||'').toLowerCase();return(ty==='checkbox'||ty==='radio')?(el.checked?'1':''):String(el.value==null?'':el.value);}
+function dansFenetre(el){return!!(el.closest&&el.closest('.dialog'));}
+function exclu(el){
+  if(!champ(el))return true;
+  var ty=(el.type||'').toLowerCase();
+  if(['search','button','submit','reset','file','hidden','password','range','color','image'].indexOf(ty)>=0)return true;
+  if(el.closest('[data-garde="non"],#login'))return true;
+  var h=((el.getAttribute('placeholder')||'')+' '+(el.getAttribute('aria-label')||'')).toLowerCase();
+  if(/recherch|cherch|filtr|search/.test(h))return true;
+  /* hors fenêtre, les listes, cases et dates servent surtout de filtres d'affichage : elles ne retiennent rien */
+  if(!dansFenetre(el)&&(el.tagName==='SELECT'||['checkbox','radio','date','month','week','time'].indexOf(ty)>=0))return true;
+  return false;
+}
+function nettoie(){edits=edits.filter(function(x){return x.el.isConnected;});}
+function champsSales(racine){nettoie();return edits.filter(function(x){var v=val(x.el);return v!==''&&v===x.v&&(!racine||racine.contains(x.el));});}
+function sale(racine){if(O.dom&&champsSales(racine).length)return true;if(!racine&&typeof O.estSale==='function'){try{return!!O.estSale();}catch(e){}}return false;}
+function propre(tout){nettoie();edits=edits.filter(function(x){return!tout&&dansFenetre(x.el);});}
+function noter(e){var el=e.target;if(!O.dom||exclu(el))return;var v=val(el);for(var i=0;i<edits.length;i++)if(edits[i].el===el){edits[i].v=v;break;}if(i===edits.length)edits.push({el:el,v:v});
+  var z=el.closest('.dialog');if(z&&O.brouillons)planifier(z);}
+
+/* ---------- petit avis flottant (hors du rendu de l'app) ---------- */
+var avisEl=null,avisT=0;
+function avis(txt){if(!document.body)return;if(!avisEl){avisEl=document.createElement('div');avisEl.setAttribute('role','alert');avisEl.setAttribute('data-garde-avis','');
+    avisEl.style.cssText='position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:2147483000;max-width:min(560px,calc(100vw - 32px));padding:12px 16px;background:#111;color:#fff;font:500 16px/1.35 Barlow,system-ui,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.25);text-align:center';
+    document.body.appendChild(avisEl);}
+  avisEl.textContent=txt;avisEl.style.display='block';clearTimeout(avisT);avisT=setTimeout(function(){if(avisEl)avisEl.style.display='none';},3800);}
+function secouer(fd){var d=fd.querySelector('.dialog')||fd;try{d.animate([{transform:'translateX(0)'},{transform:'translateX(-8px)'},{transform:'translateX(8px)'},{transform:'translateX(0)'}],{duration:260});}catch(e){}}
+var MSG='Saisie non enregistrée — utilisez « Enregistrer » ou « Annuler » pour fermer cette fenêtre.';
+
+/* ---------- clic sur le fond d'une fenêtre ---------- */
+function surPointeur(e){downEl=e.target;}
+function surClic(e){var b=e.target;if(!b||!b.classList||!b.classList.contains('dialog-backdrop'))return;
+  var glisse=downEl&&downEl!==b&&b.contains(downEl);/* appui commencé dans la fenêtre (sélection de texte), relâché sur le fond */
+  if(glisse||sale(b)){e.stopImmediatePropagation();e.preventDefault();if(!glisse){secouer(b);avis(MSG);}}}
+
+/* ---------- touches qui font quitter ou recharger la page ---------- */
+function editable(el){if(!el||el.nodeType!==1)return false;if(el.isContentEditable)return true;if(el.tagName==='TEXTAREA')return!el.readOnly&&!el.disabled;
+  if(el.tagName==='INPUT'){var ty=(el.type||'text').toLowerCase();return['button','submit','reset','checkbox','radio','file','image','range','color'].indexOf(ty)<0&&!el.readOnly&&!el.disabled;}return false;}
+function surTouche(e){var k=e.key,ed=editable(e.target),mod=e.ctrlKey||e.metaKey;
+  /* Retour arrière hors d'un champ : jamais de « page précédente » */
+  if(k==='Backspace'&&!ed&&!mod&&!e.altKey){e.preventDefault();return;}
+  if(!sale())return;
+  var quitte=(e.altKey&&(k==='ArrowLeft'||k==='ArrowRight'))||(e.metaKey&&(k==='['||k===']'))||(e.metaKey&&!ed&&(k==='ArrowLeft'||k==='ArrowRight'))||
+    k==='F5'||k==='BrowserBack'||k==='BrowserForward'||(mod&&(k==='r'||k==='R'));
+  if(quitte){e.preventDefault();e.stopPropagation();avis('Saisie en cours non enregistrée — enregistrez avant de quitter la page.');}}
+
+/* ---------- départ de la page ---------- */
+function avantDepart(e){if(Date.now()<ignoreJusqua)return;if(!sale())return;sauverTout();e.preventDefault();e.returnValue='';return '';}
+
+/* ---------- brouillons des fenêtres ---------- */
+function titreDe(z){var t=z.querySelector('.dialog-title,h1,h2,h3');return t?String(t.textContent||'').replace(/\s+/g,' ').trim().slice(0,120):'';}
+function cle(t){return O.brouillons+'_brouillon_'+t;}
+function champsDe(z){return Array.prototype.slice.call(z.querySelectorAll('input,textarea,select')).filter(function(el){return!exclu(el);});}
+function lire(t){try{var b=JSON.parse(localStorage.getItem(cle(t))||'null');if(b&&Date.now()-b.t<TTL)return b;if(b)localStorage.removeItem(cle(t));}catch(e){}return null;}
+function sauver(z){var t=titreDe(z);if(!t||!z.isConnected)return;if(!champsSales(z).length)return;
+  var c=champsDe(z).map(function(el){return{ty:(el.type||el.tagName).toLowerCase(),v:val(el)};});
+  try{localStorage.setItem(cle(t),JSON.stringify({t:Date.now(),titre:t,champs:c}));}catch(e){}
+  for(var i=0;i<zones.length;i++)if(zones[i].z===z){zones[i].titre=t;return;}zones.push({z:z,titre:t});}
+var tSauve=0,aSauver=[];
+function planifier(z){if(aSauver.indexOf(z)<0)aSauver.push(z);clearTimeout(tSauve);tSauve=setTimeout(function(){var l=aSauver;aSauver=[];l.forEach(sauver);},300);}
+function sauverTout(){if(!O.brouillons)return;clearTimeout(tSauve);var l=aSauver;aSauver=[];l.forEach(sauver);}
+/* fenêtre fermée normalement (Enregistrer, Annuler, ✕) pendant que la page vit : son brouillon n'a plus lieu d'être */
+function verifierZones(){if(!O.brouillons)return;zones=zones.filter(function(x){if(x.z.isConnected&&titreDe(x.z)===x.titre)return true;
+  if(aSauver.indexOf(x.z)>=0)aSauver.splice(aSauver.indexOf(x.z),1);try{localStorage.removeItem(cle(x.titre));}catch(e){}return false;});
+  proposer();}
+function apercu(b){var v=b.champs.filter(function(c){return c.v&&c.ty!=='checkbox'&&c.ty!=='radio';}).map(function(c){return c.v.length>40?c.v.slice(0,40)+'…':c.v;});return v.slice(0,3).join(' · ');}
+function depuis(t){var m=Math.round((Date.now()-t)/60000);if(m<1)return'à l’instant';if(m<60)return'il y a '+m+' min';var h=Math.round(m/60);return h<24?'il y a '+h+' h':'il y a '+Math.round(h/24)+' j';}
+function fermerOffre(){if(offre&&offre.el&&offre.el.parentNode)offre.el.parentNode.removeChild(offre.el);offre=null;}
+function proposer(){
+  var d=Array.prototype.slice.call(document.querySelectorAll('.dialog')).filter(function(z){return z.isConnected;});
+  var z=null,b=null;for(var i=0;i<d.length&&!b;i++){var t=titreDe(d[i]);if(!t)continue;if(zones.some(function(x){return x.z===d[i];}))continue;var bb=lire(t);if(bb){z=d[i];b=bb;}}
+  if(offre&&(offre.z===z&&z))return;fermerOffre();if(!z)return;
+  var el=document.createElement('div');el.setAttribute('data-garde-offre','');el.setAttribute('role','status');
+  el.style.cssText='position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:2147483001;width:min(560px,calc(100vw - 24px));box-sizing:border-box;padding:12px 14px;background:#fff8e1;color:#111;border:2px solid #111;font:500 15px/1.35 Barlow,system-ui,sans-serif;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;box-shadow:0 6px 24px rgba(0,0,0,.2)';
+  var p=document.createElement('div');p.style.cssText='flex:1 1 260px';p.textContent='Saisie non enregistrée retrouvée ('+depuis(b.t)+')'+(apercu(b)?' : « '+apercu(b)+' »':'')+'.';
+  var bR=document.createElement('button');bR.type='button';bR.textContent='Récupérer';bR.style.cssText='font:600 15px Barlow,system-ui,sans-serif;padding:8px 14px;background:#111;color:#fff;border:0;cursor:pointer;min-height:40px';
+  var bI=document.createElement('button');bI.type='button';bI.textContent='Ignorer';bI.style.cssText='font:500 15px Barlow,system-ui,sans-serif;padding:8px 14px;background:transparent;color:#111;border:1px solid #111;cursor:pointer;min-height:40px';
+  el.appendChild(p);el.appendChild(bR);el.appendChild(bI);document.body.appendChild(el);
+  var titre=titreDe(z);offre={el:el,z:z,titre:titre};
+  bI.onclick=function(){try{localStorage.removeItem(cle(titre));}catch(e){}fermerOffre();};
+  bR.onclick=function(){fermerOffre();restaurer(z,titre,b);};
+}
+function poser(el,v){var ty=(el.type||'').toLowerCase();
+  if(ty==='checkbox'||ty==='radio'){var on=v==='1';if(el.checked===on)return;el.checked=on;}
+  else{if(el.value===v)return;var pr=Object.getPrototypeOf(el),d=Object.getOwnPropertyDescriptor(pr,'value');if(d&&d.set)d.set.call(el,v);else el.value=v;}
+  el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));}
+function zoneTitre(t,z0){if(z0&&z0.isConnected&&titreDe(z0)===t)return z0;var d=document.querySelectorAll('.dialog');for(var i=0;i<d.length;i++)if(titreDe(d[i])===t)return d[i];return null;}
+function restaurer(z,titre,b){
+  /* champ par champ : chaque saisie peut redessiner la fenêtre (ex. un choix qui ajoute des champs) */
+  b.champs.forEach(function(c,i){var zz=zoneTitre(titre,z);if(!zz)return;var el=champsDe(zz)[i];if(!el)return;var ty=(el.type||el.tagName).toLowerCase();if(ty!==c.ty)return;
+    poser(el,c.v);var e2=champsDe(zoneTitre(titre,z)||zz)[i];if(e2)noter({target:e2});});
+  var zz=zoneTitre(titre,z);if(zz){sauver(zz);}avis('Saisie récupérée — vérifiez puis « Enregistrer ».');}
+
+function init(o){O=Object.assign({dom:true,estSale:null,brouillons:''},o||{});if(pret)return;pret=true;
+  document.addEventListener('input',noter,true);document.addEventListener('change',noter,true);
+  document.addEventListener('pointerdown',surPointeur,true);document.addEventListener('click',surClic,true);
+  document.addEventListener('keydown',surTouche,true);window.addEventListener('beforeunload',avantDepart);
+  window.addEventListener('pagehide',sauverTout);document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')sauverTout();});
+  if(O.brouillons&&typeof MutationObserver==='function'){var tV=0;new MutationObserver(function(){clearTimeout(tV);tV=setTimeout(verifierZones,60);}).observe(document.documentElement,{childList:true,subtree:true});}
+}
+window.SAGarde={init:init,sale:function(r){return sale(r);},propre:propre,
+  /* départ volontaire (courriel mailto:, déconnexion) : pas de demande de confirmation pendant un court instant */
+  ignorer:function(ms){ignoreJusqua=Date.now()+(ms||1500);},avis:avis};
+})();
 </script><script>/* Mini-rendu maison (vanilla) : <sc-if>, <sc-for>, {{ chemin }}, onClick, ref — sans framework. */
 (function(){
 var NS='http://www.w3.org/1999/xhtml',RE=/\{\{\s*([\w.$]+)\s*\}\}/g,WH=/^\s*\{\{\s*([\w.$]+)\s*\}\}\s*$/;
@@ -3182,7 +3301,7 @@ function Comp(user){
   this.state={portail:!hashMod()&&portailPref(),mod:'monitoring',q:'',toast:null,inspSite:null,inspKey:null,inspFilter:'all',opsFilter:'Tous',opsOpen:{},siteType:'all',carteView:'geo',sr:null,pView:'semaine',gHideDone:false,carteAcc:100,carteFix:null,carteTour:null,carteQ:'',carteType:'all',sf:null,ty:null,inspBassin:null,monPer:'jour',monWall:false,factFilter:'Tous',tempsTab:'semaine',eUid:null,eDay:null,tOff:0,sOff:0,fe:null,pmmDate:null,pb:null,ce:null,de:null,docQ:'',docF:'tous',logTab:'bl',se:null,stkQ:'',stkCat:'tous',te:null,ke:null,outTab:'outils',outF:'tous',outQ:'',qrIn:null,hj:null,hp:null,paieSel:{},paieOpen:{},paieMode:'synthese',pOff:0,ed:null,sed:null,survey:null,sondKey:(function(){try{return localStorage.getItem('sa_admin_sondkey')||'';}catch(e){return '';}})(),keyIn:'',dlg:false,busy:false,f:{type:'Bon de travail',site:'',tech:'',debut:'',heure:'07:00',rec:'aucune',jours:{},fin:''}};this.pl={};this._pl={};this.sd={};this._sd={};
 }
 Comp.prototype.setState=function(p){this.state=Object.assign({},this.state,typeof p==='function'?p(this.state):p);this.update();};
-Comp.prototype.flash=function(t){var s=this;clearTimeout(this._tt);this.state.toast=t;this.update();this._tt=setTimeout(function(){s.state.toast=null;s.update();},2800);};
+Comp.prototype.flash=function(t){var s=this;/* enregistrement réussi : les champs hors fenêtre ne comptent plus comme saisie en cours */if(window.SAGarde&&/enregistr|créé|cré[ée]e|ajouté|envoy|mis à jour|mise à jour|sauvegard|supprim|publi/i.test(String(t||'')))SAGarde.propre();clearTimeout(this._tt);this.state.toast=t;this.update();this._tt=setTimeout(function(){s.state.toast=null;s.update();},2800);};
 Comp.prototype.go=function(m,x){this.setState(Object.assign({mod:m,q:''},x||{}));var el=this.rootRef.current&&this.rootRef.current.querySelector('main');if(el)el.scrollTop=0;};
 
 Comp.prototype.load=function(){
@@ -3607,7 +3726,7 @@ Comp.prototype.markSent=function(methode,only){var self=this,wk=iso(addDays(mond
     .then(function(){self.flash(emps.length+' feuille(s) marquée(s) envoyée(s) à la paie');return self.loadWeekFT(wk,true);}).catch(function(e){self.flash('Échec : '+netMsg(e));});};
 /* Courriel — comme SA Platform : l'app n'a pas accès à un serveur de courriel, elle ouvre le logiciel de courriel installé
    (Outlook, Mail…) avec un message prêt ; le fichier Excel vient d'être téléchargé, il reste à le joindre. */
-function mailto(to,sujet,corps){var u='mailto:'+encodeURIComponent(to||'').replace(/%40/g,'@')+'?subject='+encodeURIComponent(sujet)+'&body='+encodeURIComponent(corps);if(window.__openMail)return window.__openMail(u);/* point d'observation pour les tests */try{window.location.href=u;}catch(e){window.open(u,'_blank');}}
+function mailto(to,sujet,corps){var u='mailto:'+encodeURIComponent(to||'').replace(/%40/g,'@')+'?subject='+encodeURIComponent(sujet)+'&body='+encodeURIComponent(corps);if(window.__openMail)return window.__openMail(u);/* point d'observation pour les tests */if(window.SAGarde)SAGarde.ignorer();try{window.location.href=u;}catch(e){window.open(u,'_blank');}}
 function emailPaie(){try{return localStorage.getItem('sa_admin_email_paie')||'';}catch(e){return '';}}
 Comp.prototype.mailPaie=function(only){var wk=iso(addDays(mondayOf(new Date()),7*this.state.tOff)),data=this.weekData(wk),sel=this.paieSel(wk,data),emps=data.filter(function(e){return(only?e.id===only:sel[e.id])&&e.any;});
   if(!emps.length){this.flash('Sélectionnez au moins un employé');return;}var fin=iso(addDays(new Date(wk+'T12:00:00'),6)),tt=0;
@@ -5537,7 +5656,9 @@ Comp.prototype.vals=function(){
     monTeam,this.monModeVals(),this.siteCatVals(),this.livVals(),this.tempsVals(punchRows),this.empVals(),this.statsVals(),this.feVals(),this.pmmVals(),this.comptesVals(),this.docsVals(),this.stockVals(),this.outilsVals(),this.monVals(),this.siteFicheVals(),this.typesVals(),this.carteCtlVals(),this.plan2Vals(),this.calVals(),this.seriesVals(),this.globVals(),this.commVals(),this.inspVals(),this.clientsVals(),this.sondagesVals(),this.ocVals(),this.gbVals(),this.affVals());
 };
 Comp.prototype.update=function(){if(!this._host)return;SARender(document.getElementById('tpl'),this._host,this.vals());this.syncMap();var el=this.rootRef.current;if(el)el.style.setProperty('--sa-row','10px');};
-Comp.prototype.mount=function(host){var self=this;this._host=host;var hm=hashMod();if(hm&&TITLES_OK(hm))this.state.mod=hm;this.update();
+Comp.prototype.mount=function(host){var self=this;this._host=host;
+  /* Garde-saisie : clic à côté d'une fenêtre, touches de navigation, départ de la page ; brouillon des fenêtres en cours */
+  if(window.SAGarde)SAGarde.init({dom:true,brouillons:'sa_admin_'+this.user.id});var hm=hashMod();if(hm&&TITLES_OK(hm))this.state.mod=hm;this.update();
   window.addEventListener('hashchange',function(){var m=hashMod();if(m&&TITLES_OK(m)&&(m!==self.state.mod||self.state.portail)){self.setState({portail:false});self.go(m);}});
   this.load().then(function(){self.update();
     /* Coffre : un snapshot local par session, pour l'admin/superadmin — filet de sécurité silencieux. */
@@ -5660,7 +5781,7 @@ Comp.prototype.envoyerClient=function(site,relId){var self=this,t=this.admTok(),
   var txt='Bonjour,\n\nLe rapport de la visite du '+fdateL(r&&r.date)+' à '+site.nom+' est disponible sur votre portail.\n\n'+(r?window.SAInsp.resume(this.inspItems(r),true):'');
   pfn('admin_envoyer',{releves:[relId],contacts:cts.map(function(x){return x.id;}),sujet:'Rapport de visite — '+site.nom,texte:txt},t).then(function(x){if(!x.ok){self.flash('Envoi refusé : '+(x.message||'erreur'));return;}
     if(r)r.envoyee_le=new Date().toISOString();
-    if(x.aEnvoyer&&x.aEnvoyer.length)location.href='mailto:'+x.aEnvoyer.join(',')+'?subject='+encodeURIComponent('Rapport de visite — '+site.nom)+'&body='+encodeURIComponent(txt+'\n\nConsulter le rapport : '+x.portail);
+    if(x.aEnvoyer&&x.aEnvoyer.length){if(window.SAGarde)SAGarde.ignorer();location.href='mailto:'+x.aEnvoyer.join(',')+'?subject='+encodeURIComponent('Rapport de visite — '+site.nom)+'&body='+encodeURIComponent(txt+'\n\nConsulter le rapport : '+x.portail);}
     self.flash(x.envoyes&&x.envoyes.length?'Rapport publié et envoyé à '+x.envoyes.length+' contact(s)':(x.aEnvoyer&&x.aEnvoyer.length?'Rapport publié — courriel préparé dans votre logiciel':'Rapport publié sur le portail (aucun contact gestionnaire à aviser)'));self.update();});};
 Comp.prototype.printVisite=function(site,v){var I=window.SAInsp,E=escH,se=I.etatsSystemes(v.items),r=v.r;
   var sec=I.SYSTEMES.filter(function(s){return se[s.code]!=='na';}).map(function(s){var its=v.items.filter(function(i){return i.systeme===s.code;});
