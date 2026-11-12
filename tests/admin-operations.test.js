@@ -164,7 +164,7 @@ test('planning : impression de la semaine (techniciens × jours)', async () => {
   const [pop] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: 'Imprimer la semaine' }).click()]);
   await pop.waitForLoadState();
   const t = await pop.locator('body').innerText();
-  assert.match(t, /Planning équipe — Semaine/);
+  assert.match(t, /Planning équipe[\s\S]*Semaine/); // bandeau Soucy Aquatik : titre et semaine côte à côte
   if (new Date().getDay() >= 1 && new Date().getDay() <= 5) assert.match(t, /08:00 Piscine Alpha\s+Relevés/);
   await pop.close();
   await page.close();

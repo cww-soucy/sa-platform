@@ -65,6 +65,10 @@ def arrow(label,fn):
     else: print('!! flèche',label)
 arrow('Semaine précédente','pPrev'); arrow('Semaine suivante','pNext')
 rep('{{ r.hours }} h planifiées','{{ r.hours }}')
+# Planning : couleur de l'employé (trait + fond du nom) et heures restantes sur le quota hebdomadaire
+rep('display:flex;flex-direction:column;line-height:1.25;opacity:{{ r.op }}"><span style="font-weight:500">{{ r.nom }}</span><span style="font-size:12px">{{ r.hours }}</span></div>',
+  'display:flex;flex-direction:column;gap:2px;line-height:1.25;opacity:{{ r.op }};border-left:6px solid {{ r.col }};background:{{ r.tete }}" data-emp-row><span style="font-weight:600">{{ r.nom }}</span><span style="font-size:12px">{{ r.hours }}</span>'
+  '<sc-if value="{{ r.reste }}"><span data-quota style="font-size:12px;font-weight:600;color:{{ r.resteFg }}">{{ r.reste }}</span><span style="height:4px;background:rgba(0,0,0,.08);border-radius:2px;overflow:hidden;margin-top:2px"><span style="display:block;height:100%;width:{{ r.pct }}%;background:{{ r.col }}"></span></span></sc-if></div>')
 rep('Valeurs produites par le calcul existant — affichage seulement, aucune règle modifiée','Lecture seule · heures des punchs terminés (● = punch en cours) · banque et heures sup. : SA Platform › Cumul')
 
 
@@ -101,7 +105,7 @@ SITE=WRAP('sdOpen','sdCloseBg',DLGHEAD('sdNom','sdClose')
 M=M.rstrip()+'\n'+EDIT+SITE
 # créneaux/tâches/WO : cliquables dans la grille et dans les dossiers
 ms=re.search(r'<div style="padding:5px 7px;border:1px solid var\(--color-text\);background:\{\{ s\.bg \}\}',M)
-if ms: M=M.replace(ms.group(0),'<div onClick="{{ s.open }}" style="cursor:pointer;padding:5px 7px;border:1px solid var(--color-text);background:{{ s.bg }}',1)
+if ms: M=M.replace(ms.group(0),'<div onClick="{{ s.open }}" style="cursor:pointer;padding:5px 7px;border:1px solid var(--color-text);border-left:5px solid {{ s.col }};background:{{ s.bg }}',1)
 else: print('!! slot')
 mv=re.search(r'<tr>(<td style="padding:var\(--sa-row,8px\) 8px;white-space:nowrap;font-weight:500">\{\{ v\.date \}\})',M)
 if mv: M=M.replace(mv.group(0),'<tr onClick="{{ v.open }}" style="cursor:pointer">'+mv.group(1),1)
