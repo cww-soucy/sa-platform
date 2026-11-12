@@ -31,6 +31,7 @@ test('sa-admin, Planning équipe : le type choisi s’affiche au lieu de « Visi
   const taches = await page.evaluate(() => window.__admin.vals().planRows.find((r) => r.cells[0].slots.length >= 4).cells[0].slots.map((s) => s.tache));
   assert.deepEqual(taches, ['Réparation', 'Mise en eau · Remplir le bassin', 'Entretien hebdo', 'Inspection']);
   assert.ok(!taches.includes('Visite'));
+  assert.match(await page.evaluate(() => window.__admin.vals().planRows.find((r) => r.cells[0].slots.length >= 4).hours), /^4 travaux/);
   // 4 semaines / diagramme : libellé lisible (« Réparation », pas « reparation »)
   await page.evaluate(() => window.__admin.setState({ pView: 'mois' }));
   await page.waitForFunction(() => /Piscine Alpha · Réparation/.test(document.body.innerText));
