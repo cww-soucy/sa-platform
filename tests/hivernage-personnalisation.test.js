@@ -42,9 +42,9 @@ test('modèle : le type retire la formation, les travaux et le matériel vont au
   assert.deepEqual(r.sections.slice(-2).map((s) => s.items), [['✔ Remplacer le joint du filtre (1,5 h) — joint fourni'], ['Antigel biodégradable : 20 L']]);
   assert.deepEqual(H.fromReport(JSON.parse(JSON.stringify(r))), H.norm(d));
   const h = H.html(d);
-  assert.match(h, /Fermeture complète/);
-  assert.doesNotMatch(h, /Formation des employés|Fermeture avec formation/);
-  assert.match(h, /9\. Travaux sur mesure[\s\S]*10\. Matériel et produits utilisés[\s\S]*11\. Remarques[\s\S]*12\. Validation/);
+  assert.match(h, /Hivernement · fermeture complète/);
+  assert.doesNotMatch(h, /Formation des employés|avec formation/i);
+  assert.match(h, /<h3>Travaux sur mesure<\/h3>[\s\S]*Remplacer le joint du filtre : joint fourni \(1,5 h\)[\s\S]*Matériel utilisé[\s\S]*Antigel biodégradable<\/span><b>20 L<\/b>[\s\S]*Remarques et anomalies[\s\S]*signature et date/);
   assert.match(H.texte(d), /\(fermeture complète\)[\s\S]*Antigel biodégradable : 20 L/);
   d.type = 'autre'; d.type_nom = 'Fermeture des jeux seulement';
   assert.equal(H.typeDe(d).nom, 'Fermeture des jeux seulement');

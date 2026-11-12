@@ -280,7 +280,7 @@ test('hivernage : imprimer et envoyer au client depuis la liste (courriel du sit
   const row = page.getByRole('row', { name: /Piscine Alpha/ });
   const [pop] = await Promise.all([page.waitForEvent('popup'), row.getByRole('button', { name: 'Imprimer' }).click()]);
   await pop.waitForLoadState();
-  assert.match(await pop.locator('body').innerText(), /Hivernement — Piscine Alpha[\s\S]*1\s*Cases cochées[\s\S]*Phase 1 — Vidange[\s\S]*L’HIVERNEMENT N’EST PAS UNE COURSE[\s\S]*11\. Validation/i);
+  assert.match(await pop.locator('body').innerText(), /Hivernement · fermeture avec formation\s*Piscine Alpha[\s\S]*Étapes réalisées\s*1 sur \d+[\s\S]*Phase 1 — Vidange[\s\S]*Remarques et anomalies[\s\S]*Chef d’équipe — signature et date/i);
   await pop.close();
   const [dl] = await Promise.all([page.waitForEvent('download'), row.getByRole('button', { name: 'Envoyer au client' }).click()]);
   assert.equal(dl.suggestedFilename(), 'Hivernement-Piscine-Alpha-' + today() + '.html');
