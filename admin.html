@@ -2885,8 +2885,8 @@ svg.leaflet-image-layer.leaflet-interactive path {
     + '@media print{body{background:#fff;font-size:11.5px}.page{box-shadow:none;margin:0;padding:0 0 12px;max-width:none}header.top,h2,th,.box.on,.kpi{-webkit-print-color-adjust:exact;print-color-adjust:exact}h2{break-after:avoid}table,tr,.sign-row,.tip,.alert{break-inside:avoid}}'
     + '@media (max-width:600px){.info-grid,.sign-row,.kpis{grid-template-columns:1fr}.wide{grid-column:auto}}';
 
-  /* Document autonome (impression, pièce jointe envoyée au client) — même présentation que le formulaire papier */
-  function html(d, opts) {
+  /* Ancien document (présentation du formulaire papier) : gardé pour le rapport d’inspection */
+  function htmlClassique(d, opts) {
     d = norm(d); opts = opts || {}; var p = progress(d), i = d.info, E = esc, T = typeDe(d), NO = numeros(d);
     var box = function (on) { return '<span class="box' + (on ? ' on' : '') + '">' + (on ? '✓' : '') + '</span>'; };
     var row = function (it, withNum) { var on = !!d.c[it.k]; return '<tr class="' + (on ? 'done' : '') + (it.crit ? ' critical' : '') + '"><td class="cb">' + box(on) + '</td>' + (withNum ? '<td class="num">' + E(it.n) + '</td>' : '') + '<td class="t">' + E(it.t) + (it.b ? ' <strong>' + E(it.b) + '</strong>' : '') + (d.notes[it.k] ? '<div class="note">' + E(d.notes[it.k]) + '</div>' : '') + (choixDe(it) ? ' — <strong>' + (reponse(d, it) ? E(reponse(d, it)) : '____') + '</strong> <span class="choix">(' + E(choixDe(it).join(' / ')) + ')</span>' : '') + '</td></tr>'; };
@@ -2926,6 +2926,124 @@ svg.leaflet-image-layer.leaflet-interactive path {
     return h;
   }
 
+  /* ---------- Rapport imprimable d’hivernement (DA validée, maquette « C », novembre 2026) ----------
+     Page Letter 816 × 1056 px : photo de tête, bloc titre bleu, rangée d’infos, étapes + matériel, remarques, signatures.
+     Polices locales (/fonts/, gardées par le service worker pour l’impression hors ligne). */
+  var MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+  function dateLongue(iso) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ''));
+    return m ? Number(m[3]) + (m[3] === '01' ? 'er' : '') + ' ' + MOIS[Number(m[2]) - 1] + ' ' + m[1] : String(iso || '');
+  }
+  function minutes(h) { var m = /^(\d{1,2})\s*[:h]\s*(\d{2})/.exec(String(h || '').trim()); return m ? Number(m[1]) * 60 + Number(m[2]) : null; }
+  /* Durée entre l’heure de début et l’heure de fin (« 3 h 45 min », « 56 min ») ; passe minuit au besoin */
+  function duree(debut, fin) {
+    var a = minutes(debut), b = minutes(fin); if (a == null || b == null) return '';
+    var n = b - a; if (n < 0) n += 24 * 60; if (!n) return '';
+    var h = Math.floor(n / 60), m = n % 60;
+    return h ? h + ' h' + (m ? ' ' + (m < 10 ? '0' : '') + m + ' min' : '') : m + ' min';
+  }
+  function heureTxt(h) { var n = minutes(h); return n == null ? String(h || '').trim() : (Math.floor(n / 60) < 10 ? '0' : '') + Math.floor(n / 60) + ':' + (n % 60 < 10 ? '0' : '') + n % 60; }
+  /* Unités : « 1 1/2" », « 1 1/2 pouce », « 1 1/12 po » (faute de frappe courante) → « 1 ½ po » ; « 4L » → « 4 L » */
+  function unites(s) {
+    return String(s == null ? '' : s)
+      .replace(/(\d)\s*[- ]\s*1\/12(?!\d)/g, '$1 ½').replace(/(\d)\s*[- ]\s*1\/2(?!\d)/g, '$1 ½').replace(/(\d)\s*[- ]\s*1\/4(?!\d)/g, '$1 ¼').replace(/(\d)\s*[- ]\s*3\/4(?!\d)/g, '$1 ¾')
+      .replace(/(^|[^\d\/])1\/2(?![\d\/])/g, '$1½').replace(/(^|[^\d\/])1\/4(?![\d\/])/g, '$1¼').replace(/(^|[^\d\/])3\/4(?![\d\/])/g, '$1¾')
+      .replace(/([\d½¼¾])\s*(?:"|''|”|po\b\.?|pouces?\b)/g, '$1 po')
+      .replace(/(\d)\s?(L|ml|mL|kg|lb|gal)\b/g, '$1 $2');
+  }
+  /* Texte libre : espaces, unités, majuscule en début de phrase et de ligne, point final */
+  function propre(s, point) {
+    var t = unites(String(s == null ? '' : s).replace(/(\w)'(?=\w)/g, '$1’').replace(/[ \t]+/g, ' ').replace(/ *\n */g, '\n').trim());
+    t = t.replace(/(^|[.!?]\s+|\n)([a-zà-ÿ])/g, function (x, a, c) { return a + c.toUpperCase(); });
+    if (point) t = t.split('\n').map(function (l) { return l && !/[.!?:…)]$/.test(l) ? l + '.' : l; }).join('\n');
+    return t;
+  }
+  /* Température saisie « 8 », « 8C », « 8 c » → « 8 °C » */
+  function tempTxt(s) { var t = String(s || '').trim(), m = /^(-?\d+(?:[.,]\d+)?)\s*°?\s*c?$/i.exec(t); return m ? m[1].replace('.', ',') + ' °C' : propre(t); }
+  /* Quantité affichée : le nombre seul quand l’unité est « unité(s) » */
+  function qteCourte(m) { var q = String(m.qte == null ? '' : m.qte).trim(), u = String(m.unite || '').trim(); if (!q) return ''; return /^unit[ée]s?$/i.test(u) || !u ? q : unites(q + ' ' + u); }
+  function fontesCss() {
+    var base = '';
+    try { if (root && root.location && /^https?:/.test(root.location.protocol)) base = root.location.origin; } catch (e) { /* hors navigateur */ }
+    return [['Inter', 400, 'inter-400'], ['Inter', 500, 'inter-500'], ['Inter', 600, 'inter-600'], ['Inter', 700, 'inter-700'],
+      ['Barlow Condensed', 600, 'barlow-condensed-600'], ['Barlow Condensed', 700, 'barlow-condensed-700']].map(function (f) {
+      return '@font-face{font-family:"' + f[0] + '";font-style:normal;font-weight:' + f[1] + ';font-display:block;src:url("' + base + '/fonts/' + f[2] + '.woff2") format("woff2")}';
+    }).join('');
+  }
+  var CSS_HIV = ':root{--bleu:#1B4F8C;--vert:#1a7a4a;--ink:#1d2330;--gris:#6b7380;--filet:#dfe4eb}*{box-sizing:border-box;margin:0;padding:0}'
+    + '@page{size:letter;margin:48px 0 40px}@page:first{margin:0}'
+    + 'html{-webkit-print-color-adjust:exact;print-color-adjust:exact}body{font-family:Inter,"Segoe UI",Arial,sans-serif;color:var(--ink);font-size:11px;line-height:1.45;background:#e9edf2}'
+    + 'h1,h2{font-family:"Barlow Condensed","Arial Narrow",Arial,sans-serif;font-weight:700}'
+    + '.page{width:816px;min-height:1056px;margin:24px auto;background:#fff;display:flex;flex-direction:column}'
+    + '.tete{height:290px;position:relative;background:var(--bleu);overflow:hidden}.tete.sans{height:180px}.tete .ph{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}'
+    + '.tete .logo{position:absolute;left:40px;top:24px;width:60px;height:60px;display:block}'
+    + '.titre{margin:-48px 40px 0;background:var(--bleu);color:#fff;border-radius:2px;padding:14px 18px;display:flex;justify-content:space-between;align-items:flex-end;gap:16px;position:relative}'
+    + '.titre .k{font-size:10px;color:#dbe5f2}.titre h1{font-size:34px;line-height:1.05;margin-top:2px}.titre .d{text-align:right;white-space:nowrap}.titre .d b{font-size:13px;display:block;font-weight:600}.titre .d span{font-size:10px;color:#dbe5f2}'
+    + '.corps{padding:0 40px;flex:1;display:flex;flex-direction:column}'
+    + '.infos{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--filet);border-bottom:1px solid var(--filet);margin-top:14px}'
+    + '.infos div{padding:9px 12px 10px;border-left:1px solid var(--filet);font-size:9.5px;color:var(--gris)}.infos div:first-child{border-left:0;padding-left:0}.infos b{display:block;color:var(--ink);font-size:11px;font-weight:600;margin-top:2px}'
+    + 'h2{color:var(--bleu);font-size:17px;border-bottom:2px solid var(--bleu);padding-bottom:3px;margin:16px 0 2px;break-after:avoid}h2 small{font-family:Inter,Arial,sans-serif;font-weight:400;font-size:10px;color:var(--gris);margin-left:4px}'
+    + '.cols{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}'
+    + 'h3{font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--gris);margin:9px 0 1px;break-after:avoid}'
+    + '.r{display:flex;gap:9px;align-items:flex-start;padding:4px 0;border-bottom:1px solid var(--filet);break-inside:avoid}'
+    + '.bx{width:13px;height:13px;border-radius:2px;border:1.5px solid var(--bleu);flex:none;margin-top:1px;display:flex;align-items:center;justify-content:center}.bx.on{background:var(--bleu)}.bx svg{width:9px;height:9px;display:block}'
+    + '.r .n{display:block;font-size:9.5px;color:var(--gris)}.r.non span{color:var(--gris)}'
+    + '.m{display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-bottom:1px solid var(--filet);break-inside:avoid}.m b{font-weight:600;white-space:nowrap;text-align:right}.vide{color:var(--gris);padding:4px 0}'
+    + '.rem p{margin-top:6px;white-space:pre-line;break-inside:avoid}'
+    + '.photos{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}.photos img{width:100%;height:120px;object-fit:cover;border-radius:2px;display:block;break-inside:avoid}'
+    + '.bas{margin-top:auto;break-inside:avoid}.sign{display:grid;grid-template-columns:1fr 1fr;gap:28px;padding-top:24px}.sign div{font-size:9.5px;color:var(--gris)}.sign b{display:block;min-height:18px;color:var(--ink);font-size:11px;font-weight:600}.sign i{display:block;border-top:1px solid var(--ink);margin:3px 0 8px}'
+    + '.pied{font-size:9px;color:var(--gris);padding:10px 0 22px}'
+    + '@media print{body{background:#fff}.page{margin:0;min-height:1056px}}'
+    + '@media screen and (max-width:700px){.page{width:auto;margin:0}.infos,.photos{grid-template-columns:1fr 1fr}.cols{grid-template-columns:1fr}}';
+  var COCHE = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg>';
+
+  /* Document autonome d’hivernement : impression (PDF) et pièce jointe envoyée au client */
+  function htmlHiv(d, opts) {
+    d = norm(d); opts = opts || {}; var i = d.info, E = esc, T = typeDe(d);
+    var site = propre(i.site), debut = heureTxt(i.heure_debut), fin = heureTxt(i.heure_fin), du = duree(i.heure_debut, i.heure_fin);
+    var heures = debut && fin ? debut + ' à ' + fin + (du ? ' (' + du + ')' : '') : debut || fin;
+    var ph = (opts.photos || []).filter(function (x) { return x && /^data:image|^https?:/.test(x.data || x.url || ''); }), tete = ph[0];
+    var box = function (on) { return '<span class="bx' + (on ? ' on' : '') + '">' + (on ? COCHE : '') + '</span>'; };
+    /* Étapes : chaque section du plan (sous-titre s’il y en a plusieurs), puis les travaux sur mesure et la formation */
+    var groupes = sectionsDe(d).filter(function (s) { return (s.sid || s.id) !== 'form'; }).map(function (s) {
+      return { titre: s.titre, lignes: s.items.map(function (it) {
+        var r = reponse(d, it), note = d.notes[it.k];
+        return { on: !!d.c[it.k], t: propre(label(it)), rep: r, note: note ? propre(note, true) : '' };
+      }) };
+    });
+    var tr = travauxDe(d);
+    if (tr.length) groupes.push({ titre: 'Travaux sur mesure', lignes: tr.map(function (x) { return { on: x.fait, t: propre(x.t) + (x.note ? ' : ' + propre(x.note).replace(/^./, function (c) { return c.toLowerCase(); }) : '') + (x.duree ? ' (' + String(x.duree).replace('.', ',') + ' h)' : '') }; }) });
+    if (T.formation) {
+      var emp = d.employes.filter(function (e) { return String(e.nom).trim(); }), sf = sectionsDe(d).filter(function (s) { return (s.sid || s.id) === 'form'; })[0];
+      var lf = (sf ? sf.items.map(function (it) { return { on: !!d.c[it.k], t: propre(label(it)) }; }) : [])
+        .concat(emp.map(function (e) { return { on: e.formation && e.demo, t: propre(e.nom) + ' : formation ' + (e.formation ? 'complétée' : 'non complétée') + ', démonstration ' + (e.demo ? 'réussie' : 'non réussie') }; }));
+      if (lf.length) groupes.push({ titre: sf ? sf.titre : 'Formation des employés', lignes: lf });
+    }
+    var toutes = groupes.reduce(function (a, g) { return a.concat(g.lignes); }, []), faites = toutes.filter(function (l) { return l.on; }).length;
+    var etapes = groupes.map(function (g) {
+      return (groupes.length > 1 ? '<h3>' + E(g.titre) + '</h3>' : '') + g.lignes.map(function (l) {
+        return '<div class="r' + (l.on ? '' : ' non') + '">' + box(l.on) + '<span>' + E(l.t) + (l.rep ? ' : <b>' + E(l.rep) + '</b>' : '') + (l.note ? '<span class="n">' + E(l.note) + '</span>' : '') + '</span></div>';
+      }).join('');
+    }).join('') || '<div class="vide">Aucune étape au plan.</div>';
+    var mt = materielDe(d).map(function (m) { return '<div class="m"><span>' + E(propre(m.nom)) + '</span><b>' + E(qteCourte(m)) + '</b></div>'; }).join('') || '<div class="vide">Aucun matériel inscrit.</div>';
+    var rem = propre(d.remarques, true);
+    var resp = String(d.responsable || '').trim();
+    var h = '<!DOCTYPE html><html lang="fr-CA"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>' + E(TITRE + ' — ' + site) + '</title><style>' + fontesCss() + CSS_HIV + '</style></head><body><div class="page">'
+      + '<div class="tete' + (tete ? '' : ' sans') + '">' + (tete ? '<img class="ph" src="' + E(tete.data || tete.url) + '" alt="">' : '') + '<img class="logo" src="' + LOGO + '" alt="Soucy Aquatik"></div>'
+      + '<div class="titre"><div><div class="k">' + E(TITRE + ' · ' + T.nom.charAt(0).toLowerCase() + T.nom.slice(1)) + '</div><h1>' + E(site || 'Site') + '</h1></div>'
+      + '<div class="d"><b>' + E(dateLongue(i.date)) + '</b><span>' + E(heures) + '</span></div></div>'
+      + '<div class="corps"><div class="infos"><div>Chef d’équipe<b>' + E(propre(i.chef) || '—') + '</b></div><div>Équipe présente<b>' + E(propre(i.equipe) || '—') + '</b></div>'
+      + '<div>Température<b>' + E(tempTxt(i.temperature) || '—') + '</b></div><div>Bassin<b>' + E(propre(i.bassins) || '—') + '</b></div></div>'
+      + '<div class="cols"><div><h2>Étapes réalisées <small>' + faites + ' sur ' + toutes.length + '</small></h2>' + etapes + '</div><div><h2>Matériel utilisé</h2>' + mt + '</div></div>'
+      + '<div class="rem"><h2>Remarques et anomalies</h2><p>' + (rem ? E(rem) : 'Aucune remarque.') + '</p></div>'
+      + (ph.length > 1 ? '<div class="photos">' + ph.slice(1).map(function (x) { return '<img src="' + E(x.data || x.url) + '" alt="' + E(x.name || 'Photo') + '">'; }).join('') + '</div>' : '')
+      + '<div class="bas"><div class="sign"><div><b>' + E(propre(i.chef)) + '</b><i></i>Chef d’équipe — signature et date</div><div><b></b><i></i>Responsable' + (resp ? ' (' + E(resp) + ')' : '') + ' — signature et date</div></div>'
+      + '<div class="pied">Soucy Aquatik · liste de contrôle générée par SA Platform</div></div></div></div></body></html>';
+    return h;
+  }
+  /* Document imprimable : nouvelle DA pour l’hivernement, présentation classique pour l’inspection */
+  function html(d, opts) { return estInspD(d) ? htmlClassique(d, opts) : htmlHiv(d, opts); }
+
   /* Corps du courriel au client */
   function texte(d) {
     d = norm(d); var p = progress(d), i = d.info, m = manquants(d);
@@ -2946,7 +3064,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   function fichier(d) { d = norm(d); return ((estInspD(d) ? 'Inspection ' : 'Hivernement ') + (d.info.site || '') + ' ' + (d.info.date || '')).trim().replace(/[\\/:*?"<>|\s]+/g, '-').replace(/-{2,}/g, '-').replace(/^-|-$/g, '') + '.html'; }
 
   var api = { SECTIONS: SECTIONS, GABARITS: GABARITS, DEFAUT: DEFAUT, gabarits: gabarits, gabaritDe: gabaritDe, planSite: planSite, planPourSite: planPourSite, avecAjustements: avecAjustements, libelleRef: libelleRef, iid: iid, choixDe: choixDe, reponse: reponse, planDe: planDe, versTexte: versTexte, deTexte: deTexte, INFO: INFO, TYPES: TYPES, typeDe: typeDe, sectionsDe: sectionsDe, sectionsLibres: sectionsLibres, LIBRE: LIBRE, numeros: numeros, travauxDe: travauxDe, materielDe: materielDe, matSugg: matSugg, court: court, MODELES_INSP: MODELES_INSP, INSP: INSP, REP_INSP: REP_INSP, estInsp: estInsp, estInspD: estInspD, modelesInsp: modelesInsp, planInsp: planInsp, aCorriger: aCorriger, titreDe: titreDe, TIPS: TIPS, ALERTE: ALERTE, LOGO: LOGO, blank: blank, norm: norm, isChecklist: isChecklist, fromReport: fromReport, photosOf: photosOf,
-    progress: progress, manquants: manquants, critiquesManquants: critiquesManquants, toReport: toReport, html: html, texte: texte, fichier: fichier };
+    progress: progress, manquants: manquants, critiquesManquants: critiquesManquants, toReport: toReport, html: html, htmlClassique: htmlClassique, htmlHiv: htmlHiv, duree: duree, unites: unites, propre: propre, dateLongue: dateLongue, texte: texte, fichier: fichier };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.SAHiv = api;
 })(typeof window !== 'undefined' ? window : this);
 </script><script>/* Affichage configurable des apps (sa-admin, sa-terrain, portail client) — demande de la direction, 2026-11-03.
@@ -3748,7 +3866,7 @@ Comp.prototype.printPaie=function(only){var wk=iso(addDays(mondayOf(new Date()),
   emps.forEach(function(e){h+='<section><h2>'+E(e.nom)+'</h2><div>Semaine du '+fdate(wk)+' au '+fdate(iso(addDays(mon,6)))+' · Total '+decTxt(e.total)+' h (régulières '+decTxt(e.reg)+' · supplémentaires '+decTxt(e.supp)+')</div><table><tr><th>Jour</th><th>Lieu</th><th>ODT</th><th>Début</th><th>Fin</th><th class="n">Heures</th></tr>';
     for(var i=0;i<7;i++)grouperJour(e.punchs.filter(function(p){return p.di===i;})).forEach(function(l){h+='<tr><td>'+DLF[i]+' '+addDays(mon,i).getDate()+'</td><td>'+E(l.lieu)+'</td><td>'+E(l.odt)+'</td><td>'+E(l.debut)+'</td><td>'+(l.act?'en cours':E(l.fin))+'</td><td class="n">'+decTxt(l.h)+'</td></tr>';});
     h+='</table><div class="s"><div>Signature de l’employé</div><div>Signature du superviseur</div></div></section>';});
-  var w=window.open('','_blank');if(!w){this.flash('Fenêtre bloquée — autorisez les fenêtres pour imprimer');return;}w.document.write(h+'<script>setTimeout(function(){print();},300)<\/script>');w.document.close();};
+  var w=window.open('','_blank');if(!w){this.flash('Fenêtre bloquée — autorisez les fenêtres pour imprimer');return;}w.document.write(h+'<script>(function(){var go=function(){setTimeout(function(){print();},300);},F=document.fonts,im=[].slice.call(document.images).map(function(i){return i.complete?0:new Promise(function(r){i.onload=i.onerror=r;});});Promise.race([Promise.all([F?Promise.all([].slice.call(F).map(function(f){return f.load().catch(function(){});})):0].concat(im)),new Promise(function(r){setTimeout(r,4000);})]).then(go,go);})()<\/script>');w.document.close();};
 /* Rapport d'équipe — même format que SA Platform (« Copier pour Claude ») : une ligne par punch, données brutes, totaux,
    comparaison avec la semaine précédente ; plus le contexte bons de travail / stock. Avec prompt=true, une demande d'analyse en tête. */
 var CLAUDE_PROMPT='Tu es l’assistant de gestion de Soucy Aquatik (entretien de piscines et de salles mécaniques). Analyse les données brutes ci-dessous et réponds en français, de façon concise :\n'
@@ -3969,7 +4087,7 @@ Comp.prototype.printWO=function(){var fe=this.state.fe;if(!fe||fe.kind!=='wo')re
     +(f.descr?'<h2>Travaux à effectuer</h2><div class="b">'+E(f.descr)+'</div>':'')
     +(f.tasks.length?'<h2>Tâches ('+done+'/'+f.tasks.length+')</h2><table>'+f.tasks.map(function(t){return'<tr><td style="width:24px;text-align:center">'+(t.done?'☑':'☐')+'</td><td>'+E(t.label)+'</td></tr>';}).join('')+'</table>':'')
     +(f.notes?'<h2>Notes techniques</h2><div class="b">'+E(f.notes)+'</div>':'')+'<div class="s"><div>Signature (nom et prénom)</div><div>Date</div></div>';
-  var w=window.open('','_blank');if(!w){this.flash('Fenêtre bloquée — autorisez les fenêtres pour imprimer');return;}w.document.write(h+'<script>setTimeout(function(){print();},300)<\/script>');w.document.close();};
+  var w=window.open('','_blank');if(!w){this.flash('Fenêtre bloquée — autorisez les fenêtres pour imprimer');return;}w.document.write(h+'<script>(function(){var go=function(){setTimeout(function(){print();},300);},F=document.fonts,im=[].slice.call(document.images).map(function(i){return i.complete?0:new Promise(function(r){i.onload=i.onerror=r;});});Promise.race([Promise.all([F?Promise.all([].slice.call(F).map(function(f){return f.load().catch(function(){});})):0].concat(im)),new Promise(function(r){setTimeout(r,4000);})]).then(go,go);})()<\/script>');w.document.close();};
 Comp.prototype.feVals=function(){var self=this,fe=this.state.fe,D=this.D;if(!fe)return{feOpen:false};
   if(fe.loading)return{feOpen:true,feLoading:true,feReady:false,feTitle:'Chargement…',feClose:function(){self.setState({fe:null});},feCloseBg:function(e){if(e.target===e.currentTarget)self.setState({fe:null});}};
   var f=fe.f,k=fe.kind,isNew=!fe.id,set=function(key){return function(e){self.feSet(key,e.target.type==='checkbox'?e.target.checked:e.target.value);};};
@@ -4032,7 +4150,7 @@ Comp.prototype.printPlanning=function(rows,days,label){var E=function(s){return 
   var h='<!doctype html><meta charset="utf-8"><title>Planning '+E(label)+'</title><style>@page{size:A4 landscape}body{font:11px Arial,sans-serif;margin:14px}h1{font-size:17px;margin:0 0 8px}table{border-collapse:collapse;width:100%;table-layout:fixed}td,th{border:1px solid #aaa;padding:4px;vertical-align:top;text-align:left}th{background:#e8f2fb}.s{margin:0 0 4px;padding:3px 4px;border-left:3px solid #1a5c9a;background:#f4f6fa}.d{background:#dff0e6;border-left-color:#1d7a4a}</style>'
     +'<h1>Planning équipe — '+E(label)+'</h1><table><tr><th style="width:15%">Technicien</th>'+days.map(function(d){return'<th>'+E(d.label)+'</th>';}).join('')+'</tr>'
     +rows.map(function(r){return'<tr><td><b>'+E(r.nom)+'</b><br>'+E(r.hours)+'</td>'+r.cells.map(function(c){return'<td>'+c.slots.map(function(s){return'<div class="s'+(s.bg!=='var(--color-bg)'?' d':'')+'"><b>'+E(s.h)+'</b> '+E(s.nom)+(s.tache?'<br>'+E(s.tache):'')+(s.rec?' ↻':'')+'</div>';}).join('')+'</td>';}).join('')+'</tr>';}).join('')+'</table>';
-  var w=window.open('','_blank');if(!w){this.flash('Fenêtre bloquée — autorisez les fenêtres pour imprimer');return;}w.document.write(h+'<script>setTimeout(function(){print();},300)<\/script>');w.document.close();};
+  var w=window.open('','_blank');if(!w){this.flash('Fenêtre bloquée — autorisez les fenêtres pour imprimer');return;}w.document.write(h+'<script>(function(){var go=function(){setTimeout(function(){print();},300);},F=document.fonts,im=[].slice.call(document.images).map(function(i){return i.complete?0:new Promise(function(r){i.onload=i.onerror=r;});});Promise.race([Promise.all([F?Promise.all([].slice.call(F).map(function(f){return f.load().catch(function(){});})):0].concat(im)),new Promise(function(r){setTimeout(r,4000);})]).then(go,go);})()<\/script>');w.document.close();};
 Comp.prototype.openDlg=function(p){p=p||{};this.openFE(p.type==='Créneau'?'plan':p.type==='Tâche'?'pt':'wo',null,p);};
 
 /* ═════════════ PLAN DE MATCH (table plan_match, même format que SA Platform) ═════════════
@@ -4085,7 +4203,7 @@ Comp.prototype.printPMMDay=function(){var self=this,day=this.pmmDay(),plans=Arra
     if(jobs.length)h+='<div class="l"><b>Travaux du jour</b><table>'+jobs.map(function(j){return'<tr><td class="b">'+(j.done?'☑':'☐')+'</td><td style="width:60px">'+E(j.h)+'</td><td style="width:110px">'+E(j.k)+'</td><td>'+E(j.t)+'</td></tr>';}).join('')+'</table></div>';
     h+='<div class="ff"><div><b>Obstacles</b><br>'+E(p&&p.obstacles||'')+'</div><div><b>Bons coups</b><br>'+E(p&&p.bonscoups||'')+'</div></div></section>';});
   if(!n){this.flash('Rien à imprimer pour cette journée');return;}
-  var w=window.open('','_blank');if(!w){this.flash('Fenêtre bloquée — autorisez les fenêtres pour imprimer');return;}w.document.write(h+'<script>setTimeout(function(){print();},300)<\/script>');w.document.close();};
+  var w=window.open('','_blank');if(!w){this.flash('Fenêtre bloquée — autorisez les fenêtres pour imprimer');return;}w.document.write(h+'<script>(function(){var go=function(){setTimeout(function(){print();},300);},F=document.fonts,im=[].slice.call(document.images).map(function(i){return i.complete?0:new Promise(function(r){i.onload=i.onerror=r;});});Promise.race([Promise.all([F?Promise.all([].slice.call(F).map(function(f){return f.load().catch(function(){});})):0].concat(im)),new Promise(function(r){setTimeout(r,4000);})]).then(go,go);})()<\/script>');w.document.close();};
 Comp.prototype.pmmVals=function(){var self=this,st=this.state,D=this.D,day=this.pmmDay();
   if(st.mod==='planmatch'&&this.pmm[day]===undefined)this.loadPMM(day);
   var plans=Array.isArray(this.pmm[day])?this.pmm[day]:[],col={};PMM_COLORS.forEach(function(c){col[c[0]]=c[2];});
@@ -4327,7 +4445,7 @@ Comp.prototype.saveDoc=function(extra,msg,hvOver,apres){var self=this,de=this.st
 Comp.prototype.deleteDoc=function(){var self=this,de=this.state.de;if(!de||!de.id)return;if(!de.confirm){this.setState({de:Object.assign({},de,{confirm:true})});return;}
   rest('DELETE',DOC[de.kind].t+'?id=eq.'+encodeURIComponent(de.id)).then(function(){auditT(self,'SUPPRESSION',DOC[de.kind].t,de.id);self.setState({de:null});self.flash('Supprimé');self.loadDocs(de.kind,true);}).catch(function(e){self.flash('Échec : '+netMsg(e));});};
 Comp.prototype.printDoc=function(){var de=this.state.de;if(!de)return;this.printHtml(de.hv?window.SAHiv.html(de.hv,{photos:de.hvPh}):this.docHtml(de.kind,de.f));};
-Comp.prototype.printHtml=function(h){var w=window.open('','_blank');if(!w){this.flash('Fenêtre bloquée — autorisez les fenêtres pour imprimer');return;}w.document.write(h+'<script>setTimeout(function(){print();},300)<\/script>');w.document.close();};
+Comp.prototype.printHtml=function(h){var w=window.open('','_blank');if(!w){this.flash('Fenêtre bloquée — autorisez les fenêtres pour imprimer');return;}w.document.write(h+'<script>(function(){var go=function(){setTimeout(function(){print();},300);},F=document.fonts,im=[].slice.call(document.images).map(function(i){return i.complete?0:new Promise(function(r){i.onload=i.onerror=r;});});Promise.race([Promise.all([F?Promise.all([].slice.call(F).map(function(f){return f.load().catch(function(){});})):0].concat(im)),new Promise(function(r){setTimeout(r,4000);})]).then(go,go);})()<\/script>');w.document.close();};
 Comp.prototype.docHtml=function(k,f){var E=escH,h='<!doctype html><meta charset="utf-8"><title>'+E(DOC[k].lbl)+'</title><style>body{font:12px Arial,sans-serif;margin:22px}h1{font-size:19px;margin:0 0 4px}h2{font-size:14px;background:#e8f2fb;padding:5px 8px;margin:16px 0 0}table{border-collapse:collapse;width:100%}td,th{border:1px solid #bbb;padding:4px 6px;text-align:left}th{background:#f4f6fa}.m{display:flex;gap:20px;flex-wrap:wrap;margin:6px 0 10px}.s{margin-top:30px;display:flex;gap:50px}.s div{border-top:1px solid #333;width:240px;font-size:11px;padding-top:3px}.t{display:inline-block;padding:1px 6px;border:1px solid #999;font-size:11px;margin-left:6px}img.sig{max-height:90px;border:1px solid #ccc}</style>';
   var tbl=function(cols,rows){return rows.length?'<table><tr>'+cols.map(function(c){return'<th>'+E(c[1])+'</th>';}).join('')+'</tr>'+rows.map(function(r){return'<tr>'+cols.map(function(c){return'<td>'+E(r[c[0]])+'</td>';}).join('')+'</tr>';}).join('')+'</table>':'<div>—</div>';};
   if(k==='bl'){var sigs=(f.photos||[]).filter(function(p){return/^Signature/.test(p.name||'')&&p.data;});
@@ -4657,7 +4775,7 @@ Comp.prototype.deleteTool=function(){var self=this,te=this.state.te;if(!te||!te.
 Comp.prototype.printLabels=function(items){var w=window.open('','_blank');if(!w){this.flash('Fenêtre bloquée — autorisez les fenêtres pour imprimer');return;}
   var h='<!doctype html><meta charset="utf-8"><title>Étiquettes QR</title><style>@page{margin:8mm}body{margin:0;font-family:Arial,sans-serif;display:flex;flex-wrap:wrap;gap:3mm}.l{width:3cm;height:3cm;border:1px dashed #bbb;box-sizing:border-box;padding:1mm;display:flex;flex-direction:column;align-items:center;justify-content:center;page-break-inside:avoid}.l img{width:2.2cm;height:2.2cm}.r{font-size:6pt;font-weight:700;margin-top:.6mm}.s{font-size:5pt;text-align:center;overflow:hidden;white-space:nowrap;max-width:2.8cm}</style>';
   items.forEach(function(i){h+='<div class="l"><img src="'+qrData(i.payload)+'" alt=""><div class="r">'+escH(i.code)+'</div>'+(i.sub?'<div class="s">'+escH(i.sub)+'</div>':'')+'</div>';});
-  w.document.write(h+'<script>setTimeout(function(){print();},300)<\/script>');w.document.close();};
+  w.document.write(h+'<script>(function(){var go=function(){setTimeout(function(){print();},300);},F=document.fonts,im=[].slice.call(document.images).map(function(i){return i.complete?0:new Promise(function(r){i.onload=i.onerror=r;});});Promise.race([Promise.all([F?Promise.all([].slice.call(F).map(function(f){return f.load().catch(function(){});})):0].concat(im)),new Promise(function(r){setTimeout(r,4000);})]).then(go,go);})()<\/script>');w.document.close();};
 Comp.prototype.openKe=function(kind,id){var src=kind==='cat'?this.cfg('categories'):kind==='pre'?this.cfg('prefixes'):this.cfg('emplacements'),x=id?src.filter(function(r){return r.id===id;})[0]:null;
   var f=x?JSON.parse(JSON.stringify(x)):({cat:{id:'',icon:'🔧',label:''},pre:{id:'',label:'',next:1,scope:'outils'},emp:{id:'EMP-',bat:'Entrepôt',zone:'',nom:''}})[kind];
   this.setState({ke:{kind:kind,id:id||null,f:f,confirm:false,busy:false}});};
@@ -4990,7 +5108,7 @@ Comp.prototype.printInsp=function(sid){var d=this.inspData(sid,90);if(!d)return;
     h+='<table><tr><th>Paramètre</th><th>Zone visée</th><th>Dernier</th><th>Moyenne</th><th>Min / max</th><th>Dans la zone</th><th>Hors zone</th></tr>'+b.stats.map(function(x){var f=x.f;return'<tr><td>'+E(f.label)+'</td><td>'+fr(f.lo,f.step)+' – '+fr(f.hi,f.step)+(f.unit?' '+E(f.unit):'')+'</td><td'+(x.last!=null&&(x.last<f.lo||x.last>f.hi)?' class="o"':'')+'>'+v(x.last,f)+'</td><td>'+v(x.avg,f)+'</td><td>'+(x.n?fr(x.min,f.step)+' / '+fr(x.max,f.step):'—')+'</td><td>'+(x.pct==null?'—':x.pct+' %')+'</td><td>'+x.out+'</td></tr>';}).join('')+'</table>';
     h+='<table><tr><th>Date</th><th>Technicien</th>'+F.map(function(f){return'<th>'+E(f.label)+'</th>';}).join('')+'<th>Note</th></tr>'+b.rel.slice(-25).reverse().map(function(r){return'<tr><td>'+E(fdate(r.date))+' '+E(r.heure||'')+'</td><td>'+E(r.tech_nom||r.tech||'')+'</td>'+F.map(function(f){var x=r.vals&&r.vals[f.key],o=x!=null&&(x<f.lo||x>f.hi);return'<td'+(o?' class="o"':'')+'>'+(x==null?'—':fr(x,f.step))+'</td>';}).join('')+'<td>'+E(r.note||'')+'</td></tr>';}).join('')+'</table>';});
   h+='<div style="margin-top:30px;display:flex;gap:60px"><div style="border-top:1px solid #333;width:240px;padding-top:3px">Soucy Aquatik</div><div style="border-top:1px solid #333;width:240px;padding-top:3px">Client</div></div>';
-  var w=window.open('','_blank');if(!w){this.flash('Fenêtre bloquée — autorisez les fenêtres pour imprimer');return;}w.document.write(h+'<script>setTimeout(function(){print();},300)<\/script>');w.document.close();auditT(this,'EXPORT','releves',sid,{format:'impression'});};
+  var w=window.open('','_blank');if(!w){this.flash('Fenêtre bloquée — autorisez les fenêtres pour imprimer');return;}w.document.write(h+'<script>(function(){var go=function(){setTimeout(function(){print();},300);},F=document.fonts,im=[].slice.call(document.images).map(function(i){return i.complete?0:new Promise(function(r){i.onload=i.onerror=r;});});Promise.race([Promise.all([F?Promise.all([].slice.call(F).map(function(f){return f.load().catch(function(){});})):0].concat(im)),new Promise(function(r){setTimeout(r,4000);})]).then(go,go);})()<\/script>');w.document.close();auditT(this,'EXPORT','releves',sid,{format:'impression'});};
 Comp.prototype.xlsxInsp=function(sid){var d=this.inspData(sid,365);if(!d)return;var sheets=d.bassins.map(function(b){var F=b.T.fields||[],rows=[[{v:d.site.nom+' — '+b.nom+' ('+b.T.label+')',s:5}],[],[{v:'Date',s:1},{v:'Heure',s:1},{v:'Technicien',s:1}].concat(F.map(function(f){return{v:f.label+(f.unit?' ('+f.unit+')':''),s:1};}),[{v:'Hors zone',s:1},{v:'Note',s:1}])];
     b.rel.forEach(function(r){rows.push([r.date,r.heure||'',r.tech_nom||r.tech||''].concat(F.map(function(f){var x=r.vals&&r.vals[f.key];return x==null?'':{v:x,s:3};}),[self_out(r,F)||'',r.note||'']));});
     return{name:b.nom,widths:[12,8,18].concat(F.map(function(){return 12;}),[10,40]),rows:rows};});
@@ -5319,7 +5437,7 @@ Comp.prototype.comPrint=function(){var cm=this.state.cm;if(!cm)return;var f=cm.f
   if(f.type==='infolettre')f.sections.forEach(function(s){if(String(s.texte||'').trim())h+='<h2>'+E(s.titre)+'</h2><div>'+nl(s.texte)+'</div>';});else h+='<div>'+nl(f.contenu||'')+'</div>';
   if(f.type==='lettre')h+='<div class="sig">'+E(f.auteur_nom||'')+'<br>Soucy Aquatik</div>';
   if(f.type==='procedure'&&f.confirmation)h+='<div class="sig">Lu et compris — signature de l’employé : ____________________________ Date : ____________</div>';
-  var w=window.open('','_blank');if(!w){this.flash('Fenêtre bloquée — autorisez les fenêtres pour imprimer');return;}w.document.write(h+'<script>setTimeout(function(){print();},300)<\/script>');w.document.close();
+  var w=window.open('','_blank');if(!w){this.flash('Fenêtre bloquée — autorisez les fenêtres pour imprimer');return;}w.document.write(h+'<script>(function(){var go=function(){setTimeout(function(){print();},300);},F=document.fonts,im=[].slice.call(document.images).map(function(i){return i.complete?0:new Promise(function(r){i.onload=i.onerror=r;});});Promise.race([Promise.all([F?Promise.all([].slice.call(F).map(function(f){return f.load().catch(function(){});})):0].concat(im)),new Promise(function(r){setTimeout(r,4000);})]).then(go,go);})()<\/script>');w.document.close();
   auditT(this,'EXPORT','communications',f.id,{action:'impression'});};
 function fdateLong(s){if(!s)return'';var d=new Date(String(s).slice(0,10)+'T12:00:00');return d.getDate()+(d.getDate()===1?'er':'')+' '+MOIS[d.getMonth()]+' '+d.getFullYear();}
 Comp.prototype.comMail=function(){var cm=this.state.cm;if(!cm)return;var f=cm.f,D=this.D,to=String(f.courriels||'').trim();

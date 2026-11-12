@@ -1482,8 +1482,8 @@ button{font-family:inherit}
     + '@media print{body{background:#fff;font-size:11.5px}.page{box-shadow:none;margin:0;padding:0 0 12px;max-width:none}header.top,h2,th,.box.on,.kpi{-webkit-print-color-adjust:exact;print-color-adjust:exact}h2{break-after:avoid}table,tr,.sign-row,.tip,.alert{break-inside:avoid}}'
     + '@media (max-width:600px){.info-grid,.sign-row,.kpis{grid-template-columns:1fr}.wide{grid-column:auto}}';
 
-  /* Document autonome (impression, pièce jointe envoyée au client) — même présentation que le formulaire papier */
-  function html(d, opts) {
+  /* Ancien document (présentation du formulaire papier) : gardé pour le rapport d’inspection */
+  function htmlClassique(d, opts) {
     d = norm(d); opts = opts || {}; var p = progress(d), i = d.info, E = esc, T = typeDe(d), NO = numeros(d);
     var box = function (on) { return '<span class="box' + (on ? ' on' : '') + '">' + (on ? '✓' : '') + '</span>'; };
     var row = function (it, withNum) { var on = !!d.c[it.k]; return '<tr class="' + (on ? 'done' : '') + (it.crit ? ' critical' : '') + '"><td class="cb">' + box(on) + '</td>' + (withNum ? '<td class="num">' + E(it.n) + '</td>' : '') + '<td class="t">' + E(it.t) + (it.b ? ' <strong>' + E(it.b) + '</strong>' : '') + (d.notes[it.k] ? '<div class="note">' + E(d.notes[it.k]) + '</div>' : '') + (choixDe(it) ? ' — <strong>' + (reponse(d, it) ? E(reponse(d, it)) : '____') + '</strong> <span class="choix">(' + E(choixDe(it).join(' / ')) + ')</span>' : '') + '</td></tr>'; };
@@ -1523,6 +1523,124 @@ button{font-family:inherit}
     return h;
   }
 
+  /* ---------- Rapport imprimable d’hivernement (DA validée, maquette « C », novembre 2026) ----------
+     Page Letter 816 × 1056 px : photo de tête, bloc titre bleu, rangée d’infos, étapes + matériel, remarques, signatures.
+     Polices locales (/fonts/, gardées par le service worker pour l’impression hors ligne). */
+  var MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+  function dateLongue(iso) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ''));
+    return m ? Number(m[3]) + (m[3] === '01' ? 'er' : '') + ' ' + MOIS[Number(m[2]) - 1] + ' ' + m[1] : String(iso || '');
+  }
+  function minutes(h) { var m = /^(\d{1,2})\s*[:h]\s*(\d{2})/.exec(String(h || '').trim()); return m ? Number(m[1]) * 60 + Number(m[2]) : null; }
+  /* Durée entre l’heure de début et l’heure de fin (« 3 h 45 min », « 56 min ») ; passe minuit au besoin */
+  function duree(debut, fin) {
+    var a = minutes(debut), b = minutes(fin); if (a == null || b == null) return '';
+    var n = b - a; if (n < 0) n += 24 * 60; if (!n) return '';
+    var h = Math.floor(n / 60), m = n % 60;
+    return h ? h + ' h' + (m ? ' ' + (m < 10 ? '0' : '') + m + ' min' : '') : m + ' min';
+  }
+  function heureTxt(h) { var n = minutes(h); return n == null ? String(h || '').trim() : (Math.floor(n / 60) < 10 ? '0' : '') + Math.floor(n / 60) + ':' + (n % 60 < 10 ? '0' : '') + n % 60; }
+  /* Unités : « 1 1/2" », « 1 1/2 pouce », « 1 1/12 po » (faute de frappe courante) → « 1 ½ po » ; « 4L » → « 4 L » */
+  function unites(s) {
+    return String(s == null ? '' : s)
+      .replace(/(\d)\s*[- ]\s*1\/12(?!\d)/g, '$1 ½').replace(/(\d)\s*[- ]\s*1\/2(?!\d)/g, '$1 ½').replace(/(\d)\s*[- ]\s*1\/4(?!\d)/g, '$1 ¼').replace(/(\d)\s*[- ]\s*3\/4(?!\d)/g, '$1 ¾')
+      .replace(/(^|[^\d\/])1\/2(?![\d\/])/g, '$1½').replace(/(^|[^\d\/])1\/4(?![\d\/])/g, '$1¼').replace(/(^|[^\d\/])3\/4(?![\d\/])/g, '$1¾')
+      .replace(/([\d½¼¾])\s*(?:"|''|”|po\b\.?|pouces?\b)/g, '$1 po')
+      .replace(/(\d)\s?(L|ml|mL|kg|lb|gal)\b/g, '$1 $2');
+  }
+  /* Texte libre : espaces, unités, majuscule en début de phrase et de ligne, point final */
+  function propre(s, point) {
+    var t = unites(String(s == null ? '' : s).replace(/(\w)'(?=\w)/g, '$1’').replace(/[ \t]+/g, ' ').replace(/ *\n */g, '\n').trim());
+    t = t.replace(/(^|[.!?]\s+|\n)([a-zà-ÿ])/g, function (x, a, c) { return a + c.toUpperCase(); });
+    if (point) t = t.split('\n').map(function (l) { return l && !/[.!?:…)]$/.test(l) ? l + '.' : l; }).join('\n');
+    return t;
+  }
+  /* Température saisie « 8 », « 8C », « 8 c » → « 8 °C » */
+  function tempTxt(s) { var t = String(s || '').trim(), m = /^(-?\d+(?:[.,]\d+)?)\s*°?\s*c?$/i.exec(t); return m ? m[1].replace('.', ',') + ' °C' : propre(t); }
+  /* Quantité affichée : le nombre seul quand l’unité est « unité(s) » */
+  function qteCourte(m) { var q = String(m.qte == null ? '' : m.qte).trim(), u = String(m.unite || '').trim(); if (!q) return ''; return /^unit[ée]s?$/i.test(u) || !u ? q : unites(q + ' ' + u); }
+  function fontesCss() {
+    var base = '';
+    try { if (root && root.location && /^https?:/.test(root.location.protocol)) base = root.location.origin; } catch (e) { /* hors navigateur */ }
+    return [['Inter', 400, 'inter-400'], ['Inter', 500, 'inter-500'], ['Inter', 600, 'inter-600'], ['Inter', 700, 'inter-700'],
+      ['Barlow Condensed', 600, 'barlow-condensed-600'], ['Barlow Condensed', 700, 'barlow-condensed-700']].map(function (f) {
+      return '@font-face{font-family:"' + f[0] + '";font-style:normal;font-weight:' + f[1] + ';font-display:block;src:url("' + base + '/fonts/' + f[2] + '.woff2") format("woff2")}';
+    }).join('');
+  }
+  var CSS_HIV = ':root{--bleu:#1B4F8C;--vert:#1a7a4a;--ink:#1d2330;--gris:#6b7380;--filet:#dfe4eb}*{box-sizing:border-box;margin:0;padding:0}'
+    + '@page{size:letter;margin:48px 0 40px}@page:first{margin:0}'
+    + 'html{-webkit-print-color-adjust:exact;print-color-adjust:exact}body{font-family:Inter,"Segoe UI",Arial,sans-serif;color:var(--ink);font-size:11px;line-height:1.45;background:#e9edf2}'
+    + 'h1,h2{font-family:"Barlow Condensed","Arial Narrow",Arial,sans-serif;font-weight:700}'
+    + '.page{width:816px;min-height:1056px;margin:24px auto;background:#fff;display:flex;flex-direction:column}'
+    + '.tete{height:290px;position:relative;background:var(--bleu);overflow:hidden}.tete.sans{height:180px}.tete .ph{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}'
+    + '.tete .logo{position:absolute;left:40px;top:24px;width:60px;height:60px;display:block}'
+    + '.titre{margin:-48px 40px 0;background:var(--bleu);color:#fff;border-radius:2px;padding:14px 18px;display:flex;justify-content:space-between;align-items:flex-end;gap:16px;position:relative}'
+    + '.titre .k{font-size:10px;color:#dbe5f2}.titre h1{font-size:34px;line-height:1.05;margin-top:2px}.titre .d{text-align:right;white-space:nowrap}.titre .d b{font-size:13px;display:block;font-weight:600}.titre .d span{font-size:10px;color:#dbe5f2}'
+    + '.corps{padding:0 40px;flex:1;display:flex;flex-direction:column}'
+    + '.infos{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--filet);border-bottom:1px solid var(--filet);margin-top:14px}'
+    + '.infos div{padding:9px 12px 10px;border-left:1px solid var(--filet);font-size:9.5px;color:var(--gris)}.infos div:first-child{border-left:0;padding-left:0}.infos b{display:block;color:var(--ink);font-size:11px;font-weight:600;margin-top:2px}'
+    + 'h2{color:var(--bleu);font-size:17px;border-bottom:2px solid var(--bleu);padding-bottom:3px;margin:16px 0 2px;break-after:avoid}h2 small{font-family:Inter,Arial,sans-serif;font-weight:400;font-size:10px;color:var(--gris);margin-left:4px}'
+    + '.cols{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}'
+    + 'h3{font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--gris);margin:9px 0 1px;break-after:avoid}'
+    + '.r{display:flex;gap:9px;align-items:flex-start;padding:4px 0;border-bottom:1px solid var(--filet);break-inside:avoid}'
+    + '.bx{width:13px;height:13px;border-radius:2px;border:1.5px solid var(--bleu);flex:none;margin-top:1px;display:flex;align-items:center;justify-content:center}.bx.on{background:var(--bleu)}.bx svg{width:9px;height:9px;display:block}'
+    + '.r .n{display:block;font-size:9.5px;color:var(--gris)}.r.non span{color:var(--gris)}'
+    + '.m{display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-bottom:1px solid var(--filet);break-inside:avoid}.m b{font-weight:600;white-space:nowrap;text-align:right}.vide{color:var(--gris);padding:4px 0}'
+    + '.rem p{margin-top:6px;white-space:pre-line;break-inside:avoid}'
+    + '.photos{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}.photos img{width:100%;height:120px;object-fit:cover;border-radius:2px;display:block;break-inside:avoid}'
+    + '.bas{margin-top:auto;break-inside:avoid}.sign{display:grid;grid-template-columns:1fr 1fr;gap:28px;padding-top:24px}.sign div{font-size:9.5px;color:var(--gris)}.sign b{display:block;min-height:18px;color:var(--ink);font-size:11px;font-weight:600}.sign i{display:block;border-top:1px solid var(--ink);margin:3px 0 8px}'
+    + '.pied{font-size:9px;color:var(--gris);padding:10px 0 22px}'
+    + '@media print{body{background:#fff}.page{margin:0;min-height:1056px}}'
+    + '@media screen and (max-width:700px){.page{width:auto;margin:0}.infos,.photos{grid-template-columns:1fr 1fr}.cols{grid-template-columns:1fr}}';
+  var COCHE = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg>';
+
+  /* Document autonome d’hivernement : impression (PDF) et pièce jointe envoyée au client */
+  function htmlHiv(d, opts) {
+    d = norm(d); opts = opts || {}; var i = d.info, E = esc, T = typeDe(d);
+    var site = propre(i.site), debut = heureTxt(i.heure_debut), fin = heureTxt(i.heure_fin), du = duree(i.heure_debut, i.heure_fin);
+    var heures = debut && fin ? debut + ' à ' + fin + (du ? ' (' + du + ')' : '') : debut || fin;
+    var ph = (opts.photos || []).filter(function (x) { return x && /^data:image|^https?:/.test(x.data || x.url || ''); }), tete = ph[0];
+    var box = function (on) { return '<span class="bx' + (on ? ' on' : '') + '">' + (on ? COCHE : '') + '</span>'; };
+    /* Étapes : chaque section du plan (sous-titre s’il y en a plusieurs), puis les travaux sur mesure et la formation */
+    var groupes = sectionsDe(d).filter(function (s) { return (s.sid || s.id) !== 'form'; }).map(function (s) {
+      return { titre: s.titre, lignes: s.items.map(function (it) {
+        var r = reponse(d, it), note = d.notes[it.k];
+        return { on: !!d.c[it.k], t: propre(label(it)), rep: r, note: note ? propre(note, true) : '' };
+      }) };
+    });
+    var tr = travauxDe(d);
+    if (tr.length) groupes.push({ titre: 'Travaux sur mesure', lignes: tr.map(function (x) { return { on: x.fait, t: propre(x.t) + (x.note ? ' : ' + propre(x.note).replace(/^./, function (c) { return c.toLowerCase(); }) : '') + (x.duree ? ' (' + String(x.duree).replace('.', ',') + ' h)' : '') }; }) });
+    if (T.formation) {
+      var emp = d.employes.filter(function (e) { return String(e.nom).trim(); }), sf = sectionsDe(d).filter(function (s) { return (s.sid || s.id) === 'form'; })[0];
+      var lf = (sf ? sf.items.map(function (it) { return { on: !!d.c[it.k], t: propre(label(it)) }; }) : [])
+        .concat(emp.map(function (e) { return { on: e.formation && e.demo, t: propre(e.nom) + ' : formation ' + (e.formation ? 'complétée' : 'non complétée') + ', démonstration ' + (e.demo ? 'réussie' : 'non réussie') }; }));
+      if (lf.length) groupes.push({ titre: sf ? sf.titre : 'Formation des employés', lignes: lf });
+    }
+    var toutes = groupes.reduce(function (a, g) { return a.concat(g.lignes); }, []), faites = toutes.filter(function (l) { return l.on; }).length;
+    var etapes = groupes.map(function (g) {
+      return (groupes.length > 1 ? '<h3>' + E(g.titre) + '</h3>' : '') + g.lignes.map(function (l) {
+        return '<div class="r' + (l.on ? '' : ' non') + '">' + box(l.on) + '<span>' + E(l.t) + (l.rep ? ' : <b>' + E(l.rep) + '</b>' : '') + (l.note ? '<span class="n">' + E(l.note) + '</span>' : '') + '</span></div>';
+      }).join('');
+    }).join('') || '<div class="vide">Aucune étape au plan.</div>';
+    var mt = materielDe(d).map(function (m) { return '<div class="m"><span>' + E(propre(m.nom)) + '</span><b>' + E(qteCourte(m)) + '</b></div>'; }).join('') || '<div class="vide">Aucun matériel inscrit.</div>';
+    var rem = propre(d.remarques, true);
+    var resp = String(d.responsable || '').trim();
+    var h = '<!DOCTYPE html><html lang="fr-CA"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>' + E(TITRE + ' — ' + site) + '</title><style>' + fontesCss() + CSS_HIV + '</style></head><body><div class="page">'
+      + '<div class="tete' + (tete ? '' : ' sans') + '">' + (tete ? '<img class="ph" src="' + E(tete.data || tete.url) + '" alt="">' : '') + '<img class="logo" src="' + LOGO + '" alt="Soucy Aquatik"></div>'
+      + '<div class="titre"><div><div class="k">' + E(TITRE + ' · ' + T.nom.charAt(0).toLowerCase() + T.nom.slice(1)) + '</div><h1>' + E(site || 'Site') + '</h1></div>'
+      + '<div class="d"><b>' + E(dateLongue(i.date)) + '</b><span>' + E(heures) + '</span></div></div>'
+      + '<div class="corps"><div class="infos"><div>Chef d’équipe<b>' + E(propre(i.chef) || '—') + '</b></div><div>Équipe présente<b>' + E(propre(i.equipe) || '—') + '</b></div>'
+      + '<div>Température<b>' + E(tempTxt(i.temperature) || '—') + '</b></div><div>Bassin<b>' + E(propre(i.bassins) || '—') + '</b></div></div>'
+      + '<div class="cols"><div><h2>Étapes réalisées <small>' + faites + ' sur ' + toutes.length + '</small></h2>' + etapes + '</div><div><h2>Matériel utilisé</h2>' + mt + '</div></div>'
+      + '<div class="rem"><h2>Remarques et anomalies</h2><p>' + (rem ? E(rem) : 'Aucune remarque.') + '</p></div>'
+      + (ph.length > 1 ? '<div class="photos">' + ph.slice(1).map(function (x) { return '<img src="' + E(x.data || x.url) + '" alt="' + E(x.name || 'Photo') + '">'; }).join('') + '</div>' : '')
+      + '<div class="bas"><div class="sign"><div><b>' + E(propre(i.chef)) + '</b><i></i>Chef d’équipe — signature et date</div><div><b></b><i></i>Responsable' + (resp ? ' (' + E(resp) + ')' : '') + ' — signature et date</div></div>'
+      + '<div class="pied">Soucy Aquatik · liste de contrôle générée par SA Platform</div></div></div></div></body></html>';
+    return h;
+  }
+  /* Document imprimable : nouvelle DA pour l’hivernement, présentation classique pour l’inspection */
+  function html(d, opts) { return estInspD(d) ? htmlClassique(d, opts) : htmlHiv(d, opts); }
+
   /* Corps du courriel au client */
   function texte(d) {
     d = norm(d); var p = progress(d), i = d.info, m = manquants(d);
@@ -1543,7 +1661,7 @@ button{font-family:inherit}
   function fichier(d) { d = norm(d); return ((estInspD(d) ? 'Inspection ' : 'Hivernement ') + (d.info.site || '') + ' ' + (d.info.date || '')).trim().replace(/[\\/:*?"<>|\s]+/g, '-').replace(/-{2,}/g, '-').replace(/^-|-$/g, '') + '.html'; }
 
   var api = { SECTIONS: SECTIONS, GABARITS: GABARITS, DEFAUT: DEFAUT, gabarits: gabarits, gabaritDe: gabaritDe, planSite: planSite, planPourSite: planPourSite, avecAjustements: avecAjustements, libelleRef: libelleRef, iid: iid, choixDe: choixDe, reponse: reponse, planDe: planDe, versTexte: versTexte, deTexte: deTexte, INFO: INFO, TYPES: TYPES, typeDe: typeDe, sectionsDe: sectionsDe, sectionsLibres: sectionsLibres, LIBRE: LIBRE, numeros: numeros, travauxDe: travauxDe, materielDe: materielDe, matSugg: matSugg, court: court, MODELES_INSP: MODELES_INSP, INSP: INSP, REP_INSP: REP_INSP, estInsp: estInsp, estInspD: estInspD, modelesInsp: modelesInsp, planInsp: planInsp, aCorriger: aCorriger, titreDe: titreDe, TIPS: TIPS, ALERTE: ALERTE, LOGO: LOGO, blank: blank, norm: norm, isChecklist: isChecklist, fromReport: fromReport, photosOf: photosOf,
-    progress: progress, manquants: manquants, critiquesManquants: critiquesManquants, toReport: toReport, html: html, texte: texte, fichier: fichier };
+    progress: progress, manquants: manquants, critiquesManquants: critiquesManquants, toReport: toReport, html: html, htmlClassique: htmlClassique, htmlHiv: htmlHiv, duree: duree, unites: unites, propre: propre, dateLongue: dateLongue, texte: texte, fichier: fichier };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.SAHiv = api;
 })(typeof window !== 'undefined' ? window : this);
 </script><script>/* Affichage configurable des apps (sa-admin, sa-terrain, portail client) — demande de la direction, 2026-11-03.

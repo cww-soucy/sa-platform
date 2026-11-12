@@ -178,7 +178,7 @@ test('étape à choix multiple : sa-terrain enregistre la réponse choisie, le r
   const plan = H.planSite(t.sites.find((s) => s.id === 10).bassins, t.gabarits_hivernage), k = plan.sections.find((s) => s.sid === 'p1').items.find((it) => it.choix).k;
   const saisie = H.norm({ plan, c: { [k]: 'Fermée' } });
   assert.ok(H.toReport(saisie, {}, []).sections.some((s) => s.items.includes('✔ 4b. État de la valve d’appoint : Fermée')));
-  assert.match(H.html(saisie), /État de la valve d’appoint — <strong>Fermée<\/strong> <span class="choix">\(Ouverte \/ Fermée\)/);
+  assert.match(H.html(saisie), /État de la valve d’appoint : <b>Fermée<\/b>/);
   assert.deepEqual(H.critiquesManquants(saisie).filter((x) => /État de la valve/.test(x)), []);
   assert.deepEqual(errors, []);
   await page.close();

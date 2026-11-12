@@ -154,11 +154,17 @@
 // /admin.html (SA Admin devient le corps officiel du projet). La montée de CACHE_NAME force chaque
 // appareil à purger l'ancienne copie en cache de SA Platform et à recevoir la redirection.
 // sa-terrain (/terrain.html) continue d'utiliser ce service worker (même origine, scope « / »).
-var CACHE_NAME = 'sa-platform-v84';
+// v85 — Rapport imprimable d'hivernement (nouvelle mise en page) : les polices Inter et Barlow Condensed
+// (/fonts/*.woff2) sont gardées en cache dès l'installation, pour imprimer ou produire le PDF sans réseau.
+var CACHE_NAME = 'sa-platform-v85';
+var FONTES = ['/fonts/inter-400.woff2', '/fonts/inter-500.woff2', '/fonts/inter-600.woff2', '/fonts/inter-700.woff2',
+  '/fonts/barlow-condensed-600.woff2', '/fonts/barlow-condensed-700.woff2'];
 
 // Installation : s'activer tout de suite sans attendre
 self.addEventListener('install', function(event) {
   self.skipWaiting();
+  // Polices du rapport imprimable : un échec (réseau coupé) ne bloque pas l'installation, elles seront prises au premier usage.
+  event.waitUntil(caches.open(CACHE_NAME).then(function(cache){ return cache.addAll(FONTES); }).catch(function(){}));
 });
 
 // Activation : prendre le contrôle immédiatement + purger les vieux caches
@@ -180,6 +186,16 @@ self.addEventListener('activate', function(event) {
 self.addEventListener('fetch', function(event) {
   var req = event.request;
   if (req.method !== 'GET') return;
+  // Polices (/fonts/) : le cache d'abord — elles ne changent jamais pour une même version.
+  if (/\/fonts\/[^\/]+\.woff2$/.test(new URL(req.url).pathname)) {
+    event.respondWith(caches.match(req, {ignoreSearch: true}).then(function(r) {
+      return r || fetch(req).then(function(res) {
+        if (res && res.ok) { var c = res.clone(); caches.open(CACHE_NAME).then(function(cache){ return cache.put(req, c); }); }
+        return res;
+      });
+    }));
+    return;
+  }
   if (req.mode === 'navigate' || (req.headers.get('accept')||'').indexOf('text/html') >= 0) {
     var copie = caches.match(req, {ignoreSearch: true});
     var reseau = fetch(req).then(function(res) {

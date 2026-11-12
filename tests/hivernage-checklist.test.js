@@ -30,8 +30,8 @@ test('document client : toutes les étapes, cases cochées, échappement, nom de
   const d = H.blank({ site: 'Parc <Alexandra>', date: '2026-10-08' });
   d.c['secu-0'] = true; d.remarques = '<b>x</b>';
   const h = H.html(d);
-  assert.ok(H.SECTIONS.every((s) => s.items.every((i) => h.includes(i.t.replace(/&/g, '&amp;')))));
-  assert.equal((h.match(/class="box on"/g) || []).length, 1);
+  assert.ok(H.SECTIONS.every((s) => s.items.every((i) => h.includes(H.propre(i.t + (i.b ? ' ' + i.b : '')).replace(/&/g, '&amp;')))));
+  assert.equal((h.match(/class="bx on"/g) || []).length, 1);
   assert.ok(!h.includes('<Alexandra>') && !h.includes('<b>x</b>'));
   assert.match(H.texte(d), /1 \/ 58 cases cochées \(2 %\)[\s\S]*Étapes non cochées/);
   assert.equal(H.fichier(d), 'Hivernement-Parc-Alexandra-2026-10-08.html');

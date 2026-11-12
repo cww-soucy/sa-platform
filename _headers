@@ -72,6 +72,10 @@
 /src/services/*
   Cache-Control: no-cache, must-revalidate
 
+# Polices du rapport imprimable : un nom par fichier, jamais modifiées.
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
 # Documentation, sources et tests : publiés par Cloudflare (tout le dépôt l'est), mais jamais indexés.
 /docs/*
   X-Robots-Tag: noindex, nofollow
