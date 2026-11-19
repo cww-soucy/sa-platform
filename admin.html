@@ -303,6 +303,10 @@ button{font-family:inherit}a{color:var(--color-accent-700)}
 [data-hv="7"]:hover{background:var(--color-accent-100) !important}
 html.nav-repli .sa-shell{grid-template-columns:72px minmax(0,1fr)!important}html.nav-repli .sa-nav .sa-nl{display:none!important}html.nav-repli .sa-nav button{justify-content:center!important;padding:0!important;gap:0!important}html.nav-repli .sa-nav>div{justify-content:center;padding-left:0!important;padding-right:0!important}html.nav-repli .sa-navtog-i{transform:scaleX(-1)}html.nav-repli .sa-nav button>span:not(.sa-nl):not(.sa-navtog-i){position:absolute;margin:-22px 0 0 26px;transform:scale(.8)}.sa-nav button{position:relative}
 /* Affichage des apps */
+.cfg-grille{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.cfg-tuile{all:unset;cursor:pointer;display:flex;flex-direction:column;gap:6px;padding:18px;border:1px solid var(--color-divider);background:var(--color-bg)}
+.cfg-tuile:hover{background:var(--color-accent-100)}.cfg-tuile:focus-visible{outline:2px solid var(--color-accent-700);outline-offset:2px}
+.cfg-tuile-nom{font:600 19px/1.15 var(--font-heading)}.cfg-tuile-aide{font-size:13px;line-height:1.35}
 .aff-apps{display:flex;gap:0;border:1px solid var(--color-divider);align-self:flex-start;flex-wrap:wrap;max-width:100%}
 .aff-app{all:unset;cursor:pointer;display:flex;flex-direction:column;gap:2px;padding:10px 18px;border-right:1px solid var(--color-divider);position:relative;min-width:150px}
 .aff-app:last-child{border-right:0}.aff-app[aria-selected="true"]{background:var(--color-text);color:var(--color-bg)}
@@ -1367,6 +1371,21 @@ html.nav-repli .sa-shell{grid-template-columns:72px minmax(0,1fr)!important}html
   <template data-sc="for" list="{{ af.apps }}" as="a"><button role="tab" aria-selected="{{ a.on }}" onClick="{{ a.go }}" class="aff-app">
     <span class="aff-app-nom">{{ a.nom }}</span><span class="aff-app-sous">{{ a.sous }}</span><template data-sc="if" value="{{ a.n }}"><span class="aff-pastille">{{ a.n }}</span></template></button></template>
 </div>
+
+<template data-sc="if" value="{{ af.isReglages }}">
+<div class="aff-corps" data-mod="reglages">
+  <section class="blueprint aff-tete"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+    <h2 style="margin:0;font-size:28px;line-height:1.1">Autres réglages</h2>
+    <span style="font-size:14px;line-height:1.4">Les réglages qui vivent dans leur propre module, rassemblés ici. Un clic ouvre le bon écran.</span>
+    <template data-sc="if" value="{{ af.reglagesNote }}"><span style="font-size:13px">{{ af.reglagesNote }}</span></template>
+  </section>
+  <div class="cfg-grille">
+    <template data-sc="for" list="{{ af.reglages }}" as="r"><button class="cfg-tuile blueprint" onClick="{{ r.go }}" data-reglage="{{ r.id }}"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      <sa-i n="{{ r.ic }}" s="22"></sa-i><span class="cfg-tuile-nom">{{ r.nom }}</span><span class="cfg-tuile-aide">{{ r.aide }}</span></button></template>
+  </div>
+  <template data-sc="if" value="{{ af.reglagesVide }}"><div style="font-size:15px;border:1px dashed var(--color-text);padding:14px">{{ af.reglagesVide }}</div></template>
+</div>
+</template>
 
 <template data-sc="if" value="{{ af.isModules }}">
 <div class="aff-corps" data-mod="modules">
@@ -3120,7 +3139,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
         ['menu.logistique', 'Logistique', { sec: 'Matériel' }], ['menu.stock', 'Stock', { sec: 'Matériel' }], ['menu.flotte', 'Flotte', { sec: 'Matériel' }], ['menu.outils', 'Outils · QR', { sec: 'Matériel' }],
         ['menu.sondages', 'Sondages clients', { sec: 'Équipe' }], ['menu.communication', 'Communication', { sec: 'Équipe' }], ['menu.temps', 'Temps · Paie', { sec: 'Équipe' }],
         ['menu.stats', 'Stats', { sec: 'Équipe' }], ['menu.comptes', 'Comptes', { sec: 'Équipe' }],
-        ['menu.affichage', 'Affichage des apps', { sec: 'Équipe', verrou: 'admin' }]]),
+        ['menu.affichage', 'Configuration de la plateforme', { sec: 'Configuration', verrou: 'admin' }]]),
       G('accueil', 'Page d’accueil', 'Les tuiles de la page qui s’ouvre après la connexion. La tuile sa-admin reste toujours.', [
         ['accueil.platform', 'Tuile SA Platform'], ['accueil.temps', 'Tuile Temps · Paie', P('menu.temps')], ['accueil.terrain', 'Tuile sa-terrain']]),
       G('sites', 'Sites et inspections · onglets', 'La barre d’onglets en haut de Sites et inspections.', [
@@ -4923,7 +4942,7 @@ Comp.prototype.outilsVals=function(){var self=this,st=this.state,mod=st.mod,name
 var MODS=['globale','monitoring','carte','inspections','planmatch','operations','planning','sites','facturation','hivernage','logistique','stock','flotte','outils','sondages','communication','temps','stats','comptes','affichage'];
 function TITLES_OK(m){return MODS.indexOf(m)>=0;}
 function portailPref(){try{return localStorage.getItem('sa_admin_portail')!=='off';}catch(e){return true;}}
-function hashMod(){var h=String(location.hash||'').replace(/^#/,'');return /^[a-z]+$/.test(h)?h:'';}
+function hashMod(){var h=String(location.hash||'').replace(/^#/,'');if(h==='configuration')return'affichage';return /^[a-z]+$/.test(h)?h:'';}
 Comp.prototype.openApp=function(url){var u=this.user;
   /* sa-terrain garde sa propre session sur ce poste : on la prépare avec le même compte (déjà vérifié par le serveur) si elle est vide */
   if(/terrain/.test(url)){try{if(!localStorage.getItem('sa_terrain_user'))localStorage.setItem('sa_terrain_user',JSON.stringify({id:u.id,prenom:u.prenom,nom:u.nom,role:u.role,dept:u.dept||'',tel:u.tel||'',email:u.email||''}));}catch(e){}}
@@ -5824,14 +5843,14 @@ Comp.prototype.vals=function(){
   var poManquant=factAll.filter(function(b){return b.noPo;}).length;
 
   // ---- navigation
-  var G=[['Terrain',[['monitoring','Monitoring','activity',horsZone.length+urgDem.length,true],['carte','Carte des sites','map'],['sites','Sites et inspections','building',nouveaux.length]]],['Gestion',[['globale','Vue globale','grid'],['planmatch','Plan de Match','clipboard'],['operations','Opérations','folder'],['planning','Planning équipe','calendar'],['facturation','Facturation','receipt']]],['Matériel',[['logistique','Logistique','send'],['stock','Stock','package'],['flotte','Flotte','truck'],['outils','Outils · QR','wrench']]],['Équipe',[['sondages','Sondages clients','star'],['communication','Communication','megaphone'],['temps','Temps · Paie','timer'],['stats','Stats','chart'],['comptes','Comptes','users'],['affichage','Affichage des apps','eye']]]];
+  var G=[['Terrain',[['monitoring','Monitoring','activity',horsZone.length+urgDem.length,true],['carte','Carte des sites','map'],['sites','Sites et inspections','building',nouveaux.length]]],['Gestion',[['globale','Vue globale','grid'],['planmatch','Plan de Match','clipboard'],['operations','Opérations','folder'],['planning','Planning équipe','calendar'],['facturation','Facturation','receipt']]],['Matériel',[['logistique','Logistique','send'],['stock','Stock','package'],['flotte','Flotte','truck'],['outils','Outils · QR','wrench']]],['Équipe',[['sondages','Sondages clients','star'],['communication','Communication','megaphone'],['temps','Temps · Paie','timer'],['stats','Stats','chart'],['comptes','Comptes','users']]],['Configuration',[['affichage','Configuration de la plateforme','layers']]]];
   /* affichage configurable (sa-admin › Affichage des apps) : modules masqués retirés du menu, groupes vides aussi */
   G=G.map(function(g){return[g[0],g[1].filter(function(i){return self.affOk('menu.'+i[0]);})];}).filter(function(g){return g[1].length;});
   var LIVE=['communication','globale','outils','stock','flotte','logistique','hivernage','comptes','planmatch','stats','monitoring','inspections','operations','sites','temps','planning','sondages','carte','facturation','affichage'];
   // Sites et inspections : une seule entrée ; elle rouvre le dernier des deux écrans utilisé
   var cur=function(k){return mod===k||(k==='sites'&&(mod==='inspections'||mod==='hivernage'));};if(mod==='sites'||mod==='inspections'||mod==='hivernage')this._lastSiteCat=mod;
   var navGroups=G.map(function(g){return{label:g[0],items:g[1].map(function(i){return{label:i[1],icon:i[2],badge:i[3]||null,badgeBg:i[4]?'var(--color-text)':'transparent',badgeFg:i[4]?'var(--color-bg)':'var(--color-text)',go:function(){self.go(i[0]==='sites'?(self._lastSiteCat||'inspections'):i[0]);},bar:cur(i[0])?'var(--color-text)':'transparent',bg:cur(i[0])?'var(--color-accent-100)':'transparent',fw:cur(i[0])?600:400};})};});
-  var TITLES={affichage:['Affichage des apps','Ce que chaque profil voit dans sa-admin, sa-terrain et le portail client — modules, onglets et sections'],globale:['Vue globale','Charge de l’équipe sur 4 semaines, alertes, travaux à venir et tâches terminées à valider'],monitoring:['Monitoring en direct','Qui est où, activité terrain et relevés hors zone'],inspections:['Sites et inspections','Inspections, rapports, clients, sites et répertoire — tout au même endroit'],operations:['Opérations','Dossiers clients — les visites d’un même contrat restent regroupées'],sites:['Sites et inspections','Inspections, rapports, clients, sites et répertoire — tout au même endroit'],
+  var TITLES={affichage:['Configuration de la plateforme','Tous les réglages au même endroit : modules activés, ce que chaque profil voit, et les autres réglages des apps'],globale:['Vue globale','Charge de l’équipe sur 4 semaines, alertes, travaux à venir et tâches terminées à valider'],monitoring:['Monitoring en direct','Qui est où, activité terrain et relevés hors zone'],inspections:['Sites et inspections','Inspections, rapports, clients, sites et répertoire — tout au même endroit'],operations:['Opérations','Dossiers clients — les visites d’un même contrat restent regroupées'],sites:['Sites et inspections','Inspections, rapports, clients, sites et répertoire — tout au même endroit'],
     carte:['Carte des sites','Sites et techniciens, d’après les punchs GPS'],sondages:['Sondages clients','Créer, réutiliser, modifier et suivre les sondages de satisfaction'],planning:['Planning équipe','Qui fait quoi — la semaine, 4 semaines ou le diagramme des travaux sur 8 semaines'],temps:['Temps · Paie','Feuilles de temps de l’équipe — corriger, ajouter, approuver, sortir la paie'],comptes:['Comptes','Employés, rôles, droits, statut et mots de passe — partagés avec SA Platform et sa-terrain'],planmatch:['Plan de Match','Le plan de la journée de chaque employé — tâches, véhicule, travaux du jour'],stats:['Stats','Heures de l’équipe, bons de travail, stock — par semaine'],facturation:['Facturation','Suivi des dossiers — ODT, PO et statut (aucun prix). PO manquant sur '+poManquant+' dossier(s).'],communication:['Communication','Infolettre du lundi, informations, lettres et procédures — internes et externes au département'],logistique:['Logistique','Bons de livraison et sorties d’inventaire — les mêmes que SA Platform et sa-terrain'],outils:['Outils · QR','Outils étiquetés, qui les a en main, emplacements de l’entrepôt et du bureau, étiquettes QR'],stock:['Stock','Inventaire de l’entrepôt — quantités, seuils d’alerte, prix, entrées et sorties'],flotte:['Flotte','Véhicules de l’entreprise et à qui ils sont assignés'],hivernage:['Sites et inspections','Hivernement : listes de contrôle par site — type d’intervention, travaux sur mesure et matériel ; remplies sur le terrain, complétées ici, imprimées ou envoyées au client']};
   var soonName={communication:'Communication d’équipe'};
   var qq=st.q.trim().toLowerCase();
@@ -6646,6 +6665,16 @@ Comp.prototype.modVals=function(){var self=this,A=window.SAAff,rows=this.modRows
       go:function(){self.modBasculer(m.id,!on);}};});
   var n=Object.keys(off).length;
   return{isModules:true,modSansTable:this.modPret===false,modLecture:!admin,mods:items,modResume:n?n+' module'+(n>1?'s':'')+' désactivé'+(n>1?'s':'')+' sur '+A.MODULES.length:'Tous les modules sont activés'};};
+/* Autres réglages : raccourcis vers les réglages qui vivent dans leur module (un module désactivé ou masqué n'y figure pas) */
+Comp.prototype.reglagesVals=function(){var self=this,admin=this.user.role==='admin';
+  var R=[['comptes','Comptes et accès','Employés, rôles, droits, statut et mots de passe.','users',function(){self.go('comptes');},'menu.comptes'],
+    ['entrepot','Entrepôt et courriels de logistique','Adresses de l’entrepôt et courriels envoyés avec les bons de livraison.','send',function(){self.go('logistique',{logTab:'ent'});},'log.ent'],
+    ['qr','Outils · QR : configuration','Emplacements, étiquettes et réglages des codes QR.','wrench',function(){self.go('outils',{outTab:'cfg'});},'outils.cfg'],
+    ['points','Points de contrôle des inspections','Ce que le technicien vérifie à chaque visite, par type de bassin.','clipboard',function(){self.go('inspections',{inspView:'points'});},'fiche.points'],
+    ['portail','Accès des clients au portail','Contacts clients, niveaux d’accès et codes QR des installations.','building',function(){self.go('inspections',{inspView:'acces'});},'fiche.acces'],
+    ['sauvegarde','Sauvegarde complète','Télécharger une copie de toutes les données (sans mot de passe ni prix).','download',function(){self.exportAll();},'menu.comptes']];
+  var items=R.filter(function(r){return self.affOk(r[5]);}).map(function(r){return{id:r[0],nom:r[1],aide:r[2],ic:r[3],go:r[4]};});
+  return{isReglages:true,reglages:items,reglagesVide:items.length?'':'Aucun autre réglage disponible pour ce profil.',reglagesNote:admin?'':'Certains réglages sont réservés aux administrateurs.'};};
 Comp.prototype.affRows=function(){if(!this.affRegles)this.affRegles=jget(AFF_CACHE,[]);return Array.isArray(this.affRegles)?this.affRegles:[];};
 Comp.prototype.affSet=function(rows){if(!Array.isArray(rows))return;this.affRegles=rows;this._affE=null;try{localStorage.setItem(AFF_CACHE,JSON.stringify(rows));}catch(e){}};
 /* Règles + brouillon en cours (pour l'aperçu et le calcul de l'écran de configuration) */
@@ -6693,9 +6722,14 @@ Comp.prototype.affVals=function(){var self=this,st=this.state,D=this.D,A=window.
     affApercuFin:function(){self.setState({affApercu:null,mod:'affichage'});}};
   if(st.mod!=='affichage'||!D||!A)return Object.assign(base,{isAffichage:false});
   if(this.affPret==null&&!this._affL){this._affL=true;this.affLoad();}
-  var appsTabs=['admin','terrain','portail'].map(function(a){return{nom:A.CATALOGUE[a].nom,sous:A.CATALOGUE[a].sous,on:a===st.affApp||(a==='admin'&&!A.CATALOGUE[st.affApp]&&st.affApp!=='modules'),n:'',_a:a,go:function(){self.setState({affApp:a,affCible:'tous',affDraft:null,affQ:''});}};})
-    .concat([{nom:'Modules',sous:'Activer ou désactiver des fonctions',on:st.affApp==='modules',n:(function(){var k=Object.keys(A.modulesOff(self.modRows())).length;return k?k+' désactivé'+(k>1?'s':''):'';})(),go:function(){if(st.affDraft&&!confirm('Quitter sans enregistrer les changements ?'))return;self.setState({affApp:'modules',affDraft:null});}}]);
-  if(st.affApp==='modules')return Object.assign(base,{isAffichage:true,af:Object.assign({isAff:false,sansTable:false,apps:appsTabs},this.modVals())});
+  /* Configuration de la plateforme : Modules (par défaut) · Affichage par app · Autres réglages */
+  var vue=st.affApp||'modules',sale=function(){var d=st.affDraft;if(!d)return false;var r=self.affRows().filter(function(x){return x.id===d.key;})[0];return JSON.stringify(d.m)!==JSON.stringify((r&&r.masques)||{});},
+    quitter=function(v){return function(){if(sale()&&!confirm('Quitter sans enregistrer les changements ?'))return;self.setState({affApp:v,affDraft:null,affCible:'tous',affQ:''});};};
+  var appsTabs=[{nom:'Modules',sous:'Activer ou désactiver des fonctions',on:vue==='modules',n:(function(){var k=Object.keys(A.modulesOff(self.modRows())).length;return k?k+' désactivé'+(k>1?'s':''):'';})(),go:quitter('modules')}]
+    .concat(['admin','terrain','portail'].map(function(a){return{nom:'Affichage · '+A.CATALOGUE[a].nom,sous:A.CATALOGUE[a].sous,on:a===vue,n:'',_a:a,go:quitter(a)};}))
+    .concat([{nom:'Autres réglages',sous:'Comptes, entrepôt, QR, inspections, sauvegarde',on:vue==='reglages',n:'',go:quitter('reglages')}]);
+  if(vue==='modules')return Object.assign(base,{isAffichage:true,af:Object.assign({isAff:false,isReglages:false,sansTable:false,apps:appsTabs},this.modVals())});
+  if(vue==='reglages')return Object.assign(base,{isAffichage:true,af:Object.assign({isAff:false,isModules:false,sansTable:false,apps:appsTabs},this.reglagesVals())});
   var app=A.CATALOGUE[st.affApp]?st.affApp:'admin',C=A.CATALOGUE[app],blocs=this.affProfils(app),all=[];blocs.forEach(function(b){all=all.concat(b.profils);});
   var cible=st.affCible&&all.some(function(p){return p.cible===st.affCible;})?st.affCible:'tous',prof=all.filter(function(p){return p.cible===cible;})[0]||all[0];
   if(st.affCible&&cible!==st.affCible&&String(st.affCible).indexOf('compte:')===0){prof={cible:st.affCible,nom:st.affCibleNom||st.affCible.slice(7),qui:st.affCibleQui||{}};cible=st.affCible;} /* employé filtré par la recherche : reste choisi */
@@ -6725,8 +6759,8 @@ Comp.prototype.affVals=function(){var self=this,st=this.state,D=this.D,A=window.
       tousMasq:function(){setM(function(m){cles.forEach(function(k){if(!(A.ITEMS[app][k].verrou==='admin'&&!prof.qui.role))m[k]=true;});});}};});
   var nApp=function(a){var n=0;rows.forEach(function(r){if(r.app===a)Object.keys(r.masques||{}).forEach(function(k){if(r.masques[k]===true)n++;});});return n?n+' masquage'+(n>1?'s':''):'';};
   var busy=!!this._affBusy;
-  appsTabs.forEach(function(t){if(t._a){t.n=nApp(t._a);t.on=t._a===app;}});
-  return Object.assign(base,{isAffichage:true,af:{isAff:true,isModules:false,sansTable:this.affPret===false,q:st.affQ||'',onQ:function(e){self.setState({affQ:e.target.value});},
+  appsTabs.forEach(function(t){if(t._a)t.n=nApp(t._a);});
+  return Object.assign(base,{isAffichage:true,af:{isAff:true,isModules:false,isReglages:false,sansTable:this.affPret===false,q:st.affQ||'',onQ:function(e){self.setState({affQ:e.target.value});},
     apps:appsTabs,
     blocs:blocs.map(function(b){return{nom:b.nom,cherche:!!b.cherche,vide:b.vide||'',profils:b.profils.map(function(p){var on=p.cible===cible;
       return{nom:p.nom,sub:p.sub||'',on:on,n:nOwn(p.cible),go:function(){if(on)return;if(dirty&&!confirm('Quitter ce profil sans enregistrer les changements ?'))return;self.setState({affCible:p.cible,affCibleNom:p.nom,affCibleQui:p.qui,affDraft:null});}};})};}),

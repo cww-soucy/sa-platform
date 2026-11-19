@@ -74,7 +74,7 @@ test('sa-admin : l’administrateur masque un module pour les superviseurs, enre
   const { page, db, errors } = await openApp(browser, srv.url, { app: 'admin', user: ADMIN, tables: t });
   await ready(page);
   await page.evaluate(() => window.__admin.go('affichage'));
-  await page.getByRole('tab', { name: /sa-admin/ }).waitFor();
+  await page.getByRole('tab', { name: /sa-admin/ }).click();
   // le profil « Administrateurs » ne peut pas se retirer l'écran de configuration
   await page.getByRole('button', { name: 'Administrateurs' }).click();
   await page.locator('[data-cle="menu.affichage"]').getByText('Toujours visible pour un administrateur').waitFor();
@@ -94,7 +94,7 @@ test('sa-admin : l’administrateur masque un module pour les superviseurs, enre
   await page.getByRole('button', { name: 'Voir sa-admin comme ce profil' }).click();
   await page.getByRole('status').getByText('Aperçu : sa-admin tel que le voit « Superviseurs »').waitFor();
   assert.doesNotMatch(await menu(page), /Stats|Temps · Paie/);
-  assert.match(await menu(page), /Affichage des apps/, 'le chemin du retour reste');
+  assert.match(await menu(page), /Configuration de la plateforme/, 'le chemin du retour reste');
   await page.getByRole('button', { name: 'Quitter l’aperçu' }).click();
   assert.match(await menu(page), /Stats/);
   assert.equal(await page.evaluate(() => window.__admin.state.mod), 'affichage');
@@ -110,8 +110,9 @@ test('sa-admin : l’administrateur masque un module pour les superviseurs, enre
 test('sa-admin : table pas encore créée → tout visible et message clair', async () => {
   const { page, errors } = await openApp(browser, srv.url, { app: 'admin', user: ADMIN, tables: base(), fail: { affichage_regles: 404 } });
   await ready(page);
-  assert.match(await menu(page), /Facturation[\s\S]*Stats[\s\S]*Affichage des apps/);
+  assert.match(await menu(page), /Facturation[\s\S]*Stats[\s\S]*Configuration de la plateforme/);
   await page.evaluate(() => window.__admin.go('affichage'));
+  await page.getByRole('tab', { name: /sa-admin/ }).click();
   await page.getByRole('alert').getByText('Base pas encore prête.').waitFor();
   assert.deepEqual(errors.filter((e) => !/404/.test(e)), []);
   await page.close();
