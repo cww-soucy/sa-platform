@@ -239,3 +239,18 @@ test('sa-admin : menu « Configuration de la plateforme » — Modules par défa
   assert.deepEqual(errors, []);
   await page.close();
 });
+
+test('superadmin (Charles) : traité comme administrateur — boutons Activer / Désactiver, profil Administrateurs', async () => {
+  assert.deepEqual(A.cibles('admin', { role: 'superadmin', compte: 'cwweil' }), ['tous', 'role:admin', 'compte:cwweil']);
+  assert.equal(A.visible(A.resoudre([{ id: 'admin|tous', app: 'admin', cible: 'tous', masques: { 'menu.affichage': true } }], 'admin', { role: 'superadmin' }), 'menu.affichage'), true, 'jamais privé de la configuration');
+  const SUPERADMIN = Object.assign({}, ADMIN, { role: 'superadmin' });
+  const { page, db, errors } = await openApp(browser, srv.url, { app: 'admin', user: SUPERADMIN, tables: base() });
+  await ready(page);
+  page.on('dialog', (d) => d.accept());
+  await page.evaluate(() => window.__admin.go('affichage'));
+  await page.locator('[data-module="flotte"]').getByRole('button', { name: 'Désactiver Flotte' }).click();
+  await page.waitForFunction(() => /« Flotte » désactivé/.test(window.__admin.state.toast || ''));
+  assert.equal(db.rows('modules_etat').find((r) => r.id === 'flotte').actif, false);
+  assert.deepEqual(errors, []);
+  await page.close();
+});

@@ -16,14 +16,14 @@ Comp.prototype.modSet=function(rows){if(!Array.isArray(rows))return;this.modEtat
 Comp.prototype.modBloque=function(m){var A=window.SAAff;if(!A)return false;var off=A.clesOff(this.modRows(),'admin');
   return!!(off['menu.'+m]||(m==='hivernage'&&off['sites.hiv'])||((m==='inspections'||m==='sites'||m==='hivernage')&&off['menu.sites']));};
 Comp.prototype.modBasculer=function(id,actif){var self=this,A=window.SAAff,M=A&&A.MODS[id];if(!M||this._modBusy)return;
-  if(this.user.role!=='admin'){this.flash('Réservé aux administrateurs');return;}
+  if(!estAdmin(this.user.role)){this.flash('Réservé aux administrateurs');return;}
   if(!actif&&!confirm('Désactiver « '+M.nom+' » pour tout le monde ?\n\nLe module disparaît de toutes les apps et ses données deviennent inaccessibles jusqu’à sa réactivation. Rien n’est effacé.'))return;
   var row={id:id,actif:!!actif,updated_by:this.user.id,updated_at:new Date().toISOString()};this._modBusy=id;this.update();
   rest('POST','modules_etat',row,'resolution=merge-duplicates,return=minimal').then(function(){
     self._modBusy=null;self.modPret=true;self.modSet(self.modRows().filter(function(r){return r.id!==id;}).concat([row]));
     auditT(self,'MODIFICATION','modules_etat',id,{actif:row.actif});self.flash('« '+M.nom+' » '+(actif?'activé':'désactivé')+' — appliqué à la prochaine ouverture des apps');})
   .catch(function(e){self._modBusy=null;self.update();self.flash('Échec — rien n’a été modifié : '+netMsg(e));});};
-Comp.prototype.modVals=function(){var self=this,A=window.SAAff,rows=this.modRows(),off=A.modulesOff(rows),admin=this.user.role==='admin',busy=this._modBusy;
+Comp.prototype.modVals=function(){var self=this,A=window.SAAff,rows=this.modRows(),off=A.modulesOff(rows),admin=estAdmin(this.user.role),busy=this._modBusy;
   var APPN={admin:'sa-admin',terrain:'sa-terrain',portail:'portail client'};
   var items=A.MODULES.map(function(m){var on=!off[m.id],r=rows.filter(function(x){return x.id===m.id;})[0];
     var ou=Object.keys(m.cles||{}).map(function(a){return APPN[a];}).join(', ');
@@ -35,7 +35,7 @@ Comp.prototype.modVals=function(){var self=this,A=window.SAAff,rows=this.modRows
   var n=Object.keys(off).length;
   return{isModules:true,modSansTable:this.modPret===false,modLecture:!admin,mods:items,modResume:n?n+' module'+(n>1?'s':'')+' désactivé'+(n>1?'s':'')+' sur '+A.MODULES.length:'Tous les modules sont activés'};};
 /* Autres réglages : raccourcis vers les réglages qui vivent dans leur module (un module désactivé ou masqué n'y figure pas) */
-Comp.prototype.reglagesVals=function(){var self=this,admin=this.user.role==='admin';
+Comp.prototype.reglagesVals=function(){var self=this,admin=estAdmin(this.user.role);
   var R=[['comptes','Comptes et accès','Employés, rôles, droits, statut et mots de passe.','users',function(){self.go('comptes');},'menu.comptes'],
     ['entrepot','Entrepôt et courriels de logistique','Adresses de l’entrepôt et courriels envoyés avec les bons de livraison.','send',function(){self.go('logistique',{logTab:'ent'});},'log.ent'],
     ['qr','Outils · QR : configuration','Emplacements, étiquettes et réglages des codes QR.','wrench',function(){self.go('outils',{outTab:'cfg'});},'outils.cfg'],
