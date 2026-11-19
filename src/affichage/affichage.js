@@ -103,12 +103,12 @@
   function cibles(app, qui) {
     qui = qui || {};
     if (app === 'portail') return ['tous'].concat(qui.niveau ? ['niveau:' + qui.niveau] : [], qui.client ? ['client:' + qui.client] : []);
-    var r = qui.role ? (qui.role === 'admin' || qui.role === 'superviseur' ? qui.role : 'employe') : ''; /* tout autre rôle (ex. technicien) = employé */
+    var r = qui.role ? (qui.role === 'admin' || qui.role === 'superadmin' ? 'admin' : qui.role === 'superviseur' ? 'superviseur' : 'employe') : ''; /* superadmin = administrateur ; tout autre rôle (ex. technicien) = employé */
     return ['tous'].concat(r ? ['role:' + r] : [], qui.compte ? ['compte:' + String(qui.compte).toLowerCase()] : []);
   }
   function idRegle(app, cible) { return app + '|' + cible; }
   function index(regles, app) { var o = {}; (regles || []).forEach(function (r) { if (r && r.app === app && r.cible) o[r.cible] = r.masques || {}; }); return o; }
-  function verrouille(it, qui) { return !!it && (it.verrou === true || (it.verrou && qui && it.verrou === qui.role)); }
+  function verrouille(it, qui) { var r = qui && (qui.role === 'superadmin' ? 'admin' : qui.role); return !!it && (it.verrou === true || (it.verrou && it.verrou === r)); }
 
   /* État calculé pour un profil : masque[cle] = true si masqué ; source[cle] = profil qui a décidé (ou '' = défaut). */
   function resoudre(regles, app, qui, sauf, modules) {
