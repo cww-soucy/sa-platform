@@ -341,8 +341,10 @@ test('Facturation : export en vrai classeur Excel', { skip: !openpyxl && 'openpy
   await A(page, () => window.__admin.go('facturation'));
   const [dl] = await Promise.all([page.waitForEvent('download'), A(page, () => window.__admin.vals().exportXls())]);
   const wb = lireXlsx(fs.readFileSync(await dl.path()));
+  assert.deepEqual(wb.Facturation[0], ['ID projet', 'Client', 'Ville', 'Date', 'ODT', 'PO', 'Statut', 'Technicien'], 'aucune colonne de prix (directive 2026-11-19)');
   assert.equal(wb.Facturation[1][1], 'Ville X');
-  assert.equal(wb.Facturation[1][6], 1000);
-  assert.equal(wb.Facturation[2][6], 1000, 'ligne de total');
+  assert.equal(wb.Facturation[1][6], 'À facturer');
+  assert.ok(!JSON.stringify(wb.Facturation).includes('1000') && !JSON.stringify(wb.Facturation).includes('1200'), 'aucun montant dans le fichier');
+  assert.doesNotMatch(await page.locator('main').innerText(), /\$|Prix|Écart/, 'aucun prix à l’écran Facturation');
   await page.close();
 });

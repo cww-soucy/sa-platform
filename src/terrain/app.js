@@ -575,9 +575,13 @@ Comp.prototype.sendHiv=function(){var st=this.state,sid=st.hivSel,s=sid&&siteByI
    Règles lues à chaque actualisation (table affichage_regles), gardées sur le téléphone pour le hors-réseau.
    Sans règle (ou table absente) : tout est visible, comme avant. */
 var AFF_ECRANS={temps:'onglet.temps',planning:'onglet.planning',demandes:'onglet.demandes',soon:'onglet.demandes',logistique:'accueil.logistique',hivernage:'accueil.hivernage',hivForm:'accueil.hivernage',comm:'accueil.comm',commView:'accueil.comm'};
-Comp.prototype.loadAff=function(){var self=this;return get('affichage_regles?select=*').then(function(r){if(!Array.isArray(r))return;self.affRegles=r;jset('sa_terrain_affichage',r);self.update();}).catch(function(){});};
+Comp.prototype.loadAff=function(){var self=this;
+  /* modules désactivés par l'administration (table modules_etat, 2026-11-19) : leurs onglets et tuiles disparaissent, pour tout le monde */
+  get('modules_etat?select=id,actif').then(function(r){if(!Array.isArray(r))return;self.modEtat=r;jset('sa_terrain_modules',r);self.update();}).catch(function(){});
+  return get('affichage_regles?select=*').then(function(r){if(!Array.isArray(r))return;self.affRegles=r;jset('sa_terrain_affichage',r);self.update();}).catch(function(){});};
 Comp.prototype.affEtat=function(){var A=window.SAAff;if(!A)return null;if(!this.affRegles)this.affRegles=jget('sa_terrain_affichage',[]);
-  return A.resoudre(this.affRegles,'terrain',{role:this.user.role,compte:this.user.id});};
+  if(!this.modEtat)this.modEtat=jget('sa_terrain_modules',[]);
+  return A.resoudre(this.affRegles,'terrain',{role:this.user.role,compte:this.user.id},null,this.modEtat);};
 Comp.prototype.vals=function(){
   var aff=this.affEtat(),affOk=function(k){return!window.SAAff||window.SAAff.visible(aff,k);};if(window.SAAff)window.SAAff.appliquer(document,aff);
   if(AFF_ECRANS[this.state.screen]&&!affOk(AFF_ECRANS[this.state.screen]))this.state.screen='today';

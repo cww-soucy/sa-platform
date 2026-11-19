@@ -59,7 +59,8 @@ test('étiquettes : Nouveau / Depuis le <date> / Depuis N visites', () => {
 test('droits et visibilité : niveaux Opérateur / Gestionnaire / Direction', () => {
   assert.equal(M.droits('operateur').historique, false);
   assert.equal(M.droits('gestionnaire').historique, true);
-  assert.equal(M.droits('gestionnaire', { gestionnaire: { factures: true } }).factures, true);
+  assert.equal(M.droits('operateur', { operateur: { exports: true } }).exports, true);
+  assert.ok(!M.DROITS.includes('factures'), 'plus de droit « Factures » : aucun prix dans les apps (2026-11-19)');
   assert.equal(M.visible('operateur', 'operateur'), true);
   assert.equal(M.visible('gestionnaire', 'operateur'), false);
   assert.equal(M.visible('interne', 'direction'), false);

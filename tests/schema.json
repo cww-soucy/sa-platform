@@ -531,5 +531,11 @@
     "masques",
     "updated_by",
     "updated_at"
+  ],
+  "modules_etat": [
+    "id",
+    "actif",
+    "updated_by",
+    "updated_at"
   ]
 }

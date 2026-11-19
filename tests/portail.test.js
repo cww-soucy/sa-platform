@@ -328,8 +328,8 @@ test('portail : sans QR, une adresse donnant accès à plusieurs installations �
 
 test('portail : onglets et sections masqués par Soucy Aquatik (sa-admin › Affichage des apps)', async () => {
   const { page, st, errors } = await open('?q=BON');
-  st.affichage = [{ app: 'portail', cible: 'tous', masques: { 'onglet.releves': true, 'onglet.factures': true, 'sec.urgence': true, 'sec.bassins': true } },
-    { app: 'portail', cible: 'niveau:gestionnaire', masques: { 'onglet.factures': false } }];
+  st.affichage = [{ app: 'portail', cible: 'tous', masques: { 'onglet.releves': true, 'onglet.interventions': true, 'sec.urgence': true, 'sec.bassins': true } },
+    { app: 'portail', cible: 'niveau:gestionnaire', masques: { 'onglet.interventions': false } }];
   await page.getByRole('button', { name: 'Accès client' }).click();
   await page.fill('#ident', 'jeanne@ville.qc.ca');
   await page.getByRole('button', { name: 'Recevoir un code' }).click();
@@ -337,7 +337,7 @@ test('portail : onglets et sections masqués par Soucy Aquatik (sa-admin › Aff
   await page.getByRole('button', { name: 'Accéder' }).click();
   await page.locator('.opere').getByText('Opéré par').waitFor();
   const onglets = await page.getByRole('tab').allInnerTexts();
-  assert.deepEqual(onglets, ['Historique', 'Rapports', 'Plans et documents', 'Interventions', 'Factures'], 'Relevés masqué ; Factures réaffiché pour les gestionnaires');
+  assert.deepEqual(onglets, ['Historique', 'Rapports', 'Plans et documents', 'Interventions'], 'Relevés masqué ; Interventions réaffiché pour les gestionnaires ; plus d’onglet Factures');
   assert.equal(await page.getByRole('tab', { selected: true }).innerText(), 'Historique', 'premier onglet visible ouvert');
   const txt = await page.textContent('main');
   assert.doesNotMatch(txt, /Vos bassins|Urgence 24\/7/);

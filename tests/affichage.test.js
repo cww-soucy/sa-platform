@@ -39,8 +39,9 @@ test('calcul : tout visible par défaut ; le profil le plus précis l’emporte 
   assert.equal(A.visible(t, 'planning.recurrentes'), false);
   assert.equal(A.css({ masque: { 'mon.flux': true, 'x"]{}': true } }), '[data-aff~="mon.flux"]{display:none!important}', 'clés non sûres ignorées dans la règle CSS');
   // portail : tous → niveau
-  const p = A.resoudre([R('portail', 'tous', { 'onglet.factures': true }), R('portail', 'niveau:direction', { 'onglet.factures': false })], 'portail', { niveau: 'direction' });
-  assert.equal(A.visible(p, 'onglet.factures'), true);
+  const p = A.resoudre([R('portail', 'tous', { 'onglet.rapports': true }), R('portail', 'niveau:direction', { 'onglet.rapports': false })], 'portail', { niveau: 'direction' });
+  assert.equal(A.visible(p, 'onglet.rapports'), true);
+  assert.ok(!A.ITEMS.portail['onglet.factures'], 'plus d’onglet Factures au portail (aucun prix, 2026-11-19)');
   // chaque parent du catalogue existe
   Object.keys(A.ITEMS).forEach((app) => Object.values(A.ITEMS[app]).forEach((it) => { if (it.parent) assert.ok(A.ITEMS[app][it.parent], app + ' : parent inconnu ' + it.parent); }));
 });

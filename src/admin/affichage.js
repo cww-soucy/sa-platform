@@ -7,13 +7,40 @@ var AFF_CACHE='sa_admin_affichage';
 var AFF_MODS=['monitoring','carte','sites','globale','planmatch','operations','planning','facturation','logistique','stock','flotte','outils','sondages','communication','temps','stats','comptes','affichage'];
 var AFF_TABS=[['inspView','fiche.',['bilan','visite','perso','tendances','saisie','bassins','hiver','acces','points'],'bilan'],['pView','planning.',['semaine','mois','gantt','series'],'semaine'],
   ['tempsTab','temps.',['semaine','employe','valider','paie','cumul'],'semaine'],['logTab','log.',['bl','so','ent'],'bl'],['outTab','outils.',['outils','emp','cfg'],'outils']];
+/* Modules activés / désactivés (table modules_etat ; catalogue SAAff.MODULES). Désactivé = pour tout le monde,
+   administrateurs compris : menu, onglets et tuiles forcés masqués, lien direct refusé, et la base refuse les données du module. */
+var MOD_CACHE='sa_admin_modules';
+Comp.prototype.modRows=function(){if(!this.modEtat)this.modEtat=jget(MOD_CACHE,[]);return Array.isArray(this.modEtat)?this.modEtat:[];};
+Comp.prototype.modSet=function(rows){if(!Array.isArray(rows))return;this.modEtat=rows;this._affE=null;try{localStorage.setItem(MOD_CACHE,JSON.stringify(rows));}catch(e){}};
+/* Écran sa-admin (mod) bloqué par un module désactivé ? */
+Comp.prototype.modBloque=function(m){var A=window.SAAff;if(!A)return false;var off=A.clesOff(this.modRows(),'admin');
+  return!!(off['menu.'+m]||(m==='hivernage'&&off['sites.hiv'])||((m==='inspections'||m==='sites'||m==='hivernage')&&off['menu.sites']));};
+Comp.prototype.modBasculer=function(id,actif){var self=this,A=window.SAAff,M=A&&A.MODS[id];if(!M||this._modBusy)return;
+  if(this.user.role!=='admin'){this.flash('Réservé aux administrateurs');return;}
+  if(!actif&&!confirm('Désactiver « '+M.nom+' » pour tout le monde ?\n\nLe module disparaît de toutes les apps et ses données deviennent inaccessibles jusqu’à sa réactivation. Rien n’est effacé.'))return;
+  var row={id:id,actif:!!actif,updated_by:this.user.id,updated_at:new Date().toISOString()};this._modBusy=id;this.update();
+  rest('POST','modules_etat',row,'resolution=merge-duplicates,return=minimal').then(function(){
+    self._modBusy=null;self.modPret=true;self.modSet(self.modRows().filter(function(r){return r.id!==id;}).concat([row]));
+    auditT(self,'MODIFICATION','modules_etat',id,{actif:row.actif});self.flash('« '+M.nom+' » '+(actif?'activé':'désactivé')+' — appliqué à la prochaine ouverture des apps');})
+  .catch(function(e){self._modBusy=null;self.update();self.flash('Échec — rien n’a été modifié : '+netMsg(e));});};
+Comp.prototype.modVals=function(){var self=this,A=window.SAAff,rows=this.modRows(),off=A.modulesOff(rows),admin=this.user.role==='admin',busy=this._modBusy;
+  var APPN={admin:'sa-admin',terrain:'sa-terrain',portail:'portail client'};
+  var items=A.MODULES.map(function(m){var on=!off[m.id],r=rows.filter(function(x){return x.id===m.id;})[0];
+    var ou=Object.keys(m.cles||{}).map(function(a){return APPN[a];}).join(', ');
+    return{id:m.id,nom:m.nom,aide:m.aide,ou:'Dans : '+ou+(m.tables.length?' · données bloquées dans la base':' · écran seulement'),on:on,etat:on?'Activé':'Désactivé',
+      eBg:on?'var(--color-accent-700)':'var(--color-accent-900)',rowBg:on?'transparent':'var(--color-accent-100)',
+      quand:r&&r.updated_at?'Modifié le '+fdate(String(r.updated_at).slice(0,10))+(r.updated_by?' par '+r.updated_by:''):'',
+      peut:admin,lbl:busy===m.id?'Enregistrement…':on?'Désactiver':'Activer',aria:(on?'Désactiver ':'Activer ')+m.nom,
+      go:function(){self.modBasculer(m.id,!on);}};});
+  var n=Object.keys(off).length;
+  return{isModules:true,modSansTable:this.modPret===false,modLecture:!admin,mods:items,modResume:n?n+' module'+(n>1?'s':'')+' désactivé'+(n>1?'s':'')+' sur '+A.MODULES.length:'Tous les modules sont activés'};};
 Comp.prototype.affRows=function(){if(!this.affRegles)this.affRegles=jget(AFF_CACHE,[]);return Array.isArray(this.affRegles)?this.affRegles:[];};
 Comp.prototype.affSet=function(rows){if(!Array.isArray(rows))return;this.affRegles=rows;this._affE=null;try{localStorage.setItem(AFF_CACHE,JSON.stringify(rows));}catch(e){}};
 /* Règles + brouillon en cours (pour l'aperçu et le calcul de l'écran de configuration) */
 Comp.prototype.affAvecBrouillon=function(){var d=this.state.affDraft,rows=this.affRows();if(!d)return rows;var p=d.key.split('|');
   return rows.filter(function(r){return r.id!==d.key;}).concat([{id:d.key,app:p[0],cible:p.slice(1).join('|'),masques:d.m}]);};
 Comp.prototype.affEtat=function(){var A=window.SAAff;if(!A)return null;if(this._affE)return this._affE;var ap=this.state.affApercu;
-  var e=ap?A.resoudre(this.affAvecBrouillon(),'admin',ap.qui):A.resoudre(this.affRows(),'admin',{role:this.user.role,compte:this.user.id});
+  var e=ap?A.resoudre(this.affAvecBrouillon(),'admin',ap.qui,null,this.modRows()):A.resoudre(this.affRows(),'admin',{role:this.user.role,compte:this.user.id},null,this.modRows());
   if(ap)delete e.masque['menu.affichage']; /* en aperçu, on garde toujours le chemin du retour */
   return(this._affE=e);};
 Comp.prototype.affOk=function(k){var A=window.SAAff;return!A||A.visible(this.affEtat(),k);};
@@ -54,6 +81,9 @@ Comp.prototype.affVals=function(){var self=this,st=this.state,D=this.D,A=window.
     affApercuFin:function(){self.setState({affApercu:null,mod:'affichage'});}};
   if(st.mod!=='affichage'||!D||!A)return Object.assign(base,{isAffichage:false});
   if(this.affPret==null&&!this._affL){this._affL=true;this.affLoad();}
+  var appsTabs=['admin','terrain','portail'].map(function(a){return{nom:A.CATALOGUE[a].nom,sous:A.CATALOGUE[a].sous,on:a===st.affApp||(a==='admin'&&!A.CATALOGUE[st.affApp]&&st.affApp!=='modules'),n:'',_a:a,go:function(){self.setState({affApp:a,affCible:'tous',affDraft:null,affQ:''});}};})
+    .concat([{nom:'Modules',sous:'Activer ou désactiver des fonctions',on:st.affApp==='modules',n:(function(){var k=Object.keys(A.modulesOff(self.modRows())).length;return k?k+' désactivé'+(k>1?'s':''):'';})(),go:function(){if(st.affDraft&&!confirm('Quitter sans enregistrer les changements ?'))return;self.setState({affApp:'modules',affDraft:null});}}]);
+  if(st.affApp==='modules')return Object.assign(base,{isAffichage:true,af:Object.assign({isAff:false,sansTable:false,apps:appsTabs},this.modVals())});
   var app=A.CATALOGUE[st.affApp]?st.affApp:'admin',C=A.CATALOGUE[app],blocs=this.affProfils(app),all=[];blocs.forEach(function(b){all=all.concat(b.profils);});
   var cible=st.affCible&&all.some(function(p){return p.cible===st.affCible;})?st.affCible:'tous',prof=all.filter(function(p){return p.cible===cible;})[0]||all[0];
   if(st.affCible&&cible!==st.affCible&&String(st.affCible).indexOf('compte:')===0){prof={cible:st.affCible,nom:st.affCibleNom||st.affCible.slice(7),qui:st.affCibleQui||{}};cible=st.affCible;} /* employé filtré par la recherche : reste choisi */
@@ -62,29 +92,30 @@ Comp.prototype.affVals=function(){var self=this,st=this.state,D=this.D,A=window.
   var dirty=JSON.stringify(d.m)!==JSON.stringify(own);
   var setM=function(f){var m=JSON.parse(JSON.stringify(d.m));f(m);self.setState({affDraft:{key:key,m:m}});};
   var rowsD=rows.filter(function(r){return r.id!==key;}).concat([{id:key,app:app,cible:cible,masques:d.m}]);
-  var eff=A.resoudre(rowsD,app,prof.qui),inh=A.resoudre(rows,app,prof.qui,cible);
+  var modR=this.modRows(),eff=A.resoudre(rowsD,app,prof.qui,null,modR),inh=A.resoudre(rows,app,prof.qui,cible,modR);
   var nomCible=function(c){if(!c)return'';if(c==='tous')return app==='portail'?'Tous les clients':'Tout le monde';var x=all.filter(function(p){return p.cible===c;})[0];return x?x.nom:c.replace(/^[a-z]+:/,'');};
   var gen=A.cibles(app,prof.qui).filter(function(c){return c!==cible;}).map(nomCible);
   var nOwn=function(c){var r=rows.filter(function(x){return x.id===A.idRegle(app,c);})[0];var n=r?Object.keys(r.masques||{}).length:0;if(c===cible)n=Object.keys(d.m).length;return n||'';};
   var nMasq=0,nTot=0;
   var groupes=C.groupes.map(function(g){var gm=0;
-    var lignes=g.items.map(function(it){var k=it.cle,mine=d.m[k],masq=!!eff.masque[k],lock=A.verrouille(it,prof.qui),lockTous=it.verrou==='admin'&&!prof.qui.role;nTot++;if(masq){nMasq++;gm++;}
+    var lignes=g.items.map(function(it){var k=it.cle,mine=d.m[k],masq=!!eff.masque[k],modOff=eff.off&&eff.off[k],lock=A.verrouille(it,prof.qui)||!!modOff,lockTous=it.verrou==='admin'&&!prof.qui.role;nTot++;if(masq){nMasq++;gm++;}
       var parentMasq=masq&&mine!==true&&eff.brut[k]!==true&&it.parent&&eff.masque[it.parent],pIt=it.parent&&A.ITEMS[app][it.parent];
       var src=eff.source[k],note=lock?'':parentMasq?'masqué avec « '+(pIt?pIt.nom:it.parent)+' »':typeof mine==='boolean'?'choix de ce profil':src?'hérité de « '+nomCible(src)+' »':(cible==='tous'?'par défaut':'hérité (par défaut)');
-      if(lockTous)note='toujours visible pour les administrateurs';
+      if(lockTous)note='toujours visible pour les administrateurs';if(modOff)note='module « '+A.MODS[modOff].nom+' » désactivé (onglet Modules)';
       var choix=[['h',cible==='tous'?'Par défaut':'Hériter',mine===undefined],['v','Afficher',mine===false],['m','Masquer',mine===true]].map(function(x){
         return{l:x[1],on:x[2],bg:x[2]?(x[0]==='m'?'var(--color-accent-900)':x[0]==='v'?'var(--color-accent-700)':'var(--color-accent-100)'):'transparent',fg:x[2]&&x[0]!=='h'?'#ffffff':'var(--color-text)',
           go:function(){setM(function(m){if(x[0]==='h')delete m[k];else m[k]=x[0]==='m';});}};});
-      return{cle:k,nom:it.nom,sec:it.sec||'',etat:lock?'Toujours visible':masq?'Masqué':'Visible',note:note,eIc:masq?'x':'eye',eBg:masq?'var(--color-accent-900)':'transparent',eFg:masq?'#ffffff':'var(--color-text)',
-        op:parentMasq?0.6:1,rowBg:masq?'var(--color-accent-100)':'transparent',lock:lock,libre:!lock,lockTxt:it.verrou===true?'Toujours visible':'Toujours visible pour un administrateur',aria:it.nom+' — '+(masq?'masqué':'visible'),b:choix};});
-    var cles=g.items.filter(function(it){return!A.verrouille(it,prof.qui);}).map(function(it){return it.cle;});
+      return{cle:k,nom:it.nom,sec:it.sec||'',etat:modOff?'Désactivé':lock?'Toujours visible':masq?'Masqué':'Visible',note:note,eIc:masq?'x':'eye',eBg:masq?'var(--color-accent-900)':'transparent',eFg:masq?'#ffffff':'var(--color-text)',
+        op:parentMasq?0.6:1,rowBg:masq?'var(--color-accent-100)':'transparent',lock:lock,libre:!lock,lockTxt:modOff?'Module désactivé':it.verrou===true?'Toujours visible':'Toujours visible pour un administrateur',aria:it.nom+' — '+(masq?'masqué':'visible'),b:choix};});
+    var cles=g.items.filter(function(it){return!A.verrouille(it,prof.qui)&&!(eff.off&&eff.off[it.cle]);}).map(function(it){return it.cle;});
     return{nom:g.nom,aide:g.aide,rows:lignes,compte:gm?gm+' masqué'+(gm>1?'s':'')+' sur '+g.items.length:'Tout visible',
       tousVis:function(){setM(function(m){cles.forEach(function(k){if(cible==='tous')delete m[k];else m[k]=false;});});},
       tousMasq:function(){setM(function(m){cles.forEach(function(k){if(!(A.ITEMS[app][k].verrou==='admin'&&!prof.qui.role))m[k]=true;});});}};});
   var nApp=function(a){var n=0;rows.forEach(function(r){if(r.app===a)Object.keys(r.masques||{}).forEach(function(k){if(r.masques[k]===true)n++;});});return n?n+' masquage'+(n>1?'s':''):'';};
   var busy=!!this._affBusy;
-  return Object.assign(base,{isAffichage:true,af:{sansTable:this.affPret===false,q:st.affQ||'',onQ:function(e){self.setState({affQ:e.target.value});},
-    apps:['admin','terrain','portail'].map(function(a){var on=a===app;return{nom:A.CATALOGUE[a].nom,sous:A.CATALOGUE[a].sous,on:on,n:nApp(a),go:function(){self.setState({affApp:a,affCible:'tous',affDraft:null,affQ:''});}};}),
+  appsTabs.forEach(function(t){if(t._a){t.n=nApp(t._a);t.on=t._a===app;}});
+  return Object.assign(base,{isAffichage:true,af:{isAff:true,isModules:false,sansTable:this.affPret===false,q:st.affQ||'',onQ:function(e){self.setState({affQ:e.target.value});},
+    apps:appsTabs,
     blocs:blocs.map(function(b){return{nom:b.nom,cherche:!!b.cherche,vide:b.vide||'',profils:b.profils.map(function(p){var on=p.cible===cible;
       return{nom:p.nom,sub:p.sub||'',on:on,n:nOwn(p.cible),go:function(){if(on)return;if(dirty&&!confirm('Quitter ce profil sans enregistrer les changements ?'))return;self.setState({affCible:p.cible,affCibleNom:p.nom,affCibleQui:p.qui,affDraft:null});}};})};}),
     titre:C.nom+' · '+prof.nom,herite:gen.length?'Hérite de : '+gen.join(' → ')+'.':'Profil de base : ce qui est choisi ici vaut pour tout le monde, sauf choix plus précis.',

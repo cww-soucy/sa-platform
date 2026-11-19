@@ -59,11 +59,40 @@
         ['temps.semaine', 'Temps : détail de la semaine', P('onglet.temps')], ['planning.recurrentes', 'Planning : mes visites récurrentes', P('onglet.planning')], ['demandes.historique', 'Demandes : mes demandes', P('onglet.demandes')]])] },
     portail: { nom: 'Portail client', sous: 'Ce que voient les clients (QR et « Envoyer au client »)', groupes: [
       G('onglets', 'Onglets', 'Les onglets sous l’état des systèmes. Les droits par niveau d’accès s’appliquent toujours en plus.', [
-        ['onglet.releves', 'Relevés'], ['onglet.historique', 'Historique'], ['onglet.rapports', 'Rapports'], ['onglet.documents', 'Plans et documents'], ['onglet.interventions', 'Interventions'], ['onglet.factures', 'Factures']]),
+        ['onglet.releves', 'Relevés'], ['onglet.historique', 'Historique'], ['onglet.rapports', 'Rapports'], ['onglet.documents', 'Plans et documents'], ['onglet.interventions', 'Interventions']]),
       G('sections', 'Sections', 'Les blocs de la page d’une installation.', [
         ['sec.bandeau', 'Bandeau « Tout est conforme » / interventions'], ['sec.systemes', 'État des systèmes'], ['sec.attention', 'À votre attention'],
         ['sec.plan', 'Plan de l’installation'], ['sec.bassins', 'Vos bassins'], ['sec.rapport', 'Bouton « Rapport de la dernière visite »'], ['sec.urgence', 'Numéro d’urgence 24/7']])] }
   };
+  /* MODULES activables / désactivables (sa-admin › Affichage des apps › Modules) — demande de la direction, 2026-11-19.
+     Différent du masquage : un module DÉSACTIVÉ l'est pour tout le monde, administrateurs compris, dans toutes les apps,
+     et la base refuse ses données (lecture vide, écriture refusée) grâce aux politiques de MIGRATION_2026-11-19_modules_actifs.sql.
+     État en base : table modules_etat (une ligne par module ; sans ligne = activé).
+     [id, nom, aide, clés d'affichage par app (forcées masquées), tables bloquées côté base] */
+  var MOD = function (id, nom, aide, cles, tables) { return { id: id, nom: nom, aide: aide, cles: cles, tables: tables }; };
+  var MODULES = [
+    MOD('facturation', 'Facturation', 'Suivi des dossiers à facturer : ODT, PO et statut (sans aucun prix).', { admin: ['menu.facturation'] }, ['facturation', 'projets_excel']),
+    MOD('planmatch', 'Plan de Match', 'Le plan de la journée de chaque employé.', { admin: ['menu.planmatch'] }, ['plan_match']),
+    MOD('logistique', 'Logistique et livraisons', 'Bons de livraison, sorties d’inventaire, courriels à l’entrepôt ; tuile Logistique de sa-terrain.',
+      { admin: ['menu.logistique', 'mon.livraisons', 'glob.livraisons'], terrain: ['accueil.logistique'] }, ['bons_livraison', 'sorties_inventaire', 'logistique_config']),
+    MOD('stock', 'Stock', 'Inventaire des produits (quantités et seuils). Les produits restent lisibles par la Logistique si elle est activée.', { admin: ['menu.stock'] }, ['inventaire']),
+    MOD('flotte', 'Flotte', 'Véhicules de l’entreprise.', { admin: ['menu.flotte'] }, ['flotte']),
+    MOD('outils', 'Outils · QR', 'Outils, emplacements et étiquettes QR.', { admin: ['menu.outils'] }, ['outils', 'outils_mouvements']),
+    MOD('hivernage', 'Hivernage', 'Listes d’hivernement : onglet Hivernage de sa-admin et tuile Hivernage de sa-terrain.',
+      { admin: ['sites.hiv', 'fiche.hiver'], terrain: ['accueil.hivernage'] }, ['rapports_hivernage']),
+    MOD('sondages', 'Sondages clients', 'Sondages de satisfaction ; un module désactivé ferme aussi les formulaires publics.', { admin: ['menu.sondages'] }, ['sondages', 'sondage_reponses']),
+    MOD('communication', 'Communication', 'Messages du bureau à l’équipe (sa-admin et sa-terrain).', { admin: ['menu.communication'], terrain: ['accueil.comm'] }, ['communications', 'communication_lectures']),
+    MOD('demandes', 'Demandes des techniciens', 'Demandes de matériel ou d’aide envoyées depuis sa-terrain.', { terrain: ['onglet.demandes'] }, ['demandes']),
+    MOD('carte', 'Carte des sites', 'Carte des sites et des techniciens (écran seulement).', { admin: ['menu.carte'] }, []),
+    MOD('stats', 'Stats', 'Statistiques de l’équipe (écran seulement).', { admin: ['menu.stats'] }, [])
+  ];
+  var MODS = {}; MODULES.forEach(function (m) { MODS[m.id] = m; });
+  /* modules = lignes de modules_etat [{id, actif}] ; renvoie {id: true} pour les modules désactivés */
+  function modulesOff(modules) { var o = {}; (modules || []).forEach(function (r) { if (r && MODS[r.id] && r.actif === false) o[r.id] = true; }); return o; }
+  function moduleActif(modules, id) { return !modulesOff(modules)[id]; }
+  /* Clés d'une app forcées masquées par les modules désactivés : {clé: id du module} */
+  function clesOff(modules, app) { var off = modulesOff(modules), o = {}; MODULES.forEach(function (m) { if (off[m.id]) ((m.cles || {})[app] || []).forEach(function (k) { o[k] = m.id; }); }); return o; }
+
   var ITEMS = {};
   Object.keys(CATALOGUE).forEach(function (app) { var o = ITEMS[app] = {}; CATALOGUE[app].groupes.forEach(function (g) { g.items.forEach(function (it) { it.groupe = g.id; o[it.cle] = it; }); }); });
 
@@ -82,13 +111,14 @@
   function verrouille(it, qui) { return !!it && (it.verrou === true || (it.verrou && qui && it.verrou === qui.role)); }
 
   /* État calculé pour un profil : masque[cle] = true si masqué ; source[cle] = profil qui a décidé (ou '' = défaut). */
-  function resoudre(regles, app, qui, sauf) {
-    var idx = index(regles, app), brut = {}, src = {}, items = ITEMS[app] || {};
+  function resoudre(regles, app, qui, sauf, modules) {
+    var idx = index(regles, app), brut = {}, src = {}, items = ITEMS[app] || {}, off = clesOff(modules, app);
     cibles(app, qui).forEach(function (c) { if (c === sauf) return; var m = idx[c]; if (!m) return; Object.keys(m).forEach(function (k) { if (typeof m[k] === 'boolean') { brut[k] = m[k]; src[k] = c; } }); });
     var masque = {};
-    var cache = function (k, n) { if (n > 8) return false; var it = items[k]; if (verrouille(it, qui)) return false; if (brut[k] === true) return true; return !!(it && it.parent && cache(it.parent, n + 1)); };
+    var cache = function (k, n) { if (n > 8) return false; var it = items[k]; if (off[k]) return true; if (verrouille(it, qui)) return false; if (brut[k] === true) return true; return !!(it && it.parent && cache(it.parent, n + 1)); };
     Object.keys(items).forEach(function (k) { if (cache(k, 0)) masque[k] = true; });
-    return { app: app, qui: qui || {}, masque: masque, brut: brut, source: src };
+    Object.keys(off).forEach(function (k) { masque[k] = true; });
+    return { app: app, qui: qui || {}, masque: masque, brut: brut, source: src, off: off };
   }
   function visible(etat, cle) { return !(etat && etat.masque && etat.masque[cle]); }
   /* Règle CSS qui masque les éléments marqués data-aff="<clé>" (sections du gabarit) */
@@ -105,6 +135,6 @@
   function premier(etat, cles, defaut) { for (var i = 0; i < cles.length; i++) if (visible(etat, cles[i])) return cles[i]; return defaut; }
   function nbMasques(etat) { return Object.keys((etat && etat.masque) || {}).length; }
 
-  var api = { CATALOGUE: CATALOGUE, ITEMS: ITEMS, ROLES: ROLES, NIVEAUX: NIVEAUX, cibles: cibles, idRegle: idRegle, resoudre: resoudre, visible: visible, css: css, appliquer: appliquer, premier: premier, nbMasques: nbMasques, verrouille: verrouille };
+  var api = { MODULES: MODULES, MODS: MODS, modulesOff: modulesOff, moduleActif: moduleActif, clesOff: clesOff, CATALOGUE: CATALOGUE, ITEMS: ITEMS, ROLES: ROLES, NIVEAUX: NIVEAUX, cibles: cibles, idRegle: idRegle, resoudre: resoudre, visible: visible, css: css, appliquer: appliquer, premier: premier, nbMasques: nbMasques, verrouille: verrouille };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.SAAff = api;
 })(typeof window !== 'undefined' ? window : this);

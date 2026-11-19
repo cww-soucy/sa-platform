@@ -118,6 +118,7 @@ document.getElementById('pushBtn').addEventListener('click',function(){
         var rows=list.map(function(r){
           var row=JSON.parse(JSON.stringify(r));
           if(row.desc!==undefined){row.descr=row.desc;delete row.desc;}
+          if(localKey==='inventaire')delete row.prix; /* aucun prix dans les apps (2026-11-19) */
           row.updated_at=new Date().toISOString();
           return row;
         });
