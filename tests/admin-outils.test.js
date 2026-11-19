@@ -140,7 +140,7 @@ test('configuration : catégorie ajoutée, préfixe QR modifié', async () => {
   const { page, db } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: tables() });
   await ready(page);
   await A(page, () => window.__admin.go('outils'));
-  await page.getByRole('button', { name: 'Configuration' }).click();
+  await page.getByRole('button', { name: 'Configuration', exact: true }).click();
   await page.getByRole('button', { name: '+ Ajouter' }).first().click();
   await field(page, 'Icône (emoji)').fill('🧰');
   await field(page, 'Nom de la catégorie').fill('Électrique');

@@ -1,4 +1,4 @@
-<!-- sa-admin › Affichage des apps : ce que chaque profil voit dans sa-admin, sa-terrain et le portail client — inséré par assemble.py ; logique : affichage.js -->
+<!-- sa-admin › Configuration de la plateforme (Modules · Affichage des apps · Autres réglages) : ce que chaque profil voit dans sa-admin, sa-terrain et le portail client — inséré par assemble.py ; logique : affichage.js -->
 <sc-if value="{{ isAffichage }}">
 <div data-mod="affichage" class="aff" style="display:flex;flex-direction:column;gap:18px">
 <sc-if value="{{ af.isAff }}"><sc-if value="{{ af.sansTable }}"><div role="alert" style="padding:12px 16px;border:1px solid var(--color-text);background:var(--color-accent-100);font-size:15px;line-height:1.4"><b>Base pas encore prête.</b> Les choix s’affichent ici, mais l’enregistrement attend la migration « affichage des modules » (docs/sql/MIGRATION_2026-11-03_affichage_modules.sql). D’ici là, tout reste visible pour tout le monde.</div></sc-if></sc-if>
@@ -7,6 +7,21 @@
   <sc-for list="{{ af.apps }}" as="a"><button role="tab" aria-selected="{{ a.on }}" onClick="{{ a.go }}" class="aff-app">
     <span class="aff-app-nom">{{ a.nom }}</span><span class="aff-app-sous">{{ a.sous }}</span><sc-if value="{{ a.n }}"><span class="aff-pastille">{{ a.n }}</span></sc-if></button></sc-for>
 </div>
+
+<sc-if value="{{ af.isReglages }}">
+<div class="aff-corps" data-mod="reglages">
+  <section class="blueprint aff-tete"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+    <h2 style="margin:0;font-size:28px;line-height:1.1">Autres réglages</h2>
+    <span style="font-size:14px;line-height:1.4">Les réglages qui vivent dans leur propre module, rassemblés ici. Un clic ouvre le bon écran.</span>
+    <sc-if value="{{ af.reglagesNote }}"><span style="font-size:13px">{{ af.reglagesNote }}</span></sc-if>
+  </section>
+  <div class="cfg-grille">
+    <sc-for list="{{ af.reglages }}" as="r"><button class="cfg-tuile blueprint" onClick="{{ r.go }}" data-reglage="{{ r.id }}"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      <sa-i n="{{ r.ic }}" s="22"></sa-i><span class="cfg-tuile-nom">{{ r.nom }}</span><span class="cfg-tuile-aide">{{ r.aide }}</span></button></sc-for>
+  </div>
+  <sc-if value="{{ af.reglagesVide }}"><div style="font-size:15px;border:1px dashed var(--color-text);padding:14px">{{ af.reglagesVide }}</div></sc-if>
+</div>
+</sc-if>
 
 <sc-if value="{{ af.isModules }}">
 <div class="aff-corps" data-mod="modules">

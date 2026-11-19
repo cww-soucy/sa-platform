@@ -59,7 +59,7 @@ test('sa-admin : module désactivé → absent du menu, même pour l’administr
   await ready(page);
   const m = await menu(page);
   assert.doesNotMatch(m, /Facturation|Stats/);
-  assert.match(m, /Planning équipe[\s\S]*Affichage des apps/);
+  assert.match(m, /Planning équipe[\s\S]*Configuration de la plateforme/);
   await page.evaluate(() => window.__admin.go('facturation'));
   assert.notEqual(await page.evaluate(() => window.__admin.state.mod), 'facturation');
   assert.match(await page.evaluate(() => window.__admin.state.toast || ''), /Module désactivé/);
@@ -215,4 +215,27 @@ test('base : module désactivé → données inaccessibles (lecture vide, écrit
   assert.equal(as('chef', `select count(*) from flotte`).out, '1');
   assert.equal(psql(`select count(*) from facturation`).out, '1', 'service_role / propriétaire : jamais bloqué');
   assert.ok(psql('', { file: 'docs/sql/MIGRATION_2026-11-19_modules_actifs.sql' }).ok, 'rejouable');
+});
+
+test('sa-admin : menu « Configuration de la plateforme » — Modules par défaut, affichage par app, autres réglages', async () => {
+  const t = base();
+  t.modules_etat = OFF('outils');
+  const { page, errors } = await openApp(browser, srv.url, { app: 'admin', user: ADMIN, tables: t });
+  await ready(page);
+  const m = await menu(page);
+  assert.match(m, /Configuration\s+Configuration de la plateforme/, 'une section Configuration dans le menu');
+  await page.locator('nav').first().getByText('Configuration de la plateforme').click();
+  await page.getByRole('heading', { name: 'Modules de l’application' }).waitFor();
+  assert.deepEqual((await page.getByRole('tab').allInnerTexts()).map((x) => x.split('\n')[0]),
+    ['Modules', 'Affichage · sa-admin', 'Affichage · sa-terrain', 'Affichage · Portail client', 'Autres réglages']);
+  await page.getByRole('tab', { name: /Autres réglages/ }).click();
+  await page.getByRole('heading', { name: 'Autres réglages' }).waitFor();
+  assert.equal(await page.locator('[data-reglage="qr"]').count(), 0, 'module Outils désactivé : son réglage n’est pas proposé');
+  await page.locator('[data-reglage="entrepot"]').click();
+  assert.equal(await page.evaluate(() => window.__admin.state.mod), 'logistique');
+  assert.equal(await page.evaluate(() => window.__admin.state.logTab), 'ent');
+  await page.evaluate(() => { location.hash = '#configuration'; });
+  await page.waitForFunction(() => window.__admin.state.mod === 'affichage');
+  assert.deepEqual(errors, []);
+  await page.close();
 });

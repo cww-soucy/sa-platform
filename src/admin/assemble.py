@@ -1084,6 +1084,10 @@ button{font-family:inherit}a{color:var(--color-accent-700)}
 #login form{width:100%;max-width:380px;display:flex;flex-direction:column;gap:16px}#login h1{margin:0;font-size:44px;line-height:1}
 '''+'\n'.join(css)+'''
 /* Affichage des apps */
+.cfg-grille{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.cfg-tuile{all:unset;cursor:pointer;display:flex;flex-direction:column;gap:6px;padding:18px;border:1px solid var(--color-divider);background:var(--color-bg)}
+.cfg-tuile:hover{background:var(--color-accent-100)}.cfg-tuile:focus-visible{outline:2px solid var(--color-accent-700);outline-offset:2px}
+.cfg-tuile-nom{font:600 19px/1.15 var(--font-heading)}.cfg-tuile-aide{font-size:13px;line-height:1.35}
 .aff-apps{display:flex;gap:0;border:1px solid var(--color-divider);align-self:flex-start;flex-wrap:wrap;max-width:100%}
 .aff-app{all:unset;cursor:pointer;display:flex;flex-direction:column;gap:2px;padding:10px 18px;border-right:1px solid var(--color-divider);position:relative;min-width:150px}
 .aff-app:last-child{border-right:0}.aff-app[aria-selected="true"]{background:var(--color-text);color:var(--color-bg)}

@@ -34,6 +34,16 @@ Comp.prototype.modVals=function(){var self=this,A=window.SAAff,rows=this.modRows
       go:function(){self.modBasculer(m.id,!on);}};});
   var n=Object.keys(off).length;
   return{isModules:true,modSansTable:this.modPret===false,modLecture:!admin,mods:items,modResume:n?n+' module'+(n>1?'s':'')+' désactivé'+(n>1?'s':'')+' sur '+A.MODULES.length:'Tous les modules sont activés'};};
+/* Autres réglages : raccourcis vers les réglages qui vivent dans leur module (un module désactivé ou masqué n'y figure pas) */
+Comp.prototype.reglagesVals=function(){var self=this,admin=this.user.role==='admin';
+  var R=[['comptes','Comptes et accès','Employés, rôles, droits, statut et mots de passe.','users',function(){self.go('comptes');},'menu.comptes'],
+    ['entrepot','Entrepôt et courriels de logistique','Adresses de l’entrepôt et courriels envoyés avec les bons de livraison.','send',function(){self.go('logistique',{logTab:'ent'});},'log.ent'],
+    ['qr','Outils · QR : configuration','Emplacements, étiquettes et réglages des codes QR.','wrench',function(){self.go('outils',{outTab:'cfg'});},'outils.cfg'],
+    ['points','Points de contrôle des inspections','Ce que le technicien vérifie à chaque visite, par type de bassin.','clipboard',function(){self.go('inspections',{inspView:'points'});},'fiche.points'],
+    ['portail','Accès des clients au portail','Contacts clients, niveaux d’accès et codes QR des installations.','building',function(){self.go('inspections',{inspView:'acces'});},'fiche.acces'],
+    ['sauvegarde','Sauvegarde complète','Télécharger une copie de toutes les données (sans mot de passe ni prix).','download',function(){self.exportAll();},'menu.comptes']];
+  var items=R.filter(function(r){return self.affOk(r[5]);}).map(function(r){return{id:r[0],nom:r[1],aide:r[2],ic:r[3],go:r[4]};});
+  return{isReglages:true,reglages:items,reglagesVide:items.length?'':'Aucun autre réglage disponible pour ce profil.',reglagesNote:admin?'':'Certains réglages sont réservés aux administrateurs.'};};
 Comp.prototype.affRows=function(){if(!this.affRegles)this.affRegles=jget(AFF_CACHE,[]);return Array.isArray(this.affRegles)?this.affRegles:[];};
 Comp.prototype.affSet=function(rows){if(!Array.isArray(rows))return;this.affRegles=rows;this._affE=null;try{localStorage.setItem(AFF_CACHE,JSON.stringify(rows));}catch(e){}};
 /* Règles + brouillon en cours (pour l'aperçu et le calcul de l'écran de configuration) */
@@ -81,9 +91,14 @@ Comp.prototype.affVals=function(){var self=this,st=this.state,D=this.D,A=window.
     affApercuFin:function(){self.setState({affApercu:null,mod:'affichage'});}};
   if(st.mod!=='affichage'||!D||!A)return Object.assign(base,{isAffichage:false});
   if(this.affPret==null&&!this._affL){this._affL=true;this.affLoad();}
-  var appsTabs=['admin','terrain','portail'].map(function(a){return{nom:A.CATALOGUE[a].nom,sous:A.CATALOGUE[a].sous,on:a===st.affApp||(a==='admin'&&!A.CATALOGUE[st.affApp]&&st.affApp!=='modules'),n:'',_a:a,go:function(){self.setState({affApp:a,affCible:'tous',affDraft:null,affQ:''});}};})
-    .concat([{nom:'Modules',sous:'Activer ou désactiver des fonctions',on:st.affApp==='modules',n:(function(){var k=Object.keys(A.modulesOff(self.modRows())).length;return k?k+' désactivé'+(k>1?'s':''):'';})(),go:function(){if(st.affDraft&&!confirm('Quitter sans enregistrer les changements ?'))return;self.setState({affApp:'modules',affDraft:null});}}]);
-  if(st.affApp==='modules')return Object.assign(base,{isAffichage:true,af:Object.assign({isAff:false,sansTable:false,apps:appsTabs},this.modVals())});
+  /* Configuration de la plateforme : Modules (par défaut) · Affichage par app · Autres réglages */
+  var vue=st.affApp||'modules',sale=function(){var d=st.affDraft;if(!d)return false;var r=self.affRows().filter(function(x){return x.id===d.key;})[0];return JSON.stringify(d.m)!==JSON.stringify((r&&r.masques)||{});},
+    quitter=function(v){return function(){if(sale()&&!confirm('Quitter sans enregistrer les changements ?'))return;self.setState({affApp:v,affDraft:null,affCible:'tous',affQ:''});};};
+  var appsTabs=[{nom:'Modules',sous:'Activer ou désactiver des fonctions',on:vue==='modules',n:(function(){var k=Object.keys(A.modulesOff(self.modRows())).length;return k?k+' désactivé'+(k>1?'s':''):'';})(),go:quitter('modules')}]
+    .concat(['admin','terrain','portail'].map(function(a){return{nom:'Affichage · '+A.CATALOGUE[a].nom,sous:A.CATALOGUE[a].sous,on:a===vue,n:'',_a:a,go:quitter(a)};}))
+    .concat([{nom:'Autres réglages',sous:'Comptes, entrepôt, QR, inspections, sauvegarde',on:vue==='reglages',n:'',go:quitter('reglages')}]);
+  if(vue==='modules')return Object.assign(base,{isAffichage:true,af:Object.assign({isAff:false,isReglages:false,sansTable:false,apps:appsTabs},this.modVals())});
+  if(vue==='reglages')return Object.assign(base,{isAffichage:true,af:Object.assign({isAff:false,isModules:false,sansTable:false,apps:appsTabs},this.reglagesVals())});
   var app=A.CATALOGUE[st.affApp]?st.affApp:'admin',C=A.CATALOGUE[app],blocs=this.affProfils(app),all=[];blocs.forEach(function(b){all=all.concat(b.profils);});
   var cible=st.affCible&&all.some(function(p){return p.cible===st.affCible;})?st.affCible:'tous',prof=all.filter(function(p){return p.cible===cible;})[0]||all[0];
   if(st.affCible&&cible!==st.affCible&&String(st.affCible).indexOf('compte:')===0){prof={cible:st.affCible,nom:st.affCibleNom||st.affCible.slice(7),qui:st.affCibleQui||{}};cible=st.affCible;} /* employé filtré par la recherche : reste choisi */
@@ -113,8 +128,8 @@ Comp.prototype.affVals=function(){var self=this,st=this.state,D=this.D,A=window.
       tousMasq:function(){setM(function(m){cles.forEach(function(k){if(!(A.ITEMS[app][k].verrou==='admin'&&!prof.qui.role))m[k]=true;});});}};});
   var nApp=function(a){var n=0;rows.forEach(function(r){if(r.app===a)Object.keys(r.masques||{}).forEach(function(k){if(r.masques[k]===true)n++;});});return n?n+' masquage'+(n>1?'s':''):'';};
   var busy=!!this._affBusy;
-  appsTabs.forEach(function(t){if(t._a){t.n=nApp(t._a);t.on=t._a===app;}});
-  return Object.assign(base,{isAffichage:true,af:{isAff:true,isModules:false,sansTable:this.affPret===false,q:st.affQ||'',onQ:function(e){self.setState({affQ:e.target.value});},
+  appsTabs.forEach(function(t){if(t._a)t.n=nApp(t._a);});
+  return Object.assign(base,{isAffichage:true,af:{isAff:true,isModules:false,isReglages:false,sansTable:this.affPret===false,q:st.affQ||'',onQ:function(e){self.setState({affQ:e.target.value});},
     apps:appsTabs,
     blocs:blocs.map(function(b){return{nom:b.nom,cherche:!!b.cherche,vide:b.vide||'',profils:b.profils.map(function(p){var on=p.cible===cible;
       return{nom:p.nom,sub:p.sub||'',on:on,n:nOwn(p.cible),go:function(){if(on)return;if(dirty&&!confirm('Quitter ce profil sans enregistrer les changements ?'))return;self.setState({affCible:p.cible,affCibleNom:p.nom,affCibleQui:p.qui,affDraft:null});}};})};}),

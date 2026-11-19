@@ -25,7 +25,7 @@
         ['menu.logistique', 'Logistique', { sec: 'Matériel' }], ['menu.stock', 'Stock', { sec: 'Matériel' }], ['menu.flotte', 'Flotte', { sec: 'Matériel' }], ['menu.outils', 'Outils · QR', { sec: 'Matériel' }],
         ['menu.sondages', 'Sondages clients', { sec: 'Équipe' }], ['menu.communication', 'Communication', { sec: 'Équipe' }], ['menu.temps', 'Temps · Paie', { sec: 'Équipe' }],
         ['menu.stats', 'Stats', { sec: 'Équipe' }], ['menu.comptes', 'Comptes', { sec: 'Équipe' }],
-        ['menu.affichage', 'Affichage des apps', { sec: 'Équipe', verrou: 'admin' }]]),
+        ['menu.affichage', 'Configuration de la plateforme', { sec: 'Configuration', verrou: 'admin' }]]),
       G('accueil', 'Page d’accueil', 'Les tuiles de la page qui s’ouvre après la connexion. La tuile sa-admin reste toujours.', [
         ['accueil.platform', 'Tuile SA Platform'], ['accueil.temps', 'Tuile Temps · Paie', P('menu.temps')], ['accueil.terrain', 'Tuile sa-terrain']]),
       G('sites', 'Sites et inspections · onglets', 'La barre d’onglets en haut de Sites et inspections.', [
