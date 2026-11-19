@@ -64,7 +64,7 @@ function Comp(user){
 }
 Comp.prototype.setState=function(p){this.state=Object.assign({},this.state,typeof p==='function'?p(this.state):p);this.update();};
 Comp.prototype.flash=function(t){var s=this;/* enregistrement réussi : les champs hors fenêtre ne comptent plus comme saisie en cours */if(window.SAGarde&&/enregistr|créé|cré[ée]e|ajouté|envoy|mis à jour|mise à jour|sauvegard|supprim|publi/i.test(String(t||'')))SAGarde.propre();clearTimeout(this._tt);this.state.toast=t;this.update();this._tt=setTimeout(function(){s.state.toast=null;s.update();},2800);};
-Comp.prototype.go=function(m,x){this.setState(Object.assign({mod:m,q:''},x||{}));var el=this.rootRef.current&&this.rootRef.current.querySelector('main');if(el)el.scrollTop=0;};
+Comp.prototype.go=function(m,x){if(this.modBloque&&this.modBloque(m)){this.flash('Module désactivé par l’administration');return;}this.setState(Object.assign({mod:m,q:''},x||{}));var el=this.rootRef.current&&this.rootRef.current.querySelector('main');if(el)el.scrollTop=0;};
 
 Comp.prototype.load=function(){
   var self=this,now=new Date(),wk=iso(mondayOf(now)),wk0=iso(addDays(mondayOf(now),-7)),today=iso(now),since=iso(addDays(now,-120));
@@ -81,13 +81,13 @@ Comp.prototype.load=function(){
     gps:soft('punch_gps_log?select=emp,heure,lieu,date&date=eq.'+today+'&order=heure.desc&limit=30',[]),
     plan:soft('plan?select=id,client,addr,emp&date=eq.'+today,[]),suites:soft('planning_tasks?select=wo_id,date_fin,statut&wo_id=not.is.null&date_fin=gte.'+iso(addDays(now,-120)),[]),pt:soft('planning_tasks?select=id,titre,site_nom,emp&date_debut=lte.'+today+'&date_fin=gte.'+today,[]),
     dem:soft('demandes?select=id,tech,tech_nom,site_nom,type,motif,texte,statut,created_at,has_photo&order=created_at.desc&limit=40',[]),
-    ftAll:soft('feuilles_temps?select=uid,week,total_h',[]),fact:soft('facturation?select=*',[]),proj:soft('projets_excel?select=*',[]),
+    ftAll:soft('feuilles_temps?select=uid,week,total_h',[]),fact:soft('facturation?select=id,id_projet,client,ville,date,odt,po,statut_op,statut_facturation,priorite,technicien',[]),proj:soft('projets_excel?select=*',[]),
     statut:soft('comptes?select=id,statut,email',[]),sond:soft('sondages?select=id,slug,titre,client,actif,created_at&order=created_at.desc',[]),
     geo:soft('punch_gps_log?select=site_id,emp,lat,lng,acc,date,heure,lieu&lat=not.is.null&order=date.desc,heure.desc&limit=800',[]),
     inv:soft('inventaire?select=id,nom,qte,seuil',[]),flotte:soft('flotte?select=id,nom,plaque',[]),
     /* clients et lieux classés : absents tant que la migration 2026-10-05 n'est pas appliquée (null = pas encore disponible) */
     prefs:get('preferences_comptes?select=*&id=eq.'+encodeURIComponent(((self.user&&self.user.id)||'')+':monitoring')).catch(function(){return null;}),
-    cli:get('clients?select=id,nom,interne,notes&order=nom.asc').catch(function(){return null;}),aff:get('affichage_regles?select=*').catch(function(){return null;}),scl:get('sites?select=id,client_id').catch(function(){return[];}),ali:get('lieux_alias?select=lieu,site_id').catch(function(){return[];})};
+    cli:get('clients?select=id,nom,interne,notes&order=nom.asc').catch(function(){return null;}),aff:get('affichage_regles?select=*').catch(function(){return null;}),mods:get('modules_etat?select=*').catch(function(){return null;}),scl:get('sites?select=id,client_id').catch(function(){return[];}),ali:get('lieux_alias?select=lieu,site_id').catch(function(){return[];})};
   var K=Object.keys(Q);
   return Promise.all(K.map(function(k){return Q[k];})).then(function(arr){
     var r={};K.forEach(function(k,i){r[k]=arr[i];});
@@ -106,6 +106,8 @@ Comp.prototype.load=function(){
     self.loadedAt=new Date();self.err='';self.softErr=SOFT_ERR.slice();self.monSync(r.prefs);
     /* affichage configurable : null = table absente (migration pas appliquée) → règles en cache ou tout visible */
     self.affPret=Array.isArray(r.aff);if(self.affPret)self.affSet(r.aff);
+    /* modules activés / désactivés : null = table absente (migration 2026-11-19 pas appliquée) → état en cache ou tout activé */
+    self.modPret=Array.isArray(r.mods);if(self.modPret)self.modSet(r.mods);
     if(!self.state.inspSite){var w=self.D.rel.length?String(self.D.rel[self.D.rel.length-1].site_id):(sites[0]&&sites[0].id);self.state.inspSite=w||null;}
   }).catch(function(e){self.err='Chargement impossible : '+netMsg(e);});
 };
@@ -251,12 +253,11 @@ Comp.prototype.cycleStatut=function(b){var ORD=['À facturer','Facturé','Payé'
   if(cur==='—'||!ORD.includes(cur))nx='À facturer';var self=this;
   rest('PATCH','facturation?id=eq.'+encodeURIComponent(b.id),{statut_facturation:nx,updated_at:new Date().toISOString()})
    .then(function(){self.flash('Statut → '+nx);return self.reloadAll();}).catch(function(e){self.flash('Échec — rien n’a été modifié : '+e.message);});};
-Comp.prototype.exportFact=function(rows){var head=['ID projet','Client','Ville','Date','ODT','PO','Prix calculé','Prix facturé','Écart','Statut','Technicien'];
-  // vrai classeur Excel (.xlsx) : montants numériques, en-têtes en gras, total en bas
-  var M=function(v){return v==null?'':{v:Number(v),s:3};},sum=function(k){return rows.reduce(function(s,r){return s+(Number(r[k])||0);},0);};
-  var data=[head.map(function(h){return{v:h,s:1};})].concat(rows.map(function(r){return[r._idp,r.client,r._ville,r.date,r.odt==='—'?'':r.odt,r.po||'',M(r._calc),M(r._fact),M(r._ec),r.statut==='—'?'':r.statut,r._tech||''];}));
-  data.push([{v:'Total',s:2},'','','','','',{v:sum('_calc'),s:4},{v:sum('_fact'),s:4},{v:sum('_ec'),s:4}]);
-  saveBlob(xlsxBlob([{name:'Facturation',widths:[12,30,16,12,12,12,14,14,12,14,18],rows:data}]),'SoucyAquatik_Facturation_'+iso(new Date())+'.xlsx');this.flash('Fichier Excel téléchargé');};
+/* AUCUN PRIX dans les apps (directive de la direction, 2026-11-19) : l'export garde le suivi des dossiers, sans montant. */
+Comp.prototype.exportFact=function(rows){var head=['ID projet','Client','Ville','Date','ODT','PO','Statut','Technicien'];
+  var data=[head.map(function(h){return{v:h,s:1};})].concat(rows.map(function(r){return[r._idp,r.client,r._ville,r.date,r.odt==='—'?'':r.odt,r.po||'',r.statut==='—'?'':r.statut,r._tech||''];}));
+  data.push([{v:'Total · '+rows.length+' dossier(s)',s:2}]);
+  saveBlob(xlsxBlob([{name:'Facturation',widths:[12,30,16,12,12,12,14,18],rows:data}]),'SoucyAquatik_Facturation_'+iso(new Date())+'.xlsx');this.flash('Fichier Excel téléchargé');};
 Comp.prototype.T=function(code){return this.D.types[code]||this.D.types.GEN||{label:'Bassin',court:'Bassin',norme:'',fields:[]};};
 Comp.prototype.outOf=function(rel){var T=this.T(rel.type_code),o=[];(T.fields||[]).forEach(function(f){var v=rel.vals&&rel.vals[f.key];if(v!=null&&rel.touched&&rel.touched[f.key]&&(v<f.lo||v>f.hi))o.push({f:f,v:v});});return o;};
 Comp.prototype.latest=function(){var m={};this.D.rel.forEach(function(r){m[r.site_id]=r;});return m;};
@@ -976,7 +977,7 @@ Comp.prototype.deleteCompte=function(){var self=this,e=this.state.ce;if(!e||e.is
 Comp.prototype.exportAll=function(){var self=this,T=['sites','contrats','workorders','plan','planning_tasks','plan_match','feuilles_temps','feuilles_temps_envois','releves','demandes','facturation','projets_excel','inventaire','flotte','sorties_inventaire','bons_livraison','rapports_hivernage','punch_gps_log','types_bassin','sondages'];
   this.flash('Préparation de la sauvegarde…');
   Promise.all(T.map(function(t){return get(t+'?select=*').catch(function(e){return{_erreur:netMsg(e)};});})).then(function(r){var o={_app:'sa-admin',_date:new Date().toISOString(),_par:self.user.id,comptes:Array.isArray(self.cptes)?self.cptes:[]};
-    T.forEach(function(t,i){o[t]=r[i];});saveBlob(new Blob([JSON.stringify(o)],{type:'application/json'}),'SoucyAquatik_sauvegarde_'+iso(new Date())+'.json');auditT(self,'EXPORT','sauvegarde','complete');self.flash('Sauvegarde téléchargée ('+T.length+' tables, sans aucun mot de passe)');});};
+    T.forEach(function(t,i){o[t]=sansPrix(t,r[i]);});saveBlob(new Blob([JSON.stringify(o)],{type:'application/json'}),'SoucyAquatik_sauvegarde_'+iso(new Date())+'.json');auditT(self,'EXPORT','sauvegarde','complete');self.flash('Sauvegarde téléchargée ('+T.length+' tables, sans aucun mot de passe)');});};
 /* Export CSV des heures (porté de SA Platform › exportHoursCSV) : une ligne par punch, toutes semaines confondues. */
 Comp.prototype.exportHoursCsv=function(){var self=this;this.flash('Préparation du CSV des heures…');
   var J=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
@@ -992,11 +993,14 @@ Comp.prototype.exportHoursCsv=function(){var self=this;this.flash('Préparation 
    La restauration est NON destructive : elle ne recrée que les lignes MANQUANTES au serveur
    (postRows ignore-duplicates), ne touche jamais une ligne existante, et ne restaure pas les photos. */
 var VAULT_KEY='sa_admin_vault', VAULT_TABLES=['sites','contrats','workorders','plan','planning_tasks','plan_match','feuilles_temps','feuilles_temps_envois','releves','demandes','facturation','projets_excel','inventaire','flotte','sorties_inventaire','bons_livraison','rapports_hivernage','types_bassin','sondages'];
+/* Aucun prix dans les apps (directive 2026-11-19) : les sauvegardes et le coffre retirent les colonnes de prix, même si la base en contient encore. */
+var PRIX_COLS={facturation:['prix_calcule','prix_facture'],inventaire:['prix']};
+function sansPrix(t,list){var c=PRIX_COLS[t];if(!c||!Array.isArray(list))return list;return list.map(function(x){if(!x||typeof x!=='object')return x;var o=Object.assign({},x);c.forEach(function(k){delete o[k];});return o;});}
 function stripPhotosVault(list){if(!Array.isArray(list))return list;try{return list.map(function(rec){if(!rec||typeof rec!=='object')return rec;var copy=null;['files','photos','items_liv','items_ret','photo','signatures','sections'].forEach(function(ch){var arr=rec[ch];if(!Array.isArray(arr))return;var aPhoto=arr.some(function(f){return f&&(f.data||f._b64||(typeof f==='string'&&f.indexOf('data:')===0));});if(!aPhoto)return;if(!copy)copy=Object.assign({},rec);copy[ch]=arr.map(function(f){if(f&&f.data)return{name:f.name||'photo',_stripped:true};if(typeof f==='string'&&f.indexOf('data:')===0)return'_stripped';return f;});});return copy||rec;});}catch(e){return list;}}
 Comp.prototype.vaultList=function(){try{return JSON.parse(localStorage.getItem(VAULT_KEY)||'[]');}catch(e){return[];}};
 Comp.prototype.vaultSnapshot=function(){var self=this;return Promise.all(VAULT_TABLES.map(function(t){return get(t+'?select=*').catch(function(){return null;});})).then(function(r){
     var snap={ts:new Date().toISOString(),data:{}},nonEmpty=0;
-    VAULT_TABLES.forEach(function(t,i){var v=r[i];if(v==null||!Array.isArray(v))return;snap.data[t]=stripPhotosVault(v);if(v.length)nonEmpty++;});
+    VAULT_TABLES.forEach(function(t,i){var v=r[i];if(v==null||!Array.isArray(v))return;snap.data[t]=stripPhotosVault(sansPrix(t,v));if(v.length)nonEmpty++;});
     if(!nonEmpty)return false; /* ne jamais écraser le coffre avec un état vide */
     var hist=self.vaultList();hist.unshift(snap);hist=hist.slice(0,4);
     try{localStorage.setItem(VAULT_KEY,JSON.stringify(hist));}catch(e){try{localStorage.setItem(VAULT_KEY,JSON.stringify(hist.slice(0,2)));}catch(e2){try{localStorage.setItem(VAULT_KEY,JSON.stringify(hist.slice(0,1)));}catch(e3){}}}
@@ -1322,18 +1326,18 @@ var INV_UNITS=['kg','L','unité','sac','boîte'];
 function nbr(v){var n=parseFloat(String(v==null?'':v).replace(',','.'));return isFinite(n)?n:0;}
 function invLow(i){return nbr(i.seuil)>0&&nbr(i.qte)<=nbr(i.seuil);}
 Comp.prototype.loadStock=function(kind,force){var self=this,k=kind==='fl'?'flt':'stk';if(!force&&this[k])return;this[k]='loading';
-  get(kind==='fl'?'flotte?select=*&order=nom.asc':'inventaire?select=*&order=nom.asc').then(function(r){self[k]=r;
+  get(kind==='fl'?'flotte?select=*&order=nom.asc':'inventaire?select=id,nom,categorie,unite,qte,seuil,notes,updated_at&order=nom.asc').then(function(r){self[k]=r;
     if(self.D){if(kind==='fl')self.D.flotte=r.map(function(v){return{id:v.id,nom:v.nom,plaque:v.plaque};});else self.D.inv=r.map(function(i){return{id:i.id,nom:i.nom,qte:i.qte,seuil:i.seuil};});}self.update();})
     .catch(function(e){self[k]='err';self.stkErr=netMsg(e);self.update();});};
 Comp.prototype.openStk=function(kind,id){var L=Array.isArray(this[kind==='fl'?'flt':'stk'])?this[kind==='fl'?'flt':'stk']:[],x=id?L.filter(function(r){return r.id===id;})[0]:null;
-  var f=x?JSON.parse(JSON.stringify(x)):(kind==='fl'?{nom:'',plaque:'',annee:'',couleur:'',km:'',assigne:'',notes:''}:{nom:'',categorie:'chimique',unite:'kg',qte:'',seuil:'',prix:'',notes:''});
+  var f=x?JSON.parse(JSON.stringify(x)):(kind==='fl'?{nom:'',plaque:'',annee:'',couleur:'',km:'',assigne:'',notes:''}:{nom:'',categorie:'chimique',unite:'kg',qte:'',seuil:'',notes:''});
   Object.keys(f).forEach(function(k){if(f[k]==null)f[k]='';});
   this.setState({se:{kind:kind,id:id||null,f:f,delta:'',confirm:false,busy:false}});};
 Comp.prototype.seSet=function(k,v){var se=this.state.se,f=Object.assign({},se.f);f[k]=v;this.setState({se:Object.assign({},se,{f:f,confirm:false})});};
 Comp.prototype.saveStk=function(){var self=this,se=this.state.se;if(!se||se.busy)return;var f=se.f,fl=se.kind==='fl',tb=fl?'flotte':'inventaire';
   if(!String(f.nom).trim()){this.flash(fl?'Le nom du véhicule est requis':'Le nom du produit est requis');return;}
   var body=fl?{nom:String(f.nom).trim(),plaque:String(f.plaque||'').trim().toUpperCase(),annee:String(f.annee||''),couleur:String(f.couleur||'').trim(),km:String(f.km||''),assigne:String(f.assigne||'').trim(),notes:String(f.notes||'').trim()}
-    :{nom:String(f.nom).trim(),categorie:f.categorie||'autre',unite:f.unite||'unité',qte:nbr(f.qte),seuil:nbr(f.seuil),prix:nbr(f.prix),notes:String(f.notes||'').trim()};
+    :{nom:String(f.nom).trim(),categorie:f.categorie||'autre',unite:f.unite||'unité',qte:nbr(f.qte),seuil:nbr(f.seuil),notes:String(f.notes||'').trim()}; /* plus de prix (directive 2026-11-19) */
   body.updated_at=nowIso();this.setState({se:Object.assign({},se,{busy:true})});
   (se.id?rest('PATCH',tb+'?id=eq.'+encodeURIComponent(se.id),body):postRows(tb,[Object.assign({id:pmmId()},body)])).then(function(){
     auditT(self,se.id?'MODIFICATION':'CREATION',tb,se.id||body.nom);self.setState({se:null});self.flash(fl?'Véhicule enregistré':'Produit enregistré');self.loadStock(se.kind,true);})
@@ -1351,16 +1355,15 @@ Comp.prototype.adjustStk=function(sign){var self=this,se=this.state.se;if(!se||!
 Comp.prototype.deleteStk=function(){var self=this,se=this.state.se;if(!se||!se.id)return;if(!se.confirm){this.setState({se:Object.assign({},se,{confirm:true})});return;}var tb=se.kind==='fl'?'flotte':'inventaire';
   rest('DELETE',tb+'?id=eq.'+encodeURIComponent(se.id)).then(function(){auditT(self,'SUPPRESSION',tb,se.id);self.setState({se:null});self.flash('Supprimé');self.loadStock(se.kind,true);}).catch(function(e){self.flash('Échec : '+netMsg(e));});};
 Comp.prototype.exportStock=function(){var L=Array.isArray(this.stk)?this.stk:[],cat={};INV_CATS.forEach(function(c){cat[c[0]]=c[1];});
-  var N=function(v){return{v:nbr(v),s:3};},data=[['Produit','Catégorie','Qté','Unité','Seuil','Prix unitaire','Valeur','Sous le seuil','Notes'].map(function(h){return{v:h,s:1};})];
-  L.forEach(function(i){data.push([i.nom,cat[i.categorie]||i.categorie||'',N(i.qte),i.unite||'',N(i.seuil),N(i.prix),N(nbr(i.qte)*nbr(i.prix)),invLow(i)?'OUI':'',i.notes||'']);});
-  data.push([{v:'Total',s:2},'','','','','',{v:L.reduce(function(s,i){return s+nbr(i.qte)*nbr(i.prix);},0),s:4}]);
+  var N=function(v){return{v:nbr(v),s:3};},data=[['Produit','Catégorie','Qté','Unité','Seuil','Sous le seuil','Notes'].map(function(h){return{v:h,s:1};})];
+  L.forEach(function(i){data.push([i.nom,cat[i.categorie]||i.categorie||'',N(i.qte),i.unite||'',N(i.seuil),invLow(i)?'OUI':'',i.notes||'']);});
   saveBlob(xlsxBlob([{name:'Stock',widths:[30,14,10,8,10,12,12,12,30],rows:data}]),'SoucyAquatik_Stock_'+iso(new Date())+'.xlsx');auditT(this,'EXPORT','inventaire','xlsx');this.flash('Fichier Excel téléchargé');};
 Comp.prototype.stockVals=function(){var self=this,st=this.state,mod=st.mod,names=this.names();
   if(mod==='stock'&&!this.stk)this.loadStock('inv');if(mod==='flotte'&&!this.flt)this.loadStock('fl');
   var cat={};INV_CATS.forEach(function(c){cat[c[0]]=c[1];});var q=norm(st.stkQ),cf=st.stkCat||'tous';
   var inv=Array.isArray(this.stk)?this.stk:[],low=inv.filter(invLow);
   var iRows=inv.filter(function(i){return(!q||norm(i.nom+' '+(i.notes||'')).indexOf(q)>=0)&&(cf==='tous'||(cf==='bas'?invLow(i):i.categorie===cf));}).map(function(i){var lo=invLow(i);
-    return{nom:i.nom,cat:cat[i.categorie]||i.categorie||'—',qte:nbr(i.qte)+' '+(i.unite||''),seuil:nbr(i.seuil)?String(nbr(i.seuil)):'—',prix:nbr(i.prix)?nbr(i.prix).toFixed(2)+' $':'—',val:nbr(i.prix)?(nbr(i.qte)*nbr(i.prix)).toFixed(2)+' $':'—',
+    return{nom:i.nom,cat:cat[i.categorie]||i.categorie||'—',qte:nbr(i.qte)+' '+(i.unite||''),seuil:nbr(i.seuil)?String(nbr(i.seuil)):'—',
       low:lo,fw:lo?700:400,etat:lo?'Sous le seuil':'',open:function(){self.openStk('inv',i.id);}};});
   var fl=Array.isArray(this.flt)?this.flt:[];
   var fRows=fl.filter(function(v){return!q||norm([v.nom,v.plaque,v.assigne,names[v.assigne]].join(' ')).indexOf(q)>=0;}).map(function(v){
@@ -1368,7 +1371,7 @@ Comp.prototype.stockVals=function(){var self=this,st=this.state,mod=st.mod,names
   var out={isStock:mod==='stock',isFlotte:mod==='flotte',stkQ:st.stkQ||'',onStkQ:function(e){self.setState({stkQ:e.target.value});},
     stkCats:[['tous','Tous']].concat([['bas','Sous le seuil ('+low.length+')']],INV_CATS).map(function(c){return Object.assign({label:c[1],go:function(){self.setState({stkCat:c[0]});}},segS(cf===c[0]));}),
     stkAlert:low.length?low.length+' produit(s) sous le seuil d’alerte : '+low.map(function(i){return i.nom;}).join(', '):'',
-    stkSum:inv.length+' produit(s) · valeur en stock : '+inv.reduce(function(s,i){return s+nbr(i.qte)*nbr(i.prix);},0).toFixed(2)+' $',
+    stkSum:inv.length+' produit(s)',
     iRows:iRows,fRows:fRows,fSum:fl.length+' véhicule(s) · '+fl.filter(function(v){return v.assigne;}).length+' assigné(s)',
     stkLoading:(mod==='stock'&&this.stk==='loading')||(mod==='flotte'&&this.flt==='loading'),stkErr:(mod==='stock'&&this.stk==='err')||(mod==='flotte'&&this.flt==='err')?'Lecture impossible : '+(this.stkErr||''):'',
     stkNone:(mod==='stock'&&Array.isArray(this.stk)&&!iRows.length)||(mod==='flotte'&&Array.isArray(this.flt)&&!fRows.length),
@@ -1376,7 +1379,7 @@ Comp.prototype.stockVals=function(){var self=this,st=this.state,mod=st.mod,names
   var se=st.se;out.seOpen=!!se;if(!se)return out;var f=se.f,isFl=se.kind==='fl';
   var F=function(k){return{v:f[k],on:function(e){self.seSet(k,e.target.value);}};};
   return Object.assign(out,{seTitle:se.id?(isFl?f.nom+(f.plaque?' · '+f.plaque:''):f.nom):(isFl?'Nouveau véhicule':'Nouveau produit'),seFl:isFl,seInv:!isFl,
-    sNom:F('nom'),sPlaque:F('plaque'),sAnnee:F('annee'),sCouleur:F('couleur'),sKm:F('km'),sNotes:F('notes'),sQte:F('qte'),sSeuil:F('seuil'),sPrix:F('prix'),
+    sNom:F('nom'),sPlaque:F('plaque'),sAnnee:F('annee'),sCouleur:F('couleur'),sKm:F('km'),sNotes:F('notes'),sQte:F('qte'),sSeuil:F('seuil'),
     sCats:INV_CATS.map(function(c){return{v:c[0],l:c[1],sel:f.categorie===c[0]};}),onSCat:function(e){self.seSet('categorie',e.target.value);},
     sUnits:INV_UNITS.concat(INV_UNITS.indexOf(f.unite)<0&&f.unite?[f.unite]:[]).map(function(u){return{v:u,l:u,sel:f.unite===u};}),onSUnit:function(e){self.seSet('unite',e.target.value);},
     sAssignes:[{v:'',l:'Disponible (non assigné)',sel:!f.assigne}].concat(this.D.comptes.filter(function(c){return self.D.statut[c.id]!=='inactif'||c.id===f.assigne;}).map(function(c){return{v:c.id,l:(c.prenom+' '+c.nom).trim()||c.id,sel:f.assigne===c.id};})),onSAssigne:function(e){self.seSet('assigne',e.target.value);},
@@ -2391,22 +2394,20 @@ Comp.prototype.vals=function(){
     fxSave:function(){self.saveFix();},fxClose:function(){self.setState({fx:null});},fxCloseBg:function(e){if(e.target===e.currentTarget)self.setState({fx:null});}};
 
   // ---- FACTURATION (issue de ton fichier Excel, lue en direct)
-  var money=function(n){return n==null?'—':n.toLocaleString('fr-CA',{style:'currency',currency:'CAD',maximumFractionDigits:0});};
+  /* AUCUN PRIX (directive de la direction, 2026-11-19) : ni prix calculé, ni prix facturé, ni écart — seulement le suivi des dossiers. */
   var pnom={};D.proj.forEach(function(p){pnom[p.id_projet]=p.nom;});
-  var factAll=D.fact.map(function(f){var ec=(f.prix_calcule!=null&&f.prix_facture!=null)?(f.prix_facture-f.prix_calcule):null;
+  var factAll=D.fact.map(function(f){
     return{id:f.id,odt:f.odt||'—',po:f.po,hasPo:!!f.po,noPo:!f.po,client:f.client||pnom[f.id_projet]||f.id_projet,site:f.ville||'—',date:f.date?fdate(f.date):'—',
-      calc:money(f.prix_calcule),fact:money(f.prix_facture),ecart:ec==null?'—':(ec>0?'+':'')+money(ec).replace('-',''),ecBg:ec>0?'var(--color-accent-900)':'transparent',ecFg:ec>0?'#ffffff':(ec<0?'var(--color-text)':'var(--color-neutral-500)'),
-      statut:f.statut_facturation||'—',cycle:function(){self.cycleStatut(f);},_idp:f.id_projet,_ville:f.ville,_calc:f.prix_calcule,_fact:f.prix_facture,_ec:ec,_tech:f.technicien,
+      statut:f.statut_facturation||'—',cycle:function(){self.cycleStatut(f);},_idp:f.id_projet,_ville:f.ville,_tech:f.technicien,
       stBg:{'À facturer':'var(--color-accent-100)','Facturé':'var(--color-text)','Payé':'var(--color-accent-700)'}[f.statut_facturation]||'transparent',stFg:{'Facturé':'var(--color-bg)','Payé':'#ffffff'}[f.statut_facturation]||'var(--color-text)'};});
   var ffilt=st.factFilter||'Tous';
   var factRows=factAll.filter(function(b){return ffilt==='Tous'||b.statut===ffilt;});
-  var sum=function(k){return factAll.reduce(function(s,b){return s+(b[k]||0);},0);};
-  var factKpis=[{l:'Dossiers',v:factAll.length,s:D.proj.length+' projets au répertoire'},{l:'Prix calculé (total)',v:money(sum('_calc')),s:'toutes priorités'},
-    {l:'Prix facturé (total)',v:money(sum('_fact')),s:factAll.filter(function(b){return b._fact!=null;}).length+' facturés'},
-    {l:'Écart net',v:money(sum('_ec')),s:factAll.filter(function(b){return b._ec>0;}).length+' au-dessus du calculé'}];
+  var nSt=function(x){return factAll.filter(function(b){return b.statut===x;}).length;};
+  var factKpis=[{l:'Dossiers',v:factAll.length,s:D.proj.length+' projets au répertoire'},{l:'À facturer',v:nSt('À facturer'),s:'dossiers en attente'},
+    {l:'Facturés',v:nSt('Facturé'),s:nSt('Payé')+' payé(s)'},{l:'PO manquant',v:factAll.filter(function(b){return b.noPo;}).length,s:'à obtenir du client'}];
   var FF=['Tous','À facturer','Facturé','Payé'];
   var factFilters=FF.map(function(x){var n=x==='Tous'?factAll.length:factAll.filter(function(b){return b.statut===x;}).length;return Object.assign({label:x,n:n,go:function(){self.setState({factFilter:x});}},segS(ffilt===x));});
-  var factCount=factRows.length,factTotCalc=money(factRows.reduce(function(s,b){return s+(b._calc||0);},0)),factTotFact=money(factRows.reduce(function(s,b){return s+(b._fact||0);},0)),factTotEcart=money(factRows.reduce(function(s,b){return s+(b._ec||0);},0));
+  var factCount=factRows.length;
   var exportXls=function(){self.exportFact(factRows);};
   var poManquant=factAll.filter(function(b){return b.noPo;}).length;
 
@@ -2419,12 +2420,12 @@ Comp.prototype.vals=function(){
   var cur=function(k){return mod===k||(k==='sites'&&(mod==='inspections'||mod==='hivernage'));};if(mod==='sites'||mod==='inspections'||mod==='hivernage')this._lastSiteCat=mod;
   var navGroups=G.map(function(g){return{label:g[0],items:g[1].map(function(i){return{label:i[1],icon:i[2],badge:i[3]||null,badgeBg:i[4]?'var(--color-text)':'transparent',badgeFg:i[4]?'var(--color-bg)':'var(--color-text)',go:function(){self.go(i[0]==='sites'?(self._lastSiteCat||'inspections'):i[0]);},bar:cur(i[0])?'var(--color-text)':'transparent',bg:cur(i[0])?'var(--color-accent-100)':'transparent',fw:cur(i[0])?600:400};})};});
   var TITLES={affichage:['Affichage des apps','Ce que chaque profil voit dans sa-admin, sa-terrain et le portail client — modules, onglets et sections'],globale:['Vue globale','Charge de l’équipe sur 4 semaines, alertes, travaux à venir et tâches terminées à valider'],monitoring:['Monitoring en direct','Qui est où, activité terrain et relevés hors zone'],inspections:['Sites et inspections','Inspections, rapports, clients, sites et répertoire — tout au même endroit'],operations:['Opérations','Dossiers clients — les visites d’un même contrat restent regroupées'],sites:['Sites et inspections','Inspections, rapports, clients, sites et répertoire — tout au même endroit'],
-    carte:['Carte des sites','Sites et techniciens, d’après les punchs GPS'],sondages:['Sondages clients','Créer, réutiliser, modifier et suivre les sondages de satisfaction'],planning:['Planning équipe','Qui fait quoi — la semaine, 4 semaines ou le diagramme des travaux sur 8 semaines'],temps:['Temps · Paie','Feuilles de temps de l’équipe — corriger, ajouter, approuver, sortir la paie'],comptes:['Comptes','Employés, rôles, droits, statut et mots de passe — partagés avec SA Platform et sa-terrain'],planmatch:['Plan de Match','Le plan de la journée de chaque employé — tâches, véhicule, travaux du jour'],stats:['Stats','Heures de l’équipe, bons de travail, stock — par semaine'],facturation:['Facturation','Depuis ton fichier Excel — ODT, prix, écarts. PO manquant sur '+poManquant+' dossier(s).'],communication:['Communication','Infolettre du lundi, informations, lettres et procédures — internes et externes au département'],logistique:['Logistique','Bons de livraison et sorties d’inventaire — les mêmes que SA Platform et sa-terrain'],outils:['Outils · QR','Outils étiquetés, qui les a en main, emplacements de l’entrepôt et du bureau, étiquettes QR'],stock:['Stock','Inventaire de l’entrepôt — quantités, seuils d’alerte, prix, entrées et sorties'],flotte:['Flotte','Véhicules de l’entreprise et à qui ils sont assignés'],hivernage:['Sites et inspections','Hivernement : listes de contrôle par site — type d’intervention, travaux sur mesure et matériel ; remplies sur le terrain, complétées ici, imprimées ou envoyées au client']};
+    carte:['Carte des sites','Sites et techniciens, d’après les punchs GPS'],sondages:['Sondages clients','Créer, réutiliser, modifier et suivre les sondages de satisfaction'],planning:['Planning équipe','Qui fait quoi — la semaine, 4 semaines ou le diagramme des travaux sur 8 semaines'],temps:['Temps · Paie','Feuilles de temps de l’équipe — corriger, ajouter, approuver, sortir la paie'],comptes:['Comptes','Employés, rôles, droits, statut et mots de passe — partagés avec SA Platform et sa-terrain'],planmatch:['Plan de Match','Le plan de la journée de chaque employé — tâches, véhicule, travaux du jour'],stats:['Stats','Heures de l’équipe, bons de travail, stock — par semaine'],facturation:['Facturation','Suivi des dossiers — ODT, PO et statut (aucun prix). PO manquant sur '+poManquant+' dossier(s).'],communication:['Communication','Infolettre du lundi, informations, lettres et procédures — internes et externes au département'],logistique:['Logistique','Bons de livraison et sorties d’inventaire — les mêmes que SA Platform et sa-terrain'],outils:['Outils · QR','Outils étiquetés, qui les a en main, emplacements de l’entrepôt et du bureau, étiquettes QR'],stock:['Stock','Inventaire de l’entrepôt — quantités, seuils d’alerte, prix, entrées et sorties'],flotte:['Flotte','Véhicules de l’entreprise et à qui ils sont assignés'],hivernage:['Sites et inspections','Hivernement : listes de contrôle par site — type d’intervention, travaux sur mesure et matériel ; remplies sur le terrain, complétées ici, imprimées ou envoyées au client']};
   var soonName={communication:'Communication d’équipe'};
   var qq=st.q.trim().toLowerCase();
   var results=qq.length<2?[]:D.sites.filter(function(s){return(s.nom+s.ville+s.contrat).toLowerCase().indexOf(qq)>=0;}).slice(0,5).map(function(s){return{label:s.nom,sub:s.ville+' · '+self.T(s.type).court,go:function(){self.go('inspections',{inspSite:s.id,inspKey:null});}};})
     .concat(all.filter(function(d){return(d.client+d.objet+d.id).toLowerCase().indexOf(qq)>=0;}).slice(0,3).map(function(d){return{label:d.id+' · '+d.client,sub:d.objet,go:function(){var o={};o[d.id]=true;self.go('operations',{opsOpen:o,opsFilter:'Tous'});}};}));
-  return Object.assign(base,dlgV,edV,sdV,svV,carteV,fxV,{isFacturation:mod==='facturation',factKpis:factKpis,factFilters:factFilters,factRows:factRows,factCount:factCount,factTotCalc:factTotCalc,factTotFact:factTotFact,factTotEcart:factTotEcart,exportXls:exportXls,isSondages:mod==='sondages',isCarte:mod==='carte',carteInfo:carteInfo,navGroups:navGroups,modTitle:TITLES[mod][0],modSub:TITLES[mod][1],results:results,hasResults:results.length>0,
+  return Object.assign(base,dlgV,edV,sdV,svV,carteV,fxV,{isFacturation:mod==='facturation',factKpis:factKpis,factFilters:factFilters,factRows:factRows,factCount:factCount,exportXls:exportXls,isSondages:mod==='sondages',isCarte:mod==='carte',carteInfo:carteInfo,navGroups:navGroups,modTitle:TITLES[mod][0],modSub:TITLES[mod][1],results:results,hasResults:results.length>0,
     hasWarn:!!(this.err||(this.softErr&&this.softErr.length)),retry:function(){self.flash('Rechargement…');self.reloadAll();},
     warnTxt:this.err?(this.err+' — données affichées : dernière lecture réussie à '+pad(this.loadedAt.getHours())+':'+pad(this.loadedAt.getMinutes())+'.'):('Données incomplètes — lecture impossible : '+(this.softErr||[]).join(', ')+'. Les écrans qui en dépendent peuvent paraître vides à tort.'),
     liveTxt:(this.err?'Hors ligne · ':'En direct · ')+JS[now.getDay()]+' '+now.getDate()+' '+MOIS[now.getMonth()].slice(0,4)+'. · '+pad(now.getHours())+':'+pad(now.getMinutes()),isLoading:false,loadErr:this.err,

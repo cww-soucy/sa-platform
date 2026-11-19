@@ -27,6 +27,18 @@ def rep(a,b,c=None):
     if n==0: print('!! introuvable:',a[:60]); return
     M=M.replace(a,b)
 rep('En direct · jeu 1er oct. · 09:42','{{ liveTxt }}')
+# Facturation SANS AUCUN PRIX (directive de la direction, 2026-11-19) : colonnes Prix calculé / Prix facturé / Écart et totaux en $ retirés.
+# Le module garde le suivi des dossiers : ODT, PO, client, date, statut.
+_fa=M.find('value="{{ isFacturation }}"'); _fb=M.find('<!-- ═════ SONDAGES',_fa); assert 0<_fa<_fb, 'bloc Facturation'
+_F=M[_fa:_fb]; _n0=len(_F)
+for _h in ('Prix calculé','Prix facturé','Écart'):
+    _F,_c=re.subn(r'<th[^>]*>'+_h+r'</th>','',_F); assert _c==1, ('en-tête facturation',_h)
+for _v in ('calc','fact'):
+    _F,_c=re.subn(r'<td[^>]*>\{\{ b\.'+_v+r' \}\}</td>\s*','',_F); assert _c==1, ('cellule facturation',_v)
+_F,_c=re.subn(r'<td[^>]*><span[^>]*>\{\{ b\.ecart \}\}</span></td>\s*','',_F); assert _c==1, 'cellule écart'
+_F,_c=re.subn(r'<tfoot>.*?</tfoot>','<tfoot><tr><td colspan="5" style="padding:12px 8px 12px 18px;font:600 16px var(--font-heading);border-top:1px solid var(--color-text)">Total · {{ factCount }} ODT</td></tr></tfoot>',_F,flags=re.S); assert _c==1, 'pied facturation'
+assert not re.search(r'factTot|b\.calc|b\.fact\b|b\.ecart|Prix',_F), 'prix restants dans Facturation'
+M=M[:_fa]+_F+M[_fb:]
 # Recherche du haut : résultats pendant la frappe (oninput ; « change » ne part qu'à Entrée ou à la sortie du champ), Échap ferme la liste
 rep('<input class="input" value="{{ q }}" onChange="{{ onQ }}"','<input class="input" value="{{ q }}" onInput="{{ onQ }}" onKeyDown="{{ onQKey }}" aria-label="Recherche"')
 rep('Geneviève Lemieux','{{ meNom }}'); rep('>GL<','>{{ meIni }}<'); rep('>Coordination<','>{{ meRole }}<')
@@ -522,8 +534,8 @@ STK=('<sc-if value="{{ isStock }}"><div style="display:flex;flex-direction:colum
   +STKHEAD('<span style="font-size:14px">{{ stkSum }}</span><span style="flex:1"></span><button class="btn btn-secondary" onClick="{{ stkExport }}" style="gap:8px"><sa-i n="download" s="17"></sa-i>Excel</button><button class="btn btn-primary" onClick="{{ stkNew }}" style="gap:8px"><sa-i n="plus" s="17"></sa-i>Nouveau produit</button>')
   +SEG('stkCats')
   +'<sc-if value="{{ stkAlert }}"><div role="status" style="padding:10px 14px;border:2px solid var(--color-accent-900);font-weight:600">{{ stkAlert }}</div></sc-if>'
-  +CARD('<table class="table" style="font-size:14px"><thead><tr>'+TH%('padding-left:18px','Produit')+TH%('','Catégorie')+TH%('text-align:right','En stock')+TH%('text-align:right','Seuil')+TH%('text-align:right','Prix')+TH%('text-align:right','Valeur')+TH%('','')+TH%('','')+'</tr></thead><tbody>'
-  '<sc-for list="{{ iRows }}" as="r"><tr><td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px;font-weight:{{ r.fw }}">{{ r.nom }}</td>'+TD%('','{{ r.cat }}')+TD%('text-align:right;font-weight:{{ r.fw }}','{{ r.qte }}')+TD%('text-align:right','{{ r.seuil }}')+TD%('text-align:right','{{ r.prix }}')+TD%('text-align:right','{{ r.val }}')+TD%('font-weight:700','{{ r.etat }}')
+  +CARD('<table class="table" style="font-size:14px"><thead><tr>'+TH%('padding-left:18px','Produit')+TH%('','Catégorie')+TH%('text-align:right','En stock')+TH%('text-align:right','Seuil')+TH%('','')+TH%('','')+'</tr></thead><tbody>'
+  '<sc-for list="{{ iRows }}" as="r"><tr><td style="padding:var(--sa-row,10px) 8px var(--sa-row,10px) 18px;font-weight:{{ r.fw }}">{{ r.nom }}</td>'+TD%('','{{ r.cat }}')+TD%('text-align:right;font-weight:{{ r.fw }}','{{ r.qte }}')+TD%('text-align:right','{{ r.seuil }}')+TD%('font-weight:700','{{ r.etat }}')
   +OPENTD+'</tr></sc-for></tbody></table>','overflow-x:auto')+'</div></sc-if>\n')
 FLT=('<sc-if value="{{ isFlotte }}"><div style="display:flex;flex-direction:column;gap:14px">'
   +STKHEAD('<span style="font-size:14px">{{ fSum }}</span><span style="flex:1"></span><button class="btn btn-primary" onClick="{{ fltNew }}" style="gap:8px"><sa-i n="plus" s="17"></sa-i>Nouveau véhicule</button>')
@@ -537,7 +549,6 @@ SE=WRAP('seOpen','seCloseBg',DLGHEAD('seTitle','seClose')
   +IF('seInv',FL('Nom du produit',INP('sNom.v','sNom.on'))
     +G2(FL('Catégorie',SEL('sCats','onSCat')),FL('Unité',SEL('sUnits','onSUnit')))
     +G2(FL('Qté en stock',INP('sQte.v','sQte.on','number',' min="0" step="0.1"')),FL('Seuil d’alerte',INP('sSeuil.v','sSeuil.on','number',' min="0" step="0.1"')))
-    +FL('Prix unitaire ($)',INP('sPrix.v','sPrix.on','number',' min="0" step="0.01"'))
     +IF('seCanAdj','<div style="border:1px solid var(--color-divider);padding:12px;display:flex;flex-direction:column;gap:8px"><b>Entrée ou sortie de stock</b><div style="display:flex;gap:8px;align-items:center">'
       +'<input class="input" type="number" min="0" step="0.1" value="{{ seDelta }}" onInput="{{ onSeDelta }}" aria-label="Quantité à ajuster" placeholder="Quantité" style="max-width:140px">'
       +BTNX('btn-secondary','seIn','+ Entrée')+BTNX('btn-secondary','seOut','− Sortie')+'</div><div style="font-size:13px">Appliqué tout de suite sur la quantité du serveur (sans écraser un mouvement fait ailleurs au même moment).</div></div>'))

@@ -16,7 +16,7 @@
   var LIB = { ok: 'Conforme', watch: 'À surveiller', action: 'Action requise', na: 'Sans objet' };
   var LIB_CLIENT = { ok: 'Conforme', watch: 'À surveiller', action: 'Intervention', na: 'Sans objet' };
   /* Droits par niveau d'accès (grille 5a-2) ; un compte client peut les surcharger (client_comptes.niveaux) */
-  var DROITS = ['etat', 'releves', 'rqep', 'plans', 'historique', 'rapports', 'interventions', 'exports', 'factures'];
+  var DROITS = ['etat', 'releves', 'rqep', 'plans', 'historique', 'rapports', 'interventions', 'exports']; /* plus de « factures » : aucun prix dans les apps (2026-11-19) */
   var NIVEAUX = {
     operateur: { etat: true, releves: true, rqep: true, plans: true, historique: false, rapports: false, interventions: false, exports: false, factures: false },
     gestionnaire: { etat: true, releves: true, rqep: true, plans: true, historique: true, rapports: true, interventions: true, exports: true, factures: false },
