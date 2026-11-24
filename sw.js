@@ -157,7 +157,8 @@
 // v85 — Rapport imprimable d'hivernement (nouvelle mise en page) : les polices Inter et Barlow Condensed
 // (/fonts/*.woff2) sont gardées en cache dès l'installation, pour imprimer ou produire le PDF sans réseau.
 // v86 — Sortie d'inventaire imprimable dans la nouvelle DA (mêmes polices locales, gardées en cache pour l'impression hors ligne).
-var CACHE_NAME = 'sa-platform-v86';
+// v87 — Bon de livraison imprimable dans la nouvelle DA (mêmes polices locales que la sortie d'inventaire).
+var CACHE_NAME = 'sa-platform-v87';
 var FONTES = ['/fonts/inter-400.woff2', '/fonts/inter-500.woff2', '/fonts/inter-600.woff2', '/fonts/inter-700.woff2',
   '/fonts/barlow-condensed-600.woff2', '/fonts/barlow-condensed-700.woff2'];
 

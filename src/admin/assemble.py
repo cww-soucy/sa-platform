@@ -1061,6 +1061,7 @@ qjs=open(os.path.join(SRC,'vendor','qrcodejs','qrcode.min.js'),encoding='utf-8')
 insp=open(os.path.join(SRC,'inspection','model.js'),encoding='utf-8').read(); assert '</script' not in insp.lower()
 hiv=open(os.path.join(SRC,'hivernage','checklist.js'),encoding='utf-8').read(); assert '</script' not in hiv.lower()
 sortie=open(os.path.join(SRC,'impression','sortie-inventaire.js'),encoding='utf-8').read(); assert '</script' not in sortie.lower()
+bonliv=open(os.path.join(SRC,'impression','bon-livraison.js'),encoding='utf-8').read(); assert '</script' not in bonliv.lower()
 aff=open(os.path.join(SRC,'affichage','affichage.js'),encoding='utf-8').read(); assert '</script' not in aff.lower()
 garde=open(os.path.join(SRC,'garde','garde.js'),encoding='utf-8').read(); assert '</script' not in garde.lower()
 rt=open(os.path.join(HERE,'runtime.js'),encoding='utf-8').read(); app=open(os.path.join(HERE,'app.js'),encoding='utf-8').read()
@@ -1138,7 +1139,7 @@ button{font-family:inherit}a{color:var(--color-accent-700)}
 <style>'''+lcss+'''</style>
 <script>'''+ljs+'''</script>
 <script>'''+qjs+'''</script>
-<script>'''+icons+'''</script><script>window.SA_LOGO='''+repr(LOGO)+''';</script><script>'''+insp+'''</script><script>'''+hiv+'''</script><script>'''+sortie+'''</script><script>'''+aff+'''</script><script>'''+garde+'''</script><script>'''+rt+'''</script><script>'''+app+'''</script>
+<script>'''+icons+'''</script><script>window.SA_LOGO='''+repr(LOGO)+''';</script><script>'''+insp+'''</script><script>'''+hiv+'''</script><script>'''+sortie+'''</script><script>'''+bonliv+'''</script><script>'''+aff+'''</script><script>'''+garde+'''</script><script>'''+rt+'''</script><script>'''+app+'''</script>
 </body></html>'''
 open(os.path.join(OUT,'admin.html'),'w',encoding='utf-8').write(html)
 print('taille',len(html),'| règles',len(css))
