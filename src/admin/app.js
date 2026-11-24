@@ -71,11 +71,13 @@ Comp.prototype.load=function(){
   SOFT_ERR=[];
   /* Requêtes nommées : chaque résultat est lu par son nom (plus par sa position), pour qu'ajouter ou retirer une
      requête ne décale plus jamais les autres en silence. */
+  /* Lenteur (diagnostic 24/11/2026) : la photo d'un relevé (base64, ~10 Mo pour 120 jours) n'est PLUS chargée ici —
+     ce chargement est relancé chaque minute. Elle est lue à la demande, à l'ouverture de la visite (photoReleve, inspections.js). */
   var Q={sites:get('sites?select=id,nom,addr,type,notes,tel,email,bassins,gps'),contrats:get('contrats?select=site_id,type_code,code'),types:get('types_bassin?select=*'),
     comptes:soft('comptes_publics?select=id,prenom,nom,role,dept,tel',[]),
     ft:soft('feuilles_temps?select=uid,emp,week,days,total_h&week=gte.'+iso(addDays(now,-56)),[]),
     wo:soft('workorders?select=id,client,site,type,priorite,status,date,heure_debut,heure_fin,ordre,assigne,descr,groupe_id&order=date.asc',[]),
-    rel:get('releves?select=id,site_id,site_nom,tech,tech_nom,date,heure,type_code,vals,touched,checks,prods,note,hors_zone,bassin,points,actions,statut,source,saisi_par,source_detail,resume,publiee_le,envoyee_le,photo&date=gte.'+since+'&order=date.asc,heure.asc')
+    rel:get('releves?select=id,site_id,site_nom,tech,tech_nom,date,heure,type_code,vals,touched,checks,prods,note,hors_zone,bassin,points,actions,statut,source,saisi_par,source_detail,resume,publiee_le,envoyee_le,updated_at&date=gte.'+since+'&order=date.asc,heure.asc')
       .catch(function(){return soft('releves?select=id,site_id,site_nom,tech,tech_nom,date,heure,type_code,vals,touched,checks,prods,note,hors_zone,bassin&date=gte.'+since+'&order=date.asc,heure.asc',[]);}),
     cat:get('inspection_points?select=*').catch(function(){return[];}),gab:get('gabarits_hivernage?select=*').catch(function(){return[];}),adj:get('ouvrage_ajustements?select=*&actif=eq.true').catch(function(){return[];}),
     gps:soft('punch_gps_log?select=emp,heure,lieu,date&date=eq.'+today+'&order=heure.desc&limit=30',[]),
@@ -998,7 +1000,9 @@ var PRIX_COLS={facturation:['prix_calcule','prix_facture'],inventaire:['prix']};
 function sansPrix(t,list){var c=PRIX_COLS[t];if(!c||!Array.isArray(list))return list;return list.map(function(x){if(!x||typeof x!=='object')return x;var o=Object.assign({},x);c.forEach(function(k){delete o[k];});return o;});}
 function stripPhotosVault(list){if(!Array.isArray(list))return list;try{return list.map(function(rec){if(!rec||typeof rec!=='object')return rec;var copy=null;['files','photos','items_liv','items_ret','photo','signatures','sections'].forEach(function(ch){var arr=rec[ch];if(!Array.isArray(arr))return;var aPhoto=arr.some(function(f){return f&&(f.data||f._b64||(typeof f==='string'&&f.indexOf('data:')===0));});if(!aPhoto)return;if(!copy)copy=Object.assign({},rec);copy[ch]=arr.map(function(f){if(f&&f.data)return{name:f.name||'photo',_stripped:true};if(typeof f==='string'&&f.indexOf('data:')===0)return'_stripped';return f;});});return copy||rec;});}catch(e){return list;}}
 Comp.prototype.vaultList=function(){try{return JSON.parse(localStorage.getItem(VAULT_KEY)||'[]');}catch(e){return[];}};
-Comp.prototype.vaultSnapshot=function(){var self=this;return Promise.all(VAULT_TABLES.map(function(t){return get(t+'?select=*').catch(function(){return null;});})).then(function(r){
+/* Le coffre retire les photos : ne pas les télécharger du tout (colonnes photo en base64, plusieurs Mo). */
+var VAULT_SEL={releves:'id,site_id,site_nom,tech,tech_nom,date,heure,type_code,vals,touched,checks,prods,note,hors_zone,created_at,updated_at,bassin,points,actions,statut,source,saisi_par,source_detail,resume,publiee_le,envoyee_le',demandes:'id,site_id,site_nom,tech,tech_nom,type,motif,texte,statut,created_at,updated_at,has_photo'};
+Comp.prototype.vaultSnapshot=function(){var self=this;return Promise.all(VAULT_TABLES.map(function(t){return get(t+'?select='+(VAULT_SEL[t]||'*')).catch(function(){return null;});})).then(function(r){
     var snap={ts:new Date().toISOString(),data:{}},nonEmpty=0;
     VAULT_TABLES.forEach(function(t,i){var v=r[i];if(v==null||!Array.isArray(v))return;snap.data[t]=stripPhotosVault(sansPrix(t,v));if(v.length)nonEmpty++;});
     if(!nonEmpty)return false; /* ne jamais écraser le coffre avec un état vide */
