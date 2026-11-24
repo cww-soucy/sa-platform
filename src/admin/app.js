@@ -1089,7 +1089,18 @@ Comp.prototype.openDoc=function(kind,id){var me=(this.user.prenom+' '+this.user.
   /* Hivernage : un nouveau rapport est la liste de contrôle « Hivernement » (src/hivernage/checklist.js) ; les anciens rapports de pré-hivernage gardent leur éditeur */
   var H=window.SAHiv,hv=null,hvPh=[];
   if(kind==='hv'&&(!x||H.isChecklist(x))){hv=x?H.fromReport(x):H.blank({date:today});hvPh=x?JSON.parse(JSON.stringify(H.photosOf(x))):[];if(!x)f=Object.assign(H.toReport(hv,{status:'brouillon'}),{status:'brouillon'});}
-  this.setState({de:{kind:kind,id:id||null,f:f,hv:hv,hvPh:hvPh,confirm:false,busy:false}});};
+  /* ph0 : photos du bon telles qu'ouvertes — ce que le terrain ajoute ensuite (signature du client) est repris à l'enregistrement */
+  this.setState({de:{kind:kind,id:id||null,f:f,hv:hv,hvPh:hvPh,ph0:kind==='bl'?(f.photos||[]).map(phKey):null,confirm:false,busy:false}});};
+function phKey(p){return p&&typeof p==='object'?[p.name||'',p.addedAt||'',String(p.data||p.url||'').slice(-48)].join('|'):String(p);}
+/* Bon de livraison : le bureau a pu l'ouvrir AVANT que le livreur fasse signer le client. On relit la ligne juste avant
+   d'écrire : les photos ajoutées entre-temps (signature) sont gardées, et un bon livré au serveur reste livré
+   (avec l'heure et le nom du livreur) — sauf « Remettre en brouillon », choisi exprès. */
+function blFusion(f,srv,ph0,extra){if(!srv)return f;f=Object.assign({},f);var vus={};(ph0||[]).forEach(function(k){vus[k]=1;});(f.photos||[]).forEach(function(p){vus[phKey(p)]=1;});
+  var neuves=(srv.photos||[]).filter(function(p){return!vus[phKey(p)];});if(neuves.length)f.photos=(f.photos||[]).concat(neuves);
+  var expres=extra&&extra.status==='brouillon';
+  if(!expres&&srv.status==='livre'){f.status='livre';['livre_at','livre_by','livre_par_nom'].forEach(function(c){if(srv[c]!=null)f[c]=srv[c];});}
+  else if(!expres&&srv.status==='en_route'&&f.status==='brouillon')f.status='en_route';
+  return f;}
 Comp.prototype.deHv=function(fn){var de=JSON.parse(JSON.stringify(this.state.de));fn(de.hv,de);de.confirm=false;this.setState({de:de});};
 /* Site choisi : rattache le site, son client et son courriel (destinataire de « Envoyer au client ») */
 Comp.prototype.hvSiteOf=function(nom){return this.D.sites.filter(function(x){return norm(x.nom)===norm(nom);})[0]||null;};
@@ -1104,7 +1115,8 @@ Comp.prototype.saveDoc=function(extra,msg,hvOver,apres){var self=this,de=this.st
   f.updated_at=nowIso();delete f.id;var nid=de.id||pmmId();
   var fin=function(){auditT(self,de.id?'MODIFICATION':'CREATION',tb,de.id||'nouveau');self.setState({de:null});self.flash(msg||(de.hv&&window.SAHiv.estInspD(de.hv)?'Rapport d’inspection enregistré':DOC[k].lbl+' enregistré'));self.loadDocs(k,true);if(apres)apres(Object.assign({},f,{id:nid}));};
   this.setState({de:Object.assign({},de,{busy:true})});
-  (de.id?rest('PATCH',tb+'?id=eq.'+encodeURIComponent(de.id),f):postRows(tb,[Object.assign({id:nid,created_by:this.user.id,created_at:nowIso()},f)]))
+  var relire=k==='bl'&&de.id?get(tb+'?id=eq.'+encodeURIComponent(de.id)+'&select=status,photos,livre_at,livre_by,livre_par_nom').then(function(r){return blFusion(f,r[0],de.ph0,extra);}):Promise.resolve(f);
+  relire.then(function(f2){f=f2;return de.id?rest('PATCH',tb+'?id=eq.'+encodeURIComponent(de.id),f):postRows(tb,[Object.assign({id:nid,created_by:self.user.id,created_at:nowIso()},f)]);})
     .then(fin).catch(function(e){self.setState({de:Object.assign({},self.state.de,{busy:false})});self.flash('Échec — rien n’a été modifié : '+netMsg(e));});};
 Comp.prototype.deleteDoc=function(){var self=this,de=this.state.de;if(!de||!de.id)return;if(!de.confirm){this.setState({de:Object.assign({},de,{confirm:true})});return;}
   rest('DELETE',DOC[de.kind].t+'?id=eq.'+encodeURIComponent(de.id)).then(function(){auditT(self,'SUPPRESSION',DOC[de.kind].t,de.id);self.setState({de:null});self.flash('Supprimé');self.loadDocs(de.kind,true);}).catch(function(e){self.flash('Échec : '+netMsg(e));});};

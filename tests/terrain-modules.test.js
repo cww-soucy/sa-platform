@@ -121,13 +121,60 @@ test('logistique : bon en attente signé par le client → marqué livré sans �
   await noQueue(page);
   const w = db.writes('bons_livraison')[0];
   assert.equal(w.method, 'PATCH', 'mise à jour partielle, jamais la ligne entière');
-  assert.match(w.query, /status=neq\.livre/);
+  assert.match(w.query, /id=eq\.bl-a/);
   const b = db.rows('bons_livraison').find((x) => x.id === 'bl-a');
   assert.equal(b.status, 'livre');
   assert.equal(b.livre_par_nom, 'Kaël Test');
   assert.equal(b.created_by, 'cwweil', 'champs du bureau intacts');
   assert.equal(b.photos[0].name, 'Signature — Julie Côté');
   assert.match(b.photos[0].data, /^data:image\/jpeg/);
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+// Correctif 24/11 : le bureau avait « Marqué livré » le bon pendant que le client signait → la signature était ignorée.
+test('logistique : bon déjà marqué livré par le bureau → la signature du client est quand même ajoutée au bon', async () => {
+  const { page, db, errors } = await openApp(browser, srv.url, { app: 'terrain', user: USER, tables: base() });
+  await ready(page);
+  await T(page, () => { window.__terrain.vals().goLog(); window.__terrain.setState({ logTab: 'bon' }); });
+  await page.waitForFunction(() => window.__terrain.bons.length === 1);
+  await page.getByRole('button', { name: /SA-20260928-111/ }).click();
+  // pendant ce temps, le bureau marque le bon livré et ajoute une photo
+  Object.assign(db.rows('bons_livraison').find((x) => x.id === 'bl-a'), { status: 'livre', livre_by: 'cwweil', livre_par_nom: 'Bureau SA', livre_at: '2026-11-23T13:43:35Z',
+    photos: [{ name: 'Photo du bureau', data: 'data:image/jpeg;base64,AAA' }] });
+  await page.getByPlaceholder('Ex. responsable de la piscine').fill('Julie Côté');
+  await sign(page);
+  await page.getByRole('button', { name: 'Confirmer la signature' }).click();
+  await noQueue(page);
+  const b = db.rows('bons_livraison').find((x) => x.id === 'bl-a');
+  assert.deepEqual(b.photos.map((p) => p.name), ['Photo du bureau', 'Signature — Julie Côté'], 'signature ajoutée, photo du bureau gardée');
+  assert.match(b.photos[1].data, /^data:image\/jpeg/);
+  assert.equal(b.livre_par_nom, 'Bureau SA', 'livraison déjà enregistrée par le bureau : inchangée');
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+// 24/11 : la signature avait été écrasée au serveur (bon réécrit au bureau) ; le téléphone la garde, on la remet sur le bon.
+test('profil : récupérer une signature gardée sur le téléphone et la remettre sur le bon', async () => {
+  const { page, db, errors } = await openApp(browser, srv.url, { app: 'terrain', user: USER, tables: base() });
+  await ready(page);
+  const data = await T(page, () => new Promise((ok) => { const c = document.createElement('canvas'); c.width = 300; c.height = 120; const g = c.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, 300, 120); g.beginPath(); for (let i = 0; i < 60; i++) g.lineTo(i * 5, 60 + Math.sin(i) * 40); g.stroke();
+    const v = c.toDataURL('image/jpeg', 0.7), r = indexedDB.open('sa_terrain_photos', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('p');
+    r.onsuccess = () => { const t = r.result.transaction('p', 'readwrite'); t.objectStore('p').put({ v, t: Date.now() - 864e5 }, 'psig1'); t.oncomplete = () => ok(v); }; }));
+  await T(page, () => window.__terrain.go('profil'));
+  await page.getByRole('button', { name: 'Récupérer une signature' }).click();
+  await page.getByRole('button', { name: /^Image du / }).click();
+  await page.getByRole('button', { name: /SA-20260901-222 · Ancien client/ }).click();
+  await page.locator('.field').filter({ hasText: 'Nom du signataire' }).locator('input').fill('Julie Côté');
+  await page.getByRole('button', { name: 'Remettre la signature sur le bon' }).click();
+  await page.waitForFunction(() => /Signature remise sur le bon SA-20260901-222/.test(window.__terrain.state.toast || ''));
+  const b = db.rows('bons_livraison').find((x) => x.id === 'bl-b');
+  assert.equal(b.photos.length, 1);
+  assert.equal(b.photos[0].name, 'Signature — Julie Côté');
+  assert.equal(b.photos[0].data, data);
+  assert.equal(b.status, 'livre', 'rien d’autre ne change');
   assert.deepEqual(errors, []);
   await page.close();
 });

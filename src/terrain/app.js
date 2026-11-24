@@ -66,6 +66,8 @@ var PH={mem:{},keys:{},
   tx:function(mode,fn){return PH.open().then(function(db){if(!db)return null;return new Promise(function(ok){try{var t=db.transaction('p',mode),res=fn(t.objectStore('p'));t.oncomplete=function(){ok(res&&res.result!==undefined?res.result:true);};t.onerror=t.onabort=function(){ok(null);};}catch(e){ok(null);}});});},
   put:function(k,v){PH.mem[k]=v;return PH.tx('readwrite',function(st){return st.put({v:v,t:Date.now()},k);});},
   get:function(k){if(PH.mem[k]!=null)return Promise.resolve(PH.mem[k]);return PH.tx('readonly',function(st){return st.get(k);}).then(function(r){var v=r&&r.v||null;if(v)PH.mem[k]=v;return v;});},
+  /* Toutes les photos gardées sur ce téléphone (récupération d'une signature) */
+  all:function(){return PH.tx('readonly',function(st){var out=[],c=st.openCursor();c.onsuccess=function(){var cur=c.result;if(!cur)return;out.push({k:cur.key,v:cur.value&&cur.value.v,t:cur.value&&cur.value.t||0});cur.continue();};return{get result(){return out;}};}).then(function(r){return Array.isArray(r)?r:[];});},
   /* Efface les photos de plus de 21 jours qui ne sont plus référencées nulle part */
   purge:function(keep){var lim=Date.now()-21*864e5;return PH.tx('readwrite',function(st){var c=st.openCursor();c.onsuccess=function(){var cur=c.result;if(!cur)return;if(!keep[cur.key]&&(cur.value&&cur.value.t||0)<lim)cur.delete();cur.continue();};});}};
 function isPh(x){return typeof x==='string'&&x.slice(0,11)==='data:image/'&&x.length>1000;}
@@ -443,9 +445,18 @@ Comp.prototype.flush=function(){var self=this,q=jget('sa_terrain_queue',[]);if(!
   if(item._m==='TASK'){envoyerTache(item,0).then(function(){clearTimeout(to);self._fq=false;var cur=jget('sa_terrain_queue',[]).filter(function(x){return x.id!==item.id;});jset('sa_terrain_queue',cur);self.queueN=cur.length;self.sendErr='';self.update();if(cur.length)self.flush();})
     .catch(function(){clearTimeout(to);self._fq=false;self.queueN=q.length;self.update();});return;}
   phIn(item._m==='PATCH'?item.body:body0).then(function(body){
+  /* _addPh (signature du client) : on relit le bon. Ses photos actuelles sont gardées et la signature ajoutée ;
+     s'il est déjà livré (marqué par le bureau), seule la signature est ajoutée, le reste n'est pas touché. */
+  if(!item._addPh)return{body:body,q:item._q};
+  return get(tbl+'?'+item._q+'&select=status,photos').then(function(rows){var cur=rows[0];if(!cur)return{body:null};
+    var have=cur.photos||[],add=(body.photos||[]).filter(function(p){return!have.some(function(h){return h&&h.name===p.name&&h.addedAt===p.addedAt;});}),ph=have.concat(add);
+    return cur.status==='livre'?{body:{photos:ph,updated_at:body.updated_at},q:item._q}:{body:Object.assign({},body,{photos:ph}),q:item._q};});
+  }).then(function(x){var body=x.body;
+  /* bon introuvable (supprimé par le bureau) : rien à envoyer */
+  if(!body){clearTimeout(to);self._fq=false;var c0=jget('sa_terrain_queue',[]).filter(function(y){return y.id!==item.id;});jset('sa_terrain_queue',c0);self.queueN=c0.length;self.update();if(c0.length)self.flush();return;}
   /* _m:'PATCH' → mise à jour partielle (ex. bon de livraison validé) : on ne réécrit jamais toute la ligne,
      pour ne pas écraser ce que le bureau a modifié entre-temps. */
-  var req=item._m==='PATCH'?fetch(SB+'/rest/v1/'+tbl+'?'+item._q,{method:'PATCH',headers:Object.assign({'Content-Type':'application/json',Prefer:'return=minimal'},H),body:JSON.stringify(body),signal:ac&&ac.signal}):post(tbl,body,'resolution=merge-duplicates,return=minimal',ac&&ac.signal);
+  var req=item._m==='PATCH'?fetch(SB+'/rest/v1/'+tbl+'?'+x.q,{method:'PATCH',headers:Object.assign({'Content-Type':'application/json',Prefer:'return=minimal'},H),body:JSON.stringify(body),signal:ac&&ac.signal}):post(tbl,body,'resolution=merge-duplicates,return=minimal',ac&&ac.signal);
   return req.then(function(r){clearTimeout(to);self._fq=false;
     if(r.ok){var cur=jget('sa_terrain_queue',[]).filter(function(x){return x.id!==item.id;});jset('sa_terrain_queue',cur);self.queueN=cur.length;
       self.sendErr='';if(tbl==='releves'){var s=Object.assign({},self.state.sync);s[item._sk||item.site_id]='ok';self.state=Object.assign({},self.state,{sync:s});self.persist();}else if(tbl==='demandes'){self.loadDem();}else if(tbl==='rapports_hivernage'){self.loadHiv();}else if(tbl==='bons_livraison'){self.loadLog();}self.update();if(cur.length)self.flush();}
@@ -513,7 +524,7 @@ Comp.prototype.confirmSig=function(){var b=this.curBon();if(!b)return;var nom=St
   if(!nom){this.flash('Inscrivez le nom du signataire');return;}if(!this._sig.strokes.some(function(s){return s.length>1;})){this.flash('Faites signer dans le cadre');return;}
   var c=this.sigRef.current,out=document.createElement('canvas');out.width=c.width;out.height=c.height;var g=out.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,out.width,out.height);g.drawImage(c,0,0);
   var now=new Date(),ph={data:out.toDataURL('image/jpeg',0.7),name:'Signature — '+nom,addedBy:this.user.id,addedAt:now.toISOString()};
-  this.livrer(b,now,{photos:(b.photos||[]).concat([ph])},{_signedBy:nom});};
+  this.livrer(b,now,{photos:(b.photos||[]).concat([ph])},{_signedBy:nom},ph);};
 /* Livraison validée sans signature (client absent, dépôt convenu) : deux touches, pour ne pas le faire par erreur */
 Comp.prototype.validerSansSig=function(){var b=this.curBon();if(!b||b.status==='livre')return;if(!this.state.noSig){this.setState({noSig:true});return;}
   this.setState({noSig:false});this.livrer(b,new Date(),{},{_noSig:true});};
@@ -522,8 +533,11 @@ Comp.prototype.enRoute=function(){var b=this.curBon();if(!b||b.status==='livre'|
   if(b._new){var full=Object.assign({},b,patch,{_t:'bons_livraison'});delete full._new;delete full._signedBy;delete full._signedAt;delete full._noSig;this.enqueue(full);delete b._new;}
   else this.enqueue({_t:'bons_livraison',_m:'PATCH',_q:'id=eq.'+encodeURIComponent(b.id)+'&status=neq.livre',id:'blr-'+b.id,body:patch});
   Object.assign(b,patch);this.update();this.flash('Bon '+b.no_bon+' en route — le bureau suit la livraison');};
-Comp.prototype.livrer=function(b,now,extra,local){var patch=Object.assign({status:'livre',livre_at:now.toISOString(),livre_by:this.user.id,livre_par_nom:this.me.nom,updated_at:now.toISOString()},extra);
+Comp.prototype.livrer=function(b,now,extra,local,sigPh){var patch=Object.assign({status:'livre',livre_at:now.toISOString(),livre_by:this.user.id,livre_par_nom:this.me.nom,updated_at:now.toISOString()},extra);
   if(b._new){var full=Object.assign({},b,patch,{_t:'bons_livraison'});delete full._new;delete full._signedBy;delete full._signedAt;delete full._noSig;this.enqueue(full);}
+  /* Signature : _addPh → à l'envoi, la signature est AJOUTÉE aux photos du serveur (relues), même si le bureau
+     a déjà marqué le bon livré — elle n'est plus jamais perdue (voir flush) */
+  else if(sigPh)this.enqueue({_t:'bons_livraison',_m:'PATCH',_addPh:true,_q:'id=eq.'+encodeURIComponent(b.id),id:'bl-'+b.id,body:Object.assign({},patch,{photos:[sigPh]})});
   else this.enqueue({_t:'bons_livraison',_m:'PATCH',_q:'id=eq.'+encodeURIComponent(b.id)+'&status=neq.livre',id:'bl-'+b.id,body:patch});
   this.notifier('livraison',b.id);
   Object.assign(b,patch,local,{_signedAt:hhmm(now)});delete b._new;this.update();this.flash('Bon '+b.no_bon+' marqué livré');};
@@ -856,10 +870,36 @@ Comp.prototype.vals=function(){
     planDays:days.map(function(d,i){return Object.assign({dow:d.dow,num:d.num,go:function(){self.setState({planDay:i});}},segStyle(st.planDay===i));}),
     planTitle:dsel.title,planItems:dsel.items.map(function(it){var s=siteById(it[1])||pseudoSite(it[1],'');var td=it[4]&&!it[4].vide?todoView(it[4],it[0],self):null;return{h:it[0]||'—',nom:s.nom,ville:s.ville,tache:it[2],rec:it[3],hasTodo:!!td,todo:td||{tasks:[]}};}),recurrences:Object.keys(recMap).map(function(k){return recMap[k];}),
     myWeek:this.hours==null?'—':fr(Math.round(this.hours*100)/100),me:this.me,queueLbl:this.queueN?this.queueN+' fiche(s) à envoyer':'Rien en attente',
-    bureauTel:String(this.bureau||'').replace(/[^\d+]/g,''),logout:function(){jetonFin();localStorage.removeItem('sa_terrain_user');location.reload();},mdp:this.mdpVals(),
+    bureauTel:String(this.bureau||'').replace(/[^\d+]/g,''),logout:function(){jetonFin();localStorage.removeItem('sa_terrain_user');location.reload();},mdp:this.mdpVals(),rec:this.recVals(),
     nTabs:TABS.length,tabs:TABS.map(function(t){return{label:t[1],icon:t[2],go:function(){self.go(t[0]);},fg:tabOf===t[0]?'var(--color-text)':'var(--color-neutral-600)',fw:tabOf===t[0]?600:400,bar:tabOf===t[0]?'inset 0 3px 0 var(--color-text)':'none',dot:t[0]==='fiche'&&!!cj};})
   },stepV||{});};
 /* Profil : l'employé change son propre mot de passe (RPC changer_mdp, demande le réseau). Champs gardés hors de state : jamais persistés. */
+/* ---------- Récupérer une signature (Profil) ----------
+   Chaque signature faite au doigt reste gardée dans ce téléphone (IndexedDB) environ 21 jours. Si elle a disparu du bon
+   (bon réécrit par une vieille copie au bureau), on la choisit ici et on la remet sur le bon : elle est AJOUTÉE à ses photos,
+   rien d'autre n'est modifié. */
+Comp.prototype.recOpen=function(){var self=this;this.rec={busy:true,items:[],bons:[],sel:null,bon:'',nom:'',msg:''};this.update();
+  Promise.all([PH.all(),get('bons_livraison?select=id,no_bon,client,date,status&order=date.desc&limit=40')]).then(function(r){var lim=Date.now()-22*864e5;
+    self.rec.items=r[0].filter(function(x){return isPh(x.v)&&x.t>=lim;}).sort(function(a,b){return b.t-a.t;}).slice(0,40);self.rec.bons=r[1]||[];self.rec.busy=false;
+    if(!self.rec.items.length)self.rec.msg='Aucune signature ni photo gardée sur ce téléphone.';self.update();})
+  .catch(function(){self.rec.busy=false;self.rec.msg='Le réseau est requis pour récupérer une signature.';self.update();});};
+Comp.prototype.recSend=function(){var self=this,R=this.rec;if(!R||R.busy)return;var it=R.items.filter(function(x){return x.k===R.sel;})[0],nom=String(R.nom||'').trim();
+  if(!it){R.msg='Touchez la signature à remettre';this.update();return;}if(!R.bon){R.msg='Choisissez le bon de livraison';this.update();return;}if(!nom){R.msg='Inscrivez le nom du signataire';this.update();return;}
+  R.busy=true;R.msg='';this.update();var q='bons_livraison?id=eq.'+encodeURIComponent(R.bon);
+  get(q+'&select=photos').then(function(rows){if(!rows[0])throw new Error('bon introuvable');var have=rows[0].photos||[];
+    if(have.some(function(h){return h&&h.data===it.v;}))return 'deja';
+    var ph={data:it.v,name:'Signature — '+nom,addedBy:self.user.id,addedAt:new Date(it.t).toISOString(),recuperee:new Date().toISOString()};
+    return fetch(SB+'/rest/v1/'+q,{method:'PATCH',headers:Object.assign({'Content-Type':'application/json',Prefer:'return=minimal'},H),body:JSON.stringify({photos:have.concat([ph]),updated_at:new Date().toISOString()})})
+      .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);});})
+  .then(function(x){var b=R.bons.filter(function(y){return y.id===R.bon;})[0]||{};self.rec=null;self.update();self.flash(x==='deja'?'Cette signature est déjà sur le bon '+(b.no_bon||''):'Signature remise sur le bon '+(b.no_bon||''));})
+  .catch(function(e){R.busy=false;R.msg='Échec — rien n’a été modifié ('+(e&&e.message||'réseau')+')';self.update();});};
+Comp.prototype.recVals=function(){var self=this,R=this.rec;if(!R)return{closed:true,isOpen:false,open:function(){self.recOpen();}};
+  var fmt=function(t){var d=new Date(t);return d.toLocaleDateString('fr-CA',{day:'numeric',month:'short'})+' · '+hhmm(d);};
+  return{closed:false,isOpen:true,busy:!!R.busy,
+    items:R.items.map(function(x){var on=R.sel===x.k;return{src:x.v,when:fmt(x.t),bd:on?'3px solid var(--color-text)':'1px solid var(--color-divider)',pick:function(){R.sel=x.k;R.msg='';self.update();}};}),
+    bons:R.bons.map(function(b){var on=R.bon===b.id;return{l:(b.no_bon||'')+' · '+(b.client||'')+(b.date?' · '+b.date:''),bg:on?'var(--color-text)':'transparent',fg:on?'var(--color-bg, #fff)':'var(--color-text)',pick:function(){R.bon=b.id;R.msg='';self.update();}};}),
+    nom:R.nom||'',onNom:function(e){R.nom=e.target.value;},hasMsg:!!R.msg,msg:R.msg||'',label:R.busy?'Un instant…':'Remettre la signature sur le bon',
+    send:function(){self.recSend();},cancel:function(){self.rec=null;self.update();}};};
 Comp.prototype.mdpVals=function(){var self=this,m=this.mdp||{},on=navigator.onLine,set=function(k){return function(e){m[k]=e.target.value;self.mdp=m;};};
   return{closed:!m.open,isOpen:!!m.open,offline:!on,a:m.a||'',n:m.n||'',c:m.c||'',on_a:set('a'),on_n:set('n'),on_c:set('c'),hasErr:!!m.err,err:m.err||'',label:m.busy?'Enregistrement…':'Enregistrer',
     open:function(){self.mdp={open:true};self.update();},cancel:function(){self.mdp=null;self.update();},submit:function(){self.changerMdp();}};};

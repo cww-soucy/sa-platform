@@ -118,7 +118,17 @@ MDP=('<sc-if value="{{ mdp.closed }}">'+BTN('btn-secondary','mdp.open','pen','Ch
  +FIELD('Mot de passe actuel',PWI('a','current-password'))+FIELD('Nouveau mot de passe (8 caractères min.)',PWI('n','new-password'))+FIELD('Confirmer le nouveau',PWI('c','new-password'))
  +'<sc-if value="{{ mdp.hasErr }}"><div role="alert" style="font-size:15px;font-weight:600">{{ mdp.err }}</div></sc-if>'
  +BTN('btn-primary','mdp.submit','check','{{ mdp.label }}','54px;font-size:18px')+BTN('btn-secondary','mdp.cancel','left','Annuler','52px;font-size:18px')+'</div></sc-if>\n')
-if m: M=M.replace(m.group(0),MDP+'<button onClick="{{ logout }}"'+m.group(1)+'>'+m.group(2),1); print('logout lié')
+# récupérer une signature gardée sur le téléphone (Profil), au-dessus de « Changer mon mot de passe »
+REC=('<sc-if value="{{ rec.closed }}">'+BTN('btn-secondary','rec.open','pen','Récupérer une signature','54px;font-size:18px')+'</sc-if>'
+ '<sc-if value="{{ rec.isOpen }}"><div class="blueprint" style="padding:18px;display:flex;flex-direction:column;gap:12px">'+CORN
+ +'<div style="font:600 22px var(--font-heading)">Récupérer une signature</div>'
+ '<div style="font-size:15px;line-height:1.4">Signatures et photos gardées sur ce téléphone (21 jours). Touchez la signature, choisissez le bon : elle est ajoutée au bon, rien d’autre ne change.</div>'
+ '<div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{ rec.items }}" as="p"><button aria-label="Image du {{ p.when }}" onClick="{{ p.pick }}" style="border:{{ p.bd }};background:#fff;padding:4px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer"><img src="{{ p.src }}" alt="Image gardée" style="width:130px;height:80px;object-fit:contain"><span style="font-size:13px;color:#000">{{ p.when }}</span></button></sc-for></div>'
+ '<div style="font-size:15px;font-weight:600">Bon de livraison</div><div style="display:flex;flex-direction:column;gap:6px;max-height:260px;overflow:auto"><sc-for list="{{ rec.bons }}" as="b"><button class="btn btn-secondary" onClick="{{ b.pick }}" style="min-height:46px;font-size:15px;justify-content:flex-start;text-align:left;background:{{ b.bg }};color:{{ b.fg }}">{{ b.l }}</button></sc-for></div>'
+ +FIELD('Nom du signataire','<input class="input" value="{{ rec.nom }}" onInput="{{ rec.onNom }}" style="min-height:52px;font-size:18px">')
+ +'<sc-if value="{{ rec.hasMsg }}"><div role="alert" style="font-size:15px;font-weight:600">{{ rec.msg }}</div></sc-if>'
+ +BTN('btn-primary','rec.send','check','{{ rec.label }}','54px;font-size:18px')+BTN('btn-secondary','rec.cancel','left','Annuler','52px;font-size:18px')+'</div></sc-if>\n')
+if m: M=M.replace(m.group(0),REC+MDP+'<button onClick="{{ logout }}"'+m.group(1)+'>'+m.group(2),1); print('logout lié')
 else: print('!! bouton déconnexion introuvable')
 # signature discrète du créateur, en bas de l'onglet Profil (sous « Se déconnecter »)
 i=M.find('Se déconnecter</button>',M.find('{{ logout }}'))
