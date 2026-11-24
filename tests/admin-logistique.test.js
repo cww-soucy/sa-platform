@@ -39,6 +39,29 @@ test('logistique : liste des bons, filtre, ouvrir et marquer livré', async () =
   await page.close();
 });
 
+// Correctif 24/11 : le bon ouvert dans sa-admin AVANT la signature du client, puis enregistré / marqué livré,
+// réécrivait photos: [] — la signature disparaissait du bon final.
+test('logistique : bon ouvert avant la signature du client → la signature n’est pas écrasée à l’enregistrement', async () => {
+  for (const bouton of ['Marquer livré', 'Enregistrer']) {
+    const { page, db, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: base() });
+    await ready(page);
+    await A(page, () => window.__admin.go('logistique'));
+    await page.getByRole('row', { name: /SA-20260928-111/ }).getByRole('button', { name: 'Ouvrir' }).click();
+    // le livreur fait signer le client pendant que le bon est ouvert au bureau
+    const sig = { name: 'Signature — Julie Côté', data: 'data:image/jpeg;base64,SIG', addedBy: 'kael', addedAt: '2026-11-23T13:40:00Z' };
+    Object.assign(db.rows('bons_livraison').find((x) => x.id === 'bl-a'), { status: 'livre', livre_by: 'kael', livre_par_nom: 'Kaël Test', livre_at: '2026-11-23T13:40:00Z', photos: [sig] });
+    await dlg(page).getByRole('button', { name: bouton }).click();
+    await page.waitForFunction(() => !window.__admin.state.de);
+    const b = db.rows('bons_livraison').find((x) => x.id === 'bl-a');
+    assert.deepEqual(b.photos.map((p) => p.name), ['Signature — Julie Côté'], bouton + ' : signature gardée');
+    assert.equal(b.status, 'livre', bouton + ' : reste livré');
+    assert.equal(b.livre_par_nom, 'Kaël Test', bouton + ' : livreur réel gardé');
+    assert.equal(b.livre_at, '2026-11-23T13:40:00Z');
+    assert.deepEqual(errors, []);
+    await page.close();
+  }
+});
+
 test('logistique : nouveau bon de livraison (adresse du site reprise, lignes vides ignorées)', async () => {
   const { page, db } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: base() });
   await ready(page);
