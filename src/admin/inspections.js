@@ -84,6 +84,10 @@ Comp.prototype.envoyerClient=function(site,relId){var self=this,t=this.admTok(),
     if(r)r.envoyee_le=new Date().toISOString();
     if(x.aEnvoyer&&x.aEnvoyer.length){if(window.SAGarde)SAGarde.ignorer();location.href='mailto:'+x.aEnvoyer.join(',')+'?subject='+encodeURIComponent('Rapport de visite — '+site.nom)+'&body='+encodeURIComponent(txt+'\n\nConsulter le rapport : '+x.portail);}
     self.flash(x.envoyes&&x.envoyes.length?'Rapport publié et envoyé à '+x.envoyes.length+' contact(s)':(x.aEnvoyer&&x.aEnvoyer.length?'Rapport publié — courriel préparé dans votre logiciel':'Rapport publié sur le portail (aucun contact gestionnaire à aviser)'));self.update();});};
+/* Photo « vue d'ensemble » d'un relevé : lue à la demande (plus dans le chargement global, trop lourd). null = aucune photo. */
+Comp.prototype.photoReleve=function(r){var self=this,c=this._relPh||(this._relPh={}),k=r&&r.id&&(r.id+'~'+(r.updated_at||''));if(!k)return;
+  if(k in c){if(c[k]!=='…')r.photo=c[k];return;}c[k]='…';
+  get('releves?id=eq.'+encodeURIComponent(r.id)+'&select=photo').then(function(x){c[k]=(x&&x[0]&&x[0].photo)||null;r.photo=c[k];self.update();}).catch(function(){c[k]=null;r.photo=null;self.update();});};
 Comp.prototype.printVisite=function(site,v){var I=window.SAInsp,E=escH,se=I.etatsSystemes(v.items),r=v.r;
   var sec=I.SYSTEMES.filter(function(s){return se[s.code]!=='na';}).map(function(s){var its=v.items.filter(function(i){return i.systeme===s.code;});
     return'<h3>'+E(s.nom)+' — '+E(I.LIB_CLIENT[se[s.code]])+'</h3><table>'+its.map(function(i){return'<tr><td>'+E(i.libelle)+'</td><td>'+E([i.valeur,i.detail].filter(Boolean).join(' — '))+'</td><td><b>'+E(I.LIB_CLIENT[i.etat])+'</b></td></tr>';}).join('')+'</table>';}).join('');
@@ -180,7 +184,7 @@ Comp.prototype.inspVals=function(){
     iq.noVisit=!iq.visites.length;
     if(cur){var prev=S.vis.filter(function(v){return v.bassin===cur.bassin&&v.pub&&(v.date+(v.r.heure||''))<(cur.date+(cur.r.heure||''));}),se=I.etatsSystemes(cur.items),R2={action:3,watch:2,ok:1,na:0},r=cur.r;
       var saisi=r.source==='bureau'?' · saisie bureau par '+(r.saisi_par||'?')+(r.source_detail?' ('+((SRCS.filter(function(x){return x[0]===r.source_detail;})[0]||[0,r.source_detail])[1])+')':''):'';
-      var photos=[];if(r.photo)photos.push({src:r.photo,leg:'Vue d’ensemble'});cur.items.forEach(function(i){(i.photos||[]).forEach(function(p){photos.push({src:p,leg:i.libelle});});});
+      if(r.photo===undefined)self.photoReleve(r);var photos=[];if(r.photo)photos.push({src:r.photo,leg:'Vue d’ensemble'});cur.items.forEach(function(i){(i.photos||[]).forEach(function(p){photos.push({src:p,leg:i.libelle});});});
       iq.v={titre:'Visite du '+fdateL(r.date)+(r.heure?', '+r.heure:''),sub:(r.tech_nom||r.tech||'')+(r.publiee_le?' · validée à '+String(r.publiee_le).slice(11,16):'')+(nb>1?' · '+cur.bassin:'')+saisi+(cur.pub?'':' · BROUILLON'),
         resume:I.resume(cur.items)+(r.note?' Note : '+r.note:''),photos:photos,noPhoto:!photos.length,prods:Object.keys(r.prods||{}).map(function(k){return{nom:k,q:fr(r.prods[k],0.01)};}),noProd:!Object.keys(r.prods||{}).length,
         envoye:r.envoyee_le?'Envoyé au client le '+fdateL(r.envoyee_le)+' à '+String(r.envoyee_le).slice(11,16)+' (UTC)':'',brouillon:!cur.pub&&!testClient(cur.r),
