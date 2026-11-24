@@ -3189,6 +3189,119 @@ svg.leaflet-image-layer.leaflet-interactive path {
   var api = { html: html, odtDe: odtDe, employe: employe, lignesDe: lignesDe, COLS: COLS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.SASortie = api;
 })(typeof window !== 'undefined' ? window : this);
+</script><script>/* Bon de livraison (SA-AAAAMMJJ-NNN) — document imprimable / PDF dans la nouvelle DA, la même que la sortie d’inventaire
+   (src/impression/sortie-inventaire.js, maquette SI-305552) : logo, bloc titre bleu, rangée d’infos à filets, tableaux,
+   puis la livraison — signature du client en image (faite au doigt dans sa-terrain), « validée sans signature », ou lignes
+   à signer si le bon n’est pas encore livré. Toutes les valeurs viennent du bon : un champ vide reste vide.
+   Expose window.SABon (navigateur) ou module.exports (Node). */
+(function (root) {
+  'use strict';
+  var H = root && root.SAHiv;
+  if (!H && typeof require === 'function') H = require('../hivernage/checklist.js');
+
+  function E(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function txt(v) { return String(v == null ? '' : v).trim(); }
+  /* Heure du Québec, quel que soit le fuseau de l’appareil qui imprime */
+  function quebec(isoTs) {
+    var d = new Date(isoTs || '');
+    if (!isoTs || isNaN(d)) return { date: '', heure: '' };
+    var p = {};
+    new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+      .formatToParts(d).forEach(function (x) { p[x.type] = x.value; });
+    return { date: p.year + '-' + p.month + '-' + p.day, heure: p.hour + ' h ' + p.minute };
+  }
+  function lignes(arr) { return (arr || []).filter(function (r) { return r && txt(r.item); }); }
+  /* Signatures du client : photos « Signature — Nom » avec une image réelle */
+  function signatures(f) {
+    return (f.photos || []).filter(function (p) { return p && /^Signature/.test(p.name || '') && /^data:image\/|^https:\/\//.test(String(p.data || p.url || '')); });
+  }
+  function signataire(p) { return txt(String(p.name || '').replace(/^Signature\s*[—–-]?\s*/, '')); }
+
+  var LIV = [['item', 'Article', 330], ['qteSortie', 'Qté sortie', 90, 'q'], ['unite', 'Unité', 90, 'q'], ['qteLivree', 'Qté livrée', 90, 'q'], ['statut', 'Statut', 136]];
+  var RET = [['item', 'Article récupéré', 300], ['qteRecuperee', 'Qté', 80, 'q'], ['unite', 'Unité', 90, 'q'], ['raison', 'Raison / remarque', 266]];
+
+  var CSS = ':root{--bleu:#1B4F8C;--ink:#1d2330;--gris:#5b6776;--filet:#c9d2de;--filet2:#e1e6ee}'
+    + '*{box-sizing:border-box;margin:0;padding:0}'
+    + '@page{size:letter;margin:40px}'
+    + 'html{-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+    + 'body{font-family:Inter,"Segoe UI",Arial,sans-serif;font-size:13px;line-height:1.25;color:var(--ink);background:#fff}'
+    + '.page{width:816px;min-height:1056px;margin:0 auto;padding:40px;background:#fff}'
+    + '@media print{.page{width:auto;min-height:0;padding:0;margin:0}}'
+    + '.logo{display:block;width:60px;height:60px}'
+    + '.titre{margin-top:24px;background:var(--bleu);color:#fff;border-radius:2px;padding:19px 24px 13px;display:flex;justify-content:space-between;align-items:flex-end;gap:16px}'
+    + '.titre .k{font-size:13px;line-height:16px}'
+    + '.titre .u{display:inline-block;margin-left:8px;padding:0 6px;border:1px solid #fff;font-weight:600;font-size:11px;line-height:15px;letter-spacing:.5px}'
+    + '.titre h1{font-family:"Barlow Condensed","Arial Narrow",Arial,sans-serif;font-weight:700;font-size:44px;line-height:52px;letter-spacing:0;overflow-wrap:anywhere}'
+    + '.titre .d{font-size:15px;font-weight:600;white-space:nowrap;padding-bottom:6px}'
+    + '.infos{display:grid;grid-template-columns:200fr 236fr 120fr 180fr;border-top:1px solid var(--filet);border-bottom:1px solid var(--filet);margin-top:20px;break-inside:avoid}'
+    + '.infos div{padding:9px 12px 12px;border-left:1px solid var(--filet);font-size:12px;line-height:15px;color:var(--gris);min-width:0}'
+    + '.infos div:first-child{border-left:0;padding-left:0}'
+    + '.infos b{display:block;margin-top:4px;font-size:13px;line-height:16px;font-weight:600;color:var(--ink);overflow-wrap:anywhere}'
+    + 'h2{font-family:"Barlow Condensed","Arial Narrow",Arial,sans-serif;font-weight:700;font-size:22px;line-height:26px;color:var(--bleu);border-bottom:2px solid var(--bleu);padding-bottom:5px;margin-top:27px;break-after:avoid}'
+    + 'table{width:100%;border-collapse:collapse;table-layout:fixed}'
+    + 'thead{display:table-header-group}'
+    + 'th{font-size:12px;line-height:15px;font-weight:400;color:var(--gris);text-align:left;padding:8px 10px 10px 0;border-bottom:1px solid var(--filet)}'
+    + 'td{padding:10px 10px 12px 0;border-bottom:1px solid var(--filet2);vertical-align:top;overflow-wrap:anywhere;word-break:break-word}'
+    + 'th.q,td.q{text-align:center;padding-left:5px;padding-right:5px}td.q{font-weight:600}'
+    + 'tr{break-inside:avoid;page-break-inside:avoid}'
+    + '.vide{padding:10px 0 12px;color:var(--gris);border-bottom:1px solid var(--filet2)}'
+    + '.liv{break-inside:avoid;page-break-inside:avoid}'
+    + '.liv .etat{margin-top:12px;font-size:13px;line-height:18px}'
+    + '.liv .etat b{font-weight:600}'
+    + '.sigs{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:18px}'
+    + '.sigs .img{height:96px;display:flex;align-items:flex-end}'
+    + '.sigs img{display:block;max-height:96px;max-width:100%;object-fit:contain}'
+    + '.sigs .l{border-top:1px solid var(--ink);padding-top:8px;font-size:12px;line-height:15px;color:var(--gris)}'
+    + '.sigs .l b{display:block;margin-top:3px;font-size:13px;line-height:16px;font-weight:600;color:var(--ink)}'
+    + '.blanc{display:grid;grid-template-columns:1fr 1fr;gap:40px;padding-top:103px}'
+    + '.blanc div{border-top:1px solid var(--ink);padding-top:46px;font-size:12px;line-height:15px;color:var(--gris)}';
+
+  function table(cols, rows) {
+    if (!rows.length) return '<div class="vide">Aucun article.</div>';
+    return '<table><colgroup>' + cols.map(function (c) { return '<col style="width:' + c[2] + 'px">'; }).join('') + '</colgroup>'
+      + '<thead><tr>' + cols.map(function (c) { return '<th' + (c[3] ? ' class="q"' : '') + '>' + E(c[1]) + '</th>'; }).join('') + '</tr></thead><tbody>'
+      + rows.map(function (r) { return '<tr>' + cols.map(function (c) { return '<td' + (c[3] ? ' class="q"' : '') + '>' + E(txt(r[c[0]])) + '</td>'; }).join('') + '</tr>'; }).join('')
+      + '</tbody></table>';
+  }
+
+  function livraison(f) {
+    var sigs = signatures(f), q = quebec(f.livre_at), livre = f.status === 'livre';
+    var quand = q.date ? H.dateLongue(q.date) + ' à ' + q.heure : '';
+    var h = '<div class="liv"><h2>Livraison</h2>';
+    if (livre) h += '<div class="etat"><b>Livré</b>' + (quand ? ' le ' + E(quand) : '') + (txt(f.livre_par_nom) ? ' par ' + E(txt(f.livre_par_nom)) : '') + '</div>';
+    if (sigs.length) {
+      h += '<div class="sigs">' + sigs.map(function (p) {
+        var at = quebec(p.addedAt);
+        return '<div><div class="img"><img src="' + E(p.data || p.url) + '" alt="Signature du client"></div><div class="l">Signature du client'
+          + (signataire(p) ? '<b>' + E(signataire(p)) + '</b>' : '') + (at.date ? '<span>' + E(H.dateLongue(at.date) + ' à ' + at.heure) + '</span>' : '') + '</div></div>';
+      }).join('') + '</div>';
+    } else if (livre) {
+      h += '<div class="etat">Livraison validée sans signature du client.</div>';
+    } else {
+      h += '<div class="blanc"><div>Signature du client</div><div>Date</div></div>';
+    }
+    return h + '</div>';
+  }
+
+  function html(f) {
+    f = f || {};
+    var no = txt(f.no_bon), ret = lignes(f.items_ret);
+    var info = [['Client', f.client], ['Adresse', f.adresse], ['Téléphone', f.tel], ['Technicien', f.technicien]];
+    var date = H.dateLongue(f.date || '') + (txt(f.heure) ? ' · ' + txt(f.heure) : '');
+    return '<!DOCTYPE html><html lang="fr-CA"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
+      + '<title>' + E('Bon de livraison ' + no) + '</title><style>' + H.fontesCss() + CSS + '</style></head><body><div class="page">'
+      + '<img class="logo" src="' + H.LOGO + '" alt="Soucy Aquatik">'
+      + '<div class="titre"><div><div class="k">Bon de livraison' + (f.urgent ? '<span class="u">URGENT</span>' : '') + '</div><h1>' + E(no) + '</h1></div><div class="d">' + E(date) + '</div></div>'
+      + '<div class="infos">' + info.map(function (x) { return '<div>' + E(x[0]) + '<b>' + E(txt(x[1])) + '</b></div>'; }).join('') + '</div>'
+      + '<h2>Articles livrés</h2>' + table(LIV, lignes(f.items_liv))
+      + (ret.length ? '<h2>Articles récupérés</h2>' + table(RET, ret) : '')
+      + livraison(f)
+      + '</div></body></html>';
+  }
+
+  var api = { html: html, signatures: signatures, quebec: quebec, LIV: LIV, RET: RET };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.SABon = api;
+})(typeof window !== 'undefined' ? window : this);
 </script><script>/* Affichage configurable des apps (sa-admin, sa-terrain, portail client) — demande de la direction, 2026-11-03.
    Le bureau choisit, dans sa-admin › Affichage des apps, ce que chaque profil voit : modules du menu, onglets, sections.
    Règles en base : table affichage_regles (une ligne par app et par profil), docs/sql/MIGRATION_2026-11-03_affichage_modules.sql.
@@ -4632,12 +4745,8 @@ Comp.prototype.printDoc=function(){var de=this.state.de;if(!de)return;this.print
 Comp.prototype.printHtml=function(h){var w=window.open('','_blank');if(!w){this.flash('Fenêtre bloquée — autorisez les fenêtres pour imprimer');return;}w.document.write(h+'<script>(function(){var go=function(){setTimeout(function(){print();},300);},F=document.fonts,im=[].slice.call(document.images).map(function(i){return i.complete?0:new Promise(function(r){i.onload=i.onerror=r;});});Promise.race([Promise.all([F?Promise.all([].slice.call(F).map(function(f){return f.load().catch(function(){});})):0].concat(im)),new Promise(function(r){setTimeout(r,4000);})]).then(go,go);})()<\/script>');w.document.close();};
 Comp.prototype.docHtml=function(k,f){var E=escH,h='<!doctype html><meta charset="utf-8"><title>'+E(DOC[k].lbl)+'</title><style>body{font:12px Arial,sans-serif;margin:22px}h1{font-size:19px;margin:0 0 4px}h2{font-size:14px;background:#e8f2fb;padding:5px 8px;margin:16px 0 0}table{border-collapse:collapse;width:100%}td,th{border:1px solid #bbb;padding:4px 6px;text-align:left}th{background:#f4f6fa}.m{display:flex;gap:20px;flex-wrap:wrap;margin:6px 0 10px}.s{margin-top:30px;display:flex;gap:50px}.s div{border-top:1px solid #333;width:240px;font-size:11px;padding-top:3px}.t{display:inline-block;padding:1px 6px;border:1px solid #999;font-size:11px;margin-left:6px}img.sig{max-height:90px;border:1px solid #ccc}</style>';
   var tbl=function(cols,rows){return rows.length?'<table><tr>'+cols.map(function(c){return'<th>'+E(c[1])+'</th>';}).join('')+'</tr>'+rows.map(function(r){return'<tr>'+cols.map(function(c){return'<td>'+E(r[c[0]])+'</td>';}).join('')+'</tr>';}).join('')+'</table>':'<div>—</div>';};
-  if(k==='bl'){var sigs=(f.photos||[]).filter(function(p){return/^Signature/.test(p.name||'')&&p.data;});
-    h+='<h1>Bon de livraison '+E(f.no_bon)+(f.urgent?' <span class="t">URGENT</span>':'')+'</h1><div class="m"><span><b>Client :</b> '+E(f.client)+'</span><span><b>Adresse :</b> '+E(f.adresse||'—')+'</span><span><b>Tél. :</b> '+E(f.tel||'—')+'</span><span><b>Date :</b> '+E(f.date||'—')+' '+E(f.heure||'')+'</span><span><b>Technicien :</b> '+E(f.technicien||'—')+'</span></div>'
-      +'<h2>Articles livrés</h2>'+tbl(ROWS.items_liv,f.items_liv||[])+((f.items_ret||[]).length?'<h2>Articles récupérés</h2>'+tbl(ROWS.items_ret,f.items_ret):'')
-      +(f.status==='livre'?'<p><b>Livré</b> le '+E(f.livre_at?new Date(f.livre_at).toLocaleString('fr-CA'):'')+' par '+E(f.livre_par_nom||'')+'</p>':'')
-      +(sigs.length?sigs.map(function(p){return'<div><img class="sig" src="'+p.data+'"><div>'+E(p.name)+'</div></div>';}).join(''):f.status==='livre'?'<p>Livraison validée sans signature du client.</p>':'<div class="s"><div>Signature du client</div><div>Date</div></div>');}
-  else if(k==='so')return window.SASortie.html(Object.assign({},f,{odt:f.odt||soOdt(f)}));/* nouvelle DA : src/impression/sortie-inventaire.js */
+  if(k==='bl')return window.SABon.html(f);/* nouvelle DA : src/impression/bon-livraison.js */
+  if(k==='so')return window.SASortie.html(Object.assign({},f,{odt:f.odt||soOdt(f)}));/* nouvelle DA : src/impression/sortie-inventaire.js */
   else{var tg={};HIV_TAGS.forEach(function(t){tg[t[0]]=t[1];});
     h+='<h1>'+E(f.titre||'Rapport de pré-hivernage')+' — '+E(f.site_nom)+'</h1><div>'+E(f.objet||'')+'</div><div class="m"><span><b>Client :</b> '+E(f.client||'—')+'</span><span><b>Inspection :</b> '+E(f.date_inspection||'—')+'</span><span><b>Rapport :</b> '+E(f.date_rapport||'—')+'</span><span><b>Préparé par :</b> '+E(f.prepare_par||'—')+'</span><span><b>Technicien :</b> '+E(f.technicien||'—')+'</span></div>'
       +(f.sections||[]).map(function(s){return'<h2>'+E(s.title)+(s.tag?'<span class="t">'+E(tg[s.tag]||s.tag)+'</span>':'')+'</h2>'+((s.items||[]).length?'<ul>'+s.items.map(function(i){return'<li>'+E(i)+'</li>';}).join('')+'</ul>':'<div>Aucun constat.</div>')+(s.photos||[]).filter(function(p){return p.data;}).map(function(p){return'<img src="'+p.data+'" style="max-width:200px;margin:4px">';}).join('');}).join('')

@@ -5,6 +5,8 @@ Lire d'abord `README.md`, `src/README.md` et `docs/HANDOFF-CLAUDE-CODE.md`.
 - `admin.html` / `terrain.html` sont générés : modifier `src/admin/…` ou `src/terrain/…`, puis `python3 src/build.py`.
 - Toute modification d'`index.html` : monter ensemble `APP_BUILD` (index.html) et `CACHE_NAME` (sw.js), jamais sous v80.
 - `npm test` doit passer ; un test par correctif (banc d'essai `tests/harness.js`). Branche → PR → tests verts, jamais sur `main`.
+- **Fusion pré-autorisée** (décision du propriétaire, 24/11/2026) : une PR de Claude est fusionnée sans demander dès que ses
+  tests GitHub sont verts (squash). Ne pas reposer la question. Ne s'applique pas à la base de production (règle ci-dessous).
 - Base de production : ne rien appliquer sans demande explicite ; préparer le SQL dans `docs/sql/`.
 
 ## Base de données (Supabase) — règles depuis le 30/10/2026

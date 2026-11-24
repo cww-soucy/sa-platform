@@ -49,7 +49,7 @@ test('polices locales déclarées et gardées par le service worker', () => {
     assert.ok(h.includes('/fonts/' + f + '.woff2'), f);
     assert.ok(sw.includes("'/fonts/" + f + ".woff2'"), 'sw.js : ' + f);
   });
-  assert.match(sw, /CACHE_NAME = 'sa-platform-v86'/);
+  assert.match(sw, /CACHE_NAME = 'sa-platform-v87'/);
 });
 
 test('plusieurs pages : en-tête répété, lignes insécables, dernière ligne et signatures ensemble', async () => {
