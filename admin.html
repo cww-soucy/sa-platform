@@ -4620,6 +4620,8 @@ var VAULT_KEY='sa_admin_vault', VAULT_TABLES=['sites','contrats','workorders','p
 var PRIX_COLS={facturation:['prix_calcule','prix_facture'],inventaire:['prix']};
 function sansPrix(t,list){var c=PRIX_COLS[t];if(!c||!Array.isArray(list))return list;return list.map(function(x){if(!x||typeof x!=='object')return x;var o=Object.assign({},x);c.forEach(function(k){delete o[k];});return o;});}
 function stripPhotosVault(list){if(!Array.isArray(list))return list;try{return list.map(function(rec){if(!rec||typeof rec!=='object')return rec;var copy=null;['files','photos','items_liv','items_ret','photo','signatures','sections'].forEach(function(ch){var arr=rec[ch];if(!Array.isArray(arr))return;var aPhoto=arr.some(function(f){return f&&(f.data||f._b64||(typeof f==='string'&&f.indexOf('data:')===0));});if(!aPhoto)return;if(!copy)copy=Object.assign({},rec);copy[ch]=arr.map(function(f){if(f&&f.data)return{name:f.name||'photo',_stripped:true};if(typeof f==='string'&&f.indexOf('data:')===0)return'_stripped';return f;});});return copy||rec;});}catch(e){return list;}}
+/* Lenteur : le coffre retélécharge ~6 Mo (rapports d'hivernement, punchs…). Une copie par 20 h suffit, plus une par ouverture de sa-admin. */
+function vaultAFaire(hist){var d=hist&&hist[0]&&Date.parse(hist[0].ts);return!(d&&Date.now()-d<20*3600000);}
 Comp.prototype.vaultList=function(){try{return JSON.parse(localStorage.getItem(VAULT_KEY)||'[]');}catch(e){return[];}};
 /* Le coffre retire les photos : ne pas les télécharger du tout (colonnes photo en base64, plusieurs Mo). */
 var VAULT_SEL={releves:'id,site_id,site_nom,tech,tech_nom,date,heure,type_code,vals,touched,checks,prods,note,hors_zone,created_at,updated_at,bassin,points,actions,statut,source,saisi_par,source_detail,resume,publiee_le,envoyee_le',demandes:'id,site_id,site_nom,tech,tech_nom,type,motif,texte,statut,created_at,updated_at,has_photo'};
@@ -5335,11 +5337,17 @@ var BASSIN_TYPES=[['piscine','Piscine'],['spa','Spa'],['pataugeoire','Pataugeoir
 Comp.prototype.openSiteFiche=function(id,pre){var self=this,oc=pre&&pre.oc!=null&&pre.oc>=0?{i:pre.oc}:null;
   if(!id){this.setState({sf:{id:null,isNew:true,client_id:(pre&&pre.client_id)||'',f:{nom:'',addr:'',tel:'',email:'',siteweb:'',type:'',annee:'',equips:[],files:[],bassins:[],gps:null,notes:''},type_code:'GEN',code:'',journal:[],equipIn:'',confirm:false,busy:false,loading:false}});return;}
   var s=this.D.byId[id];this.setState({sf:{id:id,loading:true}});
-  Promise.all([get('sites?id=eq.'+encodeURIComponent(id)+'&select=*'),soft('site_journal?site_id=eq.'+encodeURIComponent(id)+'&select=*&order=date.desc,heure.desc&limit=40',[])]).then(function(r){var x=r[0][0];if(!x)throw new Error('site introuvable');
+  Promise.all([get('sites?id=eq.'+encodeURIComponent(id)+'&select=*'),soft('site_journal?site_id=eq.'+encodeURIComponent(id)+'&select='+SJ_COLS+'&order=date.desc,heure.desc&limit=40',[])]).then(function(r){var x=r[0][0];if(!x)throw new Error('site introuvable');self.sjPhotos(id,r[1]);
     var f={nom:x.nom||'',addr:x.addr||'',tel:x.tel||'',email:x.email||'',siteweb:x.siteweb||'',type:x.type||'',annee:x.annee||'',equips:Array.isArray(x.equips)?x.equips.slice():[],files:Array.isArray(x.files)?x.files.slice():[],
       bassins:Array.isArray(x.bassins)?x.bassins.map(function(b){return Object.assign({id:b.id||pmmId(),nom:'',type:'piscine',type_code:'',volume:'',notes:''},b);}):[],gps:x.gps||null,notes:x.notes||''};
     self.setState({oc:oc,sf:{id:id,isNew:false,client_id:x.client_id||(s&&s.client_id)||'',f:f,upd:x.updated_at||null,type_code:s?s.type:'GEN',code:s?s.contrat:'',journal:r[1],equipIn:'',confirm:false,busy:false,loading:false}});})
     .catch(function(e){self.setState({sf:null});self.flash('Fiche illisible : '+netMsg(e));});};
+/* Journal du site : texte d'abord (rapide), photos ensuite (base64, jusqu'à ~2 Mo par entrée) — la fiche s'ouvre sans attendre les photos. */
+var SJ_COLS='id,site_id,task_id,wo_id,uid,emp,date,heure,lieu,notes,created_at,updated_at';
+Comp.prototype.sjPhotos=function(id,list){var self=this;if(!list||!list.length)return;
+  soft('site_journal?site_id=eq.'+encodeURIComponent(id)+'&select=id,photos&order=date.desc,heure.desc&limit=40',[]).then(function(rows){var ph={};(rows||[]).forEach(function(x){ph[x.id]=x.photos;});
+    var sf=self.state.sf;if(!sf||String(sf.id)!==String(id)||!sf.journal)return;
+    sf.journal.forEach(function(j){if(ph[j.id]!==undefined)j.photos=ph[j.id];});self.update();});};
 Comp.prototype.sfMut=function(fn){var sf=JSON.parse(JSON.stringify(this.state.sf));fn(sf.f,sf);sf.confirm=false;this.setState({sf:sf});};
 Comp.prototype.saveSiteFiche=function(){var self=this,sf=this.state.sf;if(!sf||sf.busy)return;var f=sf.f,nom=String(f.nom).trim();if(!nom){this.flash('Le nom du site est requis');return;}
   if(sf.isNew&&this.D.sitesAll.some(function(s){return norm(s.nom)===norm(nom);})){this.flash('Un site porte déjà ce nom');return;}
@@ -6083,7 +6091,7 @@ Comp.prototype.mount=function(host){var self=this;this._host=host;
   window.addEventListener('hashchange',function(){var m=hashMod();if(m&&TITLES_OK(m)&&(m!==self.state.mod||self.state.portail)){self.setState({portail:false});self.go(m);}});
   this.load().then(function(){self.update();
     /* Coffre : un snapshot local par session, pour l'admin/superadmin — filet de sécurité silencieux. */
-    if(estAdmin(self.user.role)){try{if(!sessionStorage.getItem('sa_admin_vault_done')){sessionStorage.setItem('sa_admin_vault_done','1');setTimeout(function(){self.vaultSnapshot();},5000);}}catch(e){}}});
+    if(estAdmin(self.user.role)){try{if(!sessionStorage.getItem('sa_admin_vault_done')){sessionStorage.setItem('sa_admin_vault_done','1');if(vaultAFaire(self.vaultList()))setTimeout(function(){self.vaultSnapshot();},5000);}}catch(e){}}});
   setInterval(function(){if(document.visibilityState==='visible')self.load().then(function(){self.update();});},60000);
   document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')self.load().then(function(){self.update();});});};
 
