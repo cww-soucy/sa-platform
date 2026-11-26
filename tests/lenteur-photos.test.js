@@ -55,3 +55,36 @@ test('coffre local : relevés et demandes sans leurs photos', async () => {
   assert.deepEqual(errors, []);
   await page.close();
 });
+
+test('fiche du site : le journal s’affiche sans ses photos, puis les photos arrivent par une 2e requête', async () => {
+  const t = tables();
+  t.site_journal = [{ id: 'j1', site_id: '1', uid: 'kael', emp: 'Kaël Test', date: iso(new Date()), heure: '09:00', lieu: 'Piscine Alpha', notes: 'Skimmer fissuré', photos: [{ data: PH }] }];
+  const { page, db, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: t });
+  await page.waitForFunction(() => window.__admin && window.__admin.D);
+  await page.evaluate(() => window.__admin.openSiteFiche('1'));
+  await page.waitForFunction(() => { const v = window.__admin.vals(); return v.sfJournal && v.sfJournal.length === 1 && v.sfJournal[0].hasPh; });
+  const sj = () => db.log.filter((l) => l.method === 'GET' && l.table === 'site_journal').map((l) => decodeURIComponent(l.query));
+  for (let i = 0; i < 100 && sj().length < 2; i++) await page.waitForTimeout(30);
+  const q = sj();
+  assert.equal(q.length, 2);
+  assert.doesNotMatch(q[0], /photos|select=\*/, 'la 1re requête ne demande pas les photos');
+  assert.match(q[1], /select=id,photos/);
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+test('coffre local : une copie par 20 h, pas à chaque ouverture de sa-admin', async () => {
+  const { page, db, errors } = await openApp(browser, srv.url, { app: 'admin', user: USER, tables: tables() });
+  await page.waitForFunction(() => window.__admin && window.__admin.D);
+  await page.evaluate(() => { sessionStorage.removeItem('sa_admin_vault_done'); localStorage.setItem('sa_admin_vault', JSON.stringify([{ ts: new Date(Date.now() - 3600000).toISOString(), data: { sites: [{ id: 1 }] } }])); });
+  await page.reload();
+  await page.waitForFunction(() => window.__admin && window.__admin.D);
+  await page.waitForTimeout(6500);
+  assert.equal(db.log.filter((l) => l.method === 'GET' && l.table === 'rapports_hivernage' && /select=\*/.test(l.query)).length, 0, 'copie récente : pas de nouveau téléchargement');
+  await page.evaluate(() => { sessionStorage.removeItem('sa_admin_vault_done'); localStorage.setItem('sa_admin_vault', JSON.stringify([{ ts: new Date(Date.now() - 25 * 3600000).toISOString(), data: { sites: [{ id: 1 }] } }])); });
+  await page.reload();
+  await page.waitForFunction(() => window.__admin && window.__admin.D);
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem('sa_admin_vault') || '[]').length === 2, null, { timeout: 9000 });
+  assert.deepEqual(errors, []);
+  await page.close();
+});
