@@ -502,6 +502,8 @@ Comp.prototype.saveSortie=function(){var self=this,sel=this.state.sortie,items=t
 /* ODT de la sortie : saisi, sinon celui du punch en cours. Rangé dans chaque ligne (sorties_inventaire n'a pas de colonne odt). */
 Comp.prototype.soOdtVal=function(){var v=this.state.soOdt;if(v!=null)return String(v).trim();var t=this.activeTask(this.viewDays());return String(t&&t.odt||'').trim();};
 Comp.prototype.notifier=function(ev,id){this.enqueue({_t:'logistique-courriel',_m:'FN',id:'ce-'+ev+'-'+id,body:{evenement:ev,id:id}});};
+/* Numéro affiché d'un bon de livraison : son ODT (« ODT 24-1187 »), sinon le numéro automatique SA-… */
+function blNo(b){var n=String(b&&b.no_bon||'').trim();return n?(/^SA-/.test(n)?n:'ODT '+n):'—';}
 Comp.prototype.newBonFromSortie=function(){var L=this.lastSortie;if(!L)return;var s=L.site,now=new Date();
   /* même numéro que la sortie (SA-INV-AAAAMMJJ-NNN → SA-AAAAMMJJ-NNN) : le bureau relie ainsi le bon à sa sortie */
   var b={id:rid('bl'),no_bon:L.no?String(L.no).replace(/^SA-INV-/,'SA-'):noBon('SA-'),client:s?s.nom:'',tel:'',adresse:s?s.addr:'',date:iso(now),heure:hhmm(now),technicien:this.me.nom,urgent:false,status:'brouillon',
@@ -532,7 +534,7 @@ Comp.prototype.validerSansSig=function(){var b=this.curBon();if(!b||b.status==='
 Comp.prototype.enRoute=function(){var b=this.curBon();if(!b||b.status==='livre'||b.status==='en_route')return;var now=new Date(),patch={status:'en_route',updated_at:now.toISOString()};
   if(b._new){var full=Object.assign({},b,patch,{_t:'bons_livraison'});delete full._new;delete full._signedBy;delete full._signedAt;delete full._noSig;this.enqueue(full);delete b._new;}
   else this.enqueue({_t:'bons_livraison',_m:'PATCH',_q:'id=eq.'+encodeURIComponent(b.id)+'&status=neq.livre',id:'blr-'+b.id,body:patch});
-  Object.assign(b,patch);this.update();this.flash('Bon '+b.no_bon+' en route — le bureau suit la livraison');};
+  Object.assign(b,patch);this.update();this.flash('Bon '+blNo(b)+' en route — le bureau suit la livraison');};
 Comp.prototype.livrer=function(b,now,extra,local,sigPh){var patch=Object.assign({status:'livre',livre_at:now.toISOString(),livre_by:this.user.id,livre_par_nom:this.me.nom,updated_at:now.toISOString()},extra);
   if(b._new){var full=Object.assign({},b,patch,{_t:'bons_livraison'});delete full._new;delete full._signedBy;delete full._signedAt;delete full._noSig;this.enqueue(full);}
   /* Signature : _addPh → à l'envoi, la signature est AJOUTÉE aux photos du serveur (relues), même si le bureau
@@ -540,7 +542,9 @@ Comp.prototype.livrer=function(b,now,extra,local,sigPh){var patch=Object.assign(
   else if(sigPh)this.enqueue({_t:'bons_livraison',_m:'PATCH',_addPh:true,_q:'id=eq.'+encodeURIComponent(b.id),id:'bl-'+b.id,body:Object.assign({},patch,{photos:[sigPh]})});
   else this.enqueue({_t:'bons_livraison',_m:'PATCH',_q:'id=eq.'+encodeURIComponent(b.id)+'&status=neq.livre',id:'bl-'+b.id,body:patch});
   this.notifier('livraison',b.id);
-  Object.assign(b,patch,local,{_signedAt:hhmm(now)});delete b._new;this.update();this.flash('Bon '+b.no_bon+' marqué livré');};
+  /* sa tâche planning (bon assigné au bureau, id « bl-<id> ») passe « terminée » ; sans tâche, rien n'est modifié */
+  if(!b._new)this.enqueue({_t:'planning_tasks',_m:'PATCH',_q:'id=eq.'+encodeURIComponent('bl-'+b.id),id:'blpt-'+b.id,body:{statut:'termine',termine:true,termine_by:this.user.id,termine_at:now.toISOString(),updated_at:now.toISOString()}});
+  Object.assign(b,patch,local,{_signedAt:hhmm(now)});delete b._new;this.update();this.flash('Bon '+blNo(b)+' marqué livré');};
 
 /* ---------- Hivernage : liste de contrôle « Hivernement » (src/hivernage/checklist.js, la même que sa-admin) → rapport (brouillon)
    que le bureau complète, imprime ou envoie au client depuis sa-admin ---------- */
@@ -726,7 +730,7 @@ Comp.prototype.vals=function(){
   var inventaire=this.inv.filter(function(p){return!iq||norm(p.nom).indexOf(iq)>=0||(sel[p.id]>0);}).map(function(p){var q=sel[p.id]||0,set=function(n){self.setState(function(s2){var o=Object.assign({},s2.sortie);o[p.id]=Math.max(0,n);return{sortie:o};});};
     return{nom:p.nom,unite:p.unite||'',qty:q,reste:p.qte==null?'—':fr(Math.round((Number(p.qte)-q)*100)/100),minus:function(){set(q-1);},plus:function(){set(q+1);}};});
   var sortieCount=this.inv.filter(function(p){return sel[p.id]>0;}).length;
-  var bonList=this.bons.filter(function(b){return b.status!=='livre';}).map(function(b){var m=norm(b.technicien)===mine;return{_m:m,_d:b.date||'',no:b.no_bon||'—',client:b.client||'Client non précisé',sub:(b.date||'—')+(b.urgent?' · URGENT':'')+' · '+(m?'à vous':(b.technicien||'non assigné')),open:function(){self.openBon(b.id);}};})
+  var bonList=this.bons.filter(function(b){return b.status!=='livre';}).map(function(b){var m=norm(b.technicien)===mine;return{_m:m,_d:b.date||'',no:blNo(b),client:b.client||'Client non précisé',sub:(b.date||'—')+(b.urgent?' · URGENT':'')+' · '+(m?'à vous':(b.technicien||'non assigné')),open:function(){self.openBon(b.id);}};})
     .sort(function(a,b){return(b._m-a._m)||a._d.localeCompare(b._d);});
   var logV={isLog:scr==='logistique',isSortie:st.logTab==='sortie',isBon:st.logTab==='bon',tabSortie:function(){self.setState({logTab:'sortie'});},tabBon:function(){self.setState({logTab:'bon'});},
     sortieTabBg:segStyle(st.logTab==='sortie').bg,sortieTabFg:segStyle(st.logTab==='sortie').fg,bonTabBg:segStyle(st.logTab==='bon').bg,bonTabFg:segStyle(st.logTab==='bon').fg,
@@ -736,7 +740,7 @@ Comp.prototype.vals=function(){
     soAskGo:function(){self.newBonFromSortie();},soAskLater:function(){self.setState({soAsk:false});},
     noSigLbl:st.noSig?'Confirmer : livré sans signature':'Valider sans signature',validerSansSig:function(){self.validerSansSig();},
     bonPick:!bon,bonOpen:!!bon,bonList:bonList,noBons:!bonList.length,hasLastSortie:!!this.lastSortie,lastSortieTxt:this.lastSortie?(this.lastSortie.items.length+' article(s) · '+(this.lastSortie.site?this.lastSortie.site.nom:'hors site')):'',newBon:function(){self.newBonFromSortie();},
-    bon:bon?{no:bon.no_bon||'—',client:bon.client||'—',addr:bon.adresse||''}:{},
+    bon:bon?{no:blNo(bon),client:bon.client||'—',addr:bon.adresse||''}:{},
     bonEnRouteOk:!!(bon&&bon.status!=='livre'&&bon.status!=='en_route'),bonEnRoute:!!(bon&&bon.status==='en_route'),enRoute:function(){self.enRoute();},bonBack:function(){self.setState({bonSel:null});self.loadLog();},
     bonItems:bon?(bon.items_liv||[]).filter(function(i){return i.item;}).map(function(i){return{nom:i.item,qty:i.qteLivree||i.qteSortie||'—',unite:i.unite||''};}):[],
     signer:st.signer,onSigner:function(e){self.setState({signer:e.target.value});},clearSig:function(){self.clearSig();},confirmSig:function(){self.confirmSig();},

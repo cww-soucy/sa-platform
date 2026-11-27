@@ -271,6 +271,8 @@ FEDLG=('<template data-sc="if" value="{{ feOpen }}"><div class="dialog-backdrop"
        +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">'+FL('Type',SEL('fTypes','onType'))+FL('Priorité',SEL('fPrios','onPrio'))+FL('Statut',SEL('fStats','onStat'))+'</div>'
        +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">'+FL('Heure début',INP('fHD','onHD','time'))+FL('Heure fin',INP('fHF','onHF','time'))+FL('Ordre','<input class="input" type="number" min="1" step="1" inputmode="numeric" value="{{ fOrdre }}" onInput="{{ onOrdre }}" placeholder="1, 2, 3…">')+'</div>'
        +FL('{{ odtLbl }}',INP('fOdt','onOdt','text',' placeholder="N° d’ODT (ex. 24-1187)"'))
+       +IF('hasWoOdtAvert','<div role="alert" style="font-size:13px;border-left:3px solid var(--color-accent-900);padding:4px 10px">{{ woOdtAvert }}</div>')
+       +IF('hasWoBl','<button class="btn btn-secondary" onClick="{{ woBl }}" style="align-self:flex-start;gap:6px"><sa-i n="truck" s="16"></sa-i>{{ woBlLbl }}</button>')
        +IF('isHivWO','<div style="font-size:13px;border-left:3px solid var(--color-text);padding:4px 10px">{{ hivWoNote }}</div>'))
     +IF('isPlanF',G2(FL('Client / site','<input class="input" list="saSites" value="{{ fClient }}" onInput="{{ onClient }}">'),FL('Adresse',INP('fAddr','onAddr')))
        +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">'+FL('Heure début',INP('fHeure','onHeure','time'))+FL('Heure fin',INP('fHF','onHF','time'))+FL('Ordre','<input class="input" type="number" min="1" step="1" inputmode="numeric" value="{{ fOrdre }}" onInput="{{ onOrdre }}" placeholder="1, 2, 3…">')+'</div>'
@@ -438,7 +440,11 @@ ROWED=lambda lst,title,addfn,addlbl,extra='':('<div style="display:flex;flex-dir
 PHOTOS=lambda lst,addfn:('<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><sc-for list="{{ %s }}" as="p"><span style="display:flex;align-items:center;gap:4px;border:1px solid var(--color-divider);padding:2px 4px 2px 8px;font-size:13px">'
   '<button onClick="{{ p.open }}" style="all:unset;cursor:pointer;text-decoration:underline">{{ p.name }}</button>'%lst+DELB('p.del')+'</span></sc-for><button class="btn btn-ghost" onClick="{{ %s }}" style="gap:6px"><sa-i n="camera" s="16"></sa-i>Ajouter une photo</button></div>'%addfn)
 TECHSEL='<select class="input" onChange="{{ onDTech }}"><option value="">—</option><template data-sc="for" list="{{ dTechs }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.l }}</option></template></select>'
-DE_BL=IF('isBL',G2(FL('Client',INP('dClient.v','dClient.on','text',' list="deSites"')),FL('Téléphone',INP('dTel.v','dTel.on','tel')))
+DE_BL=IF('isBL','<datalist id="odtConnus"><sc-for list="{{ odtList }}" as="o"><option value="{{ o.v }}">{{ o.l }}</option></sc-for></datalist>'
+  +FL('ODT',INP('dOdt.v','onDOdt','text',' list="odtConnus" placeholder="N° d’ODT (ex. 24-1187)" autocomplete="off"'))
+  +'<div style="font-size:13px;border-left:3px solid var(--color-text);padding:4px 10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span>{{ dOdtLien }}</span>'+IF('hasOdtWo','<button class="btn btn-ghost" onClick="{{ dOdtWo }}" style="padding:2px 8px">Ouvrir le bon de travail</button>')+'</div>'
+  +'<sc-for list="{{ dOdtDoublons }}" as="x"><div role="alert" style="font-size:13px;border-left:3px solid var(--color-accent-900);padding:4px 10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><b>{{ x.txt }}</b><button class="btn btn-ghost" onClick="{{ x.open }}" style="padding:2px 8px">Ouvrir ce bon</button></div></sc-for>'
+  +G2(FL('Client',INP('dClient.v','dClient.on','text',' list="deSites"')),FL('Téléphone',INP('dTel.v','dTel.on','tel')))
   +FL('Adresse de livraison',INP('dAdr.v','dAdr.on'))
   +G2(G2(FL('Date',INP('dDate.v','dDate.on','date')),FL('Heure',INP('dHeure.v','dHeure.on','time'))),FL('Technicien / livreur',TECHSEL))
   +'<label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" checked="{{ dUrg.v }}" onChange="{{ dUrg.on }}">Livraison urgente</label>'

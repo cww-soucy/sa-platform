@@ -76,7 +76,7 @@ Comp.prototype.load=function(){
   var Q={sites:get('sites?select=id,nom,addr,type,notes,tel,email,bassins,gps'),contrats:get('contrats?select=site_id,type_code,code'),types:get('types_bassin?select=*'),
     comptes:soft('comptes_publics?select=id,prenom,nom,role,dept,tel',[]),
     ft:soft('feuilles_temps?select=uid,emp,week,days,total_h&week=gte.'+iso(addDays(now,-56)),[]),
-    wo:soft('workorders?select=id,client,site,type,priorite,status,date,heure_debut,heure_fin,ordre,assigne,descr,groupe_id&order=date.asc',[]),
+    wo:soft('workorders?select=id,client,site,type,priorite,status,date,heure_debut,heure_fin,ordre,assigne,descr,groupe_id,odt&order=date.asc',[]),
     rel:get('releves?select=id,site_id,site_nom,tech,tech_nom,date,heure,type_code,vals,touched,checks,prods,note,hors_zone,bassin,points,actions,statut,source,saisi_par,source_detail,resume,publiee_le,envoyee_le,updated_at&date=gte.'+since+'&order=date.asc,heure.asc')
       .catch(function(){return soft('releves?select=id,site_id,site_nom,tech,tech_nom,date,heure,type_code,vals,touched,checks,prods,note,hors_zone,bassin&date=gte.'+since+'&order=date.asc,heure.asc',[]);}),
     cat:get('inspection_points?select=*').catch(function(){return[];}),gab:get('gabarits_hivernage?select=*').catch(function(){return[];}),adj:get('ouvrage_ajustements?select=*&actif=eq.true').catch(function(){return[];}),
@@ -611,6 +611,7 @@ Comp.prototype.traiterDemande=function(d){var self=this;if(this._dt)return;this.
     .then(function(){self._dt=false;auditT(self,'MODIFICATION','demandes',d.id,{action:'demande_traitee',type:d.type,tech:d.tech||null});self.flash('Demande marquée traitée');return self.load().then(function(){self.update();});})
     .catch(function(e){self._dt=false;self.flash('Demande non modifiée : '+e.message);});};
 Comp.prototype.openFE=function(kind,id,preset){var self=this,p=preset||{},today=iso(new Date());
+  if(kind==='pt'&&id&&/^bl-/.test(String(id))){this.openBlDe(id);return;}
   var blank={wo:{client:'',site:'',odt:'',type:'entretien',priorite:'normal',status:'ouvert',assignes:[],descr:'',notes:'',tasks:[],files:[],req_bassin:false,req_photo:false,req_notes:false,date:today,groupe_id:null,heure_debut:'',heure_fin:'',ordre:''},
     plan:{client:'',addr:'',site_id:null,heure:'07:00',heure_fin:'',ordre:'',emps:[],type:'entretien',descr:'',notes:'',wo_id:'',status:'assigned',date:today},
     pt:{titre:'',descr:'',emps:[],site_id:'',site_nom:'',date_debut:today,date_fin:today,heure_debut:'',heure_fin:'',ordre:'',statut:'assigne',recurrence:null}}[kind];
@@ -755,6 +756,11 @@ Comp.prototype.feVals=function(){var self=this,fe=this.state.fe,D=this.D;if(!fe)
     fSite:f.site||'',onSite:set('site'),fAddr:f.addr||'',onAddr:set('addr'),fTitre:f.titre||'',onTitre:set('titre'),fSiteNom:f.site_nom||'',onSiteNom:set('site_nom'),
     fTypes:opts(k==='plan'?PM_TYPES:WO_TYPES,f.type),onType:set('type'),fOdt:f.odt||'',onOdt:set('odt'),isHivWO:k==='wo'&&f.type==='hivernement',
     odtLbl:k==='wo'&&f.type==='hivernement'?'N° d’ODT (obligatoire)':'N° d’ODT (optionnel)',
+    /* ODT déjà sur un autre bon de travail : signalé (un même ODT peut couvrir plusieurs bons, mais c'est souvent une erreur de saisie) */
+    woOdtAvert:self._woOdtAv=(function(){var c=k==='wo'?odtCle(f.odt):'';if(!c)return'';var o=D.wo.filter(function(x){return x.id!==fe.id&&odtCle(x.odt)===c;});
+      return o.length?'Cet ODT est déjà sur '+(o.length>1?o.length+' autres bons de travail':'un autre bon de travail')+' : '+o.slice(0,3).map(function(x){return[x.client,x.date?fdate(x.date):''].filter(Boolean).join(' · ');}).join(' ; '):'';})(),
+    hasWoOdtAvert:!!self._woOdtAv,hasWoBl:k==='wo'&&!!fe.id&&!!String(f.odt||'').trim(),woBl:function(){self.blPourWo(self.state.fe.f,fe.id);},
+    woBlLbl:(function(){if(k==='wo'&&fe.id&&self.docs.bl===undefined)self.loadDocs('bl');var c=odtCle(f.odt),L=Array.isArray(self.docs.bl)?self.docs.bl:[];return L.some(function(b){return odtCle(blOdt(b))===c&&b.status!=='livre';})?'Ouvrir le bon de livraison de cet ODT':'Créer le bon de livraison de cet ODT';})(),
     hivWoNote:k==='wo'&&f.type==='hivernement'?(this.siteDuWo(f)?'La cédule d’hivernement de « '+this.siteDuWo(f).nom+' » sera créée'+(isNew?' pour chaque date choisie':' (si elle n’existe pas déjà)')+' : liste « Hivernement » du site, avec cet ODT et les techniciens choisis.':'Choisissez le client dans la liste des sites : la cédule d’hivernement est créée dans la fiche du site.'):'',fPrios:opts(WO_PRIO,f.priorite),onPrio:set('priorite'),
     fStats:k==='wo'?opts(WO_STAT,f.status):k==='pt'?opts(PT_STAT,f.statut):opts([['assigned','Planifié'],['termine','Terminé']],f.status),onStat:set(k==='pt'?'statut':'status'),
     fDescr:f.descr||'',onDescr:set('descr'),fNotes:f.notes||'',onNotes:set('notes'),fHeure:f.heure||'',onHeure:set('heure'),fHD:f.heure_debut||'',onHD:set('heure_debut'),fHF:f.heure_fin||'',onHF:set('heure_fin'),fOrdre:f.ordre||'',onOrdre:set('ordre'),
@@ -1058,7 +1064,7 @@ function blEtape(b){if(b.status==='livre')return 3;if(b.status==='en_route')retu
 Comp.prototype.blSuivi=function(o){o=o||{};if(this.docs.bl===undefined)this.loadDocs('bl');var self=this,today=iso(new Date()),L=Array.isArray(this.docs.bl)?this.docs.bl:[];
   return L.filter(function(b){return b.status!=='livre'&&(!o.client||norm(b.client)===norm(o.client));}).map(function(b){var e=blEtape(b),ret=!!(b.date&&b.date<today);
     var n=(b.items_liv||[]).filter(function(i){return String(i.item||'').trim();}).length;
-    return{_e:e,_r:ret,_d:b.date||'9',no:b.no_bon||'—',client:b.client||'Client non précisé',tech:b.technicien||'non assigné',date:b.date?fdate(b.date):'sans date',art:n+' article'+(n>1?'s':''),
+    return{_e:e,_r:ret,_d:b.date||'9',no:blNoTxt(b),client:b.client||'Client non précisé',tech:b.technicien||'non assigné',date:b.date?fdate(b.date):'sans date',art:n+' article'+(n>1?'s':''),
       etape:BL_ETAPES[e]+(ret?' · en retard':'')+(b.urgent?' · URGENT':''),etFw:ret||b.urgent?'700':'600',bd:ret||b.urgent?'2px solid var(--color-accent-900)':'1px solid var(--color-divider)',
       steps:BL_ETAPES.map(function(l,i){return{l:l,bg:i<=e?(ret?'var(--color-accent-900)':'var(--color-accent-700)'):'var(--color-divider)',fw:i===e?'700':'400'};}),
       open:function(){self.openDoc('bl',b.id);}};})
@@ -1080,8 +1086,8 @@ function docNo(p){var d=new Date();return p+d.getFullYear()+pad(d.getMonth()+1)+
 function escH(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 Comp.prototype.loadDocs=function(kind,force){var self=this,y=new Date().getFullYear();if(!force&&this.docs[kind]!==undefined)return;this.docs[kind]=null;
   var q={bl:'bons_livraison?select=*&order=date.desc',so:'sorties_inventaire?select=*&order=date.desc',hv:'rapports_hivernage?select=*&order=date_inspection.desc'}[kind];
-  get(q).then(function(r){self.docs[kind]=r;self.update();}).catch(function(e){self.docs[kind]='err';self.docErr=netMsg(e);self.update();});};
-Comp.prototype.openDoc=function(kind,id){var me=(this.user.prenom+' '+this.user.nom).trim(),today=iso(new Date()),L=Array.isArray(this.docs[kind])?this.docs[kind]:[];
+  get(q).then(function(r){self.docs[kind]=r;self.update();if(kind==='bl')self.blRattrapage();}).catch(function(e){self.docs[kind]='err';self.docErr=netMsg(e);self.update();});};
+Comp.prototype.openDoc=function(kind,id,preset){var me=(this.user.prenom+' '+this.user.nom).trim(),today=iso(new Date()),L=Array.isArray(this.docs[kind])?this.docs[kind]:[];
   var x=id?L.filter(function(r){return r.id===id;})[0]:null,f;
   if(x)f=JSON.parse(JSON.stringify(x));
   else f={bl:{no_bon:docNo('SA-'),urgent:false,date:today,heure:'',technicien:'',client:'',tel:'',adresse:'',items_liv:[{item:'',qteSortie:'',unite:'',qteLivree:'',statut:''}],items_ret:[],photos:[],status:'brouillon'},
@@ -1092,6 +1098,7 @@ Comp.prototype.openDoc=function(kind,id){var me=(this.user.prenom+' '+this.user.
   ['items_liv','items_ret','photos','lignes','sections','plan','suivi'].forEach(function(k){if(f[k]==null&&(kind==='bl'&&/items|photos/.test(k)||kind==='so'&&k==='lignes'||kind==='hv'&&/sections|plan|suivi/.test(k)))f[k]=[];});
   if(kind==='hv'&&!f.timeline)f.timeline={q1:'',q2:'',q3:'',q4:''};
   if(kind==='so')f.odt=soOdt(f);
+  if(kind==='bl'){f.odt=blOdt(f);if(!x&&preset)Object.assign(f,preset);}
   /* Hivernage : un nouveau rapport est la liste de contrôle « Hivernement » (src/hivernage/checklist.js) ; les anciens rapports de pré-hivernage gardent leur éditeur */
   var H=window.SAHiv,hv=null,hvPh=[];
   if(kind==='hv'&&(!x||H.isChecklist(x))){hv=x?H.fromReport(x):H.blank({date:today});hvPh=x?JSON.parse(JSON.stringify(H.photosOf(x))):[];if(!x)f=Object.assign(H.toReport(hv,{status:'brouillon'}),{status:'brouillon'});}
@@ -1115,17 +1122,21 @@ Comp.prototype.saveDoc=function(extra,msg,hvOver,apres){var self=this,de=this.st
   if(de.hv)f=Object.assign(window.SAHiv.toReport(hvOver||de.hv,f,de.hvPh),{status:f.status&&f.status!=='planifie'?f.status:'brouillon'});
   if(k==='bl'&&!String(f.client||'').trim()){this.flash('Le client est requis');return;}
   if(k==='hv'&&!String(f.site_nom||'').trim()){this.flash('Le site est requis');return;}
-  if(k==='bl'){f.items_liv=f.items_liv.filter(function(r){return String(r.item||'').trim();});f.items_ret=f.items_ret.filter(function(r){return String(r.item||'').trim();});}
+  if(k==='bl'){var odtB=String(f.odt||'').trim();delete f.odt;if(odtB)f.no_bon=odtB;else if(!estNoAuto(f.no_bon))f.no_bon=docNo('SA-');
+    f.items_liv=f.items_liv.filter(function(r){return String(r.item||'').trim();});f.items_ret=f.items_ret.filter(function(r){return String(r.item||'').trim();});}
   if(k==='so'){var odt=String(f.odt||'').trim();delete f.odt;f.lignes=f.lignes.filter(function(r){return String(r.desc||r.code||'').trim();}).map(function(r){r=Object.assign({},r);if(odt)r.odt=odt;else delete r.odt;return r;});if(!f.date)f.date=null;}
   if(k==='hv'){var s=this.D.sites.filter(function(x){return norm(x.nom)===norm(f.site_nom);})[0];if(s){f.site_id=s.id;if(de.hv&&!f.client){var cl=this.clientById&&this.clientById(s.client_id);if(cl)f.client=cl.nom;}}f.plan=f.plan.filter(function(r){return String(r.element||r.travaux||'').trim();});f.suivi=f.suivi.filter(function(r){return String(r.element||'').trim();});}
   f.updated_at=nowIso();delete f.id;var nid=de.id||pmmId();
-  var fin=function(){auditT(self,de.id?'MODIFICATION':'CREATION',tb,de.id||'nouveau');self.setState({de:null});self.flash(msg||(de.hv&&window.SAHiv.estInspD(de.hv)?'Rapport d’inspection enregistré':DOC[k].lbl+' enregistré'));self.loadDocs(k,true);if(apres)apres(Object.assign({},f,{id:nid}));};
+  var fin=function(){auditT(self,de.id?'MODIFICATION':'CREATION',tb,de.id||'nouveau');self.setState({de:null});var row=Object.assign({},f,{id:nid}),m0=msg||(de.hv&&window.SAHiv.estInspD(de.hv)?'Rapport d’inspection enregistré':DOC[k].lbl+' enregistré');
+    self.flash(m0);self.loadDocs(k,true);if(apres)apres(row);
+    /* bon de livraison : sa tâche planning suit le livreur, la date, l'heure et l'état du bon */
+    if(k==='bl')self.blPlanifier(row).then(function(x){if(x&&!apres)self.flash(m0+x);});};
   this.setState({de:Object.assign({},de,{busy:true})});
   var relire=k==='bl'&&de.id?get(tb+'?id=eq.'+encodeURIComponent(de.id)+'&select=status,photos,livre_at,livre_by,livre_par_nom').then(function(r){return blFusion(f,r[0],de.ph0,extra);}):Promise.resolve(f);
   relire.then(function(f2){f=f2;return de.id?rest('PATCH',tb+'?id=eq.'+encodeURIComponent(de.id),f):postRows(tb,[Object.assign({id:nid,created_by:self.user.id,created_at:nowIso()},f)]);})
     .then(fin).catch(function(e){self.setState({de:Object.assign({},self.state.de,{busy:false})});self.flash('Échec — rien n’a été modifié : '+netMsg(e));});};
 Comp.prototype.deleteDoc=function(){var self=this,de=this.state.de;if(!de||!de.id)return;if(!de.confirm){this.setState({de:Object.assign({},de,{confirm:true})});return;}
-  rest('DELETE',DOC[de.kind].t+'?id=eq.'+encodeURIComponent(de.id)).then(function(){auditT(self,'SUPPRESSION',DOC[de.kind].t,de.id);self.setState({de:null});self.flash('Supprimé');self.loadDocs(de.kind,true);}).catch(function(e){self.flash('Échec : '+netMsg(e));});};
+  rest('DELETE',DOC[de.kind].t+'?id=eq.'+encodeURIComponent(de.id)).then(function(){auditT(self,'SUPPRESSION',DOC[de.kind].t,de.id);if(de.kind==='bl')self.blPlanifier({id:de.id});self.setState({de:null});self.flash('Supprimé');self.loadDocs(de.kind,true);}).catch(function(e){self.flash('Échec : '+netMsg(e));});};
 Comp.prototype.printDoc=function(){var de=this.state.de;if(!de)return;this.printHtml(de.hv?window.SAHiv.html(de.hv,{photos:de.hvPh}):this.docHtml(de.kind,de.f));};
 Comp.prototype.printHtml=function(h){var w=window.open('','_blank');if(!w){this.flash('Fenêtre bloquée — autorisez les fenêtres pour imprimer');return;}w.document.write(h+'<script>(function(){var go=function(){setTimeout(function(){print();},300);},F=document.fonts,im=[].slice.call(document.images).map(function(i){return i.complete?0:new Promise(function(r){i.onload=i.onerror=r;});});Promise.race([Promise.all([F?Promise.all([].slice.call(F).map(function(f){return f.load().catch(function(){});})):0].concat(im)),new Promise(function(r){setTimeout(r,4000);})]).then(go,go);})()<\/script>');w.document.close();};
 Comp.prototype.docHtml=function(k,f){var E=escH,h='<!doctype html><meta charset="utf-8"><title>'+E(DOC[k].lbl)+'</title><style>body{font:12px Arial,sans-serif;margin:22px}h1{font-size:19px;margin:0 0 4px}h2{font-size:14px;background:#e8f2fb;padding:5px 8px;margin:16px 0 0}table{border-collapse:collapse;width:100%}td,th{border:1px solid #bbb;padding:4px 6px;text-align:left}th{background:#f4f6fa}.m{display:flex;gap:20px;flex-wrap:wrap;margin:6px 0 10px}.s{margin-top:30px;display:flex;gap:50px}.s div{border-top:1px solid #333;width:240px;font-size:11px;padding-top:3px}.t{display:inline-block;padding:1px 6px;border:1px solid #999;font-size:11px;margin-left:6px}img.sig{max-height:90px;border:1px solid #ccc}</style>';
@@ -1169,9 +1180,11 @@ Comp.prototype.hvEnvoyerLigne=function(r){var self=this,H=window.SAHiv,trace=thi
    Le bon créé depuis une sortie reprend son numéro (SA-INV-AAAAMMJJ-NNN → SA-AAAAMMJJ-NNN) : c'est le lien entre les deux, sans colonne de plus.
    Il est « brouillon », assigné au livreur : sa-terrain le montre dans « Bons à livrer », où le client signe au doigt (ou l'employé valide sans signature). */
 function blNoDeSortie(no){return /^SA-INV-/.test(no||'')?String(no).replace(/^SA-INV-/,'SA-'):'';}
-function blDeSortie(so,tech,site){return{no_bon:blNoDeSortie(so.no_bon)||docNo('SA-'),urgent:false,date:iso(new Date()),heure:'',technicien:tech||'',client:so.client||'',tel:'',adresse:(site&&site.addr)||'',
+function blDeSortie(so,tech,site){return{no_bon:soOdt(so)||blNoDeSortie(so.no_bon)||docNo('SA-'),urgent:false,date:iso(new Date()),heure:'',technicien:tech||'',client:so.client||'',tel:'',adresse:(site&&site.addr)||'',
   items_liv:(so.lignes||[]).filter(function(l){return String(l.desc||l.code||'').trim();}).map(function(l){var q=String(l.qteSortie==null?'':l.qteSortie);return{item:String(l.desc||l.code),qteSortie:q,unite:l.unite||'',qteLivree:q,statut:''};}),items_ret:[],photos:[],status:'brouillon'};}
-Comp.prototype.blDe=function(so){var no=blNoDeSortie(so.no_bon),L=Array.isArray(this.docs.bl)?this.docs.bl:[];return no?L.filter(function(b){return b.no_bon===no;})[0]||null:null;};
+Comp.prototype.blDe=function(so){var no=blNoDeSortie(so.no_bon),odt=odtCle(soOdt(so)),L=Array.isArray(this.docs.bl)?this.docs.bl:[];
+  /* lien : le numéro dérivé de la sortie, ou (sortie avec ODT) le même ODT pour le même client */
+  return L.filter(function(b){return(no&&b.no_bon===no)||(odt&&odtCle(blOdt(b))===odt&&norm(b.client)===norm(so.client));})[0]||null;};
 Comp.prototype.openSoBl=function(so){if(this.docs.bl===undefined)this.loadDocs('bl');this.setState({sb:{so:so,tech:so.nom||'',busy:false}});};
 Comp.prototype.creerBlDeSortie=function(){var self=this,sb=this.state.sb;if(!sb||sb.busy)return;var so=sb.so;
   if(this.blDe(so)){this.flash('Un bon de livraison existe déjà pour cette sortie');this.setState({sb:null});return;}
@@ -1179,13 +1192,77 @@ Comp.prototype.creerBlDeSortie=function(){var self=this,sb=this.state.sb;if(!sb|
   var b=Object.assign({id:pmmId(),created_by:this.user.id,created_at:nowIso(),updated_at:nowIso()},blDeSortie(so,sb.tech,this.hvSiteOf(so.client)));
   this.setState({sb:Object.assign({},sb,{busy:true})});
   postRows('bons_livraison',[b]).then(function(){auditT(self,'CREATION','bons_livraison',b.id,{depuis_sortie:so.no_bon||so.id});self.setState({sb:null,logTab:'bl',docF:'tous',docQ:''});self.loadDocs('bl',true);
-    self.flash('Bon '+b.no_bon+' créé'+(b.technicien?' — à livrer par '+b.technicien+' (sa-terrain : Logistique › Bon de livraison)':' — choisissez le livreur'));})
+    var m='Bon '+blNoTxt(b)+' créé'+(b.technicien?' — à livrer par '+b.technicien+' (sa-terrain : Logistique › Bon de livraison)':' — choisissez le livreur');self.flash(m);
+    if(b.technicien)return self.blPlanifier(b).then(function(x){if(x)self.flash(m+x);});})
     .catch(function(e){self.setState({sb:Object.assign({},self.state.sb,{busy:false})});self.flash('Échec — bon non créé : '+netMsg(e));});};
 Comp.prototype.soBlVals=function(){var self=this,sb=this.state.sb;if(!sb)return{sbOpen:false};var so=sb.so,n=(so.lignes||[]).filter(function(l){return String(l.desc||l.code||'').trim();}).length;
   var techs=this.D.comptes.filter(function(c){return estAssignable(c)&&self.D.statut[c.id]!=='inactif';}).sort(triPersonne).map(function(c){var v=(c.prenom+' '+c.nom).trim();return{v:v,l:nomFonction(c),sel:sb.tech===v};});
   return{sbOpen:true,sbTitle:'Sortie '+(so.no_bon||'')+' émise',sbTxt:'Passer en bon de livraison ? '+n+' article(s) pour '+(so.client||'client à préciser')+'. Le bon apparaît dans sa-terrain : le livreur fait signer le client au doigt sur son téléphone, ou valide la livraison sans signature — pas de papier.',
     sbTechs:[{v:'',l:'— à choisir —',sel:!sb.tech}].concat(techs),onSbTech:function(e){self.setState({sb:Object.assign({},self.state.sb,{tech:e.target.value})});},
     sbGo:function(){self.creerBlDeSortie();},sbGoLbl:sb.busy?'Création…':'Créer le bon de livraison',sbLater:function(){self.setState({sb:null});},sbCloseBg:function(e){if(e.target===e.currentTarget)self.setState({sb:null});}};};
+/* ═════════════ Bon de livraison ↔ ODT et planning (27/11/2026) ═════════════
+   ODT : le numéro d'un bon de livraison EST son ODT (colonne no_bon), comme le système interne de Soucy. Sans ODT, le bon garde
+   un numéro automatique « SA-AAAAMMJJ-NNN ». Un ODT déjà connu (bon de travail, facturation, sortie, autre bon de livraison) se
+   choisit dans la liste : le client, l'adresse et le livreur du bon de travail sont repris, et un 2e bon pour le même ODT est signalé.
+   Planning : un bon assigné (livreur + date) est aussi une tâche planning, id « bl-<id du bon> » — une seule par bon, mise à jour
+   à chaque enregistrement, retirée si le bon n'a plus de livreur ou est supprimé, « terminée » quand il est livré. */
+function estNoAuto(no){return /^SA-/.test(String(no||'').trim());}
+function blOdt(b){return b&&!estNoAuto(b.no_bon)?String(b.no_bon||'').trim():'';}
+function blNoTxt(b){var o=blOdt(b);return o?'ODT '+o:(b&&b.no_bon)||'—';}
+function odtCle(v){return String(v||'').trim().toUpperCase().replace(/\s+/g,'');}
+function blPtId(id){return'bl-'+id;}
+Comp.prototype.compteDeNom=function(nom){var n=norm(nom);if(!n||!this.D)return null;return this.D.comptes.filter(function(c){return norm((c.prenom+' '+c.nom).trim())===n;})[0]||null;};
+/* ODT connus : bons de travail d'abord (ils portent le client, l'adresse et les techniciens), puis facturation, sorties et bons de livraison */
+Comp.prototype.odtConnus=function(){var D=this.D,m={},o=[],nm=this.names();
+  var add=function(odt,x){var k=odtCle(odt);if(!k)return;if(!m[k]){m[k]={odt:String(odt).trim(),client:'',adresse:'',tech:'',wo:null,src:[],bls:[]};o.push(k);}var e=m[k];
+    if(x.wo&&!e.wo)e.wo=x.wo;if(x.bl)e.bls.push(x.bl);['client','adresse','tech'].forEach(function(c){if(!e[c]&&x[c])e[c]=x[c];});if(x.src&&e.src.indexOf(x.src)<0)e.src.push(x.src);};
+  (D&&D.wo||[]).forEach(function(w){if(!w.odt)return;var ids=idList(w.assignes,w.assigne);add(w.odt,{wo:w,src:'bon de travail',client:w.client,adresse:w.site,tech:ids.length?nm[ids[0]]||'':''});});
+  (D&&D.fact||[]).forEach(function(f){if(f.odt)add(f.odt,{src:'facturation',client:f.client,adresse:f.ville});});
+  (Array.isArray(this.docs.so)?this.docs.so:[]).forEach(function(x){var odt=soOdt(x);if(odt)add(odt,{src:'sortie',client:x.client});});
+  (Array.isArray(this.docs.bl)?this.docs.bl:[]).forEach(function(b){var odt=blOdt(b);if(odt)add(odt,{bl:b,src:'bon de livraison',client:b.client,adresse:b.adresse,tech:b.technicien});});
+  return{m:m,liste:o.map(function(k){var e=m[k];return{v:e.odt,l:[e.client,e.src.join(', ')].filter(Boolean).join(' · ')};})};};
+/* ODT choisi dans le bon de livraison : reprend ce qui manque (client, adresse, livreur, heure) — ne remplace rien de déjà saisi */
+Comp.prototype.blOdtChoisi=function(v){var e=this.odtConnus().m[odtCle(v)];this.deMut(function(ff){ff.odt=v;if(!e)return;
+  if(!String(ff.client||'').trim()&&e.client)ff.client=e.client;if(!String(ff.adresse||'').trim()&&e.adresse)ff.adresse=e.adresse;
+  if(!String(ff.technicien||'').trim()&&e.tech)ff.technicien=e.tech;if(e.wo&&!ff.heure&&e.wo.heure_debut)ff.heure=e.wo.heure_debut;});};
+Comp.prototype.blOdtVals=function(de){var self=this,f=de.f,k=odtCle(f.odt),C=this.odtConnus(),e=k?C.m[k]:null;
+  var autres=e?e.bls.filter(function(b){return b.id!==de.id;}):[],w=e&&e.wo;
+  return{odtList:C.liste,onDOdt:function(ev){self.blOdtChoisi(ev.target.value);},
+    dOdtLien:w?'Lié au bon de travail : '+[typeLab(WO_TYPES,w.type),w.client,w.date?fdate(w.date):''].filter(Boolean).join(' · '):e&&e.src.length&&!autres.length?'ODT connu ('+e.src.join(', ')+')':k?'Nouvel ODT : il n’est sur aucun bon de travail':'Choisissez un ODT existant dans la liste, ou saisissez-le. Sans ODT, le bon reçoit un numéro automatique.',
+    dOdtDoublons:autres.map(function(b){return{txt:'Ce même ODT est déjà sur un bon de livraison : '+(b.status==='livre'?'livré':BL_ETAPES[blEtape(b)].toLowerCase())+' · '+(b.date?fdate(b.date):'sans date')+' · '+(b.technicien||'non assigné'),
+      open:function(){self.openDoc('bl',b.id);}};}),hasOdtDoublon:autres.length>0,
+    dOdtWo:w?function(){self.setState({de:null});self.openFE('wo',w.id);}:null,hasOdtWo:!!w};};
+/* Tâche planning d'un bon de livraison : null si le bon n'a pas de livreur connu ou pas de date */
+Comp.prototype.blTache=function(b){var c=this.compteDeNom(b.technicien);if(!c||!/^\d{4}-\d{2}-\d{2}$/.test(String(b.date||'')))return null;var site=this.hvSiteOf(b.client),client=String(b.client||'').trim();
+  var arts=(b.items_liv||[]).filter(function(i){return String(i.item||'').trim();}).map(function(i){return'• '+String(i.item).trim()+(i.qteSortie?' ('+i.qteSortie+(i.unite?' '+i.unite:'')+')':'');});
+  return{id:blPtId(b.id),titre:'Livraison · '+(client||'client à préciser'),descr:['Bon de livraison '+blNoTxt(b)+(b.urgent?' · URGENT':''),b.adresse?'Adresse : '+b.adresse:''].concat(arts).filter(Boolean).join('\n'),
+    emp:c.id,emp_nom:(c.prenom+' '+c.nom).trim(),site_id:site?String(site.id):'',site_nom:site?site.nom:client,wo_id:null,date_debut:b.date,date_fin:b.date,heure_debut:b.heure||'',heure_fin:'',
+    statut:b.status==='livre'?'termine':'assigne',recurrence:null,updated_at:nowIso()};};
+/* Crée, met à jour ou retire la tâche planning du bon. Renvoie le complément du message affiché. */
+Comp.prototype.blPlanifier=function(b){var self=this,t=this.blTache(b),id=blPtId(b.id);
+  var p=t?rest('POST','planning_tasks?on_conflict=id',[Object.assign({created_by:this.user.id},t)],'resolution=merge-duplicates,return=minimal')
+    :rest('DELETE','planning_tasks?id=eq.'+encodeURIComponent(id),null,'return=minimal');
+  return p.then(function(){self.pl={};self._pl={};self.rng={};if(t)auditT(self,'MODIFICATION','planning_tasks',id,{action:'bon_livraison_planifie',bl:b.id,date:t.date_debut,emp:t.emp});
+      return t?(b.status==='livre'?'':' · au planning de '+t.emp_nom+' le '+fdate(t.date_debut)):'';},
+    function(e){return t?' — mais le planning n’a pas été mis à jour ('+netMsg(e)+') : enregistrez de nouveau':'';});};
+/* Bons assignés créés avant ce changement (ou ailleurs) : on ajoute au planning ceux à venir qui n'y sont pas encore, une fois par session */
+Comp.prototype.blRattrapage=function(){var self=this,L=Array.isArray(this.docs.bl)?this.docs.bl:null;if(!L||this._blRat)return;this._blRat=true;var lim=iso(addDays(new Date(),-7));
+  var cand=L.filter(function(b){return b.status!=='livre'&&b.date>=lim&&self.blTache(b);});if(!cand.length)return;
+  get('planning_tasks?select=id&id=like.bl-*').then(function(r){var have={};r.forEach(function(x){have[x.id]=1;});
+    var manq=cand.filter(function(b){return!have[blPtId(b.id)];});if(!manq.length)return;
+    return rest('POST','planning_tasks?on_conflict=id',manq.map(function(b){return Object.assign({created_by:self.user.id},self.blTache(b));}),'resolution=merge-duplicates,return=minimal')
+      .then(function(){self.pl={};self._pl={};self.rng={};auditT(self,'CREATION','planning_tasks','bl-*',{action:'bons_livraison_rattrapes',n:manq.length});self.update();});}).catch(function(){self._blRat=false;});};
+/* Une tâche planning « bl-… » s'ouvre comme son bon de livraison */
+Comp.prototype.openBlDe=function(ptId){var self=this,id=String(ptId).slice(3),L=Array.isArray(this.docs.bl)?this.docs.bl:null;
+  if(L&&L.some(function(b){return b.id===id;})){this.openDoc('bl',id);return;}
+  get('bons_livraison?id=eq.'+encodeURIComponent(id)+'&select=*').then(function(r){if(!r[0]){self.flash('Bon de livraison introuvable (supprimé ?)');return;}
+    self.docs.bl=(Array.isArray(self.docs.bl)?self.docs.bl.filter(function(b){return b.id!==id;}):[]).concat(r);self.openDoc('bl',id);}).catch(function(e){self.flash('Erreur : '+netMsg(e));});};
+/* Bon de travail avec un ODT : son bon de livraison (celui à livrer s'il existe, sinon un nouveau, déjà rempli) */
+Comp.prototype.blPourWo=function(f,id){var self=this,odt=String(f.odt||'').trim();if(!odt)return;if(this.docs.bl===undefined){this.loadDocs('bl');}
+  var go=function(){var L=Array.isArray(self.docs.bl)?self.docs.bl:[],k=odtCle(odt),b=L.filter(function(x){return odtCle(blOdt(x))===k&&x.status!=='livre';})[0];self.setState({fe:null});
+    if(b){self.openDoc('bl',b.id);return;}var ids=f.assignes||[],nm=self.names(),site=self.siteDuWo(f);
+    self.openDoc('bl',null,{odt:odt,client:String(f.client||'').trim(),adresse:String(f.site||'').trim()||(site?site.addr:''),technicien:ids.length?nm[ids[0]]||'':'',date:f.date||iso(new Date()),heure:f.heure_debut||''});};
+  if(Array.isArray(this.docs.bl))go();else get('bons_livraison?select=*&order=date.desc').then(function(r){self.docs.bl=r;go();},function(){go();});};
 /* Courriels à l'entrepôt : responsables et événements dans logistique_config (clé entrepot_courriels), envoi par la fonction serveur
    logistique-courriel (elle relit la ligne et les destinataires ; le navigateur n'envoie qu'un identifiant). Sans service de courriel :
    « Courriel à l'entrepôt » ouvre le logiciel de courriel avec un message prêt. */
@@ -1247,9 +1324,9 @@ Comp.prototype.docsVals=function(){var self=this,st=this.state,D=this.D,mod=st.m
     var done=kind==='bl'?r.status==='livre':kind==='so'?r.status==='envoye':r.status==='complete',H=window.SAHiv,hv=kind==='hv'&&H.isChecklist(r)?H.fromReport(r):null,pg=hv&&H.progress(hv),env=hv&&hv.envois.length?hv.envois[hv.envois.length-1]:null;
     var acts=kind==='hv'?[{l:'Imprimer',go:function(){self.printHtml(self.hvDocHtml(r));}},{l:'Envoyer au client',go:function(){self.hvEnvoyerLigne(r);}}]:[],bl=kind==='so'?self.blDe(r):null;
     if(kind==='so'){if(done&&!bl)acts.push({l:'Bon de livraison',go:function(){self.openSoBl(r);}});acts.push({l:'Courriel à l’entrepôt',go:function(){self.entCourriel(r);}});}
-    return{acts:acts,a:kind==='hv'?r.site_nom||'—':r.no_bon||'—',b:kind==='hv'?(r.client||r.objet||''):(r.client||'—'),c:kind==='hv'?(r.date_inspection||'—')+' · '+(r.technicien||'—'):(r.date||'—')+' · '+(kind==='bl'?(r.technicien||'—'):(r.nom||'—')),
+    return{acts:acts,a:kind==='hv'?r.site_nom||'—':kind==='bl'?blNoTxt(r):r.no_bon||'—',b:kind==='hv'?(r.client||r.objet||''):(r.client||'—'),c:kind==='hv'?(r.date_inspection||'—')+' · '+(r.technicien||'—'):(r.date||'—')+' · '+(kind==='bl'?(r.technicien||'—'):(r.nom||'—')),
       d:(kind==='bl'?(r.items_liv||[]).length+' article(s)':kind==='so'?(r.lignes||[]).length+' ligne(s)':hv?'Hivernement · '+pg.done+' / '+pg.total+' cases ('+pg.pct+' %)':(r.sections||[]).length+' section(s)')+(r.urgent?' · URGENT':''),
-      etat:(done?(kind==='bl'?'Livré':kind==='so'?'Envoyée':'Complété'):kind==='bl'?BL_ETAPES[blEtape(r)]+(r.date&&r.date<iso(new Date())?' · en retard':''):kind==='hv'&&r.status==='planifie'?hvPrevuTxt(r):'Brouillon')+(env?' · envoyé le '+String(env.le).slice(0,10):'')+(bl?' · bon '+bl.no_bon+(bl.status==='livre'?' livré':' à livrer'):''),open:function(){self.openDoc(kind,r.id);}};});
+      etat:(done?(kind==='bl'?'Livré':kind==='so'?'Envoyée':'Complété'):kind==='bl'?BL_ETAPES[blEtape(r)]+(r.date&&r.date<iso(new Date())?' · en retard':''):kind==='hv'&&r.status==='planifie'?hvPrevuTxt(r):'Brouillon')+(env?' · envoyé le '+String(env.le).slice(0,10):'')+(bl?' · bon '+blNoTxt(bl)+(bl.status==='livre'?' livré':' à livrer'):''),open:function(){self.openDoc(kind,r.id);}};});
   var FL3=[['attente',kind==='bl'?'À livrer':'Brouillons'],['faits',kind==='bl'?'Livrés':kind==='so'?'Envoyées':'Complétés'],['tous','Tous']];
   var out={isLogi:mod==='logistique',isLogDocs:mod==='logistique'&&lt!=='ent',isLogEnt:mod==='logistique'&&lt==='ent',isHivB:mod==='hivernage',logTabs:this.affTabs('log.',[['bl','Bons de livraison'],['so','Sorties d’inventaire'],['ent','Entrepôt · courriels']]).map(function(x){return Object.assign({label:x[1],go:function(){self.setState({logTab:x[0],docF:'tous',docQ:''});}},segS((lt||'bl')===x[0]));}),
     docFilters:FL3.map(function(x){return Object.assign({label:x[1],go:function(){self.setState({docF:x[0]});}},segS(flt===x[0]));}),docQ:st.docQ||'',onDocQ:function(e){self.setState({docQ:e.target.value});},
@@ -1265,7 +1342,7 @@ Comp.prototype.docsVals=function(){var self=this,st=this.state,D=this.D,mod=st.m
   var pick=function(cb){var inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.onchange=function(){var file=inp.files&&inp.files[0];if(!file)return;var img=new Image(),u=URL.createObjectURL(file);img.onload=function(){var s=Math.min(1,1400/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);cb({data:c.toDataURL('image/jpeg',0.7),name:file.name,addedBy:self.user.id,addedAt:nowIso()});};img.src=u;};inp.click();};
   var techs=D.comptes.filter(function(c){return estAssignable(c)&&D.statut[c.id]!=='inactif';}).sort(triPersonne).map(function(c){var n=(c.prenom+' '+c.nom).trim();return{v:n,l:nomFonction(c),id:c.id,sel:(k==='bl'?f.technicien:k==='so'?f.nom:f.technicien)===n};});
   var done=k==='bl'?f.status==='livre':k==='so'?f.status==='envoye':f.status==='complete',me=(self.user.prenom+' '+self.user.nom).trim();
-  var deV={deTitle:(de.id?'':'Nouveau · ')+DOC[k].lbl+(f.no_bon?' '+f.no_bon:''),isBL:k==='bl',isSO:k==='so',isHV:k==='hv',sitesList2:D.sites.map(function(s){return{v:s.nom};}),invList:(D.inv||[]).map(function(i){return{v:i.nom};}),
+  var deV={deTitle:(de.id?'':'Nouveau · ')+DOC[k].lbl+(k==='bl'?(String(f.odt||'').trim()?' · ODT '+String(f.odt).trim():de.id&&f.no_bon?' '+f.no_bon:''):f.no_bon?' '+f.no_bon:''),isBL:k==='bl',isSO:k==='so',isHV:k==='hv',sitesList2:D.sites.map(function(s){return{v:s.nom};}),invList:(D.inv||[]).map(function(i){return{v:i.nom};}),
     dOdt:fld('odt'),dClient:fld('client'),dTel:fld('tel'),dAdr:fld('adresse'),dDate:fld('date'),dHeure:fld('heure'),dUrg:fld('urgent'),dNom:fld('nom'),dDept:fld('departement'),dNoEmp:fld('no_employe'),
     dSite:fld('site_nom'),dObjet:fld('objet'),dTitre:fld('titre'),dDR:fld('date_rapport'),dDI:fld('date_inspection'),dPrep:fld('prepare_par'),dTech:fld('technicien'),dCall:fld('callout'),dSSA:fld('signataire_sa'),dSCl:fld('signataire_client'),
     dTechs:techs,onDTech:function(e){var v=e.target.value,t=techs.filter(function(x){return x.v===v;})[0];self.deMut(function(ff){if(k==='so'){ff.nom=v;if(t)ff.no_employe=t.id;}else ff.technicien=v;});},
@@ -1297,6 +1374,7 @@ Comp.prototype.docsVals=function(){var self=this,st=this.state,D=this.D,mod=st.m
     var rr=window.SAHiv.toReport(cur.hv,cur.f,cur.hvPh),trace=self.hvEnvoyer(rr);if(!trace)return;var hv2=JSON.parse(JSON.stringify(cur.hv));hv2.envois.push(trace);
     self.saveDoc(null,trace.via==='partage'?'Liste enregistrée — envoi en cours':'Liste enregistrée — courriel préparé',hv2);};
   if(de.hv)Object.assign(deV,this.hvVals(de));
+  if(k==='bl')Object.assign(deV,this.blOdtVals(de));
   return Object.assign(out,deV);};
 Comp.prototype.hvVals=function(de){var self=this,H=window.SAHiv,hv=H.norm(de.hv),p=H.progress(hv),crit=H.critiquesManquants(hv);
   /* Saisie : travaux et matériel toujours affichés (même vides), donc numérotés à la suite des sections */
