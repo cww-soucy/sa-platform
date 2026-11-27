@@ -1086,7 +1086,7 @@ function docNo(p){var d=new Date();return p+d.getFullYear()+pad(d.getMonth()+1)+
 function escH(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 Comp.prototype.loadDocs=function(kind,force){var self=this,y=new Date().getFullYear();if(!force&&this.docs[kind]!==undefined)return;this.docs[kind]=null;
   var q={bl:'bons_livraison?select=*&order=date.desc',so:'sorties_inventaire?select=*&order=date.desc',hv:'rapports_hivernage?select=*&order=date_inspection.desc'}[kind];
-  get(q).then(function(r){self.docs[kind]=r;self.update();if(kind==='bl')self.blRattrapage();}).catch(function(e){self.docs[kind]='err';self.docErr=netMsg(e);self.update();});};
+  get(q).then(function(r){self.docs[kind]=r;self.update();}).catch(function(e){self.docs[kind]='err';self.docErr=netMsg(e);self.update();});};
 Comp.prototype.openDoc=function(kind,id,preset){var me=(this.user.prenom+' '+this.user.nom).trim(),today=iso(new Date()),L=Array.isArray(this.docs[kind])?this.docs[kind]:[];
   var x=id?L.filter(function(r){return r.id===id;})[0]:null,f;
   if(x)f=JSON.parse(JSON.stringify(x));
@@ -1318,7 +1318,10 @@ Comp.prototype.saveEnt=function(){var self=this,e=this.state.ent;if(!e||this.sta
     self.entSrv=entCfg(v);self.setState({ent:null,entBusy:false});self.flash('Responsables de l’entrepôt enregistrés');})
     .catch(function(err){self.setState({entBusy:false});self.flash('Échec — rien n’a été modifié : '+netMsg(err));});};
 Comp.prototype.docsVals=function(){var self=this,st=this.state,D=this.D,mod=st.mod,lt=st.logTab,kind=mod==='hivernage'?'hv':(mod==='logistique'?(lt==='so'?'so':lt==='ent'?null:'bl'):null);
-  if(kind&&this.docs[kind]===undefined)this.loadDocs(kind);if(kind==='so'&&this.docs.bl===undefined)this.loadDocs('bl');if(mod==='logistique'&&this.entSrv===undefined)this.loadEnt();var L=kind&&Array.isArray(this.docs[kind])?this.docs[kind]:[],q=norm(st.docQ),flt=st.docF||'tous';
+  if(kind&&this.docs[kind]===undefined)this.loadDocs(kind);if(kind==='so'&&this.docs.bl===undefined)this.loadDocs('bl');if(mod==='logistique'&&this.entSrv===undefined)this.loadEnt();
+  /* à l'ouverture de Logistique : les bons à livrer déjà assignés entrent au planning (une fois par session) */
+  if(mod==='logistique'&&!this._blRat&&Array.isArray(this.docs.bl)){var me=this;setTimeout(function(){me.blRattrapage();},0);}
+  var L=kind&&Array.isArray(this.docs[kind])?this.docs[kind]:[],q=norm(st.docQ),flt=st.docF||'tous';
   var rows=L.filter(function(r){var hay=norm([r.no_bon,r.client,r.technicien,r.site_nom,r.nom,r.adresse].join(' '));if(q&&hay.indexOf(q)<0)return false;if(kind==='hv'&&inspRow(r))return false;
     var done=kind==='bl'?r.status==='livre':kind==='so'?r.status==='envoye':r.status==='complete';return flt==='tous'||(flt==='faits'?done:!done);}).map(function(r){
     var done=kind==='bl'?r.status==='livre':kind==='so'?r.status==='envoye':r.status==='complete',H=window.SAHiv,hv=kind==='hv'&&H.isChecklist(r)?H.fromReport(r):null,pg=hv&&H.progress(hv),env=hv&&hv.envois.length?hv.envois[hv.envois.length-1]:null;
