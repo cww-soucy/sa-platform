@@ -95,6 +95,8 @@
   function html(f) {
     f = f || {};
     var no = txt(f.no_bon), ret = lignes(f.items_ret);
+    // Le numéro d'un bon est son ODT (système interne de Soucy) ; « SA-… » = numéro automatique d'un bon sans ODT
+    if (no && !/^SA-/.test(no)) no = 'ODT ' + no;
     var info = [['Client', f.client], ['Adresse', f.adresse], ['Téléphone', f.tel], ['Technicien', f.technicien]];
     var date = H.dateLongue(f.date || '') + (txt(f.heure) ? ' · ' + txt(f.heure) : '');
     return '<!DOCTYPE html><html lang="fr-CA"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
